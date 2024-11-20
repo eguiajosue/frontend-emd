@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+// @ts-check
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    optimizePackageImports: ["@chakra-ui/react"],
+  },
+}
 
-export default nextConfig;
+module.exports = nextConfig

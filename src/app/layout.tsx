@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SessionAuthProvider from "@/context/SessionAuthProvider"; 
 
 
 export const metadata: Metadata = {
@@ -13,11 +14,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html suppressHydrationWarning lang="en">
       <body
         className={`antialiased`}
       >
-        {children}
+        <SessionAuthProvider>
+           {children}
+        </SessionAuthProvider>
       </body>
     </html>
   );
