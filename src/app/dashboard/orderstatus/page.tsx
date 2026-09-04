@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import OrderStatusTable from './components/OrderStatusTable'
 import { useSession } from 'next-auth/react';
 import Title from '@/components/Title';
-import { Switch } from '@/components/ui/switch';
 
 const statusMap: { [key: number]: string } = {
   1: "pendiente",
@@ -19,7 +18,7 @@ const OrderStatus = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const getOrders = async () => {
+  const getOrders = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
@@ -48,13 +47,13 @@ const OrderStatus = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     if (session?.user?.token) {
       getOrders();
     }
-  }, [session]);
+  }, [session, getOrders]);
 
   if (loading) {
     return <p>Loading...</p>

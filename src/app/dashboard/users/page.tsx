@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { columns } from "./components/columns";
 import { DataTable } from "./components/datatable";
@@ -13,7 +13,7 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
 
   // Función para obtener usuarios de la API
-  const getUsers = async () => {
+  const getUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
@@ -35,13 +35,13 @@ const Users = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session]);
 
   useEffect(() => {
     if (session?.user?.token) {
       getUsers();
     }
-  }, [session]);
+  }, [session, getUsers]);
 
   return (
     <div className="p-0 w-full">

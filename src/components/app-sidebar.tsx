@@ -140,7 +140,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {group.items.map((item) =>
                 // Mostrar el botón si el usuario es "admin" o si el rol del usuario está en la lista de roles permitidos
-                userRole === "admin" || item.roles.includes(session?.user.role) ? (
+                userRole === "admin" || (userRole && item.roles.includes(userRole)) ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <a href={item.url}>
