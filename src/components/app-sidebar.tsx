@@ -5,7 +5,6 @@ import {
   PackagePlus,
   Truck,
   UserRound,
-  UserPlus,
   Building,
   LogOut,
 } from "lucide-react";
@@ -32,10 +31,16 @@ export function AppSidebar() {
       groupLabel: "Órdenes",
       items: [
         {
-          title: "Lista de Órdenes",
+          title: "Tablero de Estatus",
           url: "/dashboard/orderstatus",
           icon: Package,
           roles: ["admin", "recepcion", "taller"],
+        },
+        {
+          title: "Lista de Pedidos",
+          url: "/dashboard/orders",
+          icon: Package,
+          roles: ["admin", "recepcion"],
         },
         {
           title: "Nueva Orden",
@@ -50,14 +55,8 @@ export function AppSidebar() {
       items: [
         {
           title: "Lista de Clientes",
-          url: "/clients",
+          url: "/dashboard/clients",
           icon: UserRound,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Nuevo Cliente",
-          url: "/clients/new",
-          icon: UserPlus,
           roles: ["admin", "recepcion"],
         },
       ],
@@ -67,13 +66,13 @@ export function AppSidebar() {
       items: [
         {
           title: "Lista de Productos",
-          url: "/products",
+          url: "/dashboard/products",
           icon: Package,
-          roles: ["admin", "taller"],
+          roles: ["admin", "taller", "recepcion"],
         },
         {
           title: "Movimientos de Inventario",
-          url: "/inventory/transactions",
+          url: "/dashboard/inventory-transactions",
           icon: Truck,
           roles: ["admin", "taller"],
         },
@@ -84,15 +83,21 @@ export function AppSidebar() {
       items: [
         {
           title: "Lista de Colores",
-          url: "/colors",
+          url: "/dashboard/colors",
           icon: Package,
-          roles: ["admin", "taller"],
+          roles: ["admin", "recepcion"],
         },
         {
           title: "Lista de Tamaños",
-          url: "/sizes",
+          url: "/dashboard/sizes",
           icon: Package,
-          roles: ["admin", "taller"],
+          roles: ["admin", "recepcion"],
+        },
+        {
+          title: "Tipos de Producto",
+          url: "/dashboard/product-types",
+          icon: Package,
+          roles: ["admin", "recepcion"],
         },
       ],
     },
@@ -101,7 +106,7 @@ export function AppSidebar() {
       items: [
         {
           title: "Lista de Empresas",
-          url: "/companies",
+          url: "/dashboard/companies",
           icon: Building,
           roles: ["admin", "recepcion"],
         },
@@ -118,7 +123,7 @@ export function AppSidebar() {
         },
         {
           title: "Lista de Roles",
-          url: "/roles",
+          url: "/dashboard/roles",
           icon: UserRound,
           roles: ["admin"],
         },
@@ -140,7 +145,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {group.items.map((item) =>
                 // Mostrar el botón si el usuario es "admin" o si el rol del usuario está en la lista de roles permitidos
-                userRole === "admin" || item.roles.includes(session?.user.role) ? (
+                userRole === "admin" || (userRole && item.roles.includes(userRole)) ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <a href={item.url}>
