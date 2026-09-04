@@ -7,6 +7,7 @@ import {
   UserRound,
   Building,
   LogOut,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -27,6 +28,17 @@ export function AppSidebar() {
   const userRole = session?.user?.role;
 
   const menuItems = [
+    {
+      groupLabel: "Administración",
+      items: [
+        {
+          title: "Panel General",
+          url: "/dashboard/admin",
+          icon: LayoutDashboard,
+          roles: ["admin"],
+        },
+      ],
+    },
     {
       groupLabel: "Órdenes",
       items: [
