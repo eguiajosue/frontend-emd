@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useCrud } from "@/hooks/useCrud";
 import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { getColumns, Client } from "./components/columns";
 import { Company } from "../companies/components/columns";
 
@@ -28,6 +29,7 @@ const ClientsPage = () => {
   const { data: companies } = useCrud<Company>("companies");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const canEdit = session?.user?.role === "admin" || session?.user?.role === "recepcion";
 
@@ -58,16 +60,18 @@ const ClientsPage = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este cliente?")) return;
+  const handleDeleteConfirmed = async () => {
+    if (deleteId === null) return;
     try {
-      await remove(id);
+      await remove(deleteId);
     } catch (error) {
       console.error("Error al eliminar cliente:", error);
+    } finally {
+      setDeleteId(null);
     }
   };
 
-  const columns = getColumns({ onEdit: handleEdit, onDelete: handleDelete, canEdit });
+  const columns = getColumns({ onEdit: handleEdit, onDelete: setDeleteId, canEdit });
 
   return (
     <div className="p-0 w-full">
@@ -81,16 +85,27 @@ const ClientsPage = () => {
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
         </div>
+      ) : data.length === 0 ? (
+        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No hay clientes aún.
+        </div>
       ) : (
-        <div className="w-full overflow-auto">
+        <div className="w-full overflow-auto mt-4">
           <DataTable columns={columns} data={data} />
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={handleDeleteConfirmed}
+        description="Esta acción eliminará al cliente de forma permanente."
+      />
 
       {dialogOpen && (
         <EntityFormDialog

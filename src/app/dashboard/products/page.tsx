@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useCrud } from "@/hooks/useCrud";
 import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { getColumns, Product } from "./components/columns";
 import { NamedEntity } from "@/components/crud/SimpleNamedEntityPage";
 
@@ -29,6 +30,7 @@ const ProductsPage = () => {
   const { data: sizes } = useCrud<NamedEntity>("sizes");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const role = session?.user?.role;
   const canEdit = role === "admin" || role === "taller";
@@ -69,16 +71,18 @@ const ProductsPage = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+  const handleDeleteConfirmed = async () => {
+    if (deleteId === null) return;
     try {
-      await remove(id);
+      await remove(deleteId);
     } catch (error) {
       console.error("Error al eliminar producto:", error);
+    } finally {
+      setDeleteId(null);
     }
   };
 
-  const columns = getColumns({ onEdit: handleEdit, onDelete: handleDelete, canEdit });
+  const columns = getColumns({ onEdit: handleEdit, onDelete: setDeleteId, canEdit });
 
   return (
     <div className="p-0 w-full">
@@ -92,16 +96,27 @@ const ProductsPage = () => {
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
         </div>
+      ) : data.length === 0 ? (
+        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No hay productos aún.
+        </div>
       ) : (
-        <div className="w-full overflow-auto">
+        <div className="w-full overflow-auto mt-4">
           <DataTable columns={columns} data={data} />
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={handleDeleteConfirmed}
+        description="Esta acción eliminará el producto de forma permanente."
+      />
 
       {dialogOpen && (
         <EntityFormDialog

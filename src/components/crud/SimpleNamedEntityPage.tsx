@@ -12,6 +12,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useCrud } from "@/hooks/useCrud";
 import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
 import { RowActions } from "@/components/crud/RowActions";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 
 export type NamedEntity = {
   id: number;
@@ -41,6 +42,7 @@ export function SimpleNamedEntityPage({
   const { data, loading, create, update, remove } = useCrud<NamedEntity>(endpoint);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<NamedEntity | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const role = session?.user?.role;
   const canEdit = !!role && (role === "admin" || allowedRoles.includes(role));
@@ -55,12 +57,14 @@ export function SimpleNamedEntityPage({
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este registro?")) return;
+  const handleDeleteConfirmed = async () => {
+    if (deleteId === null) return;
     try {
-      await remove(id);
+      await remove(deleteId);
     } catch (error) {
       console.error(`Error al eliminar ${endpoint}:`, error);
+    } finally {
+      setDeleteId(null);
     }
   };
 
@@ -73,7 +77,7 @@ export function SimpleNamedEntityPage({
         <RowActions
           canEdit={canEdit}
           onEdit={() => handleEdit(row.original)}
-          onDelete={() => handleDelete(row.original.id)}
+          onDelete={() => setDeleteId(row.original.id)}
         />
       ),
     },
@@ -91,16 +95,26 @@ export function SimpleNamedEntityPage({
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
         </div>
+      ) : data.length === 0 ? (
+        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No hay registros aún.
+        </div>
       ) : (
-        <div className="w-full overflow-auto">
+        <div className="w-full overflow-auto mt-4">
           <DataTable columns={columns} data={data} />
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={handleDeleteConfirmed}
+      />
 
       {dialogOpen && (
         <EntityFormDialog

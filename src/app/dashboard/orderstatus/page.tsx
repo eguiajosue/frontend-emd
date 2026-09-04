@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import OrderStatusTable from './components/OrderStatusTable'
 import { useSession } from 'next-auth/react';
 import Title from '@/components/Title';
+import { authFetch, authHeaders, AuthFetchError } from '@/lib/authFetch';
 
 const statusMap: { [key: number]: string } = {
   1: "pendiente",
@@ -21,12 +22,9 @@ const OrderStatus = () => {
   const getOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.user?.token}`,
-        },
+        headers: authHeaders(session?.user?.token),
       });
 
       if (!res.ok) {
@@ -43,6 +41,7 @@ const OrderStatus = () => {
 
       setData(mappedData);
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error fetching orders:", error);
     } finally {
       setLoading(false);

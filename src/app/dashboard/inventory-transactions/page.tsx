@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useCrud } from "@/hooks/useCrud";
 import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { getColumns, InventoryTransaction } from "./components/columns";
 import { Product } from "../products/components/columns";
 
@@ -28,6 +29,7 @@ const InventoryTransactionsPage = () => {
   const { data: products } = useCrud<Product>("products");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryTransaction | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const role = session?.user?.role;
   const canEdit = role === "admin" || role === "taller";
@@ -60,16 +62,18 @@ const InventoryTransactionsPage = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este movimiento?")) return;
+  const handleDeleteConfirmed = async () => {
+    if (deleteId === null) return;
     try {
-      await remove(id);
+      await remove(deleteId);
     } catch (error) {
       console.error("Error al eliminar movimiento de inventario:", error);
+    } finally {
+      setDeleteId(null);
     }
   };
 
-  const columns = getColumns({ onEdit: handleEdit, onDelete: handleDelete, canEdit });
+  const columns = getColumns({ onEdit: handleEdit, onDelete: setDeleteId, canEdit });
 
   return (
     <div className="p-0 w-full">
@@ -83,16 +87,27 @@ const InventoryTransactionsPage = () => {
       </div>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
           <Skeleton className="w-full h-10" />
         </div>
+      ) : data.length === 0 ? (
+        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No hay movimientos de inventario aún.
+        </div>
       ) : (
-        <div className="w-full overflow-auto">
+        <div className="w-full overflow-auto mt-4">
           <DataTable columns={columns} data={data} />
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        onConfirm={handleDeleteConfirmed}
+        description="Esta acción eliminará el movimiento de inventario de forma permanente."
+      />
 
       {dialogOpen && (
         <EntityFormDialog

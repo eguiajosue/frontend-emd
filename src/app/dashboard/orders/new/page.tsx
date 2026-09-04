@@ -14,6 +14,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useCrud } from "@/hooks/useCrud";
 import { Client } from "../../clients/components/columns";
 import { Product } from "../../products/components/columns";
+import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
 const orderProductSchema = z.object({
   productId: z.number({ required_error: "Selecciona un producto" }),
@@ -75,12 +76,9 @@ const NewOrder = () => {
     setErrors({});
     setSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.user?.token}`,
-        },
+        headers: authHeaders(session?.user?.token),
         body: JSON.stringify({
           clientId: parsed.data.clientId,
           userId: Number(session?.user?.id),
@@ -99,6 +97,7 @@ const NewOrder = () => {
       toast.success("Pedido creado correctamente");
       router.push(`/dashboard/orders/${order.id}`);
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error al crear el pedido:", error);
       toast.error("Ocurrió un error al crear el pedido");
     } finally {

@@ -6,6 +6,7 @@ import { columns } from "./components/columns";
 import { DataTable } from "./components/datatable";
 import { Skeleton } from "@/components/ui/skeleton";
 import Title from "@/components/Title";
+import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
 const Users = () => {
   const { data: session } = useSession();
@@ -16,12 +17,9 @@ const Users = () => {
   const getUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
+      const res = await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/users`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.user?.token}`,
-        },
+        headers: authHeaders(session?.user?.token),
       });
 
       if (!res.ok) {
@@ -31,6 +29,7 @@ const Users = () => {
       const data = await res.json();
       setData(data);
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error fetching users:", error);
     } finally {
       setLoading(false);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean }) {
@@ -17,12 +18,9 @@ export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean })
     if (!token) return;
     try {
       setLoading(true);
-      const res = await fetch(`${base}/${endpoint}`, {
+      const res = await authFetch(`${base}/${endpoint}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
       });
 
       if (!res.ok) {
@@ -32,6 +30,7 @@ export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean })
       const json = await res.json();
       setData(json);
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error(`Error fetching ${endpoint}:`, error);
       toast.error(`No se pudo cargar la información de ${endpoint}`);
     } finally {
@@ -47,12 +46,9 @@ export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const create = useCallback(async (payload: any) => {
-    const res = await fetch(`${base}/${endpoint}`, {
+    const res = await authFetch(`${base}/${endpoint}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -66,12 +62,9 @@ export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean })
   const update = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async (id: number | string, payload: any) => {
-      const res = await fetch(`${base}/${endpoint}/${id}`, {
+      const res = await authFetch(`${base}/${endpoint}/${id}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
@@ -86,11 +79,9 @@ export function useCrud<T = any>(endpoint: string, options?: { auto?: boolean })
 
   const remove = useCallback(
     async (id: number | string) => {
-      const res = await fetch(`${base}/${endpoint}/${id}`, {
+      const res = await authFetch(`${base}/${endpoint}/${id}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
       });
       if (!res.ok) {
         throw new Error(`Error ${res.status}: ${res.statusText}`);

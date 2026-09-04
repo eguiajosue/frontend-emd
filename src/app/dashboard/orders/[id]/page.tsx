@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
 import { useCrud } from "@/hooks/useCrud";
+import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
 interface OrderProduct {
   productId: number;
@@ -78,13 +79,10 @@ const OrderDetailPage = () => {
     if (!token || !orderId) return;
     try {
       setLoading(true);
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${orderId}`,
         {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authHeaders(token),
         }
       );
       if (!res.ok) {
@@ -96,6 +94,7 @@ const OrderDetailPage = () => {
       setDeliveryDate(json.deliveryDate ? json.deliveryDate.slice(0, 10) : "");
       setNewStatusId(json.statusId);
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error al obtener el pedido:", error);
       toast.error("No se pudo cargar el pedido");
     } finally {
@@ -111,14 +110,11 @@ const OrderDetailPage = () => {
     if (!order) return;
     setSaving(true);
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authHeaders(token),
           body: JSON.stringify({
             description,
             deliveryDate: deliveryDate || undefined,
@@ -129,6 +125,7 @@ const OrderDetailPage = () => {
       toast.success("Pedido actualizado correctamente");
       fetchOrder();
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error al actualizar el pedido:", error);
       toast.error("Ocurrió un error al actualizar el pedido");
     } finally {
@@ -141,25 +138,19 @@ const OrderDetailPage = () => {
     setSaving(true);
     try {
       const previousStatusId = order.statusId;
-      const res = await fetch(
+      const res = await authFetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authHeaders(token),
           body: JSON.stringify({ statusId: newStatusId }),
         }
       );
       if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
 
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/order-histories`, {
+      await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/order-histories`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
         body: JSON.stringify({
           orderId: order.id,
           previousStatusId,
@@ -170,6 +161,7 @@ const OrderDetailPage = () => {
       toast.success("Estado actualizado correctamente");
       fetchOrder();
     } catch (error) {
+      if (error instanceof AuthFetchError) return;
       console.error("Error al actualizar el estado:", error);
       toast.error("Ocurrió un error al actualizar el estado");
     } finally {

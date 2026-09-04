@@ -1,28 +1,219 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button";
+import { useMemo } from "react";
 import { useSession } from "next-auth/react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import Title from "@/components/Title";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCrud } from "@/hooks/useCrud";
+import { statusMap } from "@/lib/orderStatus";
+import { Order } from "./orders/components/columns";
+import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
+
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
 const Dashboard = () => {
   const { data: session, status } = useSession();
+  const { data: orders, loading } = useCrud<Order>("orders");
+
+  const totalOrders = orders.length;
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<number, number> = {};
+    orders.forEach((order) => {
+      counts[order.statusId] = (counts[order.statusId] || 0) + 1;
+    });
+    return counts;
+  }, [orders]);
+
+  const chartData = useMemo(
+    () =>
+      Object.entries(statusMap).map(([id, label]) => ({
+        status: label,
+        total: statusCounts[Number(id)] || 0,
+      })),
+    [statusCounts]
+  );
+
+  const pieData = useMemo(
+    () => chartData.filter((d) => d.total > 0),
+    [chartData]
+  );
+
+  const pendingCount = statusCounts[1] || 0;
+  const inProgressCount = (statusCounts[2] || 0) + (statusCounts[3] || 0);
+  const deliveredCount = statusCounts[5] || 0;
 
   if (status === "loading") {
-    return <p>Loading...</p>;
-  }
-
-  const getUsers = async () => {
-    console.log('get users')
+    return (
+      <div className="space-y-4">
+        <Skeleton className="w-64 h-8" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1>Dashboard</h1>
-      <h2>Bienvenido <b>{session?.user.first_name}</b></h2>
-      <pre>
-        <code>{JSON.stringify(session, null, 2)}</code>
-      </pre>
-      <Button onClick={getUsers}>Get Users</Button>
+    <div className="space-y-6">
+      <div>
+        <Title title="Dashboard" />
+        <p className="text-muted-foreground">
+          Bienvenid@, <span className="font-medium">{session?.user?.first_name}</span>
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total de Pedidos
+                </CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{totalOrders}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Pendientes
+                </CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{pendingCount}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  En Proceso
+                </CardTitle>
+                <Truck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{inProgressCount}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Entregados
+                </CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{deliveredCount}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Pedidos por Estado</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {totalOrders === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No hay pedidos aún.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis
+                        dataKey="status"
+                        tickFormatter={(v: string) => v.toUpperCase()}
+                        tick={{ fontSize: 12 }}
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        formatter={(value) => [value, "Pedidos"] as [number, string]}
+                        labelFormatter={(label) => String(label).toUpperCase()}
+                      />
+                      <Bar dataKey="total" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Distribución de Estados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pieData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">
+                    No hay pedidos aún.
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="total"
+                        nameKey="status"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                        label={(entry: { name?: string | number }) =>
+                          String(entry.name ?? "").toUpperCase()
+                        }
+                      >
+                        {pieData.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [value, "Pedidos"] as [number, string]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };
+
 export default Dashboard;
