@@ -18,8 +18,8 @@ const OrdersPage = () => {
   const { data: session } = useSession();
   const { data, loading } = useCrud<Order>("orders");
 
-  const role = session?.user?.role;
-  const canCreate = role === "admin" || role === "recepcion";
+  const roles = session?.user?.roles || [];
+  const canCreate = roles.includes("admin") || roles.includes("recepcion");
 
   const handleExport = () => {
     if (data.length === 0) {

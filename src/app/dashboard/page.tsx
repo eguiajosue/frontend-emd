@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Bar,
@@ -21,6 +22,7 @@ import { useCrud } from "@/hooks/useCrud";
 import { statusMap } from "@/lib/orderStatus";
 import { Order } from "./orders/components/columns";
 import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
+import { isAdminRole } from "@/lib/roleTaskMapping";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -32,7 +34,19 @@ const CHART_COLORS = [
 
 const Dashboard = () => {
   const { data: session, status } = useSession();
-  const { data: orders, loading } = useCrud<Order>("orders");
+  const router = useRouter();
+  const roles = session?.user?.roles;
+  const admin = isAdminRole(roles);
+
+  // Los roles operativos (no admin/superuser) aterrizan en "Mis Tareas" en vez del
+  // dashboard de métricas generales.
+  useEffect(() => {
+    if (status === "authenticated" && roles && !admin) {
+      router.replace("/dashboard/mis-tareas");
+    }
+  }, [status, roles, admin, router]);
+
+  const { data: orders, loading } = useCrud<Order>("orders", { auto: admin });
 
   const totalOrders = orders.length;
 

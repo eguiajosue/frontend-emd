@@ -31,7 +31,8 @@ const ClientsPage = () => {
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const canEdit = session?.user?.role === "admin" || session?.user?.role === "recepcion";
+  const roles = session?.user?.roles || [];
+  const canEdit = roles.includes("admin") || roles.includes("recepcion");
 
   const fields: FieldConfig[] = useMemo(
     () => [

@@ -8,6 +8,7 @@ import {
   Building,
   LogOut,
   LayoutDashboard,
+  ClipboardList,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,7 +26,7 @@ import { Button } from "./ui/button";
 
 export function AppSidebar() {
   const { data: session } = useSession();
-  const userRole = session?.user?.role;
+  const userRoles = session?.user?.roles || [];
 
   const menuItems = [
     {
@@ -35,7 +36,21 @@ export function AppSidebar() {
           title: "Panel General",
           url: "/dashboard/admin",
           icon: LayoutDashboard,
-          roles: ["admin"],
+          roles: ["admin", "superuser"],
+        },
+        {
+          title: "Mis Tareas",
+          url: "/dashboard/mis-tareas",
+          icon: ClipboardList,
+          roles: [
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
         },
       ],
     },
@@ -156,8 +171,9 @@ export function AppSidebar() {
             <SidebarGroupLabel>{group.groupLabel}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) =>
-                // Mostrar el botón si el usuario es "admin" o si el rol del usuario está en la lista de roles permitidos
-                userRole === "admin" || (userRole && item.roles.includes(userRole)) ? (
+                // Mostrar el botón si el usuario tiene "admin" o si tiene al menos uno de los roles permitidos
+                userRoles.includes("admin") ||
+                userRoles.some((r) => item.roles.includes(r)) ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <a href={item.url}>
@@ -183,7 +199,7 @@ export function AppSidebar() {
           <div className="flex flex-col">
             <span className="text-sm font-medium">{session?.user.first_name} {session?.user.last_name}</span>
             <div className="flex justify-between items-center w-full">
-              <span className="text-xs text-muted-foreground">{session?.user.role}</span>
+              <span className="text-xs text-muted-foreground">{userRoles.join(", ")}</span>
               <span className="text-xs text-muted-foreground">@{session?.user.username}</span>
             </div>
           </div>

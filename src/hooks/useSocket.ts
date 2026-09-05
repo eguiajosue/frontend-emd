@@ -27,7 +27,8 @@ interface OrderNotificationPayload {
 export function useSocket() {
   const { data: session } = useSession();
   const token = session?.user?.token;
-  const role = session?.user?.role;
+  const roles = session?.user?.roles || [];
+  const rolesKey = roles.join(",");
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function useSocket() {
     socketRef.current = socket;
 
     const handleNewOrder = (order: OrderNotificationPayload) => {
-      if (role !== "admin") return;
+      if (!rolesKey.split(",").includes("admin")) return;
       toast.info("Nuevo pedido creado", {
         description: `Pedido #${order.id}${
           order.clientName ? ` de ${order.clientName}` : ""
@@ -78,7 +79,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, role]);
+  }, [token, rolesKey]);
 
   return socketRef;
 }

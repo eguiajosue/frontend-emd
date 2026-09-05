@@ -9,7 +9,7 @@ declare module "next-auth" {
       token: string;
       first_name: string;
       last_name: string;
-      role: string;
+      roles: string[];
     } & DefaultSession["user"];
   }
 
@@ -19,6 +19,17 @@ declare module "next-auth" {
     token: string;
     first_name: string;
     last_name: string;
-    role: string;
+    roles: string[];
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id?: string;
+    username?: string;
+    token?: string;
+    first_name?: string;
+    last_name?: string;
+    roles?: string[];
   }
 }

@@ -44,8 +44,8 @@ export function SimpleNamedEntityPage({
   const [editing, setEditing] = useState<NamedEntity | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const role = session?.user?.role;
-  const canEdit = !!role && (role === "admin" || allowedRoles.includes(role));
+  const roles = session?.user?.roles || [];
+  const canEdit = roles.includes("admin") || roles.some((r) => allowedRoles.includes(r));
 
   const handleCreate = () => {
     setEditing(null);

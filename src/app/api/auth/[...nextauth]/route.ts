@@ -42,7 +42,7 @@ const handler = NextAuth({
               token: user.token,
               first_name: user.first_name,
               last_name: user.last_name,
-              role: user.role,
+              roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
             };
           }
 
@@ -74,7 +74,7 @@ const handler = NextAuth({
         token: token.token as string,
         first_name: token.first_name as string,
         last_name: token.last_name as string,
-        role: token.role as string,
+        roles: (token.roles as string[]) || [],
       };
       return session;
     },

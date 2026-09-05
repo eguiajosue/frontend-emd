@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { isAdminRole, statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { useCrud } from "@/hooks/useCrud";
 import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
@@ -64,8 +65,14 @@ const OrderDetailPage = () => {
   const { data: allHistories } = useCrud<OrderHistoryEntry>("order-histories");
 
   const token = session?.user?.token;
-  const role = session?.user?.role;
-  const canEdit = role === "admin" || role === "recepcion";
+  const roles = session?.user?.roles || [];
+  const canEdit = isAdminRole(roles) || roles.includes("recepcion");
+  // Los roles operativos (dtf, bordado, taller, etc.) pueden avanzar el estado del
+  // pedido cuando este se encuentra en la etapa que les corresponde, aunque no puedan
+  // editar los detalles generales del pedido.
+  const myStageIds = statusIdsForRoles(roles);
+  const canChangeStatus =
+    canEdit || (!!order && myStageIds.includes(order.statusId));
 
   const histories = useMemo(
     () =>
@@ -244,7 +251,7 @@ const OrderDetailPage = () => {
             <select
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
               value={newStatusId ?? ""}
-              disabled={!canEdit}
+              disabled={!canChangeStatus}
               onChange={(e) => setNewStatusId(Number(e.target.value))}
             >
               {statusOptions.map((opt) => (
@@ -253,7 +260,7 @@ const OrderDetailPage = () => {
                 </option>
               ))}
             </select>
-            {canEdit && (
+            {canChangeStatus && (
               <Button
                 onClick={handleStatusChange}
                 disabled={saving || newStatusId === order.statusId}

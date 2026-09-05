@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export interface SelectOption {
@@ -23,7 +24,7 @@ export interface SelectOption {
 export interface FieldConfig {
   name: string;
   label: string;
-  type?: "text" | "number" | "email" | "textarea" | "select" | "date";
+  type?: "text" | "number" | "email" | "textarea" | "select" | "date" | "multiselect";
   options?: SelectOption[];
 }
 
@@ -97,7 +98,39 @@ export function EntityFormDialog({
           {fields.map((field) => (
             <div key={field.name} className="space-y-1">
               <Label>{field.label}</Label>
-              {field.type === "select" ? (
+              {field.type === "multiselect" ? (
+                <div className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-3">
+                  {field.options?.map((opt) => {
+                    const selected: (string | number)[] = Array.isArray(values[field.name])
+                      ? values[field.name]
+                      : [];
+                    const checked = selected.includes(opt.value);
+                    return (
+                      <label
+                        key={opt.value}
+                        className="flex items-center gap-2 text-sm font-normal"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(state) => {
+                            const isChecked = state === true;
+                            const next = isChecked
+                              ? [...selected, opt.value]
+                              : selected.filter((v) => v !== opt.value);
+                            handleChange(field.name, next);
+                          }}
+                        />
+                        {opt.label}
+                      </label>
+                    );
+                  })}
+                  {(!field.options || field.options.length === 0) && (
+                    <p className="col-span-full text-sm text-muted-foreground">
+                      No hay opciones disponibles.
+                    </p>
+                  )}
+                </div>
+              ) : field.type === "select" ? (
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
                   value={values[field.name] ?? ""}

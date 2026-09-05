@@ -25,6 +25,7 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import { useCrud } from "@/hooks/useCrud";
 import { statusMap } from "@/lib/orderStatus";
+import { isAdminRole } from "@/lib/roleTaskMapping";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge } from "lucide-react";
 
 interface Order {
@@ -99,7 +100,7 @@ const AdminDashboardPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("timeInStatus");
 
-  const role = session?.user?.role;
+  const roles = session?.user?.roles;
   const loading = loadingOrders || loadingHistories || status === "loading";
 
   // Última fecha de cambio de estado por pedido (o creationDate si nunca cambió)
@@ -366,7 +367,7 @@ const AdminDashboardPage = () => {
     },
   ];
 
-  if (role && role !== "admin") {
+  if (roles && !isAdminRole(roles)) {
     return (
       <div className="mt-10 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
         No tienes permiso para ver esta página.

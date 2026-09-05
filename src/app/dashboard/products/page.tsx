@@ -32,8 +32,8 @@ const ProductsPage = () => {
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const role = session?.user?.role;
-  const canEdit = role === "admin" || role === "taller";
+  const roles = session?.user?.roles || [];
+  const canEdit = roles.includes("admin") || roles.includes("taller");
 
   const fields: FieldConfig[] = useMemo(
     () => [
