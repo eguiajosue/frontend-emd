@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { useCrud } from "@/hooks/useCrud";
 import { Client } from "../../clients/components/columns";
-import { Product } from "../../products/components/columns";
+import { Product } from "@/lib/types";
 import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
 
 const orderProductSchema = z.object({

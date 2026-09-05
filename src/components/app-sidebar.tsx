@@ -3,7 +3,6 @@
 import {
   Package,
   PackagePlus,
-  Truck,
   UserRound,
   Building,
   LogOut,
@@ -84,46 +83,6 @@ export function AppSidebar() {
           title: "Lista de Clientes",
           url: "/dashboard/clients",
           icon: UserRound,
-          roles: ["admin", "recepcion"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Inventario",
-      items: [
-        {
-          title: "Lista de Productos",
-          url: "/dashboard/products",
-          icon: Package,
-          roles: ["admin", "taller", "recepcion"],
-        },
-        {
-          title: "Movimientos de Inventario",
-          url: "/dashboard/inventory-transactions",
-          icon: Truck,
-          roles: ["admin", "taller"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Colores y Tamaños",
-      items: [
-        {
-          title: "Lista de Colores",
-          url: "/dashboard/colors",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Lista de Tamaños",
-          url: "/dashboard/sizes",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Tipos de Producto",
-          url: "/dashboard/product-types",
-          icon: Package,
           roles: ["admin", "recepcion"],
         },
       ],
