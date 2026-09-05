@@ -28,8 +28,7 @@ export interface FieldConfig {
   options?: SelectOption[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type EntityValues = Record<string, any>;
+export type EntityValues = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 interface EntityFormDialogProps {
   open: boolean;
@@ -80,9 +79,9 @@ export function EntityFormDialog({
       await onSubmit(result.data as EntityValues);
       toast.success("Guardado correctamente");
       onClose();
-    } catch (error) {
-      console.error("Error al guardar:", error);
-      toast.error("Ocurrió un error al guardar");
+    } catch {
+      // El feedback de error es global y uniforme (ver src/app/providers.tsx):
+      // acá sólo se evita cerrar el diálogo para no perder lo que el usuario cargó.
     } finally {
       setSubmitting(false);
     }

@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { useSession } from "next-auth/react";
+import React from "react";
 import { z } from "zod";
-import Title from "@/components/Title";
-import { DataTable } from "@/components/data-table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useCrud } from "@/hooks/useCrud";
-import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
-import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
-import { getColumns, Company } from "./components/columns";
+import { CrudPage } from "@/components/crud/CrudPage";
+import type { FieldConfig } from "@/components/crud/EntityFormDialog";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Company } from "@/types";
+import { getCompanyColumns } from "./components/columns";
 
 const schema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
@@ -30,90 +25,32 @@ const fields: FieldConfig[] = [
 ];
 
 const CompaniesPage = () => {
-  const { data: session } = useSession();
-  const { data, loading, create, update, remove } = useCrud<Company>("companies");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Company | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-
-  const roles = session?.user?.roles || [];
-  const canEdit = roles.includes("admin") || roles.includes("recepcion");
-
-  const handleCreate = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (company: Company) => {
-    setEditing(company);
-    setDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (deleteId === null) return;
-    try {
-      await remove(deleteId);
-    } catch (error) {
-      console.error("Error al eliminar empresa:", error);
-    } finally {
-      setDeleteId(null);
-    }
-  };
-
-  const columns = getColumns({ onEdit: handleEdit, onDelete: setDeleteId, canEdit });
+  const { canManageOperations } = usePermissions();
 
   return (
-    <div className="p-0 w-full">
-      <div className="flex items-center justify-between">
-        <Title title="Lista de Empresas" />
-        {canEdit && (
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
-          </Button>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="space-y-4 mt-4">
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-        </div>
-      ) : data.length === 0 ? (
-        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-          No hay empresas aún.
-        </div>
-      ) : (
-        <div className="w-full overflow-auto mt-4">
-          <DataTable columns={columns} data={data} />
-        </div>
-      )}
-
-      <ConfirmDeleteDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDeleteConfirmed}
-        description="Esta acción eliminará la empresa de forma permanente."
-      />
-
-      {dialogOpen && (
-        <EntityFormDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          title={editing ? "Editar Empresa" : "Nueva Empresa"}
-          fields={fields}
-          schema={schema}
-          initialValues={editing ?? {}}
-          onSubmit={async (values) => {
-            if (editing) {
-              await update(editing.id, values);
-            } else {
-              await create(values);
+    <CrudPage<Company>
+      entity="companies"
+      title="Lista de Empresas"
+      createLabel="Nueva Empresa"
+      canEdit={canManageOperations}
+      fields={fields}
+      schema={schema}
+      columns={getCompanyColumns}
+      emptyMessage="No hay empresas aún."
+      deleteDescription="Esta acción eliminará la empresa de forma permanente."
+      dialogTitle={(editing) => (editing ? "Editar Empresa" : "Nueva Empresa")}
+      initialValues={(editing) =>
+        editing
+          ? {
+              name: editing.name,
+              phone: editing.phone ?? "",
+              email: editing.email ?? "",
+              address: editing.address ?? "",
+              location: editing.location ?? "",
             }
-          }}
-        />
-      )}
-    </div>
+          : {}
+      }
+    />
   );
 };
 

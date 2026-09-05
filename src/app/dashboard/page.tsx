@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import {
   Bar,
   BarChart,
@@ -17,12 +16,12 @@ import {
 } from "recharts";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardsSkeleton, ErrorState } from "@/components/feedback/states";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCrud } from "@/hooks/useCrud";
+import { useOrders } from "@/hooks/useOrders";
+import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
-import { Order } from "./orders/components/columns";
 import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
-import { isAdminRole } from "@/lib/roleTaskMapping";
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -33,20 +32,23 @@ const CHART_COLORS = [
 ];
 
 const Dashboard = () => {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const roles = session?.user?.roles;
-  const admin = isAdminRole(roles);
+  const { session, roles, isAdmin: admin, isSessionLoading } = usePermissions();
 
   // Los roles operativos (no admin/superuser) aterrizan en "Mis Tareas" en vez del
   // dashboard de métricas generales.
   useEffect(() => {
-    if (status === "authenticated" && roles && !admin) {
+    if (!isSessionLoading && roles.length > 0 && !admin) {
       router.replace("/dashboard/mis-tareas");
     }
-  }, [status, roles, admin, router]);
+  }, [isSessionLoading, roles, admin, router]);
 
-  const { data: orders, loading } = useCrud<Order>("orders", { auto: admin });
+  const {
+    data: orders,
+    isPending: loading,
+    isError,
+    refetch,
+  } = useOrders({ enabled: admin });
 
   const totalOrders = orders.length;
 
@@ -76,15 +78,11 @@ const Dashboard = () => {
   const inProgressCount = (statusCounts[2] || 0) + (statusCounts[3] || 0);
   const deliveredCount = statusCounts[5] || 0;
 
-  if (status === "loading") {
+  if (isSessionLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="w-64 h-8" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </div>
+        <CardsSkeleton />
       </div>
     );
   }
@@ -99,11 +97,9 @@ const Dashboard = () => {
       </div>
 
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </div>
+        <CardsSkeleton />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

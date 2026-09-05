@@ -1,69 +1,37 @@
-"use client"
+"use client";
 
-import React, { useCallback, useEffect, useState } from 'react'
-import OrderStatusTable from './components/OrderStatusTable'
-import { useSession } from 'next-auth/react';
-import Title from '@/components/Title';
-import { authFetch, authHeaders, AuthFetchError } from '@/lib/authFetch';
-
-const statusMap: { [key: number]: string } = {
-  1: "pendiente",
-  2: "en pruebas",
-  3: "en proceso",
-  4: "terminado",
-  5: "entregado",
-}
+import React, { useMemo } from "react";
+import Title from "@/components/Title";
+import OrderStatusTable from "./components/OrderStatusTable";
+import { ErrorState, TableSkeleton } from "@/components/feedback/states";
+import { useOrders } from "@/hooks/useOrders";
+import { statusMap } from "@/lib/orderStatus";
 
 const OrderStatus = () => {
-  const { data: session } = useSession();
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isPending, isError, refetch } = useOrders();
 
-  const getOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
-        method: "GET",
-        headers: authHeaders(session?.user?.token),
-      });
-
-      if (!res.ok) {
-        throw new Error(`Error ${res.status}: ${res.statusText}`);
-      }
-
-      const data = await res.json();
-
-      // Mapear cada order para agregar el campo de status
-      const mappedData = data.map((order: { statusId: number }) => ({
+  // El backend devuelve `statusId`; el tablero agrupa por el nombre del estado.
+  const boardOrders = useMemo(
+    () =>
+      data.map((order) => ({
         ...order,
-        status: statusMap[order.statusId] || "DESCONOCIDO" // Asigna el nombre del estado o "DESCONOCIDO"
-      }));
-
-      setData(mappedData);
-    } catch (error) {
-      if (error instanceof AuthFetchError) return;
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
-
-  useEffect(() => {
-    if (session?.user?.token) {
-      getOrders();
-    }
-  }, [session, getOrders]);
-
-  if (loading) {
-    return <p>Loading...</p>
-  }
+        statusLabel: statusMap[order.statusId] || "desconocido",
+      })),
+    [data]
+  );
 
   return (
     <div className="p-6">
-      <Title title='Estatus de Ordenes'/>
-      <OrderStatusTable data={data} />
+      <Title title="Estatus de Ordenes" />
+      {isPending ? (
+        <TableSkeleton rows={3} />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : (
+        <OrderStatusTable data={boardOrders} />
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default OrderStatus
+export default OrderStatus;

@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { z } from "zod";
 import Title from "@/components/Title";
@@ -11,10 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
-import { useCrud } from "@/hooks/useCrud";
-import { Client } from "../../clients/components/columns";
-import { Product } from "@/lib/types";
-import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
+import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Client, CreateOrderPayload, Order, Product } from "@/types";
 
 const orderProductSchema = z.object({
   productId: z.number({ required_error: "Selecciona un producto" }),
@@ -35,9 +33,10 @@ interface OrderProductRow {
 
 const NewOrder = () => {
   const router = useRouter();
-  const { data: session } = useSession();
-  const { data: clients } = useCrud<Client>("clients");
-  const { data: products } = useCrud<Product>("products");
+  const { session } = usePermissions();
+  const { data: clients } = useEntityList<Client>("clients");
+  const { data: products } = useEntityList<Product>("products");
+  const { create } = useEntityMutations<Order, CreateOrderPayload>("orders");
 
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
@@ -76,30 +75,18 @@ const NewOrder = () => {
     setErrors({});
     setSubmitting(true);
     try {
-      const res = await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/orders`, {
-        method: "POST",
-        headers: authHeaders(session?.user?.token),
-        body: JSON.stringify({
-          clientId: parsed.data.clientId,
-          userId: Number(session?.user?.id),
-          statusId: 1,
-          description: parsed.data.description,
-          deliveryDate: parsed.data.deliveryDate || undefined,
-          orderProducts: parsed.data.orderProducts,
-        }),
+      const order = await create({
+        clientId: parsed.data.clientId,
+        userId: Number(session?.user?.id),
+        statusId: 1,
+        description: parsed.data.description,
+        deliveryDate: parsed.data.deliveryDate || undefined,
+        orderProducts: parsed.data.orderProducts,
       });
-
-      if (!res.ok) {
-        throw new Error(`Error ${res.status}: ${res.statusText}`);
-      }
-
-      const order = await res.json();
       toast.success("Pedido creado correctamente");
       router.push(`/dashboard/orders/${order.id}`);
-    } catch (error) {
-      if (error instanceof AuthFetchError) return;
-      console.error("Error al crear el pedido:", error);
-      toast.error("Ocurrió un error al crear el pedido");
+    } catch {
+      // El feedback de error es global (ver src/app/providers.tsx).
     } finally {
       setSubmitting(false);
     }

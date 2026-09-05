@@ -4,7 +4,7 @@ import { SimpleNamedEntityPage } from "@/components/crud/SimpleNamedEntityPage";
 
 const RolesPage = () => (
   <SimpleNamedEntityPage
-    endpoint="roles"
+    entity="roles"
     title="Lista de Roles"
     createLabel="Nuevo Rol"
     allowedRoles={["admin"]}

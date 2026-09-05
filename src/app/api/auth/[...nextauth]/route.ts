@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { apiUrl } from "@/lib/config";
 
 const handler = NextAuth({
   providers: [
@@ -17,7 +18,7 @@ const handler = NextAuth({
           }
 
           // Hacer la solicitud al backend para autenticar al usuario
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/login`, {
+          const res = await fetch(apiUrl("auth/login"), {
             method: "POST",
             body: JSON.stringify({
               username: credentials.username,
@@ -50,7 +51,13 @@ const handler = NextAuth({
           throw new Error("Authentication failed: Token not found");
 
         } catch (error) {
-          console.error("Error during login authorization:", error);
+          // Nunca loguear credenciales ni el token devuelto por el backend.
+          if (process.env.NODE_ENV === "development") {
+            console.error(
+              "Error during login authorization:",
+              error instanceof Error ? error.message : "unknown error"
+            );
+          }
           // Si hay un error, retornar null
           return null;
         }

@@ -2,25 +2,14 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { RowActions } from "@/components/crud/RowActions";
+import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
+import type { Client } from "@/types";
 
-export type Client = {
-  id: number;
-  first_name: string;
-  last_name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  companyId?: number;
-  company?: { name: string };
-};
-
-interface ColumnsProps {
-  onEdit: (client: Client) => void;
-  onDelete: (id: number) => void;
-  canEdit: boolean;
-}
-
-export const getColumns = ({ onEdit, onDelete, canEdit }: ColumnsProps): ColumnDef<Client>[] => [
+export const getClientColumns = ({
+  onEdit,
+  onDelete,
+  canEdit,
+}: CrudColumnsArgs<Client>): ColumnDef<Client>[] => [
   { accessorKey: "first_name", header: "Nombre" },
   { accessorKey: "last_name", header: "Apellido" },
   { accessorKey: "phone", header: "Teléfono" },

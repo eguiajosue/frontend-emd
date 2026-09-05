@@ -5,6 +5,9 @@ import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
 import { statusMap } from "@/lib/orderStatus";
+import { SOCKET_URL } from "@/lib/config";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface OrderNotificationPayload {
   id: number | string;
@@ -30,14 +33,14 @@ export function useSocket() {
   const roles = session?.user?.roles || [];
   const rolesKey = roles.join(",");
   const socketRef = useRef<Socket | null>(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!token) return;
 
-    const base = process.env.NEXT_PUBLIC_BACKEND_URL;
-    if (!base) return;
+    if (!SOCKET_URL) return;
 
-    const socket = io(base, {
+    const socket = io(SOCKET_URL, {
       transports: ["websocket"],
       extraHeaders: {
         Authorization: `Bearer ${token}`,
@@ -48,7 +51,15 @@ export function useSocket() {
     });
     socketRef.current = socket;
 
+    // Cualquier notificación del backend invalida la cache de pedidos, así todas
+    // las pantallas abiertas se refrescan solas en background.
+    const invalidateOrders = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+    };
+
     const handleNewOrder = (order: OrderNotificationPayload) => {
+      invalidateOrders();
       if (!rolesKey.split(",").includes("admin")) return;
       toast.info("Nuevo pedido creado", {
         description: `Pedido #${order.id}${
@@ -58,6 +69,7 @@ export function useSocket() {
     };
 
     const handleStatusChange = (order: OrderNotificationPayload) => {
+      invalidateOrders();
       const statusLabel = order.status
         ? statusMap[Number(order.status)] || order.status
         : "desconocido";
@@ -70,7 +82,10 @@ export function useSocket() {
     socket.on("orderStatusChangeNotification", handleStatusChange);
 
     socket.on("connect_error", (err) => {
-      console.error("Socket connection error:", err.message);
+      // No loguear headers/token: sólo el mensaje del error de conexión.
+      if (process.env.NODE_ENV === "development") {
+        console.error("Socket connection error:", err.message);
+      }
     });
 
     return () => {
@@ -79,7 +94,7 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, rolesKey]);
+  }, [token, rolesKey, queryClient]);
 
   return socketRef;
 }

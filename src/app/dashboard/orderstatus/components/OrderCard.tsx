@@ -1,50 +1,72 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import React from 'react'
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { formatDateTime, getClientName, getUserName } from "@/lib/format";
+import type { Order } from "@/types";
 
-function calculateProgress(creationDate: string, deliveryDate: string): { progress: number; color: string } {
-  const now = new Date()
-  const create = new Date(creationDate)
-  const deliver = new Date(deliveryDate)
-  const total = deliver.getTime() - create.getTime()
-  const elapsed = now.getTime() - create.getTime()
-  const progress = Math.min(Math.max((elapsed / total) * 100, 0), 100)
+const CARD_DATE_FORMAT: Intl.DateTimeFormatOptions = {
+  weekday: "long",
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+};
 
-  const hue = ((1 - progress / 100) * 120).toString(10)
-  return { progress, color: `hsl(${hue}, 100%, 50%)` }
+/** Porcentaje de tiempo transcurrido entre creación y entrega (verde -> rojo). */
+function calculateProgress(
+  creationDate: string,
+  deliveryDate?: string | null
+): { progress: number; color: string } {
+  if (!deliveryDate) return { progress: 0, color: "hsl(120, 100%, 50%)" };
+  const now = Date.now();
+  const create = new Date(creationDate).getTime();
+  const deliver = new Date(deliveryDate).getTime();
+  const total = deliver - create;
+  if (!Number.isFinite(total) || total <= 0) {
+    return { progress: 100, color: "hsl(0, 100%, 50%)" };
+  }
+  const progress = Math.min(Math.max(((now - create) / total) * 100, 0), 100);
+  const hue = ((1 - progress / 100) * 120).toString(10);
+  return { progress, color: `hsl(${hue}, 100%, 50%)` };
 }
 
-const OrderCard = ({ order }: { order: { client: { first_name: string; last_name: string }; user: { firstName: string; lastName: string }; description: string; creationDate: string; deliveryDate: string; } }) => {
-
-  const dateFormat: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+const OrderCard = ({ order }: { order: Order }) => {
+  const { progress, color } = calculateProgress(
+    order.creationDate,
+    order.deliveryDate
+  );
 
   return (
-    <Card className="mb-4 shadow-sm rounded-xl border transition-transform duration-300 hover:scale-105" role="article">
+    <Card
+      className="mb-4 shadow-sm rounded-xl border transition-transform duration-300 hover:scale-105"
+      role="article"
+    >
       <CardHeader>
-        <CardTitle className="text-md font-bold text-pink-600" aria-label="Nombre del Cliente">
-          {order.client?.first_name} {order.client?.last_name}
+        <CardTitle
+          className="text-md font-bold text-pink-600"
+          aria-label="Nombre del Cliente"
+        >
+          {getClientName(order.client)}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-1" aria-label="Creado por">
-          <b>Creado por: </b>{order.user?.firstName} {order.user?.lastName}
+          <b>Creado por: </b>
+          {getUserName(order.user)}
         </p>
         <p className="text-sm mb-2 truncate">{order.description}</p>
         <div className="flex justify-between text-xs text-muted-foreground mb-2 flex-col md:flex-row">
           <span aria-label="Fecha de Creación">
-            <b>Creación:</b> {new Date(order.creationDate).toLocaleDateString("es-MX", dateFormat)}
+            <b>Creación:</b>{" "}
+            {formatDateTime(order.creationDate, CARD_DATE_FORMAT)}
           </span>
           <span aria-label="Fecha de Entrega">
-            <b>Entrega:</b> {new Date(order.deliveryDate).toLocaleDateString("es-MX", dateFormat)}
+            <b>Entrega:</b> {formatDateTime(order.deliveryDate, CARD_DATE_FORMAT)}
           </span>
         </div>
-        <Progress
-          value={calculateProgress(order.creationDate, order.deliveryDate).progress}
-          color={calculateProgress(order.creationDate, order.deliveryDate).color}
-        />
+        <Progress value={progress} color={color} />
       </CardContent>
     </Card>
-  )
-}
+  );
+};
 
-export default OrderCard
+export default OrderCard;

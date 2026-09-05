@@ -1,41 +1,18 @@
-"use client"
+"use client";
 
-import { ColumnDef } from "@tanstack/react-table"
-import { RowActions } from "@/components/crud/RowActions"
+import { ColumnDef } from "@tanstack/react-table";
+import { RowActions } from "@/components/crud/RowActions";
+import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
+import type { User } from "@/types";
 
-export interface RoleRef {
-  id: number;
-  name: string;
-}
-
-// This type is used to define the shape of our data.
-export type Users = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  username: string;
-  roles: RoleRef[];
-}
-
-interface ColumnsProps {
-  onEdit: (user: Users) => void;
-  onDelete: (id: number) => void;
-  canEdit: boolean;
-}
-
-export const getColumns = ({ onEdit, onDelete, canEdit }: ColumnsProps): ColumnDef<Users>[] => [
-  {
-    accessorKey: "firstName",
-    header: "Nombre",
-  },
-  {
-    accessorKey: "lastName",
-    header: "Apellido",
-  },
-  {
-    accessorKey: "username",
-    header: "Usuario",
-  },
+export const getUserColumns = ({
+  onEdit,
+  onDelete,
+  canEdit,
+}: CrudColumnsArgs<User>): ColumnDef<User>[] => [
+  { accessorKey: "firstName", header: "Nombre" },
+  { accessorKey: "lastName", header: "Apellido" },
+  { accessorKey: "username", header: "Usuario" },
   {
     id: "roles",
     header: "Roles",

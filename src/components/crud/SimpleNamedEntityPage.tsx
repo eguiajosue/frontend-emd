@@ -1,23 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
-import { useSession } from "next-auth/react";
+import React from "react";
 import { z } from "zod";
-import Title from "@/components/Title";
-import { DataTable } from "@/components/data-table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useCrud } from "@/hooks/useCrud";
-import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
+import { CrudPage, type CrudColumnsArgs } from "@/components/crud/CrudPage";
 import { RowActions } from "@/components/crud/RowActions";
-import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
+import type { FieldConfig } from "@/components/crud/EntityFormDialog";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { EntityKey } from "@/lib/queryKeys";
+import type { NamedEntity } from "@/types";
 
-export type NamedEntity = {
-  id: number;
-  name: string;
-};
+/**
+ * Pantalla CRUD para entidades que sólo tienen `id` + `name` (ej. roles).
+ * Es un preset de `CrudPage`.
+ */
 
 const schema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
@@ -25,114 +21,51 @@ const schema = z.object({
 
 const fields: FieldConfig[] = [{ name: "name", label: "Nombre" }];
 
+const columns = ({
+  onEdit,
+  onDelete,
+  canEdit,
+}: CrudColumnsArgs<NamedEntity>): ColumnDef<NamedEntity>[] => [
+  { accessorKey: "name", header: "Nombre" },
+  {
+    id: "actions",
+    header: "Acciones",
+    cell: ({ row }) => (
+      <RowActions
+        canEdit={canEdit}
+        onEdit={() => onEdit(row.original)}
+        onDelete={() => onDelete(row.original.id)}
+      />
+    ),
+  },
+];
+
 interface SimpleNamedEntityPageProps {
-  endpoint: string;
+  entity: EntityKey;
   title: string;
   createLabel: string;
   allowedRoles: string[];
 }
 
 export function SimpleNamedEntityPage({
-  endpoint,
+  entity,
   title,
   createLabel,
   allowedRoles,
 }: SimpleNamedEntityPageProps) {
-  const { data: session } = useSession();
-  const { data, loading, create, update, remove } = useCrud<NamedEntity>(endpoint);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<NamedEntity | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-
-  const roles = session?.user?.roles || [];
-  const canEdit = roles.includes("admin") || roles.some((r) => allowedRoles.includes(r));
-
-  const handleCreate = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (entity: NamedEntity) => {
-    setEditing(entity);
-    setDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (deleteId === null) return;
-    try {
-      await remove(deleteId);
-    } catch (error) {
-      console.error(`Error al eliminar ${endpoint}:`, error);
-    } finally {
-      setDeleteId(null);
-    }
-  };
-
-  const columns: ColumnDef<NamedEntity>[] = [
-    { accessorKey: "name", header: "Nombre" },
-    {
-      id: "actions",
-      header: "Acciones",
-      cell: ({ row }) => (
-        <RowActions
-          canEdit={canEdit}
-          onEdit={() => handleEdit(row.original)}
-          onDelete={() => setDeleteId(row.original.id)}
-        />
-      ),
-    },
-  ];
+  const { roles, isAdmin } = usePermissions();
+  const canEdit = isAdmin || roles.some((r) => allowedRoles.includes(r));
 
   return (
-    <div className="p-0 w-full">
-      <div className="flex items-center justify-between">
-        <Title title={title} />
-        {canEdit && (
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> {createLabel}
-          </Button>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="space-y-4 mt-4">
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-        </div>
-      ) : data.length === 0 ? (
-        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-          No hay registros aún.
-        </div>
-      ) : (
-        <div className="w-full overflow-auto mt-4">
-          <DataTable columns={columns} data={data} />
-        </div>
-      )}
-
-      <ConfirmDeleteDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDeleteConfirmed}
-      />
-
-      {dialogOpen && (
-        <EntityFormDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          title={editing ? "Editar" : "Nuevo"}
-          fields={fields}
-          schema={schema}
-          initialValues={editing ?? {}}
-          onSubmit={async (values) => {
-            if (editing) {
-              await update(editing.id, values);
-            } else {
-              await create(values);
-            }
-          }}
-        />
-      )}
-    </div>
+    <CrudPage<NamedEntity>
+      entity={entity}
+      title={title}
+      createLabel={createLabel}
+      canEdit={canEdit}
+      fields={fields}
+      schema={schema}
+      columns={columns}
+      initialValues={(editing) => (editing ? { name: editing.name } : {})}
+    />
   );
 }

@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
+import React, { useMemo } from "react";
 import { z } from "zod";
-import Title from "@/components/Title";
-import { DataTable } from "@/components/data-table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { useCrud } from "@/hooks/useCrud";
-import { EntityFormDialog, FieldConfig } from "@/components/crud/EntityFormDialog";
-import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
-import { getColumns, Client } from "./components/columns";
-import { Company } from "../companies/components/columns";
+import { CrudPage } from "@/components/crud/CrudPage";
+import type { FieldConfig } from "@/components/crud/EntityFormDialog";
+import { useEntityList } from "@/hooks/useEntity";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { Client, Company } from "@/types";
+import { getClientColumns } from "./components/columns";
 
 const schema = z.object({
   first_name: z.string().min(1, "El nombre es requerido"),
@@ -24,15 +19,10 @@ const schema = z.object({
 });
 
 const ClientsPage = () => {
-  const { data: session } = useSession();
-  const { data, loading, create, update, remove } = useCrud<Client>("clients");
-  const { data: companies } = useCrud<Company>("companies");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
-
-  const roles = session?.user?.roles || [];
-  const canEdit = roles.includes("admin") || roles.includes("recepcion");
+  const { canManageOperations } = usePermissions();
+  // La lista de empresas viene de la misma cache que /dashboard/companies:
+  // si ya se visitó esa pantalla, no se dispara una request nueva.
+  const { data: companies } = useEntityList<Company>("companies");
 
   const fields: FieldConfig[] = useMemo(
     () => [
@@ -51,81 +41,31 @@ const ClientsPage = () => {
     [companies]
   );
 
-  const handleCreate = () => {
-    setEditing(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (client: Client) => {
-    setEditing(client);
-    setDialogOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    if (deleteId === null) return;
-    try {
-      await remove(deleteId);
-    } catch (error) {
-      console.error("Error al eliminar cliente:", error);
-    } finally {
-      setDeleteId(null);
-    }
-  };
-
-  const columns = getColumns({ onEdit: handleEdit, onDelete: setDeleteId, canEdit });
-
   return (
-    <div className="p-0 w-full">
-      <div className="flex items-center justify-between">
-        <Title title="Lista de Clientes" />
-        {canEdit && (
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
-          </Button>
-        )}
-      </div>
-
-      {loading ? (
-        <div className="space-y-4 mt-4">
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-          <Skeleton className="w-full h-10" />
-        </div>
-      ) : data.length === 0 ? (
-        <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-          No hay clientes aún.
-        </div>
-      ) : (
-        <div className="w-full overflow-auto mt-4">
-          <DataTable columns={columns} data={data} />
-        </div>
-      )}
-
-      <ConfirmDeleteDialog
-        open={deleteId !== null}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        onConfirm={handleDeleteConfirmed}
-        description="Esta acción eliminará al cliente de forma permanente."
-      />
-
-      {dialogOpen && (
-        <EntityFormDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          title={editing ? "Editar Cliente" : "Nuevo Cliente"}
-          fields={fields}
-          schema={schema}
-          initialValues={editing ?? {}}
-          onSubmit={async (values) => {
-            if (editing) {
-              await update(editing.id, values);
-            } else {
-              await create(values);
+    <CrudPage<Client>
+      entity="clients"
+      title="Lista de Clientes"
+      createLabel="Nuevo Cliente"
+      canEdit={canManageOperations}
+      fields={fields}
+      schema={schema}
+      columns={getClientColumns}
+      emptyMessage="No hay clientes aún."
+      deleteDescription="Esta acción eliminará al cliente de forma permanente."
+      dialogTitle={(editing) => (editing ? "Editar Cliente" : "Nuevo Cliente")}
+      initialValues={(editing) =>
+        editing
+          ? {
+              first_name: editing.first_name,
+              last_name: editing.last_name,
+              phone: editing.phone ?? "",
+              email: editing.email ?? "",
+              address: editing.address ?? "",
+              companyId: editing.companyId ?? undefined,
             }
-          }}
-        />
-      )}
-    </div>
+          : {}
+      }
+    />
   );
 };
 

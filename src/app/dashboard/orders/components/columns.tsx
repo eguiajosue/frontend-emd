@@ -5,18 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { statusMap } from "@/lib/orderStatus";
+import { formatDate } from "@/lib/format";
+import type { Order } from "@/types";
 
-export type Order = {
-  id: number;
-  description: string;
-  creationDate: string;
-  deliveryDate?: string;
-  statusId: number;
-  client?: { first_name: string; last_name: string };
-  user?: { firstName: string; lastName: string };
-};
-
-export const columns: ColumnDef<Order>[] = [
+export const orderColumns: ColumnDef<Order>[] = [
   {
     id: "client",
     header: "Cliente",
@@ -34,15 +26,12 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: "creationDate",
     header: "Fecha de Creación",
-    cell: ({ row }) => new Date(row.original.creationDate).toLocaleDateString("es-MX"),
+    cell: ({ row }) => formatDate(row.original.creationDate),
   },
   {
     accessorKey: "deliveryDate",
     header: "Fecha de Entrega",
-    cell: ({ row }) =>
-      row.original.deliveryDate
-        ? new Date(row.original.deliveryDate).toLocaleDateString("es-MX")
-        : "-",
+    cell: ({ row }) => formatDate(row.original.deliveryDate),
   },
   {
     id: "actions",

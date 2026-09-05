@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSession } from "next-auth/react";
 import {
   Bar,
   BarChart,
@@ -23,30 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ColumnDef } from "@tanstack/react-table";
-import { useCrud } from "@/hooks/useCrud";
+import { ErrorState } from "@/components/feedback/states";
+import { useOrderHistories, useOrders } from "@/hooks/useOrders";
+import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
-import { isAdminRole } from "@/lib/roleTaskMapping";
+import { formatDate, getClientName, getUserName } from "@/lib/format";
+import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge } from "lucide-react";
-
-interface Order {
-  id: number;
-  clientId?: number;
-  userId?: number;
-  description: string;
-  creationDate: string;
-  deliveryDate?: string;
-  statusId: number;
-  client?: { first_name: string; last_name: string };
-  user?: { firstName?: string; lastName?: string; first_name?: string; last_name?: string; username?: string };
-}
-
-interface OrderHistoryEntry {
-  id: number;
-  orderId: number;
-  previousStatusId: number;
-  newStatusId: number;
-  changeDate: string;
-}
 
 const HOUR_MS = 60 * 60 * 1000;
 const FALLBACK_THRESHOLD_HOURS = 60; // umbral fijo (48-72h) usado cuando no hay histórico suficiente
@@ -65,21 +47,6 @@ const SUGGESTIONS_BY_STATUS: { [key: number]: string } = {
 const DEFAULT_SUGGESTION =
   "Revisar manualmente el pedido; no hay una regla específica para esta etapa.";
 
-function getClientName(order: Order) {
-  return order.client
-    ? `${order.client.first_name} ${order.client.last_name}`
-    : "-";
-}
-
-function getCreatorName(order: Order) {
-  const u = order.user;
-  if (!u) return "-";
-  const first = u.firstName || u.first_name;
-  const last = u.lastName || u.last_name;
-  if (first || last) return `${first ?? ""} ${last ?? ""}`.trim();
-  return u.username || "-";
-}
-
 function formatDuration(ms: number) {
   if (ms < 0) ms = 0;
   const totalHours = ms / HOUR_MS;
@@ -92,16 +59,25 @@ function formatDuration(ms: number) {
 }
 
 const AdminDashboardPage = () => {
-  const { data: session, status } = useSession();
-  const { data: orders, loading: loadingOrders } = useCrud<Order>("orders");
-  const { data: histories, loading: loadingHistories } =
-    useCrud<OrderHistoryEntry>("order-histories");
+  const { roles, isAdmin, isSessionLoading } = usePermissions();
+  const {
+    data: orders,
+    isPending: loadingOrders,
+    isError: ordersError,
+    refetch: refetchOrders,
+  } = useOrders();
+  const {
+    data: histories,
+    isPending: loadingHistories,
+    isError: historiesError,
+    refetch: refetchHistories,
+  } = useOrderHistories();
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("timeInStatus");
 
-  const roles = session?.user?.roles;
-  const loading = loadingOrders || loadingHistories || status === "loading";
+  const loading = loadingOrders || loadingHistories || isSessionLoading;
+  const hasError = ordersError || historiesError;
 
   // Última fecha de cambio de estado por pedido (o creationDate si nunca cambió)
   const lastChangeByOrder = useMemo(() => {
@@ -131,7 +107,7 @@ const AdminDashboardPage = () => {
   // (momento en que salió de él).
   const avgTimeByStatus = useMemo(() => {
     // Para cada pedido, ordenar sus historiales cronológicamente para saber cuándo entró a cada estado.
-    const byOrder = new Map<number, OrderHistoryEntry[]>();
+    const byOrder = new Map<number, OrderHistory[]>();
     histories.forEach((h) => {
       const list = byOrder.get(h.orderId) || [];
       list.push(h);
@@ -279,12 +255,12 @@ const AdminDashboardPage = () => {
     {
       id: "client",
       header: "Cliente",
-      cell: ({ row }) => getClientName(row.original.order),
+      cell: ({ row }) => getClientName(row.original.order.client),
     },
     {
       id: "creator",
       header: "Creado por",
-      cell: ({ row }) => getCreatorName(row.original.order),
+      cell: ({ row }) => getUserName(row.original.order.user),
     },
     {
       id: "status",
@@ -296,15 +272,13 @@ const AdminDashboardPage = () => {
       id: "creationDate",
       header: "Fecha de Creación",
       cell: ({ row }) =>
-        new Date(row.original.order.creationDate).toLocaleDateString("es-MX"),
+        formatDate(row.original.order.creationDate),
     },
     {
       id: "deliveryDate",
       header: "Fecha de Entrega",
       cell: ({ row }) =>
-        row.original.order.deliveryDate
-          ? new Date(row.original.order.deliveryDate).toLocaleDateString("es-MX")
-          : "-",
+        formatDate(row.original.order.deliveryDate),
     },
     {
       id: "timeInStatus",
@@ -332,7 +306,7 @@ const AdminDashboardPage = () => {
     {
       id: "client",
       header: "Cliente",
-      cell: ({ row }) => getClientName(row.original.order),
+      cell: ({ row }) => getClientName(row.original.order.client),
     },
     {
       id: "status",
@@ -367,7 +341,7 @@ const AdminDashboardPage = () => {
     },
   ];
 
-  if (roles && !isAdminRole(roles)) {
+  if (roles.length > 0 && !isAdmin) {
     return (
       <div className="mt-10 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
         No tienes permiso para ver esta página.
@@ -384,7 +358,14 @@ const AdminDashboardPage = () => {
         </p>
       </div>
 
-      {loading ? (
+      {hasError ? (
+        <ErrorState
+          onRetry={() => {
+            refetchOrders();
+            refetchHistories();
+          }}
+        />
+      ) : loading ? (
         <div className="space-y-4">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-64 w-full" />

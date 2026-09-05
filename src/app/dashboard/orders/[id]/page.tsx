@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,62 +10,45 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ErrorState } from "@/components/feedback/states";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
-import { isAdminRole, statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { useCrud } from "@/hooks/useCrud";
-import { authFetch, authHeaders, AuthFetchError } from "@/lib/authFetch";
-
-interface OrderProduct {
-  productId: number;
-  quantity: number;
-  product?: { code?: string; productType?: { name: string } };
-}
-
-interface OrderDetail {
-  id: number;
-  description: string;
-  creationDate: string;
-  deliveryDate?: string;
-  statusId: number;
-  client?: { first_name: string; last_name: string };
-  user?: { firstName: string; lastName: string };
-  orderProducts?: OrderProduct[];
-}
-
-interface OrderHistoryEntry {
-  id: number;
-  orderId: number;
-  previousStatusId: number;
-  newStatusId: number;
-  changeDate: string;
-}
-
-const dateFormat: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-};
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { formatDateTime, getClientName, getUserName } from "@/lib/format";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useEntityMutations } from "@/hooks/useEntity";
+import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
+import type { UpdateOrderPayload } from "@/types";
 
 const OrderDetailPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
   const orderId = Number(params?.id);
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { roles, isAdmin } = usePermissions();
+  const {
+    data: order,
+    isPending,
+    isError,
+    refetch,
+  } = useOrder(Number.isNaN(orderId) ? undefined : orderId);
+  const { histories } = useOrderHistory(orderId);
+  const { update } = useEntityMutations<unknown, UpdateOrderPayload>("orders");
+  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [newStatusId, setNewStatusId] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
-  const { data: allHistories } = useCrud<OrderHistoryEntry>("order-histories");
+  // Sincroniza el formulario con el pedido cada vez que llega/cambia del servidor.
+  useEffect(() => {
+    if (!order) return;
+    setDescription(order.description ?? "");
+    setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
+    setNewStatusId(order.statusId);
+  }, [order]);
 
-  const token = session?.user?.token;
-  const roles = session?.user?.roles || [];
-  const canEdit = isAdminRole(roles) || roles.includes("recepcion");
+  const canEdit = isAdmin || roles.includes("recepcion");
   // Los roles operativos (dtf, bordado, taller, etc.) pueden avanzar el estado del
   // pedido cuando este se encuentra en la etapa que les corresponde, aunque no puedan
   // editar los detalles generales del pedido.
@@ -74,67 +56,17 @@ const OrderDetailPage = () => {
   const canChangeStatus =
     canEdit || (!!order && myStageIds.includes(order.statusId));
 
-  const histories = useMemo(
-    () =>
-      allHistories
-        .filter((h) => h.orderId === orderId)
-        .sort((a, b) => new Date(b.changeDate).getTime() - new Date(a.changeDate).getTime()),
-    [allHistories, orderId]
-  );
-
-  const fetchOrder = useCallback(async () => {
-    if (!token || !orderId) return;
-    try {
-      setLoading(true);
-      const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${orderId}`,
-        {
-          headers: authHeaders(token),
-        }
-      );
-      if (!res.ok) {
-        throw new Error(`Error ${res.status}: ${res.statusText}`);
-      }
-      const json = await res.json();
-      setOrder(json);
-      setDescription(json.description ?? "");
-      setDeliveryDate(json.deliveryDate ? json.deliveryDate.slice(0, 10) : "");
-      setNewStatusId(json.statusId);
-    } catch (error) {
-      if (error instanceof AuthFetchError) return;
-      console.error("Error al obtener el pedido:", error);
-      toast.error("No se pudo cargar el pedido");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, orderId]);
-
-  useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
-
   const handleSaveDetails = async () => {
     if (!order) return;
     setSaving(true);
     try {
-      const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
-        {
-          method: "PATCH",
-          headers: authHeaders(token),
-          body: JSON.stringify({
-            description,
-            deliveryDate: deliveryDate || undefined,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
+      await update(order.id, {
+        description,
+        deliveryDate: deliveryDate || undefined,
+      });
       toast.success("Pedido actualizado correctamente");
-      fetchOrder();
-    } catch (error) {
-      if (error instanceof AuthFetchError) return;
-      console.error("Error al actualizar el pedido:", error);
-      toast.error("Ocurrió un error al actualizar el pedido");
+    } catch {
+      // El toast de error lo dispara el manejo global de mutaciones.
     } finally {
       setSaving(false);
     }
@@ -142,46 +74,25 @@ const OrderDetailPage = () => {
 
   const handleStatusChange = async () => {
     if (!order || newStatusId === undefined || newStatusId === order.statusId) return;
-    setSaving(true);
-    try {
-      const previousStatusId = order.statusId;
-      const res = await authFetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
-        {
-          method: "PATCH",
-          headers: authHeaders(token),
-          body: JSON.stringify({ statusId: newStatusId }),
-        }
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-
-      await authFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/order-histories`, {
-        method: "POST",
-        headers: authHeaders(token),
-        body: JSON.stringify({
-          orderId: order.id,
-          previousStatusId,
-          newStatusId,
-        }),
-      });
-
-      toast.success("Estado actualizado correctamente");
-      fetchOrder();
-    } catch (error) {
-      if (error instanceof AuthFetchError) return;
-      console.error("Error al actualizar el estado:", error);
-      toast.error("Ocurrió un error al actualizar el estado");
-    } finally {
-      setSaving(false);
-    }
+    await changeStatus(order, newStatusId);
   };
 
-  if (loading) {
+  if (isPending) {
     return (
       <div className="space-y-4">
         <Skeleton className="w-full h-10" />
         <Skeleton className="w-full h-40" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="No se pudo cargar el pedido"
+        description="Verificá tu conexión o volvé a la lista de pedidos."
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -205,17 +116,17 @@ const OrderDetailPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p>
-              <b>Cliente:</b> {order.client?.first_name} {order.client?.last_name}
+              <b>Cliente:</b> {getClientName(order.client)}
             </p>
             <p>
-              <b>Creado por:</b> {order.user?.firstName} {order.user?.lastName}
+              <b>Creado por:</b> {getUserName(order.user)}
             </p>
             <p>
-              <b>Fecha de Creación:</b>{" "}
-              {new Date(order.creationDate).toLocaleDateString("es-MX", dateFormat)}
+              <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
             </p>
             <p>
-              <b>Estado actual:</b> {(statusMap[order.statusId] || "desconocido").toUpperCase()}
+              <b>Estado actual:</b>{" "}
+              {(statusMap[order.statusId] || "desconocido").toUpperCase()}
             </p>
 
             <div className="space-y-1">
@@ -263,7 +174,7 @@ const OrderDetailPage = () => {
             {canChangeStatus && (
               <Button
                 onClick={handleStatusChange}
-                disabled={saving || newStatusId === order.statusId}
+                disabled={isChangingStatus || newStatusId === order.statusId}
               >
                 Actualizar Estado
               </Button>
@@ -283,7 +194,7 @@ const OrderDetailPage = () => {
                       </span>
                       <br />
                       <span className="text-muted-foreground">
-                        {new Date(h.changeDate).toLocaleDateString("es-MX", dateFormat)}
+                        {formatDateTime(h.changeDate)}
                       </span>
                     </li>
                   ))}
@@ -302,16 +213,23 @@ const OrderDetailPage = () => {
           {order.orderProducts && order.orderProducts.length > 0 ? (
             <ul className="space-y-2">
               {order.orderProducts.map((op) => (
-                <li key={op.productId} className="flex justify-between text-sm border-b pb-1">
+                <li
+                  key={op.productId}
+                  className="flex justify-between text-sm border-b pb-1"
+                >
                   <span>
-                    {op.product?.code || op.product?.productType?.name || `Producto #${op.productId}`}
+                    {op.product?.code ||
+                      op.product?.productType?.name ||
+                      `Producto #${op.productId}`}
                   </span>
                   <span>Cantidad: {op.quantity}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Este pedido no tiene productos asociados.</p>
+            <p className="text-sm text-muted-foreground">
+              Este pedido no tiene productos asociados.
+            </p>
           )}
         </CardContent>
       </Card>
