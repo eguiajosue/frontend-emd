@@ -158,7 +158,14 @@ export async function request<T>(
 /** Envelope paginado que el backend expondrá de forma opt-in. */
 export interface Paginated<T> {
   data: T[];
-  meta?: { total?: number; page?: number; pageSize?: number };
+  meta?: {
+    total?: number;
+    page?: number;
+    pageSize?: number;
+    /** Nombre real usado por el backend (`buildPaginatedResult`); `pageSize` queda por compatibilidad. */
+    limit?: number;
+    totalPages?: number;
+  };
 }
 
 /**

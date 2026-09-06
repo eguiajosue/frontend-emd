@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Check, Laptop, Moon, Sun } from "lucide-react";
+import { Check, Clock, Laptop, Moon, Sun } from "lucide-react";
 import Title from "@/components/Title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { FormField } from "@/components/ui/form-field";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
@@ -15,6 +18,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { useAppSettings, useUpdateAppSettings } from "@/hooks/useSettings";
 import { getErrorMessage } from "@/lib/api";
 
 /** Roles operativos de producción, con su etiqueta legible. */
@@ -285,6 +289,74 @@ function AreaVisibilitySection() {
   );
 }
 
+function DeliveredRetentionSection() {
+  const { data: settings, isPending, deliveredRetentionHours } = useAppSettings();
+  const { update, isUpdating } = useUpdateAppSettings();
+  const [value, setValue] = useState<string>("");
+
+  useEffect(() => {
+    if (settings) setValue(String(settings.deliveredRetentionHours));
+  }, [settings]);
+
+  const handleSave = async () => {
+    const hours = Number(value);
+    if (!Number.isInteger(hours) || hours < 1 || hours > 720) {
+      toast.error("Ingresá un número entero entre 1 y 720 horas.");
+      return;
+    }
+    try {
+      await update({ deliveredRetentionHours: hours });
+      toast.success("Retención de pedidos entregados actualizada.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No se pudo actualizar la configuración."));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Retención de pedidos entregados</CardTitle>
+        <CardDescription>
+          Los pedidos entregados dejarán de mostrarse en el tablero después de
+          este tiempo. Siguen disponibles en el Historial.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isPending ? (
+          <Skeleton className="h-10 w-full max-w-xs" />
+        ) : (
+          <div className="flex items-end gap-3">
+            <FormField
+              label="Horas de retención"
+              htmlFor="delivered-retention-hours"
+              icon={Clock}
+              hint="Entre 1 y 720 horas (30 días)."
+              className="max-w-xs"
+            >
+              <Input
+                id="delivered-retention-hours"
+                type="number"
+                min={1}
+                max={720}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            </FormField>
+            <Button
+              onClick={handleSave}
+              disabled={
+                isUpdating || value === "" || Number(value) === deliveredRetentionHours
+              }
+            >
+              Guardar
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ConfiguracionPage() {
   const { isAdmin, roles } = usePermissions();
   const canManageAreaVisibility = isAdmin || roles.includes("recepcion");
@@ -296,6 +368,7 @@ export default function ConfiguracionPage() {
         <AppearanceSection />
         <LanguageSection />
         {canManageAreaVisibility && <AreaVisibilitySection />}
+        {isAdmin && <DeliveredRetentionSection />}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   HelpCircle,
   Settings,
   TrendingUp,
+  History,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -113,6 +114,12 @@ export function AppSidebar() {
             "laser",
             "impresiones",
           ],
+        },
+        {
+          title: "Historial",
+          url: "/dashboard/historial",
+          icon: History,
+          roles: ["admin", "superuser", "recepcion"],
         },
       ],
     },

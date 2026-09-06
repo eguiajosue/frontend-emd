@@ -22,7 +22,8 @@ import {
 import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList } from "@/hooks/useEntity";
-import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { useAppSettings } from "@/hooks/useSettings";
+import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
@@ -89,6 +90,7 @@ const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
+  const { deliveredRetentionHours } = useAppSettings();
   const { changeStatus, changingOrderId } = useChangeOrderStatus();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -139,8 +141,19 @@ const OrdersPage = () => {
   // de entrega, caducados) se aplican acá encima, sobre ese mismo array.
   const isOperationalRole = !canManageOperations;
 
+  // Pedidos entregados hace más de `deliveredRetentionHours`: se ocultan del
+  // tablero en vivo (siguen existiendo en la DB y son visibles en Historial).
+  const retentionMs = deliveredRetentionHours * 60 * 60 * 1000;
+
   const visibleOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (
+        isDeliveredStatus(order.statusId) &&
+        order.deliveredAt &&
+        Date.now() - new Date(order.deliveredAt).getTime() > retentionMs
+      ) {
+        return false;
+      }
       if (filters.clientId !== undefined && order.clientId !== filters.clientId) {
         return false;
       }
@@ -156,12 +169,12 @@ const OrdersPage = () => {
       }
       if (filters.onlyOverdue) {
         const overdue = isOverdue(order.creationDate, order.deliveryDate);
-        const delivered = order.statusId === 5; // "entregado"
+        const delivered = isDeliveredStatus(order.statusId);
         if (!overdue || delivered) return false;
       }
       return true;
     });
-  }, [orders, filters]);
+  }, [orders, filters, retentionMs]);
 
   const handleExport = () => {
     if (visibleOrders.length === 0) {

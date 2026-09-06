@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { request } from "@/lib/api";
+import { request, type Paginated } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
 import type { Order, OrderHistory } from "@/types";
@@ -23,6 +23,33 @@ export function useOrder(
 
 export function useOrderHistories() {
   return useEntityList<OrderHistory>("orderHistories");
+}
+
+/**
+ * `GET /orders/history`: TODOS los pedidos de la empresa (sin filtro de
+ * antigüedad de entrega), paginado por el backend. A diferencia de `useOrders`
+ * (que trae el array plano completo), acá se pagina explícitamente porque el
+ * historial puede crecer indefinidamente.
+ */
+export function useOrderHistoryList(page: number, limit = 20) {
+  const token = useAuthToken();
+
+  const query = useQuery<Paginated<Order>>({
+    queryKey: [...queryKeys.all("orderHistory"), page, limit],
+    enabled: Boolean(token),
+    queryFn: () =>
+      request<Paginated<Order>>(ENDPOINTS.orderHistory, {
+        token,
+        params: { page, limit },
+      }),
+    placeholderData: (previous) => previous,
+  });
+
+  return {
+    ...query,
+    orders: query.data?.data ?? [],
+    meta: query.data?.meta,
+  };
 }
 
 /** Historial de un pedido puntual, ordenado del cambio más reciente al más viejo. */

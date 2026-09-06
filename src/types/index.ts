@@ -154,6 +154,8 @@ export interface Order extends BaseEntity {
   hasAuthorizationFile?: boolean;
   /** Presente sólo en el detalle (GET /orders/:id). */
   authorizationFile?: AuthorizationFile | null;
+  /** ISO timestamp de cuándo el pedido pasó a "entregado", o `null` si nunca llegó a ese estado. */
+  deliveredAt: string | null;
 }
 
 export interface OrderHistory extends BaseEntity {
@@ -213,3 +215,9 @@ export interface CreateOrderHistoryPayload {
  * (`EntityFormDialog` y `SimpleNamedEntityPage`).
  */
 export type EntityPayload = Record<string, unknown>;
+
+/** Configuración global de la app (fila única, GET/PATCH /settings). */
+export interface AppSettings {
+  id: number;
+  deliveredRetentionHours: number;
+}
