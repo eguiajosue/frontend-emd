@@ -2,20 +2,38 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-2xl border bg-card text-card-foreground shadow-soft transition-shadow duration-200",
-      className
-    )}
-    {...props}
-  />
-))
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * "glass" aplica el material translúcido Liquid Glass (peso medio, ver
+   * apple-design §12). Úsalo en cards de contenido (dashboard, Ayuda, stats)
+   * — evítalo en tablas/listas densas donde la legibilidad manda.
+   */
+  variant?: "solid" | "glass"
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant = "solid", ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-2xl text-card-foreground shadow-soft transition-shadow duration-200",
+        variant === "glass"
+          ? "glass-medium border-x border-b border-border/40"
+          : "border bg-card",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 Card.displayName = "Card"
+
+/** Atajo para <Card variant="glass" />. */
+const GlassCard = React.forwardRef<
+  HTMLDivElement,
+  Omit<CardProps, "variant">
+>((props, ref) => <Card ref={ref} variant="glass" {...props} />)
+GlassCard.displayName = "GlassCard"
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,
@@ -73,4 +91,4 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+export { Card, GlassCard, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

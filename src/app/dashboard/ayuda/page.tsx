@@ -202,7 +202,7 @@ function SpotlightCard({
         mouseX.set(e.clientX - rect.left);
         mouseY.set(e.clientY - rect.top);
       }}
-      className={`group relative overflow-hidden rounded-xl border bg-card shadow-sm ${className}`}
+      className={`glass-medium group relative overflow-hidden rounded-xl border-x border-b border-border/40 shadow-sm ${className}`}
     >
       {canSpotlight && (
         <motion.div
@@ -343,7 +343,6 @@ const AyudaPage = () => {
         className="flex min-h-[40vh] flex-col items-start justify-center gap-4 overflow-hidden py-10"
         shapeClassName="-left-16 -top-16 h-72 w-72 bg-gradient-to-br from-primary/25 to-accent2-500/20"
       >
-        {/* AyudaAmbientScene deshabilitada temporalmente, mismo issue que en login. */}
         <div className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-primary/10 to-accent2-500/10 p-4">
           <HelpCircle className="h-8 w-8 shrink-0 text-primary" />
           <div>

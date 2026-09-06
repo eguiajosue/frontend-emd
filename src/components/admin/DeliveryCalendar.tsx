@@ -67,7 +67,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
   }, [currentMonth]);
 
   return (
-    <Card className="overflow-hidden">
+    <Card variant="glass" className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="h-5 w-5 text-primary" />

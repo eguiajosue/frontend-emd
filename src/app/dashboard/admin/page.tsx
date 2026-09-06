@@ -393,6 +393,7 @@ const AdminDashboardPage = () => {
         <div className="space-y-6 lg:col-span-2">
           {/* Sección 2: Estancamiento (arriba para que se vea de inmediato) */}
           <Card
+            variant="glass"
             className={
               stagnantOrders.length > 0
                 ? "border-red-300 dark:border-red-900"
@@ -441,7 +442,7 @@ const AdminDashboardPage = () => {
             >
               {performanceByStatus.map((p) => (
                 <motion.div key={p.statusId} variants={staggerItemVariants}>
-                <Card className="h-full">
+                <Card variant="glass" className="h-full">
                   <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {p.label}
@@ -486,7 +487,7 @@ const AdminDashboardPage = () => {
               ))}
             </motion.div>
 
-            <Card>
+            <Card variant="glass">
               <CardHeader>
                 <CardTitle className="text-base">Tiempo promedio por etapa (horas)</CardTitle>
               </CardHeader>

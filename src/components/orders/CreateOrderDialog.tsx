@@ -26,6 +26,7 @@ import {
   Package,
   CalendarClock,
   Building2,
+  Clock,
   X,
 } from "lucide-react";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
@@ -277,7 +278,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
           <div className="space-y-6">
             <FormSection icon={UserRound} title="Datos generales" description="Cliente, área y a quién se asigna el pedido">
-              <FormField label="Cliente" required error={errors.clientId}>
+              <FormField label="Cliente" icon={UserRound} required error={errors.clientId}>
                 <div className="flex gap-2">
                   <CreatableCombobox
                     className="flex-1"
@@ -349,7 +350,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                 </FormField>
               </div>
 
-              <FormField label="Descripción" required error={errors.description}>
+              <FormField label="Descripción" icon={FileText} required error={errors.description}>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -366,7 +367,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                   />
                 </FormField>
-                <FormField label="Hora de Entrega (opcional)">
+                <FormField label="Hora de Entrega (opcional)" icon={Clock}>
                   <Input
                     type="time"
                     value={deliveryTime}

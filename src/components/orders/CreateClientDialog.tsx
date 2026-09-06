@@ -120,7 +120,7 @@ export function CreateClientDialog({ open, onClose, onCreated }: CreateClientDia
               className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
             />
           </FormField>
-          <FormField label="Apellido" htmlFor="cc-last-name">
+          <FormField label="Apellido" htmlFor="cc-last-name" icon={User}>
             <Input
               id="cc-last-name"
               value={lastName}

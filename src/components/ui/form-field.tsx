@@ -129,16 +129,25 @@ export function FormSection({
 }) {
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex items-center gap-2 border-b border-border pb-2">
+      <div className="relative flex items-center gap-3 pb-3">
+        {/* Barra de acento: da jerarquía sin depender sólo del borde inferior. */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-primary/40 via-border to-transparent"
+        />
         {Icon && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Icon className="h-3.5 w-3.5" />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+            <Icon className="h-4 w-4" />
           </span>
         )}
-        <div>
-          <h3 className="text-sm font-semibold leading-none text-foreground">{title}</h3>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold leading-none tracking-tight text-foreground">
+            {title}
+          </h3>
           {description && (
-            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              {description}
+            </p>
           )}
         </div>
       </div>

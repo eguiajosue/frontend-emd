@@ -61,6 +61,15 @@
     --sidebar-accent-foreground: 330 70% 30%;
     --sidebar-border: 330 15% 91%;
     --sidebar-ring: 330 81% 46%;
+
+    /* Liquid Glass: tokens de material translúcido (ver apple-design §12). */
+    --glass-bg-light: 255 255 255;
+    --glass-bg-heavy: 255 255 255;
+    --glass-bg-medium: 255 255 255;
+    --glass-border: 255 255 255;
+    --glass-blur: 20px;
+    --glass-saturate: 180%;
+    --glass-edge-opacity: 0.5;
   }
   .dark {
     --background: 330 22% 6%;
@@ -96,6 +105,15 @@
     --sidebar-accent-foreground: 330 15% 92%;
     --sidebar-border: 330 15% 16%;
     --sidebar-ring: 330 85% 62%;
+
+    /* Liquid Glass (dark): superficies oscuras translúcidas, no negro puro. */
+    --glass-bg-light: 26 22 30;
+    --glass-bg-heavy: 20 18 24;
+    --glass-bg-medium: 24 20 27;
+    --glass-border: 255 255 255;
+    --glass-blur: 24px;
+    --glass-saturate: 160%;
+    --glass-edge-opacity: 0.09;
   }
 
   /*
@@ -214,4 +232,61 @@
 ::view-transition-new(root) {
   animation: none;
   z-index: 1;
+}
+
+/*
+ * Liquid Glass — material translúcido en capas (apple-design §12).
+ * Tres "pesos" de material según jerarquía:
+ *  - glass-heavy: sidebar/nav, más opaco, casi sólido en dark.
+ *  - glass-medium: cards de contenido, dialogs, popovers.
+ *  - glass-light: chips/badges/botones pequeños.
+ * Nunca apilar dos superficies glass idénticas: un hijo dentro de un padre
+ * glass debe usar un peso más pesado (más opaco) que el padre.
+ */
+.glass-heavy {
+  background-color: rgb(var(--glass-bg-heavy) / 0.82);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
+}
+.glass-medium {
+  background-color: rgb(var(--glass-bg-medium) / 0.62);
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
+  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
+}
+.glass-light {
+  background-color: rgb(var(--glass-bg-light) / 0.45);
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
+  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
+}
+/* Un glass anidado dentro de otro glass sube de peso para no perder legibilidad. */
+.glass-heavy .glass-medium,
+.glass-medium .glass-medium {
+  background-color: rgb(var(--glass-bg-heavy) / 0.9);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-heavy,
+  .glass-medium,
+  .glass-light {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: hsl(var(--card));
+    border-top-color: hsl(var(--border));
+  }
+}
+
+@media (prefers-contrast: more) {
+  .glass-heavy,
+  .glass-medium,
+  .glass-light {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
 }
