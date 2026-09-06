@@ -318,3 +318,51 @@ export interface Notification {
   read: boolean;
   createdAt: string;
 }
+
+/** Usuario tal como lo devuelve el chat (subset mínimo). */
+export interface ChatUserSummary {
+  id: number;
+  username: string;
+  firstName: string;
+  lastName?: string | null;
+}
+
+/** Usuario elegible para abrir un mensaje directo (GET /chat/users). */
+export interface ChatUserOption extends ChatUserSummary {
+  roles: string[];
+}
+
+/** Participante de una conversación; `isMonitor` marca a admin/superuser. */
+export interface ChatMember extends ChatUserSummary {
+  isMonitor: boolean;
+}
+
+/** Mensaje del chat interno. */
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  body: string;
+  createdAt: string;
+  senderId: number;
+  sender?: ChatUserSummary;
+  /** Sólo en los mensajes que llegan en vivo por WebSocket. */
+  senderName?: string;
+  senderUsername?: string;
+}
+
+/**
+ * Conversación del chat: canal fijo Recepción ↔ área (`area`) o mensaje
+ * directo 1 a 1 (`direct`). GET /chat/conversations.
+ */
+export interface ChatConversation {
+  id: number;
+  type: "area" | "direct";
+  area: string | null;
+  title: string;
+  otherUser: ChatUserSummary | null;
+  lastMessageAt: string | null;
+  lastMessage: ChatMessage | null;
+  unreadCount: number;
+  /** true cuando el usuario participa sólo para monitoreo (admin/superuser). */
+  isMonitor: boolean;
+}
