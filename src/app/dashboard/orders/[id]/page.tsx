@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorState } from "@/components/feedback/states";
-import { statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
+import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import {
   formatDateTime,
@@ -45,7 +45,6 @@ const OrderDetailPage = () => {
 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [newStatusId, setNewStatusId] = useState<number | undefined>(undefined);
   const [saving, setSaving] = useState(false);
 
   // Sincroniza el formulario con el pedido cada vez que llega/cambia del servidor.
@@ -53,7 +52,6 @@ const OrderDetailPage = () => {
     if (!order) return;
     setDescription(order.description ?? "");
     setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
-    setNewStatusId(order.statusId);
   }, [order]);
 
   const canEdit = isAdmin || roles.includes("recepcion");
@@ -80,9 +78,9 @@ const OrderDetailPage = () => {
     }
   };
 
-  const handleStatusChange = async () => {
-    if (!order || newStatusId === undefined || newStatusId === order.statusId) return;
-    await changeStatus(order, newStatusId);
+  const handleStatusChange = async (nextStatusId: number) => {
+    if (!order || nextStatusId === order.statusId) return;
+    await changeStatus(order, nextStatusId);
   };
 
   if (isPending) {
@@ -195,26 +193,12 @@ const OrderDetailPage = () => {
             <CardTitle>Cambiar Estado</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-              value={newStatusId ?? ""}
-              disabled={!canChangeStatus}
-              onChange={(e) => setNewStatusId(Number(e.target.value))}
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            {canChangeStatus && (
-              <Button
-                onClick={handleStatusChange}
-                disabled={isChangingStatus || newStatusId === order.statusId}
-              >
-                Actualizar Estado
-              </Button>
-            )}
+            <OrderStatusButtons
+              currentStatusId={order.statusId}
+              canChange={canChangeStatus}
+              isChanging={isChangingStatus}
+              onChange={handleStatusChange}
+            />
 
             <div className="pt-4">
               <h3 className="font-semibold mb-2">Historial de Estados</h3>

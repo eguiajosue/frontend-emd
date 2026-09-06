@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider, useTheme } from "next-themes";
 import {
   MutationCache,
   QueryCache,
@@ -12,6 +12,9 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, getErrorMessage, isSessionExpiredError } from "@/lib/api";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useAccentColor } from "@/hooks/useAccentColor";
+import { LANGUAGE_STORAGE_KEY } from "@/lib/language";
 
 /**
  * Providers globales de la app (sesión + cache de datos + toasts).
@@ -83,6 +86,40 @@ function SessionErrorWatcher() {
   return null;
 }
 
+/**
+ * Aplica las preferencias del usuario logueado (tema/acento/idioma) apenas
+ * llegan del backend, una sola vez por sesión iniciada, para que cada cuenta
+ * vea SU configuración al loguearse sin depender de lo que había guardado
+ * previamente en ese navegador (localStorage sigue funcionando como cache
+ * local para evitar parpadeo mientras esto carga).
+ */
+function PreferencesSync() {
+  const { data: session, status } = useSession();
+  const { setTheme } = useTheme();
+  const { setAccent } = useAccentColor();
+  const { preferences } = useUserPreferences();
+  const appliedForUser = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session || !preferences) return;
+    const userKey = String(session.user?.id ?? session.user?.username ?? "unknown");
+    if (appliedForUser.current === userKey) return;
+    appliedForUser.current = userKey;
+
+    if (preferences.themePreference) setTheme(preferences.themePreference);
+    if (preferences.accentColor) setAccent(preferences.accentColor);
+    if (preferences.languagePreference) {
+      try {
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, preferences.languagePreference);
+      } catch {
+        // Sin acceso a localStorage: no rompe la app, sólo no cachea localmente.
+      }
+    }
+  }, [status, session, preferences, setTheme, setAccent]);
+
+  return null;
+}
+
 export default function Providers({ children }: { children: ReactNode }) {
   // El QueryClient se crea una sola vez por montaje del árbol de React.
   const [queryClient] = useState(createQueryClient);
@@ -92,6 +129,7 @@ export default function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <QueryClientProvider client={queryClient}>
           <SessionErrorWatcher />
+          <PreferencesSync />
           {children}
           {isDev && <ReactQueryDevtools initialIsOpen={false} />}
         </QueryClientProvider>

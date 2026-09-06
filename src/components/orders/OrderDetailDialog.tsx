@@ -16,13 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import {
   formatDate,
   formatDateTime,
@@ -34,7 +28,6 @@ import {
 import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrders";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
-import { statusOptions } from "@/lib/orderStatus";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
@@ -239,26 +232,15 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     </p>
                   )}
 
-                  {canChangeStatus && (
-                    <div className="space-y-1">
-                      <Label>Avanzar estado</Label>
-                      <Select
-                        value={String(statusId ?? order.statusId)}
-                        onValueChange={(value) => handleStatusChange(Number(value))}
-                      >
-                        <SelectTrigger className="w-[200px]" disabled={isChangingStatus}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {statusOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={String(opt.value)}>
-                              {opt.label.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    <Label>Estado</Label>
+                    <OrderStatusButtons
+                      currentStatusId={statusId ?? order.statusId}
+                      canChange={canChangeStatus}
+                      isChanging={isChangingStatus}
+                      onChange={handleStatusChange}
+                    />
+                  </div>
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>

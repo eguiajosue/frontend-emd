@@ -11,7 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
-import { ACCENT_OPTIONS } from "@/lib/accent";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { getErrorMessage } from "@/lib/api";
@@ -40,6 +41,25 @@ const THEME_OPTIONS = [
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent, mounted } = useAccentColor();
+  const { updatePreferences } = useUserPreferences();
+
+  const handleThemeSelect = (id: string) => {
+    setTheme(id);
+    updatePreferences({ themePreference: id });
+  };
+
+  const handleAccentSelect = (id: string) => {
+    setAccent(id);
+    updatePreferences({ accentColor: id });
+  };
+
+  const handleCustomColor = (hex: string) => {
+    if (!isHexColor(hex)) return;
+    setAccent(hex);
+    updatePreferences({ accentColor: hex });
+  };
+
+  const isCustomAccent = mounted && isHexColor(accent);
 
   return (
     <Card>
@@ -58,7 +78,7 @@ function AppearanceSection() {
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setTheme(opt.id)}
+                  onClick={() => handleThemeSelect(opt.id)}
                   className={cn(
                     "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
                     active
@@ -79,7 +99,7 @@ function AppearanceSection() {
           <p className="text-xs text-muted-foreground">
             Cambia el color principal usado en botones, enlaces y resaltados.
           </p>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {ACCENT_OPTIONS.map((opt) => {
               const active = mounted && accent === opt.id;
               return (
@@ -88,7 +108,7 @@ function AppearanceSection() {
                   type="button"
                   title={opt.label}
                   aria-label={opt.label}
-                  onClick={() => setAccent(opt.id)}
+                  onClick={() => handleAccentSelect(opt.id)}
                   className={cn(
                     "relative flex h-9 w-9 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-shadow",
                     active ? "ring-2 ring-foreground" : "hover:ring-2 hover:ring-border"
@@ -99,6 +119,30 @@ function AppearanceSection() {
                 </button>
               );
             })}
+
+            <label
+              title="Color personalizado"
+              aria-label="Elegir color de acento personalizado"
+              className={cn(
+                "relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-dashed ring-offset-2 ring-offset-background transition-shadow",
+                isCustomAccent
+                  ? "ring-2 ring-foreground border-solid"
+                  : "border-muted-foreground/40 hover:ring-2 hover:ring-border"
+              )}
+              style={isCustomAccent ? { backgroundColor: accent } : undefined}
+            >
+              {isCustomAccent ? (
+                <Check className="h-4 w-4 text-white drop-shadow" />
+              ) : (
+                <span className="text-base leading-none">+</span>
+              )}
+              <input
+                type="color"
+                value={isCustomAccent ? accent : "#000000"}
+                onChange={(e) => handleCustomColor(e.target.value)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </label>
           </div>
         </div>
       </CardContent>
@@ -109,6 +153,7 @@ function AppearanceSection() {
 function LanguageSection() {
   const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
   const [mounted, setMounted] = useState(false);
+  const { updatePreferences } = useUserPreferences();
 
   useEffect(() => {
     setMounted(true);
@@ -131,6 +176,7 @@ function LanguageSection() {
     } catch {
       // No pasa nada si no se puede persistir.
     }
+    updatePreferences({ languagePreference: id });
   };
 
   return (

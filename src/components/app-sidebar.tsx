@@ -25,6 +25,7 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import { BugReportDialog } from "./BugReportDialog";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { cn } from "@/lib/utils";
 
@@ -216,7 +217,8 @@ export function AppSidebar() {
       <div className="mt-auto p-4">
         <Separator className="mb-4" />
         <ConfiguracionLink pathname={pathname} />
-        <div className="flex items-center gap-3 mb-4">
+        <BugReportDialog />
+        <div className="flex items-center gap-3 mb-4 mt-2">
           <Avatar className="ring-2 ring-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
               {session?.user?.username?.slice(0, 2).toUpperCase()}
