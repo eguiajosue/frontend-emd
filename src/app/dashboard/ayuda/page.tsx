@@ -190,7 +190,7 @@ const AyudaPage = () => {
                         ¿Cómo creo un pedido nuevo?
                       </AccordionTrigger>
                       <AccordionContent>
-                        Andá a &quot;Nueva Orden&quot; en el menú lateral,
+                        Andá a &quot;Nuevo Pedido&quot; en el menú lateral,
                         elegí el cliente (o cargalo si es nuevo), completá la
                         descripción del trabajo y la fecha de entrega estimada,
                         y guardá. El pedido arranca en estado

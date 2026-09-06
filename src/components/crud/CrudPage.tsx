@@ -54,6 +54,8 @@ export interface CrudPageProps<T extends BaseEntity> {
   /** Transformación del payload antes de enviarlo al backend. */
   toPayload?: (values: EntityValues, editing: T | null) => EntityValues;
   dialogTitle?: (editing: T | null) => string;
+  /** Oculta el `<h1>` de título (ej. cuando la pantalla ya lo muestra en una pestaña). */
+  hideTitle?: boolean;
 }
 
 export function CrudPage<T extends BaseEntity>({
@@ -69,6 +71,7 @@ export function CrudPage<T extends BaseEntity>({
   initialValues,
   toPayload,
   dialogTitle,
+  hideTitle,
 }: CrudPageProps<T>) {
   const { data, isPending, isError, refetch } = useEntityList<T>(entity);
   const { create, update, remove } = useEntityMutations<T, EntityValues>(entity);
@@ -116,7 +119,7 @@ export function CrudPage<T extends BaseEntity>({
   return (
     <div className="p-0 w-full">
       <div className="flex items-center justify-between">
-        <Title title={title} />
+        {!hideTitle && <Title title={title} />}
         {canEdit && (
           <Button onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" /> {createLabel}

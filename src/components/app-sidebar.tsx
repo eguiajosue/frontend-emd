@@ -3,7 +3,6 @@
 import {
   Package,
   UserRound,
-  Building,
   LogOut,
   LayoutDashboard,
   HelpCircle,
@@ -89,7 +88,7 @@ export function AppSidebar() {
       ],
     },
     {
-      groupLabel: "Órdenes",
+      groupLabel: "Pedidos",
       items: [
         {
           title: "Pedidos",
@@ -113,36 +112,19 @@ export function AppSidebar() {
       groupLabel: "Clientes",
       items: [
         {
-          title: "Lista de Clientes",
-          url: "/dashboard/clients",
+          title: "Clientes",
+          url: "/dashboard/clientes",
           icon: UserRound,
           roles: ["admin", "recepcion"],
         },
       ],
     },
     {
-      groupLabel: "Empresas",
+      groupLabel: "Usuarios",
       items: [
         {
-          title: "Lista de Empresas",
-          url: "/dashboard/companies",
-          icon: Building,
-          roles: ["admin", "recepcion"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Usuarios y Roles",
-      items: [
-        {
-          title: "Lista de Usuarios",
-          url: "/dashboard/users",
-          icon: UserRound,
-          roles: ["admin"],
-        },
-        {
-          title: "Lista de Roles",
-          url: "/dashboard/roles",
+          title: "Usuarios",
+          url: "/dashboard/usuarios",
           icon: UserRound,
           roles: ["admin"],
         },

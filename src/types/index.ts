@@ -91,15 +91,20 @@ export interface AuthorizationFileInput {
 }
 
 export interface Order extends BaseEntity {
-  clientId?: number;
+  clientId?: number | null;
   userId?: number;
   /** Usuario al que se le asignó el pedido (distinto de `user`, quien lo creó). */
   assignedUserId?: number | null;
   statusId: number;
+  /** Área de producción a la que pertenece el pedido (taller/dtf/bordado/diseno/laser/impresiones). */
+  area?: string | null;
   description: string;
   creationDate: string;
   deliveryDate?: string | null;
+  /** `null` cuando el pedido se cargó con `clientNameOverride` en vez de un cliente registrado. */
   client?: Client | null;
+  /** Nombre de cliente escrito a mano (alternativa a `client` cuando no hay `clientId`). */
+  clientNameOverride?: string | null;
   user?: User | null;
   assignedUser?: AssignedUser | null;
   status?: Status | null;
@@ -122,10 +127,15 @@ export interface OrderHistory extends BaseEntity {
 /* -------------------------------------------------------------------------- */
 
 export interface CreateOrderPayload {
-  clientId: number;
+  /** Debe venir `clientId` o `clientNameOverride` (al menos uno). */
+  clientId?: number;
+  /** Nombre de cliente escrito a mano; alternativa a `clientId`. */
+  clientNameOverride?: string;
   userId: number;
   assignedUserId?: number;
   statusId: number;
+  /** Área de producción destino, obligatoria (ver `AREA_OPTIONS` en `@/lib/areas`). */
+  area: string;
   description: string;
   deliveryDate?: string;
   orderProducts?: Array<{ productId: number; quantity: number }>;
@@ -137,6 +147,7 @@ export interface UpdateOrderPayload {
   deliveryDate?: string;
   statusId?: number;
   assignedUserId?: number | null;
+  area?: string;
   authorizationFile?: AuthorizationFileInput;
 }
 

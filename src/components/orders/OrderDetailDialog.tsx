@@ -27,7 +27,7 @@ import {
   formatDate,
   formatDateTime,
   getAssignedUserName,
-  getClientName,
+  getOrderClientName,
   getUserName,
 } from "@/lib/format";
 import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrders";
@@ -35,6 +35,8 @@ import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusOptions } from "@/lib/orderStatus";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import { FileText, UserRound, ZoomIn } from "lucide-react";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 
@@ -74,6 +76,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
+  const [area, setArea] = useState<string | undefined>(undefined);
   const [statusId, setStatusId] = useState<number | undefined>(undefined);
 
   useEffect(() => {
@@ -81,6 +84,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     setDescription(order.description ?? "");
     setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
     setAssignedUserId(order.assignedUserId ?? undefined);
+    setArea(order.area ?? undefined);
     setStatusId(order.statusId);
   }, [order]);
 
@@ -91,6 +95,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
         description,
         deliveryDate: deliveryDate || undefined,
         assignedUserId: assignedUserId ?? null,
+        area,
       });
       toast.success("Pedido actualizado correctamente");
     } catch {
@@ -138,7 +143,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                 <div className="mt-4 space-y-4 text-sm">
                   <div className="grid gap-1">
                     <p>
-                      <b>Cliente:</b> {getClientName(order.client)}
+                      <b>Cliente:</b> {getOrderClientName(order)}
                     </p>
                     <p>
                       <b>Creado por:</b> {getUserName(order.user)}
@@ -151,7 +156,17 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       <b>Asignado a:</b>{" "}
                       {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
                     </p>
+                    {!canEdit && (
+                      <p>
+                        <b>Área:</b> {getAreaLabel(order.area)}
+                      </p>
+                    )}
                   </div>
+
+                  <DeliveryProgressBar
+                    creationDate={order.creationDate}
+                    deliveryDate={order.deliveryDate}
+                  />
 
                   {canEdit ? (
                     <div className="space-y-3 rounded-md border p-3">
@@ -187,6 +202,21 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                               <option key={u.id} value={u.id}>
                                 {[u.firstName, u.lastName].filter(Boolean).join(" ") ||
                                   u.username}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Área</Label>
+                          <select
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                            value={area ?? ""}
+                            onChange={(e) => setArea(e.target.value || undefined)}
+                          >
+                            <option value="">Sin área</option>
+                            {AREA_OPTIONS.map((a) => (
+                              <option key={a.value} value={a.value}>
+                                {a.label}
                               </option>
                             ))}
                           </select>

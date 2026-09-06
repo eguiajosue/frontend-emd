@@ -42,8 +42,15 @@ export function getUserName(user?: User | null): string {
   return full || user.username || "-";
 }
 
+/**
+ * Nombre de cliente de un pedido: el cliente registrado si lo tiene, o el
+ * nombre escrito a mano (`clientNameOverride`) cuando se cargó así en vez de
+ * un cliente del catálogo.
+ */
 export function getOrderClientName(order: Order): string {
-  return getClientName(order.client);
+  if (order.client) return getClientName(order.client);
+  if (order.clientNameOverride) return order.clientNameOverride;
+  return "-";
 }
 
 /** Nombre del usuario asignado a un pedido, o `null` si no tiene. */

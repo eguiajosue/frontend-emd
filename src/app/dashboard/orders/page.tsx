@@ -21,15 +21,52 @@ import {
 } from "@/components/feedback/states";
 import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useEntityList } from "@/hooks/useEntity";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { isOverdue } from "@/lib/deliveryProgress";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
-import type { Order } from "@/types";
+import {
+  OrdersFilterBar,
+  EMPTY_ORDERS_FILTERS,
+  type OrdersFilters,
+} from "@/components/orders/OrdersFilterBar";
+import type { Client, Order } from "@/types";
 import { ExternalLink, FileDown, LayoutGrid, List, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
+function filtersFromUrl(): OrdersFilters {
+  if (typeof window === "undefined") return EMPTY_ORDERS_FILTERS;
+  const params = new URLSearchParams(window.location.search);
+  const clientId = params.get("clientId");
+  const statusIds = params.get("statusIds");
+  const from = params.get("deliveryFrom");
+  const to = params.get("deliveryTo");
+  const onlyOverdue = params.get("onlyOverdue");
+  return {
+    clientId: clientId ? Number(clientId) : undefined,
+    statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
+    dateRange:
+      from || to
+        ? { from: from ? new Date(from) : undefined, to: to ? new Date(to) : undefined }
+        : undefined,
+    onlyOverdue: onlyOverdue === "1",
+  };
+}
+
+function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.clientId !== undefined) params.set("clientId", String(filters.clientId));
+  if (filters.statusIds.length > 0) params.set("statusIds", filters.statusIds.join(","));
+  if (filters.dateRange?.from) params.set("deliveryFrom", filters.dateRange.from.toISOString().slice(0, 10));
+  if (filters.dateRange?.to) params.set("deliveryTo", filters.dateRange.to.toISOString().slice(0, 10));
+  if (filters.onlyOverdue) params.set("onlyOverdue", "1");
+  return params;
+}
 
 const VIEW_MODE_KEY = "orders-view-mode";
 type ViewMode = "list" | "grid";
@@ -49,11 +86,29 @@ type ViewMode = "list" | "grid";
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();
   const { data: orders, isPending, isError, refetch } = useOrders();
+  const { data: clients } = useEntityList<Client>("clients");
   const { changeStatus, changingOrderId } = useChangeOrderStatus();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
+
+  useEffect(() => {
+    setFilters(filtersFromUrl());
+  }, []);
+
+  const updateFilters = useCallback((next: OrdersFilters) => {
+    setFilters(next);
+    try {
+      const params = filtersToUrlParams(next);
+      const query = params.toString();
+      const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+      window.history.replaceState(null, "", url);
+    } catch {
+      // Si no se puede tocar la URL (SSR, etc.), el filtro sigue funcionando en memoria.
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -78,9 +133,33 @@ const OrdersPage = () => {
 
   // El backend (GET /orders) ya devuelve, para roles operativos, sólo los pedidos
   // que ese usuario debe ver (según su rol, la config. de visibilidad por área y si
-  // el pedido está asignado a él). El frontend ya no filtra el resultado.
-  const visibleOrders = orders;
+  // el pedido está asignado a él). El resto de los filtros (cliente, estatus, fecha
+  // de entrega, caducados) se aplican acá encima, sobre ese mismo array.
   const isOperationalRole = !canManageOperations;
+
+  const visibleOrders = useMemo(() => {
+    return orders.filter((order) => {
+      if (filters.clientId !== undefined && order.clientId !== filters.clientId) {
+        return false;
+      }
+      if (filters.statusIds.length > 0 && !filters.statusIds.includes(order.statusId)) {
+        return false;
+      }
+      if (filters.dateRange?.from) {
+        if (!order.deliveryDate) return false;
+        const delivery = new Date(order.deliveryDate).getTime();
+        const from = filters.dateRange.from.getTime();
+        const to = (filters.dateRange.to ?? filters.dateRange.from).getTime() + 86_400_000 - 1;
+        if (delivery < from || delivery > to) return false;
+      }
+      if (filters.onlyOverdue) {
+        const overdue = isOverdue(order.creationDate, order.deliveryDate);
+        const delivered = order.statusId === 5; // "entregado"
+        if (!overdue || delivered) return false;
+      }
+      return true;
+    });
+  }, [orders, filters]);
 
   const handleExport = () => {
     if (visibleOrders.length === 0) {
@@ -251,11 +330,13 @@ const OrdersPage = () => {
 
           {canManageOperations && (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nueva Orden
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
           )}
         </div>
       </div>
+
+      <OrdersFilterBar clients={clients} filters={filters} onChange={updateFilters} />
 
       {loading ? (
         viewMode === "list" ? (
@@ -268,13 +349,15 @@ const OrdersPage = () => {
       ) : visibleOrders.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           <p>
-            {isOperationalRole
+            {orders.length > 0
+              ? "Ningún pedido coincide con los filtros aplicados."
+              : isOperationalRole
               ? "No tenés pedidos pendientes en este momento. Buen trabajo."
               : "Todavía no hay pedidos, creá el primero."}
           </p>
           {canManageOperations && (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nueva Orden
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
           )}
         </div>

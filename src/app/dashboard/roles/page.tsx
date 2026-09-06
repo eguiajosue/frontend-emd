@@ -1,14 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { SimpleNamedEntityPage } from "@/components/crud/SimpleNamedEntityPage";
-
-const RolesPage = () => (
-  <SimpleNamedEntityPage
-    entity="roles"
-    title="Lista de Roles"
-    createLabel="Nuevo Rol"
-    allowedRoles={["admin"]}
-  />
-);
-
-export default RolesPage;
+// Reemplazada por la pantalla unificada de Usuarios (pestañas Usuarios/Roles).
+export default function RolesRedirect() {
+  redirect("/dashboard/usuarios?tab=roles");
+}

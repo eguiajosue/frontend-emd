@@ -45,6 +45,7 @@ interface SimpleNamedEntityPageProps {
   title: string;
   createLabel: string;
   allowedRoles: string[];
+  hideTitle?: boolean;
 }
 
 export function SimpleNamedEntityPage({
@@ -52,6 +53,7 @@ export function SimpleNamedEntityPage({
   title,
   createLabel,
   allowedRoles,
+  hideTitle,
 }: SimpleNamedEntityPageProps) {
   const { roles, isAdmin } = usePermissions();
   const canEdit = isAdmin || roles.some((r) => allowedRoles.includes(r));
@@ -66,6 +68,7 @@ export function SimpleNamedEntityPage({
       schema={schema}
       columns={columns}
       initialValues={(editing) => (editing ? { name: editing.name } : {})}
+      hideTitle={hideTitle}
     />
   );
 }
