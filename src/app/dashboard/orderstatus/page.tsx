@@ -4,14 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import OrderStatusTable from './components/OrderStatusTable'
 import { useSession } from 'next-auth/react';
 import Title from '@/components/Title';
-
-const statusMap: { [key: number]: string } = {
-  1: "pendiente",
-  2: "en pruebas",
-  3: "en proceso",
-  4: "terminado",
-  5: "entregado",
-}
+import { statusLabel } from '@/lib/orderStatus';
 
 const OrderStatus = () => {
   const { data: session } = useSession();
@@ -38,7 +31,7 @@ const OrderStatus = () => {
       // Mapear cada order para agregar el campo de status
       const mappedData = data.map((order: { statusId: number }) => ({
         ...order,
-        status: statusMap[order.statusId] || "DESCONOCIDO" // Asigna el nombre del estado o "DESCONOCIDO"
+        status: statusLabel(order.statusId, "DESCONOCIDO") // Nombre del estado (incluye los retirados del flujo)
       }));
 
       setData(mappedData);

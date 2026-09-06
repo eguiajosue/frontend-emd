@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { statusLabel, statusOptions } from "@/lib/orderStatus";
 import { useCrud } from "@/hooks/useCrud";
 
 interface OrderProduct {
@@ -216,7 +216,7 @@ const OrderDetailPage = () => {
               {new Date(order.creationDate).toLocaleDateString("es-MX", dateFormat)}
             </p>
             <p>
-              <b>Estado actual:</b> {(statusMap[order.statusId] || "desconocido").toUpperCase()}
+              <b>Estado actual:</b> {statusLabel(order.statusId).toUpperCase()}
             </p>
 
             <div className="space-y-1">
@@ -279,8 +279,8 @@ const OrderDetailPage = () => {
                   {histories.map((h) => (
                     <li key={h.id} className="border-l-2 pl-3">
                       <span className="font-medium">
-                        {(statusMap[h.previousStatusId] || "?").toUpperCase()} →{" "}
-                        {(statusMap[h.newStatusId] || "?").toUpperCase()}
+                        {statusLabel(h.previousStatusId, "?").toUpperCase()} →{" "}
+                        {statusLabel(h.newStatusId, "?").toUpperCase()}
                       </span>
                       <br />
                       <span className="text-muted-foreground">

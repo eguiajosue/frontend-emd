@@ -1,6 +1,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import React from 'react'
 import OrderCard from './OrderCard'
+import { statusMap } from '@/lib/orderStatus'
 
 interface Order {
   id: number
@@ -13,7 +14,8 @@ interface Order {
 }
 
 const OrderStatusTable = ({ data }: { data: Order[] }) => {
-  const statuses = ["pendiente", "en pruebas", "en proceso", "terminado", "entregado"]
+  // Columnas del tablero: sólo estados vigentes (ver src/lib/orderStatus.ts).
+  const statuses = Object.values(statusMap)
 
   return (
     <Table>
