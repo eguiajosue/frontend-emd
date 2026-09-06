@@ -14,7 +14,7 @@ import { ErrorState } from "@/components/feedback/states";
 import { statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { formatDateTime, getAssignedUserName, getClientName, getUserName } from "@/lib/format";
+import { formatDateTime, getAssignedUserName, getOrderClientName, getUserName } from "@/lib/format";
 import { FileText, UserRound } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
@@ -118,7 +118,7 @@ const OrderDetailPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p>
-              <b>Cliente:</b> {getClientName(order.client)}
+              <b>Cliente:</b> {getOrderClientName(order)}
             </p>
             <p>
               <b>Creado por:</b> {getUserName(order.user)}
