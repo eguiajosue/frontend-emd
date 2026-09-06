@@ -26,7 +26,7 @@ export default function PerformanceScoreChart({ data }: PerformanceScoreChartPro
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" />
-        <YAxis domain={[0, 100]} />
+        <YAxis domain={["auto", "auto"]} />
         <Tooltip />
         <Bar dataKey="score" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
       </BarChart>

@@ -1,13 +1,15 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Cortes de score fijos (0-100 asumido): son un criterio simple de aplicar en
- * el cliente sin depender de percentiles (que requerirían recalcular con cada
- * fetch y no serían estables entre pantallas). Ajustar acá si el backend
- * documenta una escala distinta.
+ * El backend calcula `score` como el promedio de dos z-scores (desempeño
+ * relativo al resto de empleados/áreas del mismo período), NO una escala
+ * 0-100 — un z-score de 0 es "en el promedio", y valores típicos rondan
+ * entre -2 y +2. Los cortes reflejan eso: por encima de +0.3 desvíos
+ * estándar del promedio es buen desempeño, por debajo de -0.3 necesita
+ * atención, y en el medio es desempeño típico.
  */
-const HIGH_SCORE_THRESHOLD = 75;
-const MID_SCORE_THRESHOLD = 50;
+const HIGH_SCORE_THRESHOLD = 0.3;
+const MID_SCORE_THRESHOLD = -0.3;
 
 export function scoreTier(score: number | null): "high" | "mid" | "low" | "unknown" {
   if (score == null) return "unknown";
@@ -40,7 +42,7 @@ export function ScoreBadge({ score }: { score: number | null }) {
       )}
     >
       {TIER_LABELS[tier]}
-      {score != null && <span className="font-semibold">{Math.round(score)}</span>}
+      {score != null && <span className="font-semibold">{score.toFixed(2)}</span>}
     </span>
   );
 }
