@@ -68,8 +68,14 @@
     --glass-bg-medium: 255 255 255;
     --glass-border: 255 255 255;
     --glass-blur: 20px;
-    --glass-saturate: 180%;
+    --glass-saturate: 140%;
     --glass-edge-opacity: 0.5;
+    /* Opacidad de fondo del glass en claro: más alta que en oscuro para que
+       lea "blanco" en vez de gris (blend de fondo translúcido + fondo de
+       página produce gris con opacidades bajas sobre blanco). */
+    --glass-opacity-heavy: 0.92;
+    --glass-opacity-medium: 0.85;
+    --glass-opacity-light: 0.7;
   }
   .dark {
     --background: 330 22% 6%;
@@ -114,6 +120,9 @@
     --glass-blur: 24px;
     --glass-saturate: 160%;
     --glass-edge-opacity: 0.09;
+    --glass-opacity-heavy: 0.82;
+    --glass-opacity-medium: 0.62;
+    --glass-opacity-light: 0.45;
   }
 
   /*
@@ -244,19 +253,19 @@
  * glass debe usar un peso más pesado (más opaco) que el padre.
  */
 .glass-heavy {
-  background-color: rgb(var(--glass-bg-heavy) / 0.82);
+  background-color: rgb(var(--glass-bg-heavy) / var(--glass-opacity-heavy));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
 }
 .glass-medium {
-  background-color: rgb(var(--glass-bg-medium) / 0.62);
+  background-color: rgb(var(--glass-bg-medium) / var(--glass-opacity-medium));
   backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
   border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
 }
 .glass-light {
-  background-color: rgb(var(--glass-bg-light) / 0.45);
+  background-color: rgb(var(--glass-bg-light) / var(--glass-opacity-light));
   backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
   border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
@@ -264,7 +273,7 @@
 /* Un glass anidado dentro de otro glass sube de peso para no perder legibilidad. */
 .glass-heavy .glass-medium,
 .glass-medium .glass-medium {
-  background-color: rgb(var(--glass-bg-heavy) / 0.9);
+  background-color: rgb(var(--glass-bg-heavy) / var(--glass-opacity-heavy));
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
