@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Check, Clock, Laptop, Moon, Sun } from "lucide-react";
+import { Check, Clock, Laptop, Moon, Sun, Volume2, VolumeX } from "lucide-react";
 import Title from "@/components/Title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +16,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
 import { useDensity } from "@/hooks/useDensity";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useSoundPreference } from "@/hooks/useSoundPreference";
+import { playSuccessSound } from "@/lib/sound";
 import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
@@ -251,6 +253,42 @@ function DensitySection() {
   );
 }
 
+function SoundSection() {
+  const { soundEnabled, setSoundEnabled, mounted } = useSoundPreference();
+
+  const handleToggle = (checked: boolean) => {
+    setSoundEnabled(checked);
+    // Confirmación audible inmediata sólo cuando se está activando: es la
+    // forma más directa de mostrar causalidad ("esto es lo que vas a oír").
+    if (checked) playSuccessSound();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sonido</CardTitle>
+        <CardDescription>
+          Un tono breve al llegar un pedido nuevo o asignado a vos, y otro más
+          sutil al guardar cambios. Se puede silenciar en cualquier momento.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm font-medium">
+            {mounted && soundEnabled ? (
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <VolumeX className="h-4 w-4 text-muted-foreground" />
+            )}
+            Sonido de notificaciones
+          </span>
+          <Switch checked={mounted && soundEnabled} onCheckedChange={handleToggle} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function AreaVisibilitySection() {
   const { data: rows, isPending, isError } = useEntityList<AreaVisibility>("areaVisibility");
   const { update } = useEntityMutations<AreaVisibility, { generalViewEnabled: boolean }>(
@@ -264,6 +302,7 @@ function AreaVisibilitySection() {
     setSavingRole(role);
     try {
       await update(role, { generalViewEnabled: next });
+      playSuccessSound();
       toast.success(
         `Visibilidad de "${OPERATIONAL_ROLE_LABELS.find((r) => r.role === role)?.label ?? role}" actualizada.`
       );
@@ -336,6 +375,7 @@ function DeliveredRetentionSection() {
     }
     try {
       await update({ deliveredRetentionHours: hours });
+      playSuccessSound();
       toast.success("Retención de pedidos entregados actualizada.");
     } catch (error) {
       toast.error(getErrorMessage(error, "No se pudo actualizar la configuración."));
@@ -397,6 +437,7 @@ export default function ConfiguracionPage() {
       <div className="grid gap-6 lg:max-w-2xl">
         <AppearanceSection />
         <DensitySection />
+        <SoundSection />
         <LanguageSection />
         {canManageAreaVisibility && <AreaVisibilitySection />}
         {isAdmin && <DeliveredRetentionSection />}

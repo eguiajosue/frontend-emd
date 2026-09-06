@@ -11,6 +11,7 @@ import {
   History,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -56,6 +57,15 @@ const OPERATIONAL_MENU = [
   },
 ];
 
+/** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
+function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Buenas noches";
+  if (hour < 12) return "Buenos días";
+  if (hour < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 function ConfiguracionLink({ pathname }: { pathname: string }) {
   const active = pathname === "/dashboard/configuracion";
   return (
@@ -77,6 +87,13 @@ export function AppSidebar() {
   const pathname = usePathname();
   const userRoles = session?.user?.roles || [];
   const operationalOnly = isOperationalOnly(userRoles);
+
+  // El saludo depende de la hora local del navegador; se calcula sólo tras
+  // montar para evitar un mismatch de hidratación entre servidor y cliente
+  // (en el server siempre cae en "Buenas noches" por defecto, invisible al
+  // usuario porque el mount es prácticamente instantáneo).
+  const [greeting, setGreeting] = useState("Bienvenid@");
+  useEffect(() => setGreeting(getTimeBasedGreeting()), []);
 
   const menuItems = [
     {
@@ -176,7 +193,7 @@ export function AppSidebar() {
       <SidebarContent data-tour="sidebar-nav">
         <SidebarHeader className="p-4">
           <h2 className="text-lg font-semibold tracking-tight">
-            Bienvenid@,{" "}
+            {greeting},{" "}
             <span className="text-primary">{session?.user?.first_name}</span>
           </h2>
         </SidebarHeader>
@@ -230,11 +247,18 @@ export function AppSidebar() {
         <ConfiguracionLink pathname={pathname} />
         <BugReportDialog />
         <div className="flex items-center gap-3 mb-4 mt-2">
-          <Avatar className="ring-2 ring-primary/20">
-            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {session?.user?.username?.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative shrink-0">
+            <Avatar className="ring-2 ring-primary/20">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {session?.user?.username?.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {/* Punto de estado "en línea": sesión activa ahora mismo. */}
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar animate-pulse motion-reduce:animate-none"
+            />
+          </div>
           <div className="flex flex-col min-w-0">
             <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
             <div className="flex justify-between items-center w-full gap-2">
