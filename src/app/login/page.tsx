@@ -14,6 +14,7 @@ const LoginForm = () => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [slowServer, setSlowServer] = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -23,6 +24,11 @@ const LoginForm = () => {
     event.preventDefault();
     setErrors([]);
     setSubmitting(true);
+    setSlowServer(false);
+
+    // El backend gratuito puede tardar hasta ~50s en "despertar" tras estar
+    // inactivo. Avisamos al usuario en vez de dejar el botón sin feedback.
+    const slowServerTimer = setTimeout(() => setSlowServer(true), 4000);
 
     try {
       const responseNextAuth = await signIn("credentials", {
@@ -38,7 +44,9 @@ const LoginForm = () => {
 
       router.push("/dashboard");
     } finally {
+      clearTimeout(slowServerTimer);
       setSubmitting(false);
+      setSlowServer(false);
     }
   };
 
@@ -122,6 +130,17 @@ const LoginForm = () => {
                   ))}
                 </ul>
               </motion.div>
+            )}
+
+            {slowServer && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm text-muted-foreground md:text-neutral-300 text-center"
+              >
+                El servidor estaba inactivo y está despertando, puede tardar
+                unos segundos más...
+              </motion.p>
             )}
 
             <Button
