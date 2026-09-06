@@ -3,8 +3,8 @@
 import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate, getOrderClientName } from "@/lib/format";
-import { Paperclip } from "lucide-react";
+import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { Paperclip, UserRound } from "lucide-react";
 import type { Order } from "@/types";
 
 interface OrderCardProps {
@@ -19,6 +19,7 @@ interface OrderCardProps {
  * columnas aunque su pedido no haya cambiado.
  */
 function OrderCardImpl({ order, onOpen }: OrderCardProps) {
+  const assignedName = getAssignedUserName(order.assignedUser);
   return (
     <Card
       role="button"
@@ -41,9 +42,20 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
         <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
           <span>Entrega: {formatDate(order.deliveryDate)}</span>
           {order.hasAuthorizationFile && (
-            <Paperclip className="h-3.5 w-3.5" aria-label="Tiene hoja de autorización" />
+            <span title="Tiene hoja de autorización adjunta">
+              <Paperclip className="h-3.5 w-3.5" aria-label="Tiene hoja de autorización" />
+            </span>
           )}
         </div>
+        {assignedName && (
+          <div
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title={`Asignado a ${assignedName}`}
+          >
+            <UserRound className="h-3.5 w-3.5" />
+            <span className="truncate">{assignedName}</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

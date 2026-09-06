@@ -14,8 +14,8 @@ import { ErrorState } from "@/components/feedback/states";
 import { statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { formatDateTime, getClientName, getUserName } from "@/lib/format";
-import { FileText } from "lucide-react";
+import { formatDateTime, getAssignedUserName, getClientName, getUserName } from "@/lib/format";
+import { FileText, UserRound } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
 import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
@@ -128,6 +128,10 @@ const OrderDetailPage = () => {
             </p>
             <p className="flex items-center gap-2">
               <b>Estado actual:</b> <StatusBadge statusId={order.statusId} />
+            </p>
+            <p className="flex items-center gap-1">
+              <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+              <b>Asignado a:</b> {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
             </p>
 
             <div className="space-y-1">

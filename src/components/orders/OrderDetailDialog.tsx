@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -12,9 +13,30 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { formatDate, formatDateTime, getClientName, getUserName } from "@/lib/format";
-import { useOrderHistory, useOrder } from "@/hooks/useOrders";
-import { FileText, ZoomIn } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  formatDate,
+  formatDateTime,
+  getAssignedUserName,
+  getClientName,
+  getUserName,
+} from "@/lib/format";
+import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrders";
+import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { usePermissions } from "@/hooks/usePermissions";
+import { statusOptions } from "@/lib/orderStatus";
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { FileText, UserRound, ZoomIn } from "lucide-react";
+import type { Order, UpdateOrderPayload, User } from "@/types";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -35,7 +57,52 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     enabled: open,
   });
   const { histories } = useOrderHistory(orderId ?? -1);
+  const { data: users } = useEntityList<User>("users", { enabled: open });
+  const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
+    "orders"
+  );
+  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+  const { roles, isAdmin } = usePermissions();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // recepcion/admin pueden editar los campos generales del pedido desde acá mismo;
+  // los roles operativos sólo pueden avanzar el estado (si el pedido está en su etapa).
+  const canEdit = isAdmin || roles.includes("recepcion");
+  const myStageIds = statusIdsForRoles(roles);
+  const canChangeStatus = canEdit || (!!order && myStageIds.includes(order.statusId));
+
+  const [description, setDescription] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
+  const [statusId, setStatusId] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!order) return;
+    setDescription(order.description ?? "");
+    setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
+    setAssignedUserId(order.assignedUserId ?? undefined);
+    setStatusId(order.statusId);
+  }, [order]);
+
+  const handleSaveDetails = async () => {
+    if (!order) return;
+    try {
+      await update(order.id, {
+        description,
+        deliveryDate: deliveryDate || undefined,
+        assignedUserId: assignedUserId ?? null,
+      });
+      toast.success("Pedido actualizado correctamente");
+    } catch {
+      // El toast de error lo dispara el manejo global de mutaciones.
+    }
+  };
+
+  const handleStatusChange = async (nextStatusId: number) => {
+    if (!order || nextStatusId === order.statusId) return;
+    setStatusId(nextStatusId);
+    await changeStatus(order, nextStatusId);
+  };
 
   return (
     <>
@@ -74,18 +141,93 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       <b>Cliente:</b> {getClientName(order.client)}
                     </p>
                     <p>
-                      <b>Descripción:</b> {order.description}
-                    </p>
-                    <p>
                       <b>Creado por:</b> {getUserName(order.user)}
                     </p>
                     <p>
                       <b>Fecha de creación:</b> {formatDateTime(order.creationDate)}
                     </p>
+                    <p className="flex items-center gap-1">
+                      <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+                      <b>Asignado a:</b>{" "}
+                      {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
+                    </p>
+                  </div>
+
+                  {canEdit ? (
+                    <div className="space-y-3 rounded-md border p-3">
+                      <div className="space-y-1">
+                        <Label>Descripción</Label>
+                        <Textarea
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label>Fecha de entrega</Label>
+                          <Input
+                            type="date"
+                            value={deliveryDate}
+                            onChange={(e) => setDeliveryDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Asignar a</Label>
+                          <select
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                            value={assignedUserId ?? ""}
+                            onChange={(e) =>
+                              setAssignedUserId(
+                                e.target.value ? Number(e.target.value) : undefined
+                              )
+                            }
+                          >
+                            <option value="">Sin asignar</option>
+                            {users.map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {[u.firstName, u.lastName].filter(Boolean).join(" ") ||
+                                  u.username}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={handleSaveDetails} disabled={isSavingDetails}>
+                        {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p>
+                      <b>Descripción:</b> {order.description}
+                    </p>
+                  )}
+
+                  {!canEdit && (
                     <p>
                       <b>Fecha de entrega:</b> {formatDate(order.deliveryDate)}
                     </p>
-                  </div>
+                  )}
+
+                  {canChangeStatus && (
+                    <div className="space-y-1">
+                      <Label>Avanzar estado</Label>
+                      <Select
+                        value={String(statusId ?? order.statusId)}
+                        onValueChange={(value) => handleStatusChange(Number(value))}
+                      >
+                        <SelectTrigger className="w-[200px]" disabled={isChangingStatus}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {statusOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={String(opt.value)}>
+                              {opt.label.toUpperCase()}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>

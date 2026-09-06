@@ -1,40 +1,104 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import Title from "@/components/Title";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { Plus, FileDown } from "lucide-react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ColumnDef } from "@tanstack/react-table";
+import {
+  CardsSkeleton,
   EmptyState,
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useEntityList } from "@/hooks/useEntity";
+import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
-import { statusMap } from "@/lib/orderStatus";
-import { formatDate, getOrderClientName } from "@/lib/format";
+import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { StatusBadge } from "@/components/StatusBadge";
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
 import type { Order } from "@/types";
-import { orderColumns } from "./components/columns";
+import { ExternalLink, FileDown, LayoutGrid, List, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
+const VIEW_MODE_KEY = "orders-view-mode";
+type ViewMode = "list" | "grid";
+
+/**
+ * Pantalla única de "Pedidos" para toda la app (reemplaza a las antiguas
+ * `/dashboard/orders` (tabla + export), `/dashboard/orders/new` (alta aparte)
+ * y `/dashboard/estatus-pedidos` (kanban de roles operativos)).
+ *
+ * El comportamiento cambia sólo por rol vía filtrado de datos:
+ *  - admin/superuser/recepcion ven TODOS los pedidos y pueden crear/editar.
+ *  - roles operativos (dtf/bordado/diseno/laser/taller/impresiones) ven sólo
+ *    los pedidos en su(s) etapa(s) (misma lógica que tenía "Estatus de Pedidos").
+ * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
+ * cambio de estado, hoja de autorización) es la misma pantalla para todos.
+ */
 const OrdersPage = () => {
-  const { canManageOperations } = usePermissions();
-  const { data, isPending, isError, refetch } = useEntityList<Order>("orders");
+  const { roles, canManageOperations, isSessionLoading } = usePermissions();
+  const { data: orders, isPending, isError, refetch } = useOrders();
+  const { changeStatus, changingOrderId } = useChangeOrderStatus();
+
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(VIEW_MODE_KEY);
+      if (stored === "list" || stored === "grid") setViewMode(stored);
+    } catch {
+      // Sin acceso a localStorage (modo privado, etc.): se queda en "list".
+    }
+  }, []);
+
+  const updateViewMode = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      // No pasa nada si no se puede persistir.
+    }
+  }, []);
+
+  const openDetail = useCallback((id: number) => setOpenOrderId(id), []);
+  const closeDetail = useCallback(() => setOpenOrderId(null), []);
+
+  // Sólo los roles operativos ven un subconjunto: admin/superuser/recepcion ven todo.
+  const myStageIds = useMemo(() => statusIdsForRoles(roles), [roles]);
+  const isFilteredByStage = !canManageOperations && myStageIds.length > 0;
+
+  const visibleOrders = useMemo(() => {
+    if (!isFilteredByStage) return orders;
+    return orders.filter((o) => myStageIds.includes(o.statusId));
+  }, [orders, isFilteredByStage, myStageIds]);
 
   const handleExport = () => {
-    if (data.length === 0) {
+    if (visibleOrders.length === 0) {
       toast.info("No hay pedidos para exportar");
       return;
     }
 
-    const rows = data.map((order) => ({
+    const rows = visibleOrders.map((order) => ({
       ID: order.id,
       Cliente: getOrderClientName(order),
       Descripción: order.description,
       Estado: (statusMap[order.statusId] || "desconocido").toUpperCase(),
+      "Asignado a": getAssignedUserName(order.assignedUser) ?? "Sin asignar",
       "Fecha de Creación": formatDate(order.creationDate),
       "Fecha de Entrega": formatDate(order.deliveryDate),
     }));
@@ -47,39 +111,224 @@ const OrdersPage = () => {
     XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
   };
 
-  return (
-    <div className="p-0 w-full">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Title title="Lista de Pedidos" />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={isPending || data.length === 0}
+  const columns: ColumnDef<Order>[] = useMemo(
+    () => [
+      { id: "id", header: "Pedido", cell: ({ row }) => `#${row.original.id}` },
+      {
+        id: "client",
+        header: "Cliente",
+        cell: ({ row }) => getOrderClientName(row.original),
+      },
+      { accessorKey: "description", header: "Descripción" },
+      {
+        id: "status",
+        header: "Estado actual",
+        cell: ({ row }) => <StatusBadge statusId={row.original.statusId} />,
+      },
+      {
+        id: "assignedUser",
+        header: "Asignado a",
+        cell: ({ row }) => getAssignedUserName(row.original.assignedUser) ?? "-",
+      },
+      {
+        id: "deliveryDate",
+        header: "Fecha de Entrega",
+        cell: ({ row }) => formatDate(row.original.deliveryDate),
+      },
+      {
+        id: "changeStatus",
+        header: "Avanzar estado",
+        cell: ({ row }) => (
+          <Select
+            value={String(row.original.statusId)}
+            onValueChange={(value) => {
+              const next = Number(value);
+              if (next !== row.original.statusId) {
+                changeStatus(row.original, next);
+              }
+            }}
           >
-            <FileDown className="mr-2 h-4 w-4" /> Exportar a Excel
+            <SelectTrigger
+              className="w-[170px]"
+              onClick={(e) => e.stopPropagation()}
+              disabled={changingOrderId === row.original.id}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((opt) => (
+                <SelectItem key={opt.value} value={String(opt.value)}>
+                  {opt.label.toUpperCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              openDetail(row.original.id);
+            }}
+            title="Ver detalle completo"
+          >
+            <ExternalLink className="h-4 w-4" />
           </Button>
+        ),
+      },
+    ],
+    [changeStatus, changingOrderId, openDetail]
+  );
+
+  // Columnas de la vista cuadrícula: todas las etapas para admin/recepcion,
+  // sólo la(s) del rol para roles operativos.
+  const gridColumns = useMemo(() => {
+    const stageIds = isFilteredByStage
+      ? myStageIds
+      : Object.keys(statusMap).map(Number);
+    return stageIds
+      .slice()
+      .sort((a, b) => a - b)
+      .map((statusId) => ({
+        statusId,
+        label: statusMap[statusId] ?? `Estado ${statusId}`,
+        orders: visibleOrders.filter((o) => o.statusId === statusId),
+      }));
+  }, [isFilteredByStage, myStageIds, visibleOrders]);
+
+  const loading = isPending || isSessionLoading;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Title title="Pedidos" />
+          <p className="text-muted-foreground">
+            {isFilteredByStage ? (
+              <>
+                Pedidos en la(s) etapa(s) correspondientes a tu(s) rol(es):{" "}
+                <span className="font-medium">
+                  {roles.join(", ") || "sin rol asignado"}
+                </span>
+              </>
+            ) : (
+              "Todos los pedidos de la empresa."
+            )}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-md border p-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "list" ? "default" : "ghost"}
+              className="gap-1.5"
+              onClick={() => updateViewMode("list")}
+            >
+              <List className="h-4 w-4" /> Lista
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              className="gap-1.5"
+              onClick={() => updateViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" /> Cuadrícula
+            </Button>
+          </div>
+
           {canManageOperations && (
-            <Button asChild>
-              <Link href="/dashboard/orders/new">
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
-              </Link>
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={loading || visibleOrders.length === 0}
+            >
+              <FileDown className="mr-2 h-4 w-4" /> Exportar a Excel
+            </Button>
+          )}
+
+          {canManageOperations && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Nueva Orden
             </Button>
           )}
         </div>
       </div>
 
-      {isPending ? (
-        <TableSkeleton rows={4} />
+      {loading ? (
+        viewMode === "list" ? (
+          <TableSkeleton rows={5} />
+        ) : (
+          <CardsSkeleton count={6} />
+        )
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
-      ) : data.length === 0 ? (
-        <EmptyState message="No hay pedidos aún." />
+      ) : isFilteredByStage && myStageIds.length === 0 ? (
+        <EmptyState message="Tu rol no tiene una etapa de pedido asignada. Contacta a un administrador." />
+      ) : visibleOrders.length === 0 ? (
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+          <p>
+            {isFilteredByStage
+              ? "No tenés pedidos pendientes en este momento. Buen trabajo."
+              : "Todavía no hay pedidos, creá el primero."}
+          </p>
+          {canManageOperations && !isFilteredByStage && (
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Nueva Orden
+            </Button>
+          )}
+        </div>
+      ) : viewMode === "list" ? (
+        <div className="w-full overflow-auto">
+          <DataTable columns={columns} data={visibleOrders} onRowClick={(o) => openDetail(o.id)} />
+        </div>
       ) : (
-        <div className="w-full overflow-auto mt-4">
-          <DataTable columns={orderColumns} data={data} />
+        <div
+          className={cn(
+            "grid gap-4",
+            gridColumns.length <= 1 && "sm:grid-cols-1",
+            gridColumns.length === 2 && "sm:grid-cols-2",
+            gridColumns.length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          )}
+        >
+          {gridColumns.map((col) => (
+            <div key={col.statusId} className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  {col.label}
+                </h3>
+                <span className="text-xs text-muted-foreground">{col.orders.length}</span>
+              </div>
+              <div className="space-y-3">
+                {col.orders.length === 0 ? (
+                  <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                    Sin pedidos
+                  </p>
+                ) : (
+                  col.orders.map((order) => (
+                    <OrderCard key={order.id} order={order} onOpen={openDetail} />
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+      <OrderDetailDialog orderId={openOrderId} onClose={closeDetail} />
+      <CreateOrderDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(order) => openDetail(order.id)}
+      />
     </div>
   );
 };

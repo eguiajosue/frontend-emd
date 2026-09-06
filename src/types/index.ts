@@ -36,7 +36,7 @@ export interface Company extends BaseEntity {
 export interface Client extends BaseEntity {
   companyId?: number | null;
   first_name: string;
-  last_name: string;
+  last_name?: string | null;
   phone?: string | null;
   email?: string | null;
   address?: string | null;
@@ -48,6 +48,13 @@ export interface User extends BaseEntity {
   lastName?: string | null;
   username: string;
   roles?: Role[];
+}
+
+/** Versión resumida de `User` que devuelve el backend embebida en `order.assignedUser`. */
+export interface AssignedUser extends BaseEntity {
+  firstName: string;
+  lastName?: string | null;
+  username: string;
 }
 
 export interface Product extends BaseEntity {
@@ -86,12 +93,15 @@ export interface AuthorizationFileInput {
 export interface Order extends BaseEntity {
   clientId?: number;
   userId?: number;
+  /** Usuario al que se le asignó el pedido (distinto de `user`, quien lo creó). */
+  assignedUserId?: number | null;
   statusId: number;
   description: string;
   creationDate: string;
   deliveryDate?: string | null;
   client?: Client | null;
   user?: User | null;
+  assignedUser?: AssignedUser | null;
   status?: Status | null;
   orderProducts?: OrderProduct[];
   /** Presente en el listado (GET /orders); el archivo completo NO viaja ahí. */
@@ -114,6 +124,7 @@ export interface OrderHistory extends BaseEntity {
 export interface CreateOrderPayload {
   clientId: number;
   userId: number;
+  assignedUserId?: number;
   statusId: number;
   description: string;
   deliveryDate?: string;
@@ -125,7 +136,18 @@ export interface UpdateOrderPayload {
   description?: string;
   deliveryDate?: string;
   statusId?: number;
+  assignedUserId?: number | null;
   authorizationFile?: AuthorizationFileInput;
+}
+
+/** Alta rápida de cliente (sólo `first_name` es obligatorio). */
+export interface CreateClientPayload {
+  first_name: string;
+  last_name?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  companyId?: number;
 }
 
 export interface CreateOrderHistoryPayload {

@@ -26,11 +26,11 @@ const Dashboard = () => {
   const router = useRouter();
   const { session, roles, isAdmin: admin, isSessionLoading } = usePermissions();
 
-  // Los roles operativos (no admin/superuser) aterrizan en "Estatus de Pedidos" en vez
-  // del dashboard de métricas generales.
+  // Los roles no admin/superuser (recepción y roles operativos) aterrizan directo
+  // en la pantalla de Pedidos en vez del dashboard de métricas generales.
   useEffect(() => {
     if (!isSessionLoading && roles.length > 0 && !admin) {
-      router.replace("/dashboard/estatus-pedidos");
+      router.replace("/dashboard/orders");
     }
   }, [isSessionLoading, roles, admin, router]);
 

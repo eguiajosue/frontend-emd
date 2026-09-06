@@ -11,7 +11,7 @@ import { getClientColumns } from "./components/columns";
 
 const schema = z.object({
   first_name: z.string().min(1, "El nombre es requerido"),
-  last_name: z.string().min(1, "El apellido es requerido"),
+  last_name: z.string().optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   address: z.string().optional().or(z.literal("")),

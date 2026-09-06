@@ -1,6 +1,6 @@
 /** Helpers de formato compartidos (fechas y nombres de entidades). */
 
-import type { Client, Order, User } from "@/types";
+import type { AssignedUser, Client, Order, User } from "@/types";
 
 export const DATE_LOCALE = "es-MX";
 
@@ -44,4 +44,11 @@ export function getUserName(user?: User | null): string {
 
 export function getOrderClientName(order: Order): string {
   return getClientName(order.client);
+}
+
+/** Nombre del usuario asignado a un pedido, o `null` si no tiene. */
+export function getAssignedUserName(user?: AssignedUser | null): string | null {
+  if (!user) return null;
+  const full = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+  return full || user.username || null;
 }

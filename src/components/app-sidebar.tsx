@@ -2,12 +2,10 @@
 
 import {
   Package,
-  PackagePlus,
   UserRound,
   Building,
   LogOut,
   LayoutDashboard,
-  ClipboardList,
   HelpCircle,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -36,9 +34,9 @@ const OPERATIONAL_MENU = [
     groupLabel: "Producción",
     items: [
       {
-        title: "Estatus de Pedidos",
-        url: "/dashboard/estatus-pedidos",
-        icon: ClipboardList,
+        title: "Pedidos",
+        url: "/dashboard/orders",
+        icon: Package,
       },
     ],
   },
@@ -70,11 +68,18 @@ export function AppSidebar() {
           icon: LayoutDashboard,
           roles: ["admin", "superuser"],
         },
+      ],
+    },
+    {
+      groupLabel: "Órdenes",
+      items: [
         {
-          title: "Estatus de Pedidos",
-          url: "/dashboard/estatus-pedidos",
-          icon: ClipboardList,
+          title: "Pedidos",
+          url: "/dashboard/orders",
+          icon: Package,
           roles: [
+            "admin",
+            "superuser",
             "recepcion",
             "taller",
             "dtf",
@@ -83,29 +88,6 @@ export function AppSidebar() {
             "laser",
             "impresiones",
           ],
-        },
-      ],
-    },
-    {
-      groupLabel: "Órdenes",
-      items: [
-        {
-          title: "Tablero de Estatus",
-          url: "/dashboard/orderstatus",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Lista de Pedidos",
-          url: "/dashboard/orders",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Nueva Orden",
-          url: "/dashboard/orders/new",
-          icon: PackagePlus,
-          roles: ["admin", "recepcion"],
         },
       ],
     },
