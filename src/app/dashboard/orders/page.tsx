@@ -37,7 +37,7 @@ import {
   EMPTY_ORDERS_FILTERS,
   type OrdersFilters,
 } from "@/components/orders/OrdersFilterBar";
-import type { Client, Order } from "@/types";
+import type { Client, Order, User } from "@/types";
 import { ExternalLink, FileDown, LayoutGrid, List, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,8 @@ function filtersFromUrl(): OrdersFilters {
   const from = params.get("deliveryFrom");
   const to = params.get("deliveryTo");
   const onlyOverdue = params.get("onlyOverdue");
+  const area = params.get("area");
+  const assignedUserId = params.get("assignedUserId");
   return {
     clientId: clientId ? Number(clientId) : undefined,
     statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
@@ -58,6 +60,9 @@ function filtersFromUrl(): OrdersFilters {
         ? { from: from ? new Date(from) : undefined, to: to ? new Date(to) : undefined }
         : undefined,
     onlyOverdue: onlyOverdue === "1",
+    area: area || undefined,
+    assignedUserId:
+      assignedUserId === null ? undefined : assignedUserId === "unassigned" ? null : Number(assignedUserId),
   };
 }
 
@@ -68,6 +73,10 @@ function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
   if (filters.dateRange?.from) params.set("deliveryFrom", filters.dateRange.from.toISOString().slice(0, 10));
   if (filters.dateRange?.to) params.set("deliveryTo", filters.dateRange.to.toISOString().slice(0, 10));
   if (filters.onlyOverdue) params.set("onlyOverdue", "1");
+  if (filters.area) params.set("area", filters.area);
+  if (filters.assignedUserId !== undefined) {
+    params.set("assignedUserId", filters.assignedUserId === null ? "unassigned" : String(filters.assignedUserId));
+  }
   return params;
 }
 
@@ -90,6 +99,7 @@ const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
+  const { data: users } = useEntityList<User>("users");
   const { deliveredRetentionHours } = useAppSettings();
   const { changeStatus, changingOrderId } = useChangeOrderStatus();
 
@@ -171,6 +181,16 @@ const OrdersPage = () => {
         const overdue = isOverdue(order.creationDate, order.deliveryDate);
         const delivered = isDeliveredStatus(order.statusId);
         if (!overdue || delivered) return false;
+      }
+      if (filters.area && order.area !== filters.area) {
+        return false;
+      }
+      if (filters.assignedUserId !== undefined) {
+        if (filters.assignedUserId === null) {
+          if (order.assignedUserId != null) return false;
+        } else if (order.assignedUserId !== filters.assignedUserId) {
+          return false;
+        }
       }
       return true;
     });
@@ -351,7 +371,7 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      <OrdersFilterBar clients={clients} filters={filters} onChange={updateFilters} />
+      <OrdersFilterBar clients={clients} users={users} filters={filters} onChange={updateFilters} />
 
       {loading ? (
         viewMode === "list" ? (

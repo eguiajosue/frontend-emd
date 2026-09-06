@@ -10,6 +10,7 @@ import { Loader2, User, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMotionPreset } from '@/lib/motion'
 import { GradientBlobs } from '@/components/decor/GradientBlobs'
+import { ParticleField } from '@/components/three/ParticleField'
 
 const LoginForm = () => {
   const [errors, setErrors] = useState<string[]>([])
@@ -63,10 +64,7 @@ const LoginForm = () => {
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
       <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 text-white relative overflow-hidden">
         <GradientBlobs variant="login" />
-        {/* LoginAmbientScene deshabilitada temporalmente: @react-three/fiber en un
-            chunk dynamic(ssr:false) choca con react-dom en prod ("Cannot read
-            properties of undefined (reading 'ReactCurrentBatchConfig')").
-            Pendiente de arreglar sin bloquear el login. */}
+        <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
