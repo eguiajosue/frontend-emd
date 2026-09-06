@@ -93,7 +93,7 @@ export function CommandPalette() {
           onClick={() => setOpen(false)}
         >
           <motion.div
-            className="glass-heavy w-full max-w-lg overflow-hidden rounded-xl border shadow-2xl"
+            className="elevation-2 bg-popover w-full max-w-lg overflow-hidden rounded-xl border border-border shadow-2xl"
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}

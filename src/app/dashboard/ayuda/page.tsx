@@ -202,7 +202,7 @@ function SpotlightCard({
         mouseX.set(e.clientX - rect.left);
         mouseY.set(e.clientY - rect.top);
       }}
-      className={`glass-medium group relative overflow-hidden rounded-xl border-x border-b border-border/40 shadow-sm ${className}`}
+      className={`group relative overflow-hidden rounded-xl border border-border bg-card shadow-soft ${className}`}
     >
       {canSpotlight && (
         <motion.div

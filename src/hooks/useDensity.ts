@@ -19,9 +19,9 @@ export function applyDensity(density: Density) {
 
 /**
  * Lee/persiste/aplica la densidad de listas/cards (Configuración > "Vista
- * compacta"). Mismo patrón que useAccentColor/useGlassIntensity: localStorage
- * como cache local + backend (`glassIntensity`... acá `density`) como fuente
- * de verdad, sincronizado desde providers.tsx.
+ * compacta"). Mismo patrón que useAccentColor: localStorage como cache local
+ * + backend (`density`) como fuente de verdad, sincronizado desde
+ * providers.tsx.
  */
 export function useDensity() {
   const [density, setDensityState] = useState<Density>(DEFAULT_DENSITY);

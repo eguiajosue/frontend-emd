@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { ApiError, getErrorMessage, isSessionExpiredError } from "@/lib/api";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAccentColor } from "@/hooks/useAccentColor";
-import { useGlassIntensity } from "@/hooks/useGlassIntensity";
 import { useDensity, type Density } from "@/hooks/useDensity";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/language";
 
@@ -100,7 +99,6 @@ function PreferencesSync() {
   const { data: session, status } = useSession();
   const { setTheme } = useTheme();
   const { setAccent } = useAccentColor();
-  const { setIntensity } = useGlassIntensity();
   const { setDensity } = useDensity();
   const { preferences } = useUserPreferences();
   const appliedForUser = useRef<string | null>(null);
@@ -113,9 +111,6 @@ function PreferencesSync() {
 
     if (preferences.themePreference) setTheme(preferences.themePreference);
     if (preferences.accentColor) setAccent(preferences.accentColor);
-    if (preferences.glassIntensity !== null && preferences.glassIntensity !== undefined) {
-      setIntensity(preferences.glassIntensity);
-    }
     if (preferences.density) setDensity(preferences.density as Density);
     if (preferences.languagePreference) {
       try {
@@ -124,7 +119,7 @@ function PreferencesSync() {
         // Sin acceso a localStorage: no rompe la app, sólo no cachea localmente.
       }
     }
-  }, [status, session, preferences, setTheme, setAccent, setIntensity, setDensity]);
+  }, [status, session, preferences, setTheme, setAccent, setDensity]);
 
   return null;
 }

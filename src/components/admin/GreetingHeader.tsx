@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { GradientBlobs } from "@/components/decor/GradientBlobs";
 
 interface GreetingHeaderProps {
   firstName?: string | null;
@@ -27,7 +26,6 @@ export function GreetingHeader({ firstName }: GreetingHeaderProps) {
 
   return (
     <Card className="relative overflow-hidden">
-      <GradientBlobs variant="subtle" />
       <CardContent className="relative flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">

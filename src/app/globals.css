@@ -27,7 +27,9 @@
     --accent2-800: 189 80% 18%;
     --accent2-900: 189 75% 13%;
 
-    --background: 0 0% 100%;
+    /* Fondo casi blanco (no blanco puro) y texto casi negro (no negro puro),
+       ver protocolo minimalista §3-4. */
+    --background: 330 20% 98%;
     --foreground: 330 15% 12%;
     --card: 0 0% 100%;
     --card-foreground: 330 15% 12%;
@@ -61,68 +63,51 @@
     --sidebar-accent-foreground: 330 70% 30%;
     --sidebar-border: 330 15% 91%;
     --sidebar-ring: 330 81% 46%;
-
-    /* Liquid Glass: tokens de material translúcido (ver apple-design §12). */
-    --glass-bg-light: 255 255 255;
-    --glass-bg-heavy: 255 255 255;
-    --glass-bg-medium: 255 255 255;
-    --glass-border: 255 255 255;
-    --glass-blur: 20px;
-    --glass-saturate: 140%;
-    --glass-edge-opacity: 0.5;
-    /* Opacidad de fondo del glass en claro: más alta que en oscuro para que
-       lea "blanco" en vez de gris (blend de fondo translúcido + fondo de
-       página produce gris con opacidades bajas sobre blanco). */
-    --glass-opacity-heavy: 0.92;
-    --glass-opacity-medium: 0.85;
-    --glass-opacity-light: 0.7;
   }
   .dark {
+    /* Gris oscuro con tinte de marca sutil, nunca negro puro. Texto suavizado,
+       nunca blanco puro (ver protocolo minimalista §3-4). */
     --background: 330 22% 6%;
-    --foreground: 330 15% 96%;
+    --foreground: 330 10% 92%;
     --card: 330 20% 8.5%;
-    --card-foreground: 330 15% 96%;
+    --card-foreground: 330 10% 92%;
     --popover: 330 20% 8.5%;
-    --popover-foreground: 330 15% 96%;
-    --primary: 330 85% 62%;
+    --popover-foreground: 330 10% 92%;
+    /* Acento desaturado ~12% respecto al light (81% -> 70%) para que no vibre
+       sobre fondo oscuro. */
+    --primary: 330 70% 62%;
     --primary-foreground: 330 30% 8%;
     --secondary: 330 15% 16%;
     --secondary-foreground: 330 15% 92%;
     --muted: 330 15% 15%;
-    --muted-foreground: 330 10% 65%;
-    --accent: 189 60% 16%;
-    --accent-foreground: 189 70% 82%;
+    --muted-foreground: 330 10% 68%;
+    --accent: 189 50% 16%;
+    --accent-foreground: 189 60% 82%;
     --destructive: 0 62.8% 45%;
     --destructive-foreground: 0 0% 98%;
     --border: 330 15% 18%;
     --input: 330 15% 18%;
-    --ring: 330 85% 62%;
-    --chart-1: 330 85% 62%;
-    --chart-2: 189 75% 50%;
-    --chart-3: 43 85% 60%;
-    --chart-4: 262 75% 68%;
-    --chart-5: 150 55% 50%;
+    --ring: 330 70% 62%;
+    --chart-1: 330 70% 62%;
+    --chart-2: 189 65% 50%;
+    --chart-3: 43 75% 60%;
+    --chart-4: 262 65% 68%;
+    --chart-5: 150 45% 50%;
 
     --sidebar-background: 330 25% 7%;
     --sidebar-foreground: 330 10% 90%;
-    --sidebar-primary: 330 85% 62%;
+    --sidebar-primary: 330 70% 62%;
     --sidebar-primary-foreground: 330 30% 8%;
     --sidebar-accent: 330 18% 14%;
     --sidebar-accent-foreground: 330 15% 92%;
     --sidebar-border: 330 15% 16%;
-    --sidebar-ring: 330 85% 62%;
+    --sidebar-ring: 330 70% 62%;
 
-    /* Liquid Glass (dark): superficies oscuras translúcidas, no negro puro. */
-    --glass-bg-light: 26 22 30;
-    --glass-bg-heavy: 20 18 24;
-    --glass-bg-medium: 24 20 27;
-    --glass-border: 255 255 255;
-    --glass-blur: 24px;
-    --glass-saturate: 160%;
-    --glass-edge-opacity: 0.09;
-    --glass-opacity-heavy: 0.82;
-    --glass-opacity-medium: 0.62;
-    --glass-opacity-light: 0.45;
+    /* Iluminación en capas: cada nivel de elevación es un tono de fondo
+       ligeramente más claro que el de abajo (background < card < elevation-2),
+       ya que el box-shadow casi no se nota sobre fondo oscuro. */
+    --elevation-1: 330 18% 8.5%;
+    --elevation-2: 330 16% 12%;
   }
 
   /*
@@ -244,60 +229,16 @@
 }
 
 /*
- * Liquid Glass — material translúcido en capas (apple-design §12).
- * Tres "pesos" de material según jerarquía:
- *  - glass-heavy: sidebar/nav, más opaco, casi sólido en dark.
- *  - glass-medium: cards de contenido, dialogs, popovers.
- *  - glass-light: chips/badges/botones pequeños.
- * Nunca apilar dos superficies glass idénticas: un hijo dentro de un padre
- * glass debe usar un peso más pesado (más opaco) que el padre.
+ * Elevación: superficies sólidas normales (bg-card/bg-popover) más
+ * `shadow-soft` en light mode. En dark mode las sombras casi no se ven sobre
+ * fondo oscuro, así que la profundidad se resuelve como "iluminación en
+ * capas" — cada nivel es un tono de fondo más claro que el de abajo.
  */
-.glass-heavy {
-  background-color: rgb(var(--glass-bg-heavy) / var(--glass-opacity-heavy));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
+.dark .elevation-1 {
+  background-color: hsl(var(--elevation-1));
 }
-.glass-medium {
-  background-color: rgb(var(--glass-bg-medium) / var(--glass-opacity-medium));
-  backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturate));
-  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
-}
-.glass-light {
-  background-color: rgb(var(--glass-bg-light) / var(--glass-opacity-light));
-  backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.5)) saturate(var(--glass-saturate));
-  border-top: 1px solid rgb(var(--glass-border) / var(--glass-edge-opacity));
-}
-/* Un glass anidado dentro de otro glass sube de peso para no perder legibilidad. */
-.glass-heavy .glass-medium,
-.glass-medium .glass-medium {
-  background-color: rgb(var(--glass-bg-heavy) / var(--glass-opacity-heavy));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .glass-heavy,
-  .glass-medium,
-  .glass-light {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background-color: hsl(var(--card));
-    border-top-color: hsl(var(--border));
-  }
-}
-
-@media (prefers-contrast: more) {
-  .glass-heavy,
-  .glass-medium,
-  .glass-light {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background-color: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-  }
+.dark .elevation-2 {
+  background-color: hsl(var(--elevation-2));
 }
 
 /*

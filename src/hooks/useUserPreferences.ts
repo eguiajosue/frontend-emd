@@ -15,12 +15,10 @@ export interface UserPreferences {
   accentColor: string | null;
   languagePreference: string | null;
   /**
-   * Intensidad del efecto Liquid Glass (0-100), aplicada escalando las
-   * variables `--glass-opacity-*` de globals.css. `null`/`undefined` =
-   * nunca configurado por el usuario -> se asume 100 (comportamiento actual).
-   * NOTA: si el backend todavía no persiste este campo, igual se manda en el
-   * PATCH (se guarda "optimista" y se pierde al recargar hasta que el
-   * backend lo soporte) — ver reporte de la tarea.
+   * Legacy: intensidad del antiguo efecto Liquid Glass (0-100), ya retirado
+   * del sistema de diseño del frontend. Se mantiene sólo para no romper el
+   * contrato con el backend (que todavía persiste este campo) — el frontend
+   * ya no lee ni escribe este valor.
    */
   glassIntensity?: number | null;
   /** Densidad de listas/cards ("comfortable" = actual, "compact" = reducida). */

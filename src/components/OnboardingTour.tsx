@@ -168,7 +168,7 @@ export function OnboardingTour() {
 
         <motion.div
           key={stepIndex}
-          className={cn("glass-heavy fixed w-80 max-w-[calc(100vw-24px)] rounded-xl border p-4 shadow-2xl")}
+          className={cn("elevation-2 bg-popover fixed w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border p-4 shadow-2xl")}
           style={tooltipStyle}
           initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
           animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
