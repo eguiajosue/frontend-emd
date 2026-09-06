@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePermissions } from "@/hooks/usePermissions";
+import { staggerContainerVariants, staggerItemVariants, entranceTransition } from "@/lib/motion";
 import {
   BarChart3,
   ClipboardList,
@@ -29,15 +30,6 @@ const OPERATIONAL_ROLES = [
   "impresiones",
 ];
 
-const container = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0 },
-};
-
 const AyudaPage = () => {
   const { roles, isAdmin } = usePermissions();
   const hasOperationalRole = roles.some((r) => OPERATIONAL_ROLES.includes(r));
@@ -49,7 +41,7 @@ const AyudaPage = () => {
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={entranceTransition}
         className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-primary/10 to-accent2-500/10 p-4"
       >
         <HelpCircle className="h-8 w-8 text-primary shrink-0" />
@@ -63,13 +55,13 @@ const AyudaPage = () => {
       </motion.div>
 
       <motion.div
-        variants={container}
+        variants={staggerContainerVariants}
         initial="hidden"
         animate="show"
         className="space-y-6"
       >
         {isAdmin && (
-          <motion.div variants={item}>
+          <motion.div variants={staggerItemVariants}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -149,7 +141,7 @@ const AyudaPage = () => {
         )}
 
         {hasOperationalRole && (
-          <motion.div variants={item}>
+          <motion.div variants={staggerItemVariants}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -207,7 +199,7 @@ const AyudaPage = () => {
         )}
 
         {!isAdmin && !hasOperationalRole && (
-          <motion.div variants={item}>
+          <motion.div variants={staggerItemVariants}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -224,7 +216,7 @@ const AyudaPage = () => {
           </motion.div>
         )}
 
-        <motion.div variants={item}>
+        <motion.div variants={staggerItemVariants}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -242,7 +234,7 @@ const AyudaPage = () => {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        <motion.div variants={staggerItemVariants}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
