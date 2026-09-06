@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/ui/form-field";
+import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import {
   combineDateAndTime,
@@ -30,9 +32,10 @@ import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrde
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { isDeliveredStatus } from "@/lib/orderStatus";
 import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
-import { FileText, UserRound, ZoomIn } from "lucide-react";
+import { FileText, Loader2, UserRound, ZoomIn } from "lucide-react";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
@@ -61,6 +64,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const { changeStatus, isChangingStatus } = useChangeOrderStatus();
   const { roles, isAdmin } = usePermissions();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const { formButtonMotion } = useMotionPreset();
 
   // recepcion/admin pueden editar los campos generales del pedido desde acá mismo;
   // los roles operativos sólo pueden avanzar el estado (si el pedido está en su etapa).
@@ -171,42 +175,43 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     )}
                   </div>
 
-                  <DeliveryProgressBar
-                    creationDate={order.creationDate}
-                    deliveryDate={order.deliveryDate}
-                  />
+                  {!isDeliveredStatus(order.statusId) && (
+                    <DeliveryProgressBar
+                      creationDate={order.creationDate}
+                      deliveryDate={order.deliveryDate}
+                    />
+                  )}
 
                   {canEdit ? (
-                    <div className="space-y-3 rounded-md border p-3">
-                      <div className="space-y-1">
-                        <Label>Descripción</Label>
+                    <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4">
+                      <FormField label="Descripción">
                         <Textarea
                           value={description}
                           onChange={(e) => setDescription(e.target.value)}
+                          className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                         />
-                      </div>
-                      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <Label>Fecha de entrega</Label>
+                      </FormField>
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                        <FormField label="Fecha de entrega">
                           <Input
                             type="date"
                             value={deliveryDate}
                             onChange={(e) => setDeliveryDate(e.target.value)}
+                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Hora de entrega (opcional)</Label>
+                        </FormField>
+                        <FormField label="Hora de entrega (opcional)">
                           <Input
                             type="time"
                             value={deliveryTime}
                             onChange={(e) => setDeliveryTime(e.target.value)}
                             disabled={!deliveryDate}
+                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Asignar a</Label>
+                        </FormField>
+                        <FormField label="Asignar a">
                           <select
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                             value={assignedUserId ?? ""}
                             onChange={(e) =>
                               setAssignedUserId(
@@ -217,16 +222,16 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                             <option value="">Sin asignar</option>
                             {users.map((u) => (
                               <option key={u.id} value={u.id}>
-                                {[u.firstName, u.lastName].filter(Boolean).join(" ") ||
-                                  u.username}
+                                {u.isSharedAccount
+                                  ? `Área: ${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}`
+                                  : [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
                               </option>
                             ))}
                           </select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label>Área</Label>
+                        </FormField>
+                        <FormField label="Área">
                           <select
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                             value={area ?? ""}
                             onChange={(e) => setArea(e.target.value || undefined)}
                           >
@@ -237,11 +242,14 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                               </option>
                             ))}
                           </select>
-                        </div>
+                        </FormField>
                       </div>
-                      <Button size="sm" onClick={handleSaveDetails} disabled={isSavingDetails}>
-                        {isSavingDetails ? "Guardando..." : "Guardar cambios"}
-                      </Button>
+                      <motion.div className="inline-block" {...(isSavingDetails ? {} : formButtonMotion)}>
+                        <Button size="sm" onClick={handleSaveDetails} disabled={isSavingDetails}>
+                          {isSavingDetails && <Loader2 className="h-4 w-4 animate-spin" />}
+                          {isSavingDetails ? "Guardando..." : "Guardar cambios"}
+                        </Button>
+                      </motion.div>
                     </div>
                   ) : (
                     <p>

@@ -98,6 +98,13 @@ export const cardTapMotion = {
   transition: SPRING_MICRO,
 };
 
+/** Micro-interacción para botones de formulario (hover/tap con spring, sin cambiar tamaño de layout). */
+export const formButtonMotion = {
+  whileHover: { scale: 1.015 },
+  whileTap: { scale: 0.97 },
+  transition: SPRING_MICRO,
+};
+
 /**
  * Variantes "reducidas" (crossfade simple, sin desplazamiento ni escala) para
  * cuando el usuario tiene prefers-reduced-motion activado. Framer Motion no
@@ -132,5 +139,8 @@ export function useMotionPreset() {
     routeTransition: reduced ? reducedRouteTransition : routeTransition,
     cardHoverMotion: reduced ? { whileHover: {}, transition: { duration: 0 } } : cardHoverMotion,
     cardTapMotion: reduced ? { whileTap: {}, transition: { duration: 0 } } : cardTapMotion,
+    formButtonMotion: reduced
+      ? { whileHover: {}, whileTap: {}, transition: { duration: 0 } }
+      : formButtonMotion,
   };
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { runInkSplashTransition } from "@/lib/themeTransition";
 
 /**
  * Toggle de tema claro/oscuro. next-themes ya lo persiste en localStorage;
@@ -21,10 +23,13 @@ export function ThemeToggle() {
 
   const isDark = mounted && resolvedTheme === "dark";
 
-  const handleToggle = () => {
+  const handleToggle = (e: MouseEvent<HTMLButtonElement>) => {
     const next = isDark ? "light" : "dark";
-    setTheme(next);
-    updatePreferences({ themePreference: next });
+    const applyChange = () => {
+      setTheme(next);
+      updatePreferences({ themePreference: next });
+    };
+    runInkSplashTransition(applyChange, { x: e.clientX, y: e.clientY });
   };
 
   return (

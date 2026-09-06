@@ -48,6 +48,8 @@ export interface User extends BaseEntity {
   lastName?: string | null;
   username: string;
   roles?: Role[];
+  /** Cuenta de área/departamento compartida por todo un equipo (ej. "taller", "dtf"), no de una persona. */
+  isSharedAccount?: boolean;
 }
 
 /** Versión resumida de `User` que devuelve el backend embebida en `order.assignedUser`. */
@@ -55,6 +57,7 @@ export interface AssignedUser extends BaseEntity {
   firstName: string;
   lastName?: string | null;
   username: string;
+  isSharedAccount?: boolean;
 }
 
 export interface Product extends BaseEntity {

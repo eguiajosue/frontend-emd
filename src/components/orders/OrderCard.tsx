@@ -10,7 +10,8 @@ import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel } from "@/lib/areas";
 import { cn } from "@/lib/utils";
 import { useMotionPreset } from "@/lib/motion";
-import { Paperclip, UserRound } from "lucide-react";
+import { isDeliveredStatus } from "@/lib/orderStatus";
+import { Paperclip, UserRound, CheckCircle2 } from "lucide-react";
 import type { Order } from "@/types";
 
 interface OrderCardProps {
@@ -26,8 +27,9 @@ interface OrderCardProps {
  */
 function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const assignedName = getAssignedUserName(order.assignedUser);
+  const delivered = isDeliveredStatus(order.statusId);
   const progress = useDeliveryProgress(order.creationDate, order.deliveryDate);
-  const isCritical = progress !== null && progress >= 95;
+  const isCritical = !delivered && progress !== null && progress >= 95;
   const { reduced, staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
 
   return (
@@ -57,7 +59,14 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
         <CardContent className="space-y-2 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold">#{order.id}</span>
-            <StatusBadge statusId={order.statusId} />
+            {delivered ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                ENTREGADO
+              </span>
+            ) : (
+              <StatusBadge statusId={order.statusId} />
+            )}
           </div>
           <p className="truncate text-sm font-medium">{getOrderClientName(order)}</p>
           <p className="line-clamp-2 text-xs text-muted-foreground">
@@ -86,11 +95,13 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               </span>
             )}
           </div>
-          <DeliveryProgressBar
-            creationDate={order.creationDate}
-            deliveryDate={order.deliveryDate}
-            className="pt-1"
-          />
+          {!delivered && (
+            <DeliveryProgressBar
+              creationDate={order.creationDate}
+              deliveryDate={order.deliveryDate}
+              className="pt-1"
+            />
+          )}
         </CardContent>
         </Card>
       </motion.div>

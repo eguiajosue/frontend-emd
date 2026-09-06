@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import { Users2 } from "lucide-react";
 import { RowActions } from "@/components/crud/RowActions";
 import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
 import type { User } from "@/types";
@@ -10,7 +11,21 @@ export const getUserColumns = ({
   onDelete,
   canEdit,
 }: CrudColumnsArgs<User>): ColumnDef<User>[] => [
-  { accessorKey: "firstName", header: "Nombre" },
+  {
+    accessorKey: "firstName",
+    header: "Nombre",
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <span>{row.original.firstName}</span>
+        {row.original.isSharedAccount && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+            <Users2 className="h-3 w-3" />
+            Área
+          </span>
+        )}
+      </div>
+    ),
+  },
   { accessorKey: "lastName", header: "Apellido" },
   { accessorKey: "username", header: "Usuario" },
   {

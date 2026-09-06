@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import Title from "@/components/Title";
 import { staggerContainerVariants, staggerItemVariants } from "@/lib/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +24,10 @@ import { formatDate, formatDeliveryDate, getClientName, getUserName } from "@/li
 import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GreetingHeader } from "@/components/admin/GreetingHeader";
+import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
+import { UpcomingDeliveries } from "@/components/admin/UpcomingDeliveries";
+import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 
 const HOUR_MS = 60 * 60 * 1000;
 const FALLBACK_THRESHOLD_HOURS = 60; // umbral fijo (48-72h) usado cuando no hay histórico suficiente
@@ -61,7 +64,7 @@ const AvgTimeBarChart = dynamic(() => import("@/components/charts/AvgTimeBarChar
 });
 
 const AdminDashboardPage = () => {
-  const { roles, isAdmin, isSessionLoading } = usePermissions();
+  const { roles, isAdmin, isSessionLoading, session } = usePermissions();
   const {
     data: orders,
     isPending: loadingOrders,
@@ -77,6 +80,7 @@ const AdminDashboardPage = () => {
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("timeInStatus");
+  const [openOrderId, setOpenOrderId] = useState<number | null>(null);
 
   const loading = loadingOrders || loadingHistories || isSessionLoading;
   const hasError = ordersError || historiesError;
@@ -351,14 +355,10 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Title title="Panel General" />
-          <p className="text-muted-foreground">
-            Vista global de todos los pedidos, detección de estancamiento y rendimiento por área.
-          </p>
-        </div>
+    <div className="space-y-6">
+      <GreetingHeader firstName={session?.user?.first_name} />
+
+      <div className="flex justify-end">
         <Button variant="outline" className="gap-2 shrink-0" asChild>
           <a href="/dashboard/admin/rendimiento">
             <TrendingUp className="h-4 w-4" />
@@ -375,17 +375,20 @@ const AdminDashboardPage = () => {
           }}
         />
       ) : loading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-64 w-full" />
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+          <Skeleton className="h-96 w-full" />
         </div>
       ) : orders.length === 0 ? (
         <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
           No hay pedidos aún.
         </div>
       ) : (
-        <>
+        <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-6 lg:col-span-2">
           {/* Sección 2: Estancamiento (arriba para que se vea de inmediato) */}
           <Card
             className={
@@ -522,8 +525,17 @@ const AdminDashboardPage = () => {
               <DataTable columns={trackingColumns} data={filteredSortedOrders} />
             </div>
           </div>
-        </>
+        </div>
+
+        {/* Columna derecha: calendario de entregas + próximas entregas */}
+        <div className="space-y-6">
+          <DeliveryCalendar orders={orders} onSelectOrder={setOpenOrderId} />
+          <UpcomingDeliveries orders={orders} onSelectOrder={setOpenOrderId} />
+        </div>
+        </div>
       )}
+
+      <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );
 };

@@ -100,5 +100,7 @@ export function getOrderProductName(op: OrderProduct): string {
 export function getAssignedUserName(user?: AssignedUser | null): string | null {
   if (!user) return null;
   const full = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
-  return full || user.username || null;
+  const name = full || user.username || null;
+  if (!name) return null;
+  return user.isSharedAccount ? `Área: ${name}` : name;
 }

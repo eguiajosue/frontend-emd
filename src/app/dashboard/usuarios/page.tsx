@@ -6,7 +6,7 @@ import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { SimpleNamedEntityPage } from "@/components/crud/SimpleNamedEntityPage";
-import type { FieldConfig } from "@/components/crud/EntityFormDialog";
+import type { FieldConfig, EntityValues } from "@/components/crud/EntityFormDialog";
 import { useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
@@ -23,30 +23,50 @@ const passwordSchema = z
   .regex(/[A-Z]/, "Debe incluir una mayúscula")
   .regex(/[0-9]/, "Debe incluir un número");
 
-// El nombre de usuario ya no se pide: el backend lo genera automáticamente
-// (primera letra del nombre + apellido, con resolución de colisiones) e
-// ignora cualquier valor de `username` que se le mande.
-const createSchema = z.object({
+// El nombre de usuario ya no se pide para cuentas de persona: el backend lo
+// genera automáticamente (primera letra del nombre + apellido, con
+// resolución de colisiones) e ignora cualquier valor de `username` que se le
+// mande. Para cuentas de área (`isSharedAccount: true`) el backend SÍ espera
+// un `username` explícito, ya que no hay nombre+apellido de una sola persona
+// del cual derivarlo.
+const baseUserFields = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().optional().or(z.literal("")),
-  password: passwordSchema,
+  isSharedAccount: z.boolean().optional(),
+  username: z.string().optional().or(z.literal("")),
   roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
 });
 
+function requireUsernameWhenShared(
+  values: z.infer<typeof baseUserFields>,
+  ctx: z.RefinementCtx
+) {
+  if (values.isSharedAccount && !values.username?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "El nombre de usuario es requerido para cuentas de área",
+      path: ["username"],
+    });
+  }
+}
+
+const createSchema = baseUserFields
+  .extend({ password: passwordSchema })
+  .superRefine(requireUsernameWhenShared);
+
 // Al editar, la contraseña es opcional (solo se envía si se quiere cambiar),
 // pero si se ingresa algo debe cumplir la misma política que el backend.
-const editSchema = z.object({
-  firstName: z.string().min(1, "El nombre es requerido"),
-  lastName: z.string().optional().or(z.literal("")),
-  password: z
-    .string()
-    .optional()
-    .or(z.literal(""))
-    .refine((v) => !v || passwordSchema.safeParse(v).success, {
-      message: "Mínimo 8 caracteres, con una mayúscula y un número",
-    }),
-  roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
-});
+const editSchema = baseUserFields
+  .extend({
+    password: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine((v) => !v || passwordSchema.safeParse(v).success, {
+        message: "Mínimo 8 caracteres, con una mayúscula y un número",
+      }),
+  })
+  .superRefine(requireUsernameWhenShared);
 
 function initialTabFromUrl(): "usuarios" | "roles" {
   if (typeof window === "undefined") return "usuarios";
@@ -73,8 +93,34 @@ const UsuariosPage = () => {
     : roles.filter((r) => !ADMIN_ROLE_NAMES.includes(r.name));
 
   const userFields = (editing: User | null): FieldConfig[] => [
-    { name: "firstName", label: "Nombre" },
-    { name: "lastName", label: "Apellido" },
+    {
+      name: "isSharedAccount",
+      label: "Cuenta de área (compartida)",
+      type: "switch",
+      helpText: "Úsala para cuentas de todo un equipo (ej. taller, dtf, diseño), no de una persona.",
+    },
+    {
+      name: "firstName",
+      label: "Nombre para mostrar",
+      showIf: (values: EntityValues) => Boolean(values.isSharedAccount),
+      helpText: "Ej. Taller, DTF, Diseño — como se verá en pedidos y listados.",
+    },
+    {
+      name: "username",
+      label: "Nombre de usuario",
+      showIf: (values: EntityValues) => Boolean(values.isSharedAccount),
+      helpText: "ej. taller, dtf, diseno — usada por todo el equipo del área para iniciar sesión.",
+    },
+    {
+      name: "firstName",
+      label: "Nombre",
+      showIf: (values: EntityValues) => !values.isSharedAccount,
+    },
+    {
+      name: "lastName",
+      label: "Apellido",
+      showIf: (values: EntityValues) => !values.isSharedAccount,
+    },
     {
       name: "password",
       label: editing ? "Nueva Contraseña (opcional)" : "Contraseña",

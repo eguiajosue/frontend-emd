@@ -80,7 +80,7 @@ function AppearanceSection() {
                   type="button"
                   onClick={() => handleThemeSelect(opt.id)}
                   className={cn(
-                    "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors active:scale-[0.97]",
                     active
                       ? "border-primary bg-primary/10 text-primary font-medium"
                       : "border-input hover:bg-muted"
@@ -196,7 +196,7 @@ function LanguageSection() {
               type="button"
               onClick={() => handleSelect(opt.id, opt.available)}
               className={cn(
-                "flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors active:scale-[0.97]",
                 active
                   ? "border-primary bg-primary/10 text-primary font-medium"
                   : "border-input hover:bg-muted",

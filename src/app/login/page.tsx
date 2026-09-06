@@ -2,26 +2,34 @@
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, User, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useMotionPreset } from '@/lib/motion'
 
 const LoginForm = () => {
   const [errors, setErrors] = useState<string[]>([])
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [touched, setTouched] = useState<{ username?: boolean; password?: boolean }>({})
   const [submitting, setSubmitting] = useState(false)
   const [slowServer, setSlowServer] = useState(false)
+  const { formButtonMotion } = useMotionPreset()
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const sessionMessage = searchParams.get('message')
 
+  const usernameError = touched.username && username.trim().length === 0 ? 'Ingresá tu nombre de usuario' : undefined
+  const passwordError = touched.password && password.length === 0 ? 'Ingresá tu contraseña' : undefined
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setTouched({ username: true, password: true });
+    if (!username.trim() || !password) return;
     setErrors([]);
     setSubmitting(true);
     setSlowServer(false);
@@ -92,37 +100,45 @@ const LoginForm = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="username" className="text-neutral-200 md:text-foreground font-medium">Nombre de Usuario</Label>
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            <FormField
+              label={<span className="text-neutral-200 md:text-foreground">Nombre de Usuario</span>}
+              htmlFor="username"
+              icon={User}
+              error={usernameError}
+            >
               <Input
                 id="username"
                 placeholder="Ingrese su nombre de usuario"
-                required
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                className="w-full px-4 py-3 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 transition duration-300"
+                onBlur={() => setTouched((t) => ({ ...t, username: true }))}
+                className="w-full px-4 py-3 h-11 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:ring-0 focus-visible:border-primary transition-colors"
               />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-neutral-200 md:text-foreground font-medium">Contraseña</Label>
+            <FormField
+              label={<span className="text-neutral-200 md:text-foreground">Contraseña</span>}
+              htmlFor="password"
+              icon={Lock}
+              error={passwordError}
+            >
               <Input
                 id="password"
                 type="password"
                 placeholder="Ingrese su contraseña"
-                required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className="w-full px-4 py-3 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40 transition duration-300"
+                onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                className="w-full px-4 py-3 h-11 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:ring-0 focus-visible:border-primary transition-colors"
               />
-            </div>
+            </FormField>
 
             {errors.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 md:text-destructive text-sm space-y-2"
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-red-400 md:text-destructive text-sm space-y-1"
               >
                 <ul>
                   {errors.map((error, index) => (
@@ -143,16 +159,11 @@ const LoginForm = () => {
               </motion.p>
             )}
 
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-primary hover:bg-brand-700 text-primary-foreground rounded-lg transition duration-300 ease-in-out"
-              asChild={false}
-            >
-              <motion.span
-                className="flex w-full items-center justify-center"
-                whileHover={submitting ? undefined : { scale: 1.02 }}
-                whileTap={submitting ? undefined : { scale: 0.98 }}
+            <motion.div {...(submitting ? {} : formButtonMotion)}>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full h-11 py-3 bg-primary hover:bg-brand-700 text-primary-foreground rounded-lg transition-colors"
               >
                 {submitting ? (
                   <>
@@ -161,8 +172,8 @@ const LoginForm = () => {
                 ) : (
                   "Iniciar Sesión"
                 )}
-              </motion.span>
-            </Button>
+              </Button>
+            </motion.div>
           </form>
 
           <div>

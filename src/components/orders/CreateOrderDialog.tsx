@@ -9,13 +9,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FileText, Paperclip, Plus, Trash2, UserPlus, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { FormField, FormSection } from "@/components/ui/form-field";
+import {
+  FileText,
+  Loader2,
+  Paperclip,
+  Plus,
+  Trash2,
+  UserPlus,
+  UserRound,
+  Users2,
+  Package,
+  CalendarClock,
+  Building2,
+  X,
+} from "lucide-react";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useMotionPreset } from "@/lib/motion";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { AREA_OPTIONS } from "@/lib/areas";
@@ -101,6 +116,7 @@ function clientLabel(c: Client): string {
  */
 export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialogProps) {
   const { session } = usePermissions();
+  const { formButtonMotion } = useMotionPreset();
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
   const { data: productPresets } = useEntityList<OrderProductPreset>("orderProductPresets", {
     enabled: open,
@@ -259,206 +275,205 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
             <DialogTitle>Nuevo Pedido</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <Label>Cliente</Label>
-              <div className="flex gap-2 pt-1">
-                <CreatableCombobox
-                  className="flex-1"
-                  items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
-                  selectedId={clientId ?? null}
-                  customValue={clientNameOverride}
-                  placeholder="Buscar o escribir nombre de cliente..."
-                  createLabel={(value) => `Usar "${value}" como nombre de cliente`}
-                  emptyLabel="No hay clientes registrados. Escribí un nombre para usarlo directamente."
-                  onSelectItem={(item) => {
-                    setClientId(Number(item.id));
-                    setClientNameOverride("");
-                  }}
-                  onUseCustom={(text) => {
-                    setClientId(undefined);
-                    setClientNameOverride(text);
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  onClick={() => setNewClientOpen(true)}
-                  title="Dar de alta un cliente completo (teléfono, email, empresa) sin salir de este formulario"
-                >
-                  <UserPlus className="h-4 w-4" /> Nuevo cliente
-                </Button>
-              </div>
-              {errors.clientId && (
-                <p className="text-sm text-destructive">{errors.clientId}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>Área destino</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                  value={area ?? ""}
-                  onChange={(e) => setArea(e.target.value || undefined)}
-                >
-                  <option value="">Selecciona un área...</option>
-                  {AREA_OPTIONS.map((a) => (
-                    <option key={a.value} value={a.value}>
-                      {a.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.area && <p className="text-sm text-destructive">{errors.area}</p>}
-              </div>
-
-              <div className="space-y-1">
-                <Label>Asignar a (opcional)</Label>
-                <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                  value={assignedUserId ?? ""}
-                  onChange={(e) =>
-                    setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
-                  }
-                >
-                  <option value="">Sin asignar</option>
-                  {assignableUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Quién va a encargarse. Se puede cambiar después.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Descripción</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-              {errors.description && (
-                <p className="text-sm text-destructive">{errors.description}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>Fecha de Entrega</Label>
-                <Input
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Hora de Entrega (opcional)</Label>
-                <Input
-                  type="time"
-                  value={deliveryTime}
-                  onChange={(e) => setDeliveryTime(e.target.value)}
-                  disabled={!deliveryDate}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Productos</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addRow}>
-                  <Plus className="mr-2 h-4 w-4" /> Agregar producto
-                </Button>
-              </div>
-              {rows.map((row, index) => (
-                <div key={index} className="flex gap-2 items-center">
+          <div className="space-y-6">
+            <FormSection icon={UserRound} title="Datos generales" description="Cliente, área y a quién se asigna el pedido">
+              <FormField label="Cliente" required error={errors.clientId}>
+                <div className="flex gap-2">
                   <CreatableCombobox
                     className="flex-1"
-                    items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
-                    selectedId={null}
-                    customValue={row.customName}
-                    placeholder="Buscar o escribir producto..."
-                    createLabel={(value) => `Usar "${value}" como producto nuevo`}
-                    emptyLabel="No hay productos frecuentes aún. Escribí uno para usarlo."
-                    onSelectItem={(item) => updateRow(index, "customName", item.label)}
-                    onUseCustom={(text) => updateRow(index, "customName", text)}
+                    items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
+                    selectedId={clientId ?? null}
+                    customValue={clientNameOverride}
+                    placeholder="Buscar o escribir nombre de cliente..."
+                    createLabel={(value) => `Usar "${value}" como nombre de cliente`}
+                    emptyLabel="No hay clientes registrados. Escribí un nombre para usarlo directamente."
+                    onSelectItem={(item) => {
+                      setClientId(Number(item.id));
+                      setClientNameOverride("");
+                    }}
+                    onUseCustom={(text) => {
+                      setClientId(undefined);
+                      setClientNameOverride(text);
+                    }}
                   />
-                  <Input
-                    type="number"
-                    min={1}
-                    className="w-24"
-                    placeholder="Cant."
-                    value={row.quantity ?? ""}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => setNewClientOpen(true)}
+                    title="Dar de alta un cliente completo (teléfono, email, empresa) sin salir de este formulario"
+                  >
+                    <UserPlus className="h-4 w-4" /> Nuevo cliente
+                  </Button>
+                </div>
+              </FormField>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField label="Área destino" icon={Building2} required error={errors.area}>
+                  <select
+                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                    value={area ?? ""}
+                    onChange={(e) => setArea(e.target.value || undefined)}
+                  >
+                    <option value="">Selecciona un área...</option>
+                    {AREA_OPTIONS.map((a) => (
+                      <option key={a.value} value={a.value}>
+                        {a.label}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField
+                  label="Asignar a (opcional)"
+                  icon={Users2}
+                  hint="Quién va a encargarse. Se puede cambiar después."
+                >
+                  <select
+                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                    value={assignedUserId ?? ""}
                     onChange={(e) =>
-                      updateRow(index, "quantity", Number(e.target.value))
+                      setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
                     }
+                  >
+                    <option value="">Sin asignar</option>
+                    {assignableUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.isSharedAccount
+                          ? `Área: ${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}`
+                          : [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              </div>
+
+              <FormField label="Descripción" required error={errors.description}>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                />
+              </FormField>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <FormField label="Fecha de Entrega" icon={CalendarClock}>
+                  <Input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                   />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => removeRow(index)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
+                </FormField>
+                <FormField label="Hora de Entrega (opcional)">
+                  <Input
+                    type="time"
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    disabled={!deliveryDate}
+                    className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                  />
+                </FormField>
+              </div>
+            </FormSection>
 
-            <div className="space-y-2">
-              <Label>Hoja de Autorización (opcional)</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,application/pdf"
-                onChange={handleAuthorizationFileChange}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
-              />
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG o PDF. Máximo 5MB.
-              </p>
-
-              {authorizationFile && (
-                <div className="flex items-center gap-3 rounded-md border p-2">
-                  {authorizationFilePreview ? (
-                    <img
-                      src={authorizationFilePreview}
-                      alt={authorizationFile.filename}
-                      className="h-14 w-14 rounded object-cover"
+            <FormSection icon={Package} title="Productos" description="Agregá una línea por cada producto del pedido">
+              <div className="space-y-2">
+                {rows.map((row, index) => (
+                  <div key={index} className="flex gap-2 items-center">
+                    <CreatableCombobox
+                      className="flex-1"
+                      items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
+                      selectedId={null}
+                      customValue={row.customName}
+                      placeholder="Buscar o escribir producto..."
+                      createLabel={(value) => `Usar "${value}" como producto nuevo`}
+                      emptyLabel="No hay productos frecuentes aún. Escribí uno para usarlo."
+                      onSelectItem={(item) => updateRow(index, "customName", item.label)}
+                      onUseCustom={(text) => updateRow(index, "customName", text)}
                     />
-                  ) : (
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{authorizationFile.filename}</p>
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Paperclip className="h-3 w-3" /> Listo para enviar
-                    </p>
+                    <Input
+                      type="number"
+                      min={1}
+                      className="w-24 focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                      placeholder="Cant."
+                      value={row.quantity ?? ""}
+                      onChange={(e) =>
+                        updateRow(index, "quantity", Number(e.target.value))
+                      }
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeRow(index)}
+                      disabled={rows.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={removeAuthorizationFile}
-                    aria-label="Quitar archivo"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={addRow} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> Agregar producto
+                </Button>
+              </div>
+            </FormSection>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <FormSection icon={Paperclip} title="Adjuntos" description="Hoja de autorización, opcional">
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,application/pdf"
+                  onChange={handleAuthorizationFileChange}
+                  className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                />
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG o PDF. Máximo 5MB.
+                </p>
+
+                {authorizationFile && (
+                  <div className="flex items-center gap-3 rounded-lg border p-2">
+                    {authorizationFilePreview ? (
+                      <img
+                        src={authorizationFilePreview}
+                        alt={authorizationFile.filename}
+                        className="h-14 w-14 rounded object-cover"
+                      />
+                    ) : (
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{authorizationFile.filename}</p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Paperclip className="h-3 w-3" /> Listo para enviar
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={removeAuthorizationFile}
+                      aria-label="Quitar archivo"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </FormSection>
+
+            <div className="flex justify-end gap-2 border-t border-border pt-4">
               <Button type="button" variant="secondary" onClick={handleClose} disabled={submitting}>
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} disabled={submitting}>
-                {submitting ? "Guardando..." : "Crear Pedido"}
-              </Button>
+              <motion.div {...(submitting ? {} : formButtonMotion)}>
+                <Button onClick={handleSubmit} disabled={submitting}>
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {submitting ? "Guardando..." : "Crear Pedido"}
+                </Button>
+              </motion.div>
             </div>
           </div>
         </DialogContent>

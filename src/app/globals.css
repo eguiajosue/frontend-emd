@@ -197,3 +197,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/*
+ * Splash de tinta al cambiar de tema (ver src/lib/themeTransition.ts).
+ * Desactivamos el cross-fade por defecto de la View Transitions API: la
+ * revelación del nuevo tema la controla exclusivamente el clip-path animado
+ * a mano sobre ::view-transition-new(root), no la animación nativa.
+ */
+::view-transition-group(root) {
+  animation-duration: 0s;
+}
+::view-transition-old(root) {
+  animation: none;
+  z-index: 0;
+}
+::view-transition-new(root) {
+  animation: none;
+  z-index: 1;
+}
