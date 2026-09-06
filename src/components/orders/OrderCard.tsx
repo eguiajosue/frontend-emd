@@ -65,7 +65,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
                 ENTREGADO
               </span>
             ) : (
-              <StatusBadge statusId={order.statusId} />
+              <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
             )}
           </div>
           <p className="truncate text-sm font-medium">{getOrderClientName(order)}</p>

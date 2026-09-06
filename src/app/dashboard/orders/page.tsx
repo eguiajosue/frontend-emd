@@ -306,7 +306,9 @@ const OrdersPage = () => {
       {
         id: "status",
         header: "Estado actual",
-        cell: ({ row }) => <StatusBadge statusId={row.original.statusId} />,
+        cell: ({ row }) => (
+          <StatusBadge statusId={row.original.statusId} statusName={row.original.status?.name} />
+        ),
       },
       {
         id: "assignedUser",

@@ -24,6 +24,12 @@ export const AREA_OPTIONS = [
 
 export type AreaValue = (typeof AREA_OPTIONS)[number]["value"];
 
+/**
+ * Áreas válidas como DESTINO de producción (`Order.productionArea`): todas
+ * menos "Diseño", que no es un destino final sino la etapa previa opcional.
+ */
+export const PRODUCTION_AREA_OPTIONS = AREA_OPTIONS.filter((a) => a.value !== "diseno");
+
 const AREA_LABELS: Record<string, string> = Object.fromEntries(
   AREA_OPTIONS.map((a) => [a.value, a.label])
 );

@@ -160,7 +160,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">#{order.id} · {getOrderClientName(order)}</span>
-                              <StatusBadge statusId={order.statusId} />
+                              <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                             </div>
                             <p className="line-clamp-1 text-xs text-muted-foreground">
                               {order.description}

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
 import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
+import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import {
   combineDateAndTime,
   formatDateTime,
@@ -38,7 +39,7 @@ import {
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { isDeliveredStatus } from "@/lib/orderStatus";
+import { isDeliveredStatus, isDesignFlowStatusName } from "@/lib/orderStatus";
 import { AREA_OPTIONS, getAreaLabel, getAreaIcon } from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import {
@@ -95,7 +96,14 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   // los roles operativos sólo pueden avanzar el estado (si el pedido está en su etapa).
   const canEdit = isAdmin || roles.includes("recepcion");
   const myStageIds = statusIdsForRoles(roles);
-  const canChangeStatus = canEdit || (!!order && myStageIds.includes(order.statusId));
+  // Mientras el pedido está "trabado" en un estado del flujo de diseño (en
+  // diseño / esperando autorización / cambios solicitados — todavía no
+  // autorizado), el selector manual de estado se deshabilita del todo: se
+  // avanza únicamente con las acciones de "Proceso de diseño" para no saltear
+  // el loop de autorización del cliente.
+  const isInDesignLimbo = !!order?.requiresDesign && isDesignFlowStatusName(order?.status?.name);
+  const canChangeStatus =
+    !isInDesignLimbo && (canEdit || (!!order && myStageIds.includes(order.statusId)));
 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -183,7 +191,8 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
               >
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
-                    Pedido #{order.id} <StatusBadge statusId={order.statusId} />
+                    Pedido #{order.id}{" "}
+                    <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                   </DialogTitle>
                 </DialogHeader>
 
@@ -270,7 +279,14 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                             ))}
                           </select>
                         </FormField>
-                        <FormField label="Área">
+                        <FormField
+                          label={order.requiresDesign ? "Área actual" : "Área"}
+                          hint={
+                            order.requiresDesign
+                              ? "Dónde está el pedido ahora. El destino en producción se define en \"Proceso de diseño\", más abajo."
+                              : undefined
+                          }
+                        >
                           <select
                             className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                             value={area ?? ""}
@@ -312,7 +328,17 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       isChanging={isChangingStatus}
                       onChange={handleStatusChange}
                     />
+                    {order.requiresDesign && (
+                      <p className="text-xs text-muted-foreground">
+                        Los estados del flujo de diseño (en diseño, esperando
+                        autorización, cambios solicitados, autorizado) se
+                        alcanzan sólo con las acciones de la sección
+                        &quot;Proceso de diseño&quot; de abajo, no a mano.
+                      </p>
+                    )}
                   </div>
+
+                  <DesignFlowSection order={order} />
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>

@@ -323,7 +323,12 @@ const AdminDashboardPage = () => {
     {
       id: "status",
       header: "Estado",
-      cell: ({ row }) => <StatusBadge statusId={row.original.order.statusId} />,
+      cell: ({ row }) => (
+        <StatusBadge
+          statusId={row.original.order.statusId}
+          statusName={row.original.order.status?.name}
+        />
+      ),
     },
     {
       id: "creationDate",
@@ -370,7 +375,11 @@ const AdminDashboardPage = () => {
       header: "Estado",
       cell: ({ row }) => (
         <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
-          {(statusMap[row.original.order.statusId] || "desconocido").toUpperCase()}
+          {(
+            row.original.order.status?.name ??
+            statusMap[row.original.order.statusId] ??
+            "desconocido"
+          ).toUpperCase()}
         </span>
       ),
     },

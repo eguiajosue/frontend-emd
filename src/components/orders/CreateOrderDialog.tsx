@@ -34,7 +34,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
-import { AREA_OPTIONS } from "@/lib/areas";
+import { Switch } from "@/components/ui/switch";
+import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import type {
@@ -80,7 +81,8 @@ const orderSchema = z
   .object({
     clientId: z.number().optional(),
     clientNameOverride: z.string().optional(),
-    area: z.string({ required_error: "El área es requerida" }).min(1, "El área es requerida"),
+    area: z.string().optional(),
+    requiresDesign: z.boolean(),
     description: z.string().min(1, "La descripción es requerida"),
     deliveryDate: z.string().optional().or(z.literal("")),
     assignedUserId: z.number().optional(),
@@ -92,6 +94,15 @@ const orderSchema = z
         code: z.ZodIssueCode.custom,
         path: ["clientId"],
         message: "Selecciona o escribí un cliente",
+      });
+    }
+    // Sin diseño el área destino es obligatoria (a donde va el pedido directo);
+    // con diseño es opcional, se puede definir después (recepción o diseño).
+    if (!data.requiresDesign && !data.area) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["area"],
+        message: "El área es requerida",
       });
     }
   });
@@ -128,6 +139,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [clientNameOverride, setClientNameOverride] = useState("");
+  const [requiresDesign, setRequiresDesign] = useState(true);
   const [area, setArea] = useState<string | undefined>(undefined);
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
@@ -144,6 +156,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const resetForm = () => {
     setClientId(undefined);
     setClientNameOverride("");
+    setRequiresDesign(true);
     setArea(undefined);
     setAssignedUserId(undefined);
     setDescription("");
@@ -229,6 +242,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
       clientId,
       clientNameOverride,
       area,
+      requiresDesign,
       description,
       deliveryDate,
       assignedUserId,
@@ -249,7 +263,11 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
       const order = await create({
         clientId: parsed.data.clientId,
         clientNameOverride: parsed.data.clientId ? undefined : parsed.data.clientNameOverride?.trim(),
-        area: parsed.data.area,
+        // Sin diseño, "área" es el destino directo. Con diseño, el pedido arranca
+        // en Diseño y "área" no aplica — lo que se manda es la producción destino.
+        area: parsed.data.requiresDesign ? undefined : parsed.data.area,
+        requiresDesign: parsed.data.requiresDesign,
+        productionArea: parsed.data.requiresDesign ? parsed.data.area : undefined,
         userId: Number(session?.user?.id),
         assignedUserId: parsed.data.assignedUserId,
         statusId: 1,
@@ -311,15 +329,46 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                 </div>
               </FormField>
 
+              <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+                <Switch
+                  id="requires-design"
+                  checked={requiresDesign}
+                  onCheckedChange={setRequiresDesign}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <label htmlFor="requires-design" className="cursor-pointer text-sm font-medium">
+                    ¿Requiere diseño?
+                  </label>
+                  <p className="text-xs text-muted-foreground">
+                    {requiresDesign
+                      ? "El pedido entra a Diseño y pasa a producción recién cuando el cliente autorice el montaje."
+                      : "El pedido va directo al área elegida, sin pasar por Diseño."}
+                  </p>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField label="Área destino" icon={Building2} required error={errors.area}>
+                <FormField
+                  label={requiresDesign ? "Área de producción (opcional)" : "Área destino"}
+                  icon={Building2}
+                  required={!requiresDesign}
+                  error={errors.area}
+                  hint={
+                    requiresDesign
+                      ? "Se puede dejar sin definir y elegirla más adelante (Recepción o Diseño)."
+                      : undefined
+                  }
+                >
                   <select
                     className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={area ?? ""}
                     onChange={(e) => setArea(e.target.value || undefined)}
                   >
-                    <option value="">Selecciona un área...</option>
-                    {AREA_OPTIONS.map((a) => (
+                    <option value="">
+                      {requiresDesign ? "Sin definir todavía..." : "Selecciona un área..."}
+                    </option>
+                    {(requiresDesign ? PRODUCTION_AREA_OPTIONS : AREA_OPTIONS).map((a) => (
                       <option key={a.value} value={a.value}>
                         {a.label}
                       </option>

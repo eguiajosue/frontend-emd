@@ -54,7 +54,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                 onClick={() => onSelectOrder(order.id)}
                 className="flex w-full items-center gap-3 rounded-xl border bg-card/50 p-3 text-left transition-colors hover:bg-muted"
               >
-                <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClasses(order.statusId)}`} />
+                <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClasses(order.statusId, order.status?.name)}`} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     #{order.id} · {getOrderClientName(order)}
@@ -65,7 +65,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                   <span className="text-xs font-medium text-muted-foreground">
                     {formatDeliveryDate(order.deliveryDate)}
                   </span>
-                  <StatusBadge statusId={order.statusId} />
+                  <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                 </div>
               </motion.button>
             ))}

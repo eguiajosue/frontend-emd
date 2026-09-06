@@ -25,6 +25,7 @@ import {
   ClipboardList,
   HelpCircle,
   LayoutDashboard,
+  Palette,
   PackagePlus,
   Sparkles,
   Users,
@@ -513,6 +514,80 @@ const AyudaPage = () => {
           <StatusButtonsPreview />
         </div>
       </LayeredParallaxSection>
+
+      {/* Flujo de diseño (opcional, Order.requiresDesign) */}
+      <StorySection className="min-h-[40vh] space-y-4 py-14">
+        <div className="flex items-center gap-2">
+          <Palette className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-semibold tracking-tight">
+            Flujo de diseño
+          </h2>
+        </div>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Cuando un pedido &quot;requiere diseño&quot;, no va directo a
+          producción: primero pasa por un ida y vuelta con el cliente hasta
+          que autoriza el montaje.
+        </p>
+        <SpotlightCard className="max-w-3xl p-5">
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                1
+              </span>
+              <span>
+                <b>Recepción</b> asigna el pedido a <b>Diseño</b> (queda en
+                estado &quot;en diseño&quot;).
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                2
+              </span>
+              <span>
+                <b>Diseño</b> arma el montaje y lo sube desde el detalle del
+                pedido; vuelve a Recepción.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                3
+              </span>
+              <span>
+                <b>Recepción</b> se lo manda al cliente por fuera del sistema
+                y espera su autorización (&quot;esperando autorización&quot;).
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500/15 text-xs font-semibold text-orange-600 dark:text-orange-400">
+                ↺
+              </span>
+              <span>
+                Si el cliente pide cambios, Recepción los carga
+                (&quot;cambios solicitados&quot;) y el pedido vuelve a
+                Diseño — se repite desde el paso 2 tantas veces como haga
+                falta.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                ✓
+              </span>
+              <span>
+                Cuando el cliente autoriza, el pedido queda
+                &quot;autorizado&quot; y salta al área de producción elegida
+                — recién ahí arranca el trabajo de taller/producción.
+              </span>
+            </li>
+          </ol>
+        </SpotlightCard>
+        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          Todo esto vive en la sección &quot;Proceso de diseño&quot; del
+          detalle de cada pedido: ahí se ve el historial de montajes y
+          feedback por ronda, y sólo aparecen los botones que le corresponden
+          a tu rol en el paso en el que está el pedido — el selector manual
+          de estado no permite saltearse este flujo.
+        </p>
+      </StorySection>
 
       {/* FAQ / cierre */}
       <StorySection className="min-h-[40vh] space-y-4 py-14">

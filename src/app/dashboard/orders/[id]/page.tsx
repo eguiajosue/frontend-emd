@@ -145,7 +145,8 @@ const OrderDetailPage = () => {
               <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
             </p>
             <p className="flex items-center gap-2">
-              <b>Estado actual:</b> <StatusBadge statusId={order.statusId} />
+              <b>Estado actual:</b>{" "}
+              <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
             </p>
             <p className="flex items-center gap-1">
               <UserRound className="h-3.5 w-3.5 text-muted-foreground" />

@@ -216,7 +216,10 @@ const RendimientoPage = () => {
                       .map((group) => (
                         <div key={group.statusId} className="rounded-lg border bg-background p-3">
                           <div className="mb-2 flex items-center justify-between gap-2">
-                            <StatusBadge statusId={group.statusId} />
+                            <StatusBadge
+                              statusId={group.statusId}
+                              statusName={group.orders[0]?.status?.name}
+                            />
                             <span className="text-xs font-medium text-muted-foreground">
                               {group.orders.length}
                             </span>
