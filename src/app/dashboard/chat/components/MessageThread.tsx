@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Eye, Send, Users } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -9,6 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
+import { useMotionPreset } from "@/lib/motion";
 import type { ChatConversation, ChatMember, ChatMessage } from "@/types";
 
 interface MessageThreadProps {
@@ -50,6 +52,7 @@ export function MessageThread({
   const [draft, setDraft] = useState("");
   const [showMembers, setShowMembers] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { reduced } = useMotionPreset();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -136,73 +139,88 @@ export function MessageThread({
             Todavía no hay mensajes en esta conversación.
           </p>
         ) : (
-          messages.map((message) => {
-            const mine = message.senderId === currentUserId;
-            const day = formatDay(message.createdAt);
-            const showDay = day !== lastDay;
-            lastDay = day;
-            const author = message.sender ?? {
-              id: message.senderId,
-              username: message.senderUsername ?? "",
-              firstName: message.senderName ?? "Usuario",
-              lastName: null,
-            };
+          <AnimatePresence initial={false}>
+            {messages.map((message) => {
+              const mine = message.senderId === currentUserId;
+              const day = formatDay(message.createdAt);
+              const showDay = day !== lastDay;
+              lastDay = day;
+              const author = message.sender ?? {
+                id: message.senderId,
+                username: message.senderUsername ?? "",
+                firstName: message.senderName ?? "Usuario",
+                lastName: null,
+              };
 
-            return (
-              <div key={message.id}>
-                {showDay ? (
-                  <div className="flex items-center gap-2 py-3">
-                    <Separator className="flex-1" />
-                    <span className="text-xs capitalize text-muted-foreground">
-                      {day}
-                    </span>
-                    <Separator className="flex-1" />
-                  </div>
-                ) : null}
-                <div
-                  className={cn(
-                    "flex items-end gap-2",
-                    mine ? "justify-end" : "justify-start"
-                  )}
+              return (
+                <motion.div
+                  key={message.id}
+                  initial={
+                    reduced
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: 12, scale: 0.98 }
+                  }
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={
+                    reduced
+                      ? { duration: 0.15 }
+                      : { type: "spring", bounce: 0.25, duration: 0.35 }
+                  }
                 >
-                  {!mine ? (
-                    <Avatar className="h-7 w-7 shrink-0">
-                      <AvatarFallback className="text-[10px]">
-                        {chatInitials(author)}
-                      </AvatarFallback>
-                    </Avatar>
+                  {showDay ? (
+                    <div className="flex items-center gap-2 py-3">
+                      <Separator className="flex-1" />
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {day}
+                      </span>
+                      <Separator className="flex-1" />
+                    </div>
                   ) : null}
                   <div
                     className={cn(
-                      "max-w-[75%] rounded-lg px-3 py-2 text-sm",
-                      mine
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
+                      "flex items-end gap-2",
+                      mine ? "justify-end" : "justify-start"
                     )}
                   >
                     {!mine ? (
-                      <p className="pb-0.5 text-xs font-medium opacity-80">
-                        {chatDisplayName(author)}
-                      </p>
+                      <Avatar className="h-7 w-7 shrink-0">
+                        <AvatarFallback className="text-[10px]">
+                          {chatInitials(author)}
+                        </AvatarFallback>
+                      </Avatar>
                     ) : null}
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.body}
-                    </p>
-                    <p
+                    <div
                       className={cn(
-                        "pt-1 text-[10px]",
+                        "max-w-[75%] rounded-lg px-3 py-2 text-sm",
                         mine
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
                       )}
                     >
-                      {formatTime(message.createdAt)}
-                    </p>
+                      {!mine ? (
+                        <p className="pb-0.5 text-xs font-medium opacity-80">
+                          {chatDisplayName(author)}
+                        </p>
+                      ) : null}
+                      <p className="whitespace-pre-wrap break-words">
+                        {message.body}
+                      </p>
+                      <p
+                        className={cn(
+                          "pt-1 text-[10px]",
+                          mine
+                            ? "text-primary-foreground/70"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {formatTime(message.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
         <div ref={bottomRef} />
       </div>
