@@ -2,6 +2,10 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "scheduler": "^0.23.2",
+    "react-reconciler": "^0.29.2"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

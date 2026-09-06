@@ -20,7 +20,6 @@ import { getStatusBadgeClasses } from "@/lib/statusColors";
 import { statusOptions } from "@/lib/orderStatus";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
-import AyudaAmbientScene from "@/components/three/AyudaAmbientScene";
 import {
   BarChart3,
   ClipboardList,
@@ -344,7 +343,7 @@ const AyudaPage = () => {
         className="flex min-h-[40vh] flex-col items-start justify-center gap-4 overflow-hidden py-10"
         shapeClassName="-left-16 -top-16 h-72 w-72 bg-gradient-to-br from-primary/25 to-accent2-500/20"
       >
-        <AyudaAmbientScene />
+        {/* AyudaAmbientScene deshabilitada temporalmente, mismo issue que en login. */}
         <div className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-primary/10 to-accent2-500/10 p-4">
           <HelpCircle className="h-8 w-8 shrink-0 text-primary" />
           <div>
