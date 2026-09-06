@@ -165,6 +165,34 @@ export interface OrderHistory extends BaseEntity {
   changeDate: string;
 }
 
+/**
+ * Nota interna de un pedido (POST/GET /orders/:id/notes).
+ * Endpoint nuevo del backend: el shape puede variar levemente hasta que se
+ * termine de estabilizar, por eso `user` queda flexible.
+ */
+export interface OrderNote extends BaseEntity {
+  orderId: number;
+  userId: number;
+  text: string;
+  createdAt: string;
+  user?: AssignedUser | null;
+}
+
+/**
+ * Entrada de historial de ediciones de un pedido (GET /orders/:id/audit-log).
+ * `changes` es un JSON genérico cuyo shape define el backend: puede venir como
+ * `{ campo: { from, to } }` o como un objeto plano `{ campo: valorNuevo }`;
+ * el renderizado en la UI contempla ambos casos de forma defensiva.
+ */
+export interface OrderAuditLogEntry extends BaseEntity {
+  orderId: number;
+  userId: number;
+  action: string;
+  changes: unknown;
+  createdAt: string;
+  user?: AssignedUser | null;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Payloads de escritura                                                      */
 /* -------------------------------------------------------------------------- */

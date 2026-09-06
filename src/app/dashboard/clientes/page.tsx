@@ -2,15 +2,19 @@
 
 import React, { useMemo, useState } from "react";
 import { z } from "zod";
+import { ColumnDef } from "@tanstack/react-table";
+import { History } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CrudPage } from "@/components/crud/CrudPage";
+import { Button } from "@/components/ui/button";
+import { CrudPage, type CrudColumnsArgs } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, Company } from "@/types";
 import { getClientColumns } from "@/app/dashboard/clients/components/columns";
 import { getCompanyColumns } from "@/app/dashboard/companies/components/columns";
+import { ClientOrdersDialog } from "@/components/clients/ClientOrdersDialog";
 
 const clientSchema = z.object({
   first_name: z.string().min(1, "El nombre es requerido"),
@@ -51,6 +55,35 @@ const ClientesPage = () => {
   const { canManageOperations } = usePermissions();
   const { data: companies } = useEntityList<Company>("companies");
   const [tab, setTab] = useState<"clientes" | "empresas">(initialTabFromUrl);
+  const [ordersClientId, setOrdersClientId] = useState<number | null>(null);
+
+  // Reusa las columnas base de Clientes y le agrega una acción "Ver pedidos"
+  // (historial de pedidos del cliente, GET /clients/:id/orders).
+  const clientColumnsWithOrders = useMemo(
+    () =>
+      (args: CrudColumnsArgs<Client>): ColumnDef<Client>[] => {
+        const base = getClientColumns(args);
+        return [
+          ...base.slice(0, -1),
+          {
+            id: "viewOrders",
+            header: "",
+            cell: ({ row }) => (
+              <Button
+                size="icon"
+                variant="ghost"
+                title="Ver pedidos del cliente"
+                onClick={() => setOrdersClientId(row.original.id)}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            ),
+          },
+          ...base.slice(-1),
+        ];
+      },
+    []
+  );
 
   const clientFields: FieldConfig[] = useMemo(
     () => [
@@ -94,7 +127,7 @@ const ClientesPage = () => {
             canEdit={canManageOperations}
             fields={clientFields}
             schema={clientSchema}
-            columns={getClientColumns}
+            columns={clientColumnsWithOrders}
             emptyMessage="No hay clientes aún."
             deleteDescription="Esta acción eliminará al cliente de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Cliente" : "Nuevo Cliente")}
@@ -141,6 +174,11 @@ const ClientesPage = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <ClientOrdersDialog
+        clientId={ordersClientId}
+        onClose={() => setOrdersClientId(null)}
+      />
     </div>
   );
 };

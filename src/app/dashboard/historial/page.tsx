@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
 import { CardsSkeleton, ErrorState } from "@/components/feedback/states";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
-import { useOrderHistoryList } from "@/hooks/useOrders";
+import { useOrderHistoryList, downloadOrdersExport } from "@/hooks/useOrders";
+import { useAuthToken } from "@/hooks/useEntity";
+import { usePermissions } from "@/hooks/usePermissions";
 import { motion } from "framer-motion";
 import { staggerContainerVariants } from "@/lib/motion";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown } from "lucide-react";
 
 const PAGE_SIZE = 20;
 
@@ -22,21 +25,45 @@ const PAGE_SIZE = 20;
 const HistorialPage = () => {
   const [page, setPage] = useState(1);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const { orders, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
     page,
     PAGE_SIZE
   );
+  const { canManageOperations } = usePermissions();
+  const token = useAuthToken();
 
   const totalPages = meta?.totalPages ?? 1;
 
+  const handleExportCsv = async () => {
+    setIsExportingCsv(true);
+    try {
+      await downloadOrdersExport(token, {});
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo exportar el CSV."
+      );
+    } finally {
+      setIsExportingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <Title title="Historial de Pedidos" />
-        <p className="text-muted-foreground">
-          Todos los pedidos de la empresa, incluidos los entregados hace tiempo
-          que ya no aparecen en el tablero.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Title title="Historial de Pedidos" />
+          <p className="text-muted-foreground">
+            Todos los pedidos de la empresa, incluidos los entregados hace tiempo
+            que ya no aparecen en el tablero.
+          </p>
+        </div>
+        {canManageOperations && (
+          <Button variant="outline" onClick={handleExportCsv} disabled={isExportingCsv}>
+            <FileDown className="mr-2 h-4 w-4" />
+            {isExportingCsv ? "Exportando..." : "Exportar CSV"}
+          </Button>
+        )}
       </div>
 
       {isPending ? (

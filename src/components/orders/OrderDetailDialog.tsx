@@ -28,15 +28,27 @@ import {
   getOrderProductName,
   getUserName,
 } from "@/lib/format";
-import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrders";
+import {
+  useOrderHistory,
+  useOrder,
+  useChangeOrderStatus,
+  useOrderNotes,
+  useOrderAuditLog,
+} from "@/hooks/useOrders";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { FileText, Loader2, UserRound, ZoomIn } from "lucide-react";
-import type { Order, UpdateOrderPayload, User } from "@/types";
+import type { Order, OrderAuditLogEntry, UpdateOrderPayload, User } from "@/types";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -58,6 +70,19 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   });
   const { histories } = useOrderHistory(orderId ?? -1);
   const { data: users } = useEntityList<User>("users", { enabled: open });
+  const {
+    notes,
+    isLoading: isLoadingNotes,
+    isUnavailable: notesUnavailable,
+    addNote,
+    isAdding: isAddingNote,
+  } = useOrderNotes(open ? orderId : null);
+  const {
+    entries: auditEntries,
+    isLoading: isLoadingAudit,
+    isUnavailable: auditUnavailable,
+  } = useOrderAuditLog(open ? orderId : null);
+  const [newNote, setNewNote] = useState("");
   const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
     "orders"
   );
@@ -119,6 +144,16 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     if (!order || nextStatusId === order.statusId) return;
     setStatusId(nextStatusId);
     await changeStatus(order, nextStatusId);
+  };
+
+  const handleAddNote = async () => {
+    const text = newNote.trim();
+    if (!text) return;
+    const result = await addNote(text);
+    if (result !== undefined) {
+      setNewNote("");
+      toast.success("Nota agregada");
+    }
   };
 
   return (
@@ -342,6 +377,96 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       </ul>
                     )}
                   </div>
+
+                  <div>
+                    <h4 className="mb-2 font-semibold">Notas internas</h4>
+                    {isLoadingNotes ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    ) : notesUnavailable ? (
+                      <p className="text-muted-foreground">
+                        Las notas internas todavía no están disponibles.
+                      </p>
+                    ) : (
+                      <>
+                        {notes.length === 0 ? (
+                          <p className="mb-2 text-muted-foreground">Sin notas aún.</p>
+                        ) : (
+                          <ul className="mb-3 space-y-2">
+                            {notes.map((note) => (
+                              <li key={note.id} className="rounded-lg border bg-muted/20 p-2.5">
+                                <p className="whitespace-pre-wrap">{note.text}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {getAssignedUserName(note.user) ?? "Usuario"} ·{" "}
+                                  {formatDateTime(note.createdAt)}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <div className="space-y-2">
+                          <Textarea
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                            placeholder="Agregar una nota interna..."
+                            rows={2}
+                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                          />
+                          <motion.div
+                            className="inline-block"
+                            {...(isAddingNote ? {} : formButtonMotion)}
+                          >
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleAddNote}
+                              disabled={isAddingNote || !newNote.trim()}
+                            >
+                              {isAddingNote && <Loader2 className="h-4 w-4 animate-spin" />}
+                              {isAddingNote ? "Enviando..." : "Agregar nota"}
+                            </Button>
+                          </motion.div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Accordion type="single" collapsible>
+                    <AccordionItem value="audit-log">
+                      <AccordionTrigger className="font-semibold">
+                        Historial de cambios
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        {isLoadingAudit ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
+                          </div>
+                        ) : auditUnavailable ? (
+                          <p className="text-muted-foreground">
+                            El historial de cambios todavía no está disponible.
+                          </p>
+                        ) : auditEntries.length === 0 ? (
+                          <p className="text-muted-foreground">Sin ediciones registradas.</p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {auditEntries.map((entry) => (
+                              <li key={entry.id} className="border-l-2 pl-3">
+                                <p className="font-medium">{formatAuditAction(entry)}</p>
+                                {renderAuditChanges(entry.changes)}
+                                <span className="text-xs text-muted-foreground">
+                                  {getAssignedUserName(entry.user) ?? "Usuario"} ·{" "}
+                                  {formatDateTime(entry.createdAt)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </motion.div>
             )}
@@ -358,4 +483,77 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
       )}
     </>
   );
+}
+
+/** Nombres legibles de los campos más comunes que puede reportar `audit-log.changes`. */
+const AUDIT_FIELD_LABELS: Record<string, string> = {
+  description: "Descripción",
+  deliveryDate: "Fecha de entrega",
+  statusId: "Estado",
+  assignedUserId: "Asignado a",
+  area: "Área",
+  clientId: "Cliente",
+};
+
+function auditFieldLabel(key: string): string {
+  return AUDIT_FIELD_LABELS[key] ?? key;
+}
+
+function formatAuditAction(entry: OrderAuditLogEntry): string {
+  if (!entry.action) return "Edición del pedido";
+  const known: Record<string, string> = {
+    update: "Edición del pedido",
+    create: "Creación del pedido",
+    status_change: "Cambio de estado",
+  };
+  return known[entry.action] ?? entry.action;
+}
+
+/**
+ * Renderiza `changes` de forma legible sin asumir un shape exacto: soporta
+ * tanto `{ campo: { from, to } }` como un objeto plano `{ campo: valorNuevo }`,
+ * y cae a JSON crudo si no es ninguno de los dos.
+ */
+function renderAuditChanges(changes: unknown) {
+  if (!changes || typeof changes !== "object") return null;
+  const entries = Object.entries(changes as Record<string, unknown>);
+  if (entries.length === 0) return null;
+
+  return (
+    <ul className="mb-1 ml-1 list-inside list-disc text-xs text-muted-foreground">
+      {entries.map(([key, value]) => {
+        const label = auditFieldLabel(key);
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          const { from, to, previous, current, old: oldValue, new: newValue } =
+            value as Record<string, unknown>;
+          const before = from ?? previous ?? oldValue;
+          const after = to ?? current ?? newValue;
+          if (before !== undefined || after !== undefined) {
+            return (
+              <li key={key}>
+                {label}: {stringifyAuditValue(before)} → {stringifyAuditValue(after)}
+              </li>
+            );
+          }
+        }
+        return (
+          <li key={key}>
+            {label}: {stringifyAuditValue(value)}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function stringifyAuditValue(value: unknown): string {
+  if (value === undefined || value === null || value === "") return "—";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "—";
+  }
 }
