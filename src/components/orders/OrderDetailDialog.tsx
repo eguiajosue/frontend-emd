@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +50,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FileText, Loader2, UserRound, ZoomIn } from "lucide-react";
-import type { Order, OrderAuditLogEntry, UpdateOrderPayload, User } from "@/types";
+import { buildAuditLines } from "@/lib/orderAuditLog";
+import type { Order, UpdateOrderPayload, User } from "@/types";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -83,6 +85,11 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     isLoading: isLoadingAudit,
     isUnavailable: auditUnavailable,
   } = useOrderAuditLog(open ? orderId : null);
+  // Una oración en español por campo cambiado (ver `@/lib/orderAuditLog`).
+  const auditLines = useMemo(
+    () => auditEntries.flatMap((entry) => buildAuditLines(entry)),
+    [auditEntries]
+  );
   const [newNote, setNewNote] = useState("");
   const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
     "orders"
@@ -484,20 +491,31 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                           <p className="text-muted-foreground">
                             El historial de cambios todavía no está disponible.
                           </p>
-                        ) : auditEntries.length === 0 ? (
+                        ) : auditLines.length === 0 ? (
                           <p className="text-muted-foreground">
-                            Sin ediciones registradas — el pedido está tal cual se creó.
+                            Sin cambios registrados: el pedido está tal cual se creó.
                           </p>
                         ) : (
-                          <ul className="space-y-2">
-                            {auditEntries.map((entry) => (
-                              <li key={entry.id} className="border-l-2 pl-3">
-                                <p className="font-medium">{formatAuditAction(entry)}</p>
-                                {renderAuditChanges(entry.changes)}
-                                <span className="text-xs text-muted-foreground">
-                                  {getAssignedUserName(entry.user) ?? "Usuario"} ·{" "}
-                                  {formatDateTime(entry.createdAt)}
-                                </span>
+                          <ul className="space-y-4">
+                            {auditLines.map((line) => (
+                              <li key={line.key} className="flex items-start gap-3">
+                                <Avatar className="h-8 w-8 shrink-0">
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                    {line.actorInitials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 space-y-0.5 leading-relaxed">
+                                  <p className="break-words">
+                                    <span className="font-medium">{line.actorName}</span>{" "}
+                                    {line.action}
+                                  </p>
+                                  <p
+                                    className="text-xs text-muted-foreground"
+                                    title={line.absoluteTime}
+                                  >
+                                    {line.relativeTime}
+                                  </p>
+                                </div>
                               </li>
                             ))}
                           </ul>
@@ -523,75 +541,3 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   );
 }
 
-/** Nombres legibles de los campos más comunes que puede reportar `audit-log.changes`. */
-const AUDIT_FIELD_LABELS: Record<string, string> = {
-  description: "Descripción",
-  deliveryDate: "Fecha de entrega",
-  statusId: "Estado",
-  assignedUserId: "Asignado a",
-  area: "Área",
-  clientId: "Cliente",
-};
-
-function auditFieldLabel(key: string): string {
-  return AUDIT_FIELD_LABELS[key] ?? key;
-}
-
-function formatAuditAction(entry: OrderAuditLogEntry): string {
-  if (!entry.action) return "Edición del pedido";
-  const known: Record<string, string> = {
-    update: "Edición del pedido",
-    create: "Creación del pedido",
-    status_change: "Cambio de estado",
-  };
-  return known[entry.action] ?? entry.action;
-}
-
-/**
- * Renderiza `changes` de forma legible sin asumir un shape exacto: soporta
- * tanto `{ campo: { from, to } }` como un objeto plano `{ campo: valorNuevo }`,
- * y cae a JSON crudo si no es ninguno de los dos.
- */
-function renderAuditChanges(changes: unknown) {
-  if (!changes || typeof changes !== "object") return null;
-  const entries = Object.entries(changes as Record<string, unknown>);
-  if (entries.length === 0) return null;
-
-  return (
-    <ul className="mb-1 ml-1 list-inside list-disc text-xs text-muted-foreground">
-      {entries.map(([key, value]) => {
-        const label = auditFieldLabel(key);
-        if (value && typeof value === "object" && !Array.isArray(value)) {
-          const { from, to, previous, current, old: oldValue, new: newValue } =
-            value as Record<string, unknown>;
-          const before = from ?? previous ?? oldValue;
-          const after = to ?? current ?? newValue;
-          if (before !== undefined || after !== undefined) {
-            return (
-              <li key={key}>
-                {label}: {stringifyAuditValue(before)} → {stringifyAuditValue(after)}
-              </li>
-            );
-          }
-        }
-        return (
-          <li key={key}>
-            {label}: {stringifyAuditValue(value)}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function stringifyAuditValue(value: unknown): string {
-  if (value === undefined || value === null || value === "") return "—";
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return "—";
-  }
-}

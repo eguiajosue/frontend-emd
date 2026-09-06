@@ -203,6 +203,17 @@ export interface OrderAuditLogEntry extends BaseEntity {
   changes: unknown;
   createdAt: string;
   user?: AssignedUser | null;
+  /**
+   * Diccionario id → nombre de las entidades referenciadas en `changes`, que
+   * el backend adjunta para poder redactar el historial con nombres en vez de
+   * ids. Opcional: si el backend todavía no lo manda, la UI cae a los mapas
+   * locales (`statusLabel`) o muestra el id degradado.
+   */
+  labels?: {
+    statuses?: Record<string, string>;
+    users?: Record<string, string>;
+    clients?: Record<string, string>;
+  } | null;
 }
 
 /* -------------------------------------------------------------------------- */
