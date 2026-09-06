@@ -14,7 +14,13 @@ import { ErrorState } from "@/components/feedback/states";
 import { statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { formatDateTime, getAssignedUserName, getOrderClientName, getUserName } from "@/lib/format";
+import {
+  formatDateTime,
+  getAssignedUserName,
+  getOrderClientName,
+  getOrderProductName,
+  getUserName,
+} from "@/lib/format";
 import { FileText, UserRound } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
@@ -242,16 +248,12 @@ const OrderDetailPage = () => {
         <CardContent>
           {order.orderProducts && order.orderProducts.length > 0 ? (
             <ul className="space-y-2">
-              {order.orderProducts.map((op) => (
+              {order.orderProducts.map((op, i) => (
                 <li
-                  key={op.productId}
+                  key={op.productId ?? `${op.customName}-${i}`}
                   className="flex justify-between text-sm border-b pb-1"
                 >
-                  <span>
-                    {op.product?.code ||
-                      op.product?.productType?.name ||
-                      `Producto #${op.productId}`}
-                  </span>
+                  <span>{getOrderProductName(op)}</span>
                   <span>Cantidad: {op.quantity}</span>
                 </li>
               ))}

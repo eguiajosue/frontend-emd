@@ -15,6 +15,8 @@ export const ENDPOINTS = {
   products: "products",
   orderHistories: "order-histories",
   areaVisibility: "area-visibility",
+  orderProductPresets: "order-product-presets",
+  performanceSummary: "performance/summary",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

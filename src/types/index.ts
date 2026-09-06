@@ -70,9 +70,47 @@ export interface Product extends BaseEntity {
 
 export interface OrderProduct {
   orderId?: number;
-  productId: number;
+  /** Legado: producto del catálogo completo. Opcional, reemplazado por `customName` en el flujo simple. */
+  productId?: number;
+  /** Nombre de producto libre (preset o nuevo). Alternativa simple a `productId`. */
+  customName?: string;
   quantity: number;
   product?: Product | null;
+}
+
+/** Preset de nombre de producto frecuente (GET /order-product-presets). */
+export interface OrderProductPreset extends BaseEntity {
+  name: string;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Rendimiento (GET /performance/summary, solo admin/superuser)               */
+/* -------------------------------------------------------------------------- */
+
+export interface EmployeePerformance {
+  userId: number;
+  firstName: string;
+  lastName?: string | null;
+  username: string;
+  totalAssigned: number;
+  totalCompleted: number;
+  avgTurnaroundHours: number | null;
+  onTimeRate: number | null;
+  score: number | null;
+}
+
+export interface AreaPerformance {
+  area: string;
+  totalAssigned: number;
+  totalCompleted: number;
+  avgTurnaroundHours: number | null;
+  onTimeRate: number | null;
+  score: number | null;
+}
+
+export interface PerformanceSummary {
+  employees: EmployeePerformance[];
+  areas: AreaPerformance[];
 }
 
 /** Metadata + contenido de la hoja de autorización, tal como la devuelve GET /orders/:id. */
@@ -138,7 +176,7 @@ export interface CreateOrderPayload {
   area: string;
   description: string;
   deliveryDate?: string;
-  orderProducts?: Array<{ productId: number; quantity: number }>;
+  orderProducts?: Array<{ productId?: number; customName?: string; quantity: number }>;
   authorizationFile?: AuthorizationFileInput;
 }
 

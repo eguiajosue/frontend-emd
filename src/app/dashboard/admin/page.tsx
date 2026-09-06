@@ -21,7 +21,8 @@ import { statusMap } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, getClientName, getUserName } from "@/lib/format";
 import type { Order, OrderHistory } from "@/types";
-import { AlertTriangle, ShieldAlert, ListChecks, Gauge } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const HOUR_MS = 60 * 60 * 1000;
 const FALLBACK_THRESHOLD_HOURS = 60; // umbral fijo (48-72h) usado cuando no hay histórico suficiente
@@ -349,11 +350,19 @@ const AdminDashboardPage = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <Title title="Panel General" />
-        <p className="text-muted-foreground">
-          Vista global de todos los pedidos, detección de estancamiento y rendimiento por área.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Title title="Panel General" />
+          <p className="text-muted-foreground">
+            Vista global de todos los pedidos, detección de estancamiento y rendimiento por área.
+          </p>
+        </div>
+        <Button variant="outline" className="gap-2 shrink-0" asChild>
+          <a href="/dashboard/admin/rendimiento">
+            <TrendingUp className="h-4 w-4" />
+            Ver rendimiento de empleados y áreas
+          </a>
+        </Button>
       </div>
 
       {hasError ? (

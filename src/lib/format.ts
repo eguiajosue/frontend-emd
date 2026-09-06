@@ -1,6 +1,6 @@
 /** Helpers de formato compartidos (fechas y nombres de entidades). */
 
-import type { AssignedUser, Client, Order, User } from "@/types";
+import type { AssignedUser, Client, Order, OrderProduct, User } from "@/types";
 
 export const DATE_LOCALE = "es-MX";
 
@@ -51,6 +51,19 @@ export function getOrderClientName(order: Order): string {
   if (order.client) return getClientName(order.client);
   if (order.clientNameOverride) return order.clientNameOverride;
   return "-";
+}
+
+/**
+ * Nombre a mostrar de una línea de producto de pedido: prioriza `customName`
+ * (texto libre, flujo simple), luego el producto del catálogo (legado), y por
+ * último cae a un genérico con el id.
+ */
+export function getOrderProductName(op: OrderProduct): string {
+  if (op.customName) return op.customName;
+  if (op.product?.code) return op.product.code;
+  if (op.product?.productType?.name) return op.product.productType.name;
+  if (op.productId) return `Producto #${op.productId}`;
+  return "Producto";
 }
 
 /** Nombre del usuario asignado a un pedido, o `null` si no tiene. */

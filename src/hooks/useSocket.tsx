@@ -4,10 +4,12 @@ import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { Bell } from "lucide-react";
 import { statusMap } from "@/lib/orderStatus";
 import { SOCKET_URL } from "@/lib/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { playNotificationSound } from "@/lib/sound";
 
 interface OrderNotificationPayload {
   id: number | string;
@@ -16,14 +18,29 @@ interface OrderNotificationPayload {
   status?: string;
 }
 
+/** Payload de "newAssignedOrderNotification" (ver contrato del backend). */
+interface AssignedOrderNotificationPayload {
+  orderId: number | string;
+  description?: string;
+  area?: string;
+  deliveryDate?: string;
+  clientName?: string;
+}
+
+/** Duración (ms) del toast destacado de pedido asignado/nuevo para el área. */
+const HIGHLIGHT_TOAST_DURATION_MS = 9000;
+
 /**
  * Connects to the backend's Socket.io notifications gateway and shows a
  * toast whenever a relevant order notification arrives for the current
  * user's role.
  *
  * Backend events (see notifications.gateway.ts):
- * - "newOrderNotification": emitted only to the "admin" room when a new
- *   order is created.
+ * - "newOrderNotification": emitted a la room del área/rol cuando un pedido se
+ *   crea SIN asignar a nadie en particular (además de al admin).
+ * - "newAssignedOrderNotification": emitido SOLO al usuario específico cuando
+ *   un pedido se crea con `assignedUserId` apuntando a él. Se muestra con un
+ *   toast más visible + sonido, porque requiere su atención directa.
  * - "orderStatusChangeNotification": broadcast to every connected client
  *   when an order's status changes.
  */
@@ -58,13 +75,52 @@ export function useSocket() {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
     };
 
+    // Toast destacado (más duración, ícono grande) + sonido, para notificaciones
+    // que requieren atención directa del usuario: un pedido asignado a él, o un
+    // pedido nuevo llegado a la room de su área/rol.
+    const showHighlightedOrderToast = (
+      title: string,
+      details: { description?: string | null; area?: string | null; clientName?: string | null }
+    ) => {
+      playNotificationSound();
+      const descriptionParts = [
+        details.description || undefined,
+        details.area ? `Área: ${details.area}` : undefined,
+        details.clientName ? `Cliente: ${details.clientName}` : undefined,
+      ].filter(Boolean);
+      toast(title, {
+        description: descriptionParts.join(" · ") || undefined,
+        duration: HIGHLIGHT_TOAST_DURATION_MS,
+        icon: <Bell className="h-5 w-5" />,
+        className: "text-base",
+      });
+    };
+
+    const isAdmin = rolesKey.split(",").includes("admin");
+
     const handleNewOrder = (order: OrderNotificationPayload) => {
       invalidateOrders();
-      if (!rolesKey.split(",").includes("admin")) return;
-      toast.info("Nuevo pedido creado", {
-        description: `Pedido #${order.id}${
-          order.clientName ? ` de ${order.clientName}` : ""
-        }${order.createdBy ? ` creado por ${order.createdBy}` : ""}`,
+      if (isAdmin) {
+        toast.info("Nuevo pedido creado", {
+          description: `Pedido #${order.id}${
+            order.clientName ? ` de ${order.clientName}` : ""
+          }${order.createdBy ? ` creado por ${order.createdBy}` : ""}`,
+        });
+        return;
+      }
+      // Llega a esta room (área/rol) porque el pedido se creó sin asignar a
+      // nadie en particular y corresponde al área del usuario actual.
+      showHighlightedOrderToast(`Nuevo pedido #${order.id} en tu área`, {
+        clientName: order.clientName,
+      });
+    };
+
+    const handleAssignedOrder = (order: AssignedOrderNotificationPayload) => {
+      invalidateOrders();
+      showHighlightedOrderToast(`Pedido #${order.orderId} asignado a vos`, {
+        description: order.description,
+        area: order.area,
+        clientName: order.clientName,
       });
     };
 
@@ -79,6 +135,7 @@ export function useSocket() {
     };
 
     socket.on("newOrderNotification", handleNewOrder);
+    socket.on("newAssignedOrderNotification", handleAssignedOrder);
     socket.on("orderStatusChangeNotification", handleStatusChange);
 
     socket.on("connect_error", (err) => {
@@ -90,6 +147,7 @@ export function useSocket() {
 
     return () => {
       socket.off("newOrderNotification", handleNewOrder);
+      socket.off("newAssignedOrderNotification", handleAssignedOrder);
       socket.off("orderStatusChangeNotification", handleStatusChange);
       socket.disconnect();
       socketRef.current = null;

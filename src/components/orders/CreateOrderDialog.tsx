@@ -17,14 +17,14 @@ import { FileText, Paperclip, Plus, Trash2, UserPlus, X } from "lucide-react";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
+import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { AREA_OPTIONS } from "@/lib/areas";
-import { cn } from "@/lib/utils";
 import type {
   AuthorizationFileInput,
   Client,
   CreateOrderPayload,
   Order,
-  Product,
+  OrderProductPreset,
   User,
 } from "@/types";
 
@@ -54,13 +54,12 @@ function readFileAsAuthorizationInput(file: File): Promise<AuthorizationFileInpu
 }
 
 const orderProductSchema = z.object({
-  productId: z.number({ required_error: "Selecciona un producto" }),
+  customName: z.string({ required_error: "Elegí un producto" }).min(1, "Elegí un producto"),
   quantity: z.number().min(1, "La cantidad debe ser mayor a 0"),
 });
 
 const orderSchema = z
   .object({
-    clientMode: z.enum(["registered", "manual"]),
     clientId: z.number().optional(),
     clientNameOverride: z.string().optional(),
     area: z.string({ required_error: "El área es requerida" }).min(1, "El área es requerida"),
@@ -70,24 +69,17 @@ const orderSchema = z
     orderProducts: z.array(orderProductSchema).optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.clientMode === "registered" && !data.clientId) {
+    if (!data.clientId && !data.clientNameOverride?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clientId"],
-        message: "Selecciona un cliente",
-      });
-    }
-    if (data.clientMode === "manual" && !data.clientNameOverride?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["clientNameOverride"],
-        message: "Escribí el nombre del cliente",
+        message: "Selecciona o escribí un cliente",
       });
     }
   });
 
 interface OrderProductRow {
-  productId?: number;
+  customName?: string;
   quantity?: number;
 }
 
@@ -109,11 +101,12 @@ function clientLabel(c: Client): string {
 export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialogProps) {
   const { session } = usePermissions();
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
-  const { data: products } = useEntityList<Product>("products", { enabled: open });
+  const { data: productPresets } = useEntityList<OrderProductPreset>("orderProductPresets", {
+    enabled: open,
+  });
   const { data: users } = useEntityList<User>("users", { enabled: open });
   const { create } = useEntityMutations<Order, CreateOrderPayload>("orders");
 
-  const [clientMode, setClientMode] = useState<"registered" | "manual">("registered");
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [clientNameOverride, setClientNameOverride] = useState("");
   const [area, setArea] = useState<string | undefined>(undefined);
@@ -129,7 +122,6 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = () => {
-    setClientMode("registered");
     setClientId(undefined);
     setClientNameOverride("");
     setArea(undefined);
@@ -192,7 +184,11 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const addRow = () => setRows((prev) => [...prev, {}]);
   const removeRow = (index: number) =>
     setRows((prev) => prev.filter((_, i) => i !== index));
-  const updateRow = (index: number, field: keyof OrderProductRow, value: number) => {
+  const updateRow = <K extends keyof OrderProductRow>(
+    index: number,
+    field: K,
+    value: OrderProductRow[K]
+  ) => {
     setRows((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
@@ -206,10 +202,9 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const assignableUsers = usersForArea.length > 0 ? usersForArea : users;
 
   const handleSubmit = async () => {
-    const orderProducts = rows.filter((r) => r.productId && r.quantity);
+    const orderProducts = rows.filter((r) => r.customName && r.quantity);
 
     const parsed = orderSchema.safeParse({
-      clientMode,
       clientId,
       clientNameOverride,
       area,
@@ -231,11 +226,8 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setSubmitting(true);
     try {
       const order = await create({
-        clientId: parsed.data.clientMode === "registered" ? parsed.data.clientId : undefined,
-        clientNameOverride:
-          parsed.data.clientMode === "manual"
-            ? parsed.data.clientNameOverride?.trim()
-            : undefined,
+        clientId: parsed.data.clientId,
+        clientNameOverride: parsed.data.clientId ? undefined : parsed.data.clientNameOverride?.trim(),
         area: parsed.data.area,
         userId: Number(session?.user?.id),
         assignedUserId: parsed.data.assignedUserId,
@@ -267,73 +259,37 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
           <div className="space-y-4">
             <div className="space-y-1">
               <Label>Cliente</Label>
-              <div className="inline-flex rounded-md border p-0.5 text-sm">
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-sm px-3 py-1 transition-colors",
-                    clientMode === "registered"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  )}
-                  onClick={() => setClientMode("registered")}
-                >
-                  Cliente registrado
-                </button>
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-sm px-3 py-1 transition-colors",
-                    clientMode === "manual"
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  )}
-                  onClick={() => setClientMode("manual")}
-                >
-                  Escribir nombre
-                </button>
-              </div>
-
-              {clientMode === "registered" ? (
-                <div className="flex gap-2 pt-1">
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                    value={clientId ?? ""}
-                    onChange={(e) =>
-                      setClientId(e.target.value ? Number(e.target.value) : undefined)
-                    }
-                  >
-                    <option value="">Selecciona un cliente...</option>
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {clientLabel(c)}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0 gap-1.5"
-                    onClick={() => setNewClientOpen(true)}
-                    title="Dar de alta un cliente sin salir de este formulario"
-                  >
-                    <UserPlus className="h-4 w-4" /> Nuevo cliente
-                  </Button>
-                </div>
-              ) : (
-                <Input
-                  className="mt-1"
-                  placeholder="Nombre del cliente"
-                  value={clientNameOverride}
-                  onChange={(e) => setClientNameOverride(e.target.value)}
+              <div className="flex gap-2 pt-1">
+                <CreatableCombobox
+                  className="flex-1"
+                  items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
+                  selectedId={clientId ?? null}
+                  customValue={clientNameOverride}
+                  placeholder="Buscar o escribir nombre de cliente..."
+                  createLabel={(value) => `Usar "${value}" como nombre de cliente`}
+                  emptyLabel="No hay clientes registrados. Escribí un nombre para usarlo directamente."
+                  onSelectItem={(item) => {
+                    setClientId(Number(item.id));
+                    setClientNameOverride("");
+                  }}
+                  onUseCustom={(text) => {
+                    setClientId(undefined);
+                    setClientNameOverride(text);
+                  }}
                 />
-              )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => setNewClientOpen(true)}
+                  title="Dar de alta un cliente completo (teléfono, email, empresa) sin salir de este formulario"
+                >
+                  <UserPlus className="h-4 w-4" /> Nuevo cliente
+                </Button>
+              </div>
               {errors.clientId && (
                 <p className="text-sm text-destructive">{errors.clientId}</p>
-              )}
-              {errors.clientNameOverride && (
-                <p className="text-sm text-destructive">{errors.clientNameOverride}</p>
               )}
             </div>
 
@@ -404,20 +360,17 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               </div>
               {rows.map((row, index) => (
                 <div key={index} className="flex gap-2 items-center">
-                  <select
-                    className="flex h-9 flex-1 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                    value={row.productId ?? ""}
-                    onChange={(e) =>
-                      updateRow(index, "productId", Number(e.target.value))
-                    }
-                  >
-                    <option value="">Selecciona un producto...</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.code || `Producto #${p.id}`}
-                      </option>
-                    ))}
-                  </select>
+                  <CreatableCombobox
+                    className="flex-1"
+                    items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
+                    selectedId={null}
+                    customValue={row.customName}
+                    placeholder="Buscar o escribir producto..."
+                    createLabel={(value) => `Usar "${value}" como producto nuevo`}
+                    emptyLabel="No hay productos frecuentes aún. Escribí uno para usarlo."
+                    onSelectItem={(item) => updateRow(index, "customName", item.label)}
+                    onUseCustom={(text) => updateRow(index, "customName", text)}
+                  />
                   <Input
                     type="number"
                     min={1}

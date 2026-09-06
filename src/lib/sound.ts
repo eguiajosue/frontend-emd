@@ -1,0 +1,46 @@
+/**
+ * Sonido de notificación sintetizado con Web Audio API (sin archivos externos
+ * que alojar). Dos tonos ascendentes tipo "ding".
+ *
+ * Los navegadores bloquean audio antes de interacción del usuario; como estas
+ * notificaciones sólo suenan cuando el usuario ya está logueado e interactuando
+ * con la app, debería funcionar sin problema. Si el navegador lo bloquea de
+ * todas formas (o no soporta AudioContext), falla en silencio: no debe romper
+ * nada, sólo no sonar esa vez.
+ */
+export function playNotificationSound(): void {
+  try {
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioContextCtor) return;
+
+    const ctx = new AudioContextCtor();
+
+    const playTone = (frequency: number, startTime: number, duration: number) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    playTone(660, now, 0.15); // primer tono
+    playTone(880, now + 0.14, 0.22); // segundo tono, más agudo ("ding")
+
+    // Cerrar el contexto después de sonar para no dejar handles abiertos.
+    window.setTimeout(() => {
+      ctx.close().catch(() => undefined);
+    }, 500);
+  } catch {
+    // Autoplay bloqueado / AudioContext no soportado: no rompe nada.
+  }
+}

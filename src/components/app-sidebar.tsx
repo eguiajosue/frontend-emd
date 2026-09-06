@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   HelpCircle,
   Settings,
+  TrendingUp,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -83,6 +84,12 @@ export function AppSidebar() {
           title: "Panel General",
           url: "/dashboard/admin",
           icon: LayoutDashboard,
+          roles: ["admin", "superuser"],
+        },
+        {
+          title: "Rendimiento",
+          url: "/dashboard/admin/rendimiento",
+          icon: TrendingUp,
           roles: ["admin", "superuser"],
         },
       ],

@@ -28,6 +28,7 @@ import {
   formatDateTime,
   getAssignedUserName,
   getOrderClientName,
+  getOrderProductName,
   getUserName,
 } from "@/lib/format";
 import { useOrderHistory, useOrder, useChangeOrderStatus } from "@/hooks/useOrders";
@@ -265,7 +266,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
                         {order.orderProducts.map((op, i) => (
                           <li key={i}>
-                            {op.product?.code || `Producto #${op.productId}`} × {op.quantity}
+                            {getOrderProductName(op)} × {op.quantity}
                           </li>
                         ))}
                       </ul>
