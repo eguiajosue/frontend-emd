@@ -16,6 +16,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
+import { NotificationTypeBadge } from "@/components/notifications/NotificationTypeBadge";
 
 type Filter = "all" | "unread" | "read";
 
@@ -144,8 +145,11 @@ export default function NotificacionesPage() {
                 />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className={cn("font-medium", !notification.read && "text-foreground")}>
-                      {notification.title}
+                    <span className="flex flex-wrap items-center gap-2">
+                      <NotificationTypeBadge type={notification.type} />
+                      <span className={cn("font-medium", !notification.read && "text-foreground")}>
+                        {notification.title}
+                      </span>
                     </span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {relativeTime(notification.createdAt)}

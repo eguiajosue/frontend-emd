@@ -16,6 +16,7 @@ import { useNotifications, useUnreadNotificationsCount } from "@/hooks/useNotifi
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
+import { NotificationTypeBadge } from "@/components/notifications/NotificationTypeBadge";
 
 /** Cuántas notificaciones se muestran en el dropdown de la campanita. */
 const PREVIEW_LIMIT = 8;
@@ -138,6 +139,9 @@ export function NotificationBell() {
                       )}
                     />
                     <span className="min-w-0 flex-1">
+                      <span className="mb-1 flex">
+                        <NotificationTypeBadge type={notification.type} />
+                      </span>
                       <span className="block truncate font-medium">
                         {notification.title}
                       </span>
