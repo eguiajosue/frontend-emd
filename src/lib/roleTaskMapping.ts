@@ -18,12 +18,29 @@ export const roleTaskMapping: { [role: string]: number[] } = {
   impresiones: [3], // en proceso
 };
 
-// Roles que tienen acceso administrativo total (ven el Panel General en vez de "Mis Tareas").
+// Roles que tienen acceso administrativo total (ven el Panel General en vez de "Estatus de Pedidos").
 export const ADMIN_ROLES = ["admin", "superuser"];
+
+// Roles puramente operativos/de producción: sólo necesitan ver "Estatus de Pedidos"
+// (antes "Mis Tareas") y "Ayuda" en el sidebar — nada de gestión ni métricas.
+export const OPERATIONAL_ROLES = [
+  "dtf",
+  "bordado",
+  "diseno",
+  "laser",
+  "taller",
+  "impresiones",
+];
 
 export function isAdminRole(roles: string[] | undefined): boolean {
   if (!roles) return false;
   return roles.some((r) => ADMIN_ROLES.includes(r));
+}
+
+/** true si el usuario tiene al menos un rol y TODOS sus roles son operativos (sin admin/recepcion). */
+export function isOperationalOnly(roles: string[] | undefined): boolean {
+  if (!roles || roles.length === 0) return false;
+  return roles.every((r) => OPERATIONAL_ROLES.includes(r));
 }
 
 export function statusIdsForRoles(roles: string[] | undefined): number[] {

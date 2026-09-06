@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -9,10 +9,41 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { FileText, Paperclip, Plus, Trash2, X } from "lucide-react";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
-import type { Client, CreateOrderPayload, Order, Product } from "@/types";
+import type {
+  AuthorizationFileInput,
+  Client,
+  CreateOrderPayload,
+  Order,
+  Product,
+} from "@/types";
+
+const AUTHORIZATION_FILE_MAX_BYTES = 5 * 1024 * 1024; // 5MB, igual que el límite del backend.
+const ALLOWED_AUTHORIZATION_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "application/pdf",
+] as const;
+
+/** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
+function readFileAsAuthorizationInput(file: File): Promise<AuthorizationFileInput> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer el archivo"));
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const base64 = result.split(",")[1] ?? "";
+      resolve({
+        data: base64,
+        filename: file.name,
+        mimeType: file.type as AuthorizationFileInput["mimeType"],
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 const orderProductSchema = z.object({
   productId: z.number({ required_error: "Selecciona un producto" }),
@@ -44,6 +75,49 @@ const NewOrder = () => {
   const [rows, setRows] = useState<OrderProductRow[]>([{}]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [authorizationFile, setAuthorizationFile] = useState<AuthorizationFileInput | null>(null);
+  const [authorizationFilePreview, setAuthorizationFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAuthorizationFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (
+      !ALLOWED_AUTHORIZATION_MIME_TYPES.includes(
+        file.type as (typeof ALLOWED_AUTHORIZATION_MIME_TYPES)[number]
+      )
+    ) {
+      toast.error("La hoja de autorización debe ser PNG, JPG o PDF.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > AUTHORIZATION_FILE_MAX_BYTES) {
+      toast.error("La hoja de autorización no puede pesar más de 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const parsedFile = await readFileAsAuthorizationInput(file);
+      setAuthorizationFile(parsedFile);
+      setAuthorizationFilePreview(
+        file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+      );
+    } catch {
+      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const removeAuthorizationFile = () => {
+    if (authorizationFilePreview) URL.revokeObjectURL(authorizationFilePreview);
+    setAuthorizationFile(null);
+    setAuthorizationFilePreview(null);
+  };
 
   const addRow = () => setRows((prev) => [...prev, {}]);
   const removeRow = (index: number) =>
@@ -82,6 +156,7 @@ const NewOrder = () => {
         description: parsed.data.description,
         deliveryDate: parsed.data.deliveryDate || undefined,
         orderProducts: parsed.data.orderProducts,
+        authorizationFile: authorizationFile ?? undefined,
       });
       toast.success("Pedido creado correctamente");
       router.push(`/dashboard/orders/${order.id}`);
@@ -181,6 +256,49 @@ const NewOrder = () => {
               </Button>
             </div>
           ))}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Hoja de Autorización (opcional)</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,application/pdf"
+            onChange={handleAuthorizationFileChange}
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+          />
+          <p className="text-xs text-muted-foreground">
+            PNG, JPG o PDF. Máximo 5MB.
+          </p>
+
+          {authorizationFile && (
+            <div className="flex items-center gap-3 rounded-md border p-2">
+              {authorizationFilePreview ? (
+                <img
+                  src={authorizationFilePreview}
+                  alt={authorizationFile.filename}
+                  className="h-14 w-14 rounded object-cover"
+                />
+              ) : (
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{authorizationFile.filename}</p>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Paperclip className="h-3 w-3" /> Listo para enviar
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={removeAuthorizationFile}
+                aria-label="Quitar archivo"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         <Button onClick={handleSubmit} disabled={submitting}>

@@ -154,14 +154,14 @@ const AyudaPage = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <ClipboardList className="h-5 w-5 text-primary" />
-                  Mis Tareas
+                  Estatus de Pedidos
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="que-veo">
                     <AccordionTrigger>
-                      ¿Qué pedidos veo en &quot;Mis Tareas&quot;?
+                      ¿Qué pedidos veo en &quot;Estatus de Pedidos&quot;?
                     </AccordionTrigger>
                     <AccordionContent>
                       Vas a ver únicamente los pedidos que están en la etapa que
@@ -177,7 +177,7 @@ const AyudaPage = () => {
                       ¿Cómo cambio el estado de un pedido cuando termino mi parte?
                     </AccordionTrigger>
                     <AccordionContent>
-                      Entrá al pedido desde &quot;Mis Tareas&quot; (o hacé clic
+                      Entrá al pedido desde &quot;Estatus de Pedidos&quot; (o hacé clic
                       en &quot;Ver&quot;) y usá el selector de estado para
                       pasarlo a la siguiente etapa. Apenas lo cambiás, el
                       pedido pasa a la lista de tareas del área siguiente y

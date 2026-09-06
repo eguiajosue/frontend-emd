@@ -26,11 +26,39 @@ import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
+import { isOperationalOnly } from "@/lib/roleTaskMapping";
+
+// Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
+// taller, impresiones): sólo necesitan ver el estatus de sus pedidos y Ayuda,
+// nada de métricas ni gestión editable.
+const OPERATIONAL_MENU = [
+  {
+    groupLabel: "Producción",
+    items: [
+      {
+        title: "Estatus de Pedidos",
+        url: "/dashboard/estatus-pedidos",
+        icon: ClipboardList,
+      },
+    ],
+  },
+  {
+    groupLabel: "Soporte",
+    items: [
+      {
+        title: "Ayuda",
+        url: "/dashboard/ayuda",
+        icon: HelpCircle,
+      },
+    ],
+  },
+];
 
 export function AppSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const userRoles = session?.user?.roles || [];
+  const operationalOnly = isOperationalOnly(userRoles);
 
   const menuItems = [
     {
@@ -43,8 +71,8 @@ export function AppSidebar() {
           roles: ["admin", "superuser"],
         },
         {
-          title: "Mis Tareas",
-          url: "/dashboard/mis-tareas",
+          title: "Estatus de Pedidos",
+          url: "/dashboard/estatus-pedidos",
           icon: ClipboardList,
           roles: [
             "recepcion",
@@ -65,7 +93,7 @@ export function AppSidebar() {
           title: "Tablero de Estatus",
           url: "/dashboard/orderstatus",
           icon: Package,
-          roles: ["admin", "recepcion", "taller"],
+          roles: ["admin", "recepcion"],
         },
         {
           title: "Lista de Pedidos",
@@ -144,6 +172,8 @@ export function AppSidebar() {
     },
   ];
 
+  const visibleGroups = operationalOnly ? OPERATIONAL_MENU : menuItems;
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -153,14 +183,18 @@ export function AppSidebar() {
             <span className="text-primary">{session?.user?.first_name}</span>
           </h2>
         </SidebarHeader>
-        {menuItems.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.groupLabel}>
             <SidebarGroupLabel>{group.groupLabel}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) =>
-                // Mostrar el botón si el usuario tiene "admin" o si tiene al menos uno de los roles permitidos
+                // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
+                // completo se filtra por rol, con "admin" viendo todo.
+                operationalOnly ||
                 userRoles.includes("admin") ||
-                userRoles.some((r) => item.roles.includes(r)) ? (
+                userRoles.some((r) =>
+                  "roles" in item ? (item.roles as string[]).includes(r) : true
+                ) ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={pathname === item.url}>
                       <a href={item.url} className="relative">

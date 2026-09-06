@@ -15,6 +15,7 @@ import { statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { formatDateTime, getClientName, getUserName } from "@/lib/format";
+import { FileText } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
 import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
@@ -150,6 +151,31 @@ const OrderDetailPage = () => {
               <Button onClick={handleSaveDetails} disabled={saving}>
                 Guardar Cambios
               </Button>
+            )}
+
+            {order.authorizationFile && (
+              <div className="space-y-2 pt-2">
+                <Label>Hoja de Autorización</Label>
+                {order.authorizationFile.mimeType.startsWith("image/") ? (
+                  <img
+                    src={order.authorizationFile.dataUrl}
+                    alt={order.authorizationFile.filename}
+                    loading="lazy"
+                    className="max-h-64 max-w-full rounded-md border object-contain"
+                  />
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={order.authorizationFile.dataUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Ver hoja de autorización (PDF)
+                    </a>
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

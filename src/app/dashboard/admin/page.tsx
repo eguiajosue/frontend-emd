@@ -1,15 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import dynamic from "next/dynamic";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +50,12 @@ function formatDuration(ms: number) {
   const hours = Math.round(totalHours % 24);
   return `${days}d ${hours}h`;
 }
+
+// recharts es pesado y no crítico para el primer render del panel admin.
+const AvgTimeBarChart = dynamic(() => import("@/components/charts/AvgTimeBarChart"), {
+  ssr: false,
+  loading: () => <Skeleton className="h-full w-full" />,
+});
 
 const AdminDashboardPage = () => {
   const { roles, isAdmin, isSessionLoading } = usePermissions();
@@ -462,15 +460,7 @@ const AdminDashboardPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="etapa" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="horasPromedio" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <AvgTimeBarChart data={chartData} />
                 </div>
               </CardContent>
             </Card>

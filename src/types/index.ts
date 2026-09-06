@@ -68,6 +68,21 @@ export interface OrderProduct {
   product?: Product | null;
 }
 
+/** Metadata + contenido de la hoja de autorización, tal como la devuelve GET /orders/:id. */
+export interface AuthorizationFile {
+  filename: string;
+  mimeType: string;
+  /** `data:<mime>;base64,<data>`, lista para usar en <img src> o como href. */
+  dataUrl: string;
+}
+
+/** Payload de subida: base64 SIN el prefijo `data:...;base64,`. */
+export interface AuthorizationFileInput {
+  data: string;
+  filename: string;
+  mimeType: "image/png" | "image/jpeg" | "application/pdf";
+}
+
 export interface Order extends BaseEntity {
   clientId?: number;
   userId?: number;
@@ -79,6 +94,10 @@ export interface Order extends BaseEntity {
   user?: User | null;
   status?: Status | null;
   orderProducts?: OrderProduct[];
+  /** Presente en el listado (GET /orders); el archivo completo NO viaja ahí. */
+  hasAuthorizationFile?: boolean;
+  /** Presente sólo en el detalle (GET /orders/:id). */
+  authorizationFile?: AuthorizationFile | null;
 }
 
 export interface OrderHistory extends BaseEntity {
@@ -99,12 +118,14 @@ export interface CreateOrderPayload {
   description: string;
   deliveryDate?: string;
   orderProducts?: Array<{ productId: number; quantity: number }>;
+  authorizationFile?: AuthorizationFileInput;
 }
 
 export interface UpdateOrderPayload {
   description?: string;
   deliveryDate?: string;
   statusId?: number;
+  authorizationFile?: AuthorizationFileInput;
 }
 
 export interface CreateOrderHistoryPayload {

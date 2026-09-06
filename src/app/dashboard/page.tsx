@@ -2,18 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import dynamic from "next/dynamic";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CardsSkeleton, ErrorState } from "@/components/feedback/states";
@@ -21,18 +10,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
-import { getStatusChartColor } from "@/lib/statusColors";
 import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
+
+// recharts es pesado y no crítico para el primer render del dashboard.
+const OrdersByStatusBarChart = dynamic(
+  () => import("@/components/charts/OrdersByStatusBarChart"),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
+);
+const OrdersByStatusPieChart = dynamic(
+  () => import("@/components/charts/OrdersByStatusPieChart"),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] w-full" /> }
+);
 
 const Dashboard = () => {
   const router = useRouter();
   const { session, roles, isAdmin: admin, isSessionLoading } = usePermissions();
 
-  // Los roles operativos (no admin/superuser) aterrizan en "Mis Tareas" en vez del
-  // dashboard de métricas generales.
+  // Los roles operativos (no admin/superuser) aterrizan en "Estatus de Pedidos" en vez
+  // del dashboard de métricas generales.
   useEffect(() => {
     if (!isSessionLoading && roles.length > 0 && !admin) {
-      router.replace("/dashboard/mis-tareas");
+      router.replace("/dashboard/estatus-pedidos");
     }
   }, [isSessionLoading, roles, admin, router]);
 
@@ -157,22 +155,7 @@ const Dashboard = () => {
                     No hay pedidos aún.
                   </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <XAxis
-                        dataKey="status"
-                        tickFormatter={(v: string) => v.toUpperCase()}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                      <Tooltip
-                        formatter={(value) => [value, "Pedidos"] as [number, string]}
-                        labelFormatter={(label) => String(label).toUpperCase()}
-                      />
-                      <Bar dataKey="total" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <OrdersByStatusBarChart data={chartData} />
                 )}
               </CardContent>
             </Card>
@@ -187,29 +170,7 @@ const Dashboard = () => {
                     No hay pedidos aún.
                   </p>
                 ) : (
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        dataKey="total"
-                        nameKey="status"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={90}
-                        label={(entry: { name?: string | number }) =>
-                          String(entry.name ?? "").toUpperCase()
-                        }
-                      >
-                        {pieData.map((entry) => (
-                          <Cell
-                            key={`cell-${entry.statusId}`}
-                            fill={getStatusChartColor(entry.statusId)}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [value, "Pedidos"] as [number, string]} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <OrdersByStatusPieChart data={pieData} />
                 )}
               </CardContent>
             </Card>

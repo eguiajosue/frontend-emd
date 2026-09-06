@@ -14,8 +14,11 @@ export function useOrders(options?: { enabled?: boolean }) {
   return useEntityList<Order>("orders", { enabled: options?.enabled });
 }
 
-export function useOrder(id: number | string | undefined) {
-  return useEntityDetail<Order>("orders", id);
+export function useOrder(
+  id: number | string | undefined,
+  options?: { enabled?: boolean }
+) {
+  return useEntityDetail<Order>("orders", id, options);
 }
 
 export function useOrderHistories() {
