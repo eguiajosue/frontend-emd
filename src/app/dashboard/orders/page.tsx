@@ -386,7 +386,7 @@ const OrdersPage = () => {
   const loading = isPending || isSessionLoading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Title title="Pedidos" />
@@ -442,6 +442,7 @@ const OrdersPage = () => {
               onClick={handleExportCsv}
               disabled={isExportingCsv}
               title="Exporta un CSV desde el servidor con los filtros activos"
+              className={cn(isExportingCsv && "animate-pulse")}
             >
               <FileDown className="mr-2 h-4 w-4" />
               {isExportingCsv ? "Exportando..." : "Exportar CSV"}

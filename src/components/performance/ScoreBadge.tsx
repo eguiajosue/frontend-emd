@@ -1,4 +1,8 @@
+"use client";
+
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useMotionPreset } from "@/lib/motion";
 
 /**
  * El backend calcula `score` como el promedio de dos z-scores (desempeño
@@ -34,8 +38,34 @@ const TIER_LABELS: Record<ReturnType<typeof scoreTier>, string> = {
 
 export function ScoreBadge({ score }: { score: number | null }) {
   const tier = scoreTier(score);
+  const { reduced } = useMotionPreset();
+  const celebrate = tier === "high" && !reduced;
+
   return (
-    <span
+    <motion.span
+      // `initial` de framer-motion sólo se aplica al montar, así que este
+      // micro-efecto de "logro" ocurre una única vez cuando el badge aparece
+      // en pantalla (primera carga o primera vez que entra a la vista tras un
+      // filtro/orden) y no se repite en re-renders posteriores del mismo nodo.
+      initial={celebrate ? { scale: 0.85, opacity: 0, boxShadow: "0 0 0 0 rgba(16,185,129,0)" } : false}
+      animate={
+        celebrate
+          ? {
+              scale: 1,
+              opacity: 1,
+              boxShadow: [
+                "0 0 0 0 rgba(16,185,129,0)",
+                "0 0 12px 2px rgba(16,185,129,0.45)",
+                "0 0 0 0 rgba(16,185,129,0)",
+              ],
+            }
+          : undefined
+      }
+      transition={
+        celebrate
+          ? { scale: { type: "spring", bounce: 0.35, duration: 0.4 }, boxShadow: { duration: 0.9, ease: "easeOut" } }
+          : undefined
+      }
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
         TIER_STYLES[tier]
@@ -43,6 +73,6 @@ export function ScoreBadge({ score }: { score: number | null }) {
     >
       {TIER_LABELS[tier]}
       {score != null && <span className="font-semibold">{score.toFixed(2)}</span>}
-    </span>
+    </motion.span>
   );
 }

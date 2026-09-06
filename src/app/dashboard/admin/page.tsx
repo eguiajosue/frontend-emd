@@ -30,6 +30,8 @@ import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
 import { UpcomingDeliveries } from "@/components/admin/UpcomingDeliveries";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { ProgressRing } from "@/components/ui/progress-ring";
+import { ChartDrillDownPanel } from "@/components/charts/ChartDrillDownPanel";
+import { isOverdue } from "@/lib/deliveryProgress";
 
 const HOUR_MS = 60 * 60 * 1000;
 const FALLBACK_THRESHOLD_HOURS = 60; // umbral fijo (48-72h) usado cuando no hay histórico suficiente
@@ -83,6 +85,7 @@ const AdminDashboardPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("timeInStatus");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const [activeEtapa, setActiveEtapa] = useState<string | null>(null);
 
   const loading = loadingOrders || loadingHistories || isSessionLoading;
   const hasError = ordersError || historiesError;
@@ -256,6 +259,52 @@ const AdminDashboardPage = () => {
     [performanceByStatus]
   );
 
+  // Etapa (statusId) actualmente seleccionada en el drill-down del gráfico,
+  // resuelta desde el label de la barra clickeada.
+  const activeStatusId = useMemo(() => {
+    if (!activeEtapa) return null;
+    const found = performanceByStatus.find((p) => p.label === activeEtapa);
+    return found?.statusId ?? null;
+  }, [activeEtapa, performanceByStatus]);
+
+  const etapaOrders = useMemo(() => {
+    if (activeStatusId == null) return [];
+    return enrichedOrders
+      .filter((e) => e.order.statusId === activeStatusId)
+      .sort((a, b) => b.timeInStatusMs - a.timeInStatusMs);
+  }, [enrichedOrders, activeStatusId]);
+
+  // Data storytelling: pedidos por vencer en las próximas 24h (a partir de
+  // los pedidos ya cargados, no hardcodeado).
+  const dueSoonCount = useMemo(() => {
+    const in24h = now + 24 * HOUR_MS;
+    return orders.filter((o) => {
+      if (!o.deliveryDate || isOverdue(o.creationDate, o.deliveryDate)) return false;
+      const delivery = new Date(o.deliveryDate).getTime();
+      return delivery <= in24h;
+    }).length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, now]);
+
+  // Data storytelling: etapa con el tiempo promedio más alto (posible cuello
+  // de botella), calculada a partir del mismo resumen que alimenta el gráfico.
+  const slowestStageInsight = useMemo(() => {
+    const withAvg = performanceByStatus.filter((p) => p.avgMs != null);
+    if (withAvg.length === 0) return null;
+    return withAvg.reduce((max, p) => (p.avgMs! > max.avgMs! ? p : max));
+  }, [performanceByStatus]);
+
+  // KPI hero del bento grid: score global de rendimiento (pedidos a tiempo /
+  // total, agregando todas las etapas). Es el número más importante del
+  // panel, así que ocupa la caja más grande.
+  const overallScore = useMemo(() => {
+    const totalActive = enrichedOrders.length;
+    const totalStagnant = stagnantOrders.length;
+    const onTimePct =
+      totalActive > 0 ? Math.round(((totalActive - totalStagnant) / totalActive) * 100) : null;
+    return { totalActive, totalStagnant, onTimePct };
+  }, [enrichedOrders, stagnantOrders]);
+
   type OrderRow = { order: Order; timeInStatusMs: number };
 
   const trackingColumns: ColumnDef<OrderRow>[] = [
@@ -357,7 +406,7 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <GreetingHeader firstName={session?.user?.first_name} />
 
       <div className="flex justify-end">
@@ -389,11 +438,172 @@ const AdminDashboardPage = () => {
           No hay pedidos aún.
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-        <div className="space-y-6 lg:col-span-2">
-          {/* Sección 2: Estancamiento (arriba para que se vea de inmediato) */}
+        <div className="grid gap-10 lg:grid-cols-3 lg:items-start">
+        <div className="space-y-10 lg:col-span-2">
+          {/* Bento grid de KPIs: la caja de score global es la más grande y
+              lleva el número más importante del panel; el resto son cajas
+              1x1 por etapa. En mobile colapsa a una columna en orden de
+              importancia (score global primero). */}
+          <div className="space-y-4">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Gauge className="h-5 w-5" />
+              Rendimiento por área/etapa
+            </h2>
+            <motion.div
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              variants={staggerContainerVariants}
+              initial="hidden"
+              animate="show"
+            >
+              {/* Hero tile: score global de rendimiento */}
+              <motion.div
+                variants={staggerItemVariants}
+                className="order-1 sm:col-span-2 lg:col-span-2 lg:row-span-2"
+              >
+                <Card className="flex h-full flex-col justify-between p-8">
+                  <div className="flex items-start justify-between gap-4">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Score de rendimiento general
+                    </p>
+                    <ProgressRing
+                      value={overallScore.onTimePct ?? 0}
+                      size={56}
+                      strokeWidth={5}
+                      label={overallScore.onTimePct != null ? `${overallScore.onTimePct}%` : "-"}
+                      className={cn(
+                        overallScore.onTimePct == null
+                          ? "text-muted-foreground"
+                          : overallScore.onTimePct >= 80
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : overallScore.onTimePct >= 50
+                          ? "text-amber-500"
+                          : "text-red-600 dark:text-red-400"
+                      )}
+                    />
+                  </div>
+                  <div className="mt-6">
+                    <div className="text-6xl font-black leading-none tracking-tighter tabular-nums md:text-7xl">
+                      {overallScore.onTimePct != null ? `${overallScore.onTimePct}%` : "—"}
+                    </div>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      de {overallScore.totalActive} pedidos activos a tiempo
+                      {overallScore.totalStagnant > 0 && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span className="font-medium text-red-600 dark:text-red-400">
+                            {overallScore.totalStagnant} estancado
+                            {overallScore.totalStagnant === 1 ? "" : "s"}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </Card>
+              </motion.div>
+
+              {performanceByStatus.map((p, idx) => (
+                <motion.div
+                  key={p.statusId}
+                  variants={staggerItemVariants}
+                  className={cn("order-2", idx === 0 && "order-2")}
+                >
+                  <Card className="flex h-full flex-col justify-between p-6">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {p.label}
+                      </p>
+                      <ProgressRing
+                        value={p.onTimePct ?? 0}
+                        size={36}
+                        strokeWidth={4}
+                        label={p.onTimePct != null ? `${p.onTimePct}%` : "-"}
+                        className={cn(
+                          p.onTimePct == null
+                            ? "text-muted-foreground"
+                            : p.onTimePct >= 80
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : p.onTimePct >= 50
+                            ? "text-amber-500"
+                            : "text-red-600 dark:text-red-400"
+                        )}
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <div className="text-4xl font-black leading-none tracking-tight tabular-nums">
+                        {p.currentCount}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">pedidos en esta etapa</p>
+                    </div>
+                    <div className="mt-4 space-y-1 text-xs">
+                      <p>
+                        Prom. histórico:{" "}
+                        <span className="font-medium">
+                          {p.avgMs != null ? formatDuration(p.avgMs) : "sin datos"}
+                        </span>
+                        {p.samples > 0 && p.samples < MIN_SAMPLES_FOR_AVERAGE && (
+                          <span className="text-muted-foreground"> (poca muestra)</span>
+                        )}
+                      </p>
+                      <p>
+                        Estancados:{" "}
+                        <span className={p.stagnantCount > 0 ? "font-medium text-red-600" : "font-medium"}>
+                          {p.stagnantCount}
+                        </span>
+                      </p>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Tiempo promedio por etapa (horas)</CardTitle>
+                {slowestStageInsight && (
+                  <p className="text-sm text-muted-foreground">
+                    La etapa{" "}
+                    <span className="font-medium text-foreground">{slowestStageInsight.label}</span>{" "}
+                    es la que más tiempo promedio toma (
+                    {formatDuration(slowestStageInsight.avgMs!)}).
+                    {dueSoonCount > 0 && (
+                      <> {dueSoonCount} pedido{dueSoonCount === 1 ? "" : "s"} por vencer en las próximas 24h.</>
+                    )}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="h-72 w-full">
+                  <AvgTimeBarChart
+                    data={chartData}
+                    activeEtapa={activeEtapa}
+                    onBarClick={(etapa) => setActiveEtapa((prev) => (prev === etapa ? null : etapa))}
+                  />
+                </div>
+                <ChartDrillDownPanel
+                  activeKey={activeEtapa}
+                  title={`Pedidos en etapa "${activeEtapa}"`}
+                  onClose={() => setActiveEtapa(null)}
+                >
+                  {etapaOrders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No hay pedidos actualmente en esta etapa.
+                    </p>
+                  ) : (
+                    <div className="w-full overflow-auto">
+                      <DataTable
+                        columns={trackingColumns}
+                        data={etapaOrders.map((e) => ({ order: e.order, timeInStatusMs: e.timeInStatusMs }))}
+                      />
+                    </div>
+                  )}
+                </ChartDrillDownPanel>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Estancamiento */}
           <Card
-            variant="glass"
             className={
               stagnantOrders.length > 0
                 ? "border-red-300 dark:border-red-900"
@@ -428,78 +638,7 @@ const AdminDashboardPage = () => {
             </CardContent>
           </Card>
 
-          {/* Sección 3: Rendimiento por área/etapa */}
-          <div className="space-y-4">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Gauge className="h-5 w-5" />
-              Rendimiento por área/etapa
-            </h2>
-            <motion.div
-              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
-              variants={staggerContainerVariants}
-              initial="hidden"
-              animate="show"
-            >
-              {performanceByStatus.map((p) => (
-                <motion.div key={p.statusId} variants={staggerItemVariants}>
-                <Card variant="glass" className="h-full">
-                  <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">
-                      {p.label}
-                    </CardTitle>
-                    <ProgressRing
-                      value={p.onTimePct ?? 0}
-                      size={44}
-                      strokeWidth={4}
-                      label={p.onTimePct != null ? `${p.onTimePct}%` : "-"}
-                      className={cn(
-                        p.onTimePct == null
-                          ? "text-muted-foreground"
-                          : p.onTimePct >= 80
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : p.onTimePct >= 50
-                          ? "text-amber-500"
-                          : "text-red-600 dark:text-red-400"
-                      )}
-                    />
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    <div className="text-2xl font-bold">{p.currentCount}</div>
-                    <p className="text-xs text-muted-foreground">pedidos en esta etapa</p>
-                    <p className="text-xs">
-                      Prom. histórico:{" "}
-                      <span className="font-medium">
-                        {p.avgMs != null ? formatDuration(p.avgMs) : "sin datos"}
-                      </span>
-                      {p.samples > 0 && p.samples < MIN_SAMPLES_FOR_AVERAGE && (
-                        <span className="text-muted-foreground"> (poca muestra)</span>
-                      )}
-                    </p>
-                    <p className="text-xs">
-                      Estancados:{" "}
-                      <span className={p.stagnantCount > 0 ? "font-medium text-red-600" : "font-medium"}>
-                        {p.stagnantCount}
-                      </span>
-                    </p>
-                  </CardContent>
-                </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            <Card variant="glass">
-              <CardHeader>
-                <CardTitle className="text-base">Tiempo promedio por etapa (horas)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-72 w-full">
-                  <AvgTimeBarChart data={chartData} />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sección 1: Seguimiento global */}
+          {/* Seguimiento global */}
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -540,7 +679,7 @@ const AdminDashboardPage = () => {
         </div>
 
         {/* Columna derecha: calendario de entregas + próximas entregas */}
-        <div className="space-y-6">
+        <div className="space-y-10">
           <DeliveryCalendar orders={orders} onSelectOrder={setOpenOrderId} />
           <UpcomingDeliveries orders={orders} onSelectOrder={setOpenOrderId} />
         </div>
