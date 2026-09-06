@@ -52,7 +52,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             if (e.key === "Enter" || e.key === " ") onOpen(order.id);
           }}
           className={cn(
-            "cursor-pointer shadow-sm transition-shadow duration-200 hover:shadow-md",
+            "cursor-pointer shadow-soft transition-shadow duration-200 hover:shadow-soft-md",
             isCritical && "border-2 border-destructive shadow-[0_0_0_1px_rgba(239,68,68,0.4)]"
           )}
         >

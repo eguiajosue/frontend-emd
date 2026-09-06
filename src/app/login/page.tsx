@@ -9,6 +9,8 @@ import { signIn } from 'next-auth/react'
 import { Loader2, User, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMotionPreset } from '@/lib/motion'
+import LoginAmbientScene from '@/components/three/LoginAmbientScene'
+import { GradientBlobs } from '@/components/decor/GradientBlobs'
 
 const LoginForm = () => {
   const [errors, setErrors] = useState<string[]>([])
@@ -61,15 +63,15 @@ const LoginForm = () => {
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
       <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 text-white relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 right-0 h-96 w-96 rounded-full bg-accent2-500/10 blur-3xl" />
+        <GradientBlobs variant="login" />
+        <LoginAmbientScene />
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="text-center px-8 py-6 relative"
         >
-          <h1 className="text-6xl lg:text-8xl font-extrabold bg-gradient-to-r from-white via-brand-200 to-brand-400 bg-clip-text text-transparent">
+          <h1 className="font-heading text-6xl lg:text-8xl font-semibold bg-gradient-to-r from-white via-brand-200 to-brand-400 bg-clip-text text-transparent">
             EMD Bordados
           </h1>
           <p className="text-lg mt-4 font-medium text-neutral-200">
@@ -79,7 +81,8 @@ const LoginForm = () => {
         </motion.div>
       </div>
 
-      <div className="flex items-center justify-center bg-neutral-950 md:bg-background p-8">
+      <div className="relative flex items-center justify-center overflow-hidden bg-neutral-950 p-8 md:bg-background">
+        <GradientBlobs variant="subtle" className="md:hidden" />
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -87,10 +90,10 @@ const LoginForm = () => {
           className="w-full max-w-md space-y-8"
         >
           <div className="space-y-2 text-center md:hidden">
-            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white">EMD Bordados</h1>
+            <h1 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white">EMD Bordados</h1>
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-4xl font-bold leading-tight tracking-tight text-white md:text-foreground">Iniciar Sesión</h2>
+            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white md:text-foreground">Iniciar Sesión</h2>
             <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingrese su nombre de usuario y contraseña para acceder a la plataforma</p>
           </div>
 

@@ -6,6 +6,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useMotionPreset } from "@/lib/motion";
+import { GradientBlobs } from "@/components/decor/GradientBlobs";
 
 import { ReactNode } from "react";
 
@@ -18,7 +19,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="w-full min-w-0 p-4 sm:p-6">
+      <main className="relative w-full min-w-0 overflow-x-hidden p-4 sm:p-6">
+        <GradientBlobs variant="hero" className="fixed" />
         <SidebarTrigger />
         <AnimatePresence mode="wait">
           <motion.div

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { staggerContainerVariants, staggerItemVariants } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table";
@@ -28,6 +29,7 @@ import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
 import { UpcomingDeliveries } from "@/components/admin/UpcomingDeliveries";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { ProgressRing } from "@/components/ui/progress-ring";
 
 const HOUR_MS = 60 * 60 * 1000;
 const FALLBACK_THRESHOLD_HOURS = 60; // umbral fijo (48-72h) usado cuando no hay histórico suficiente
@@ -439,11 +441,26 @@ const AdminDashboardPage = () => {
             >
               {performanceByStatus.map((p) => (
                 <motion.div key={p.statusId} variants={staggerItemVariants}>
-                <Card>
-                  <CardHeader className="pb-2">
+                <Card className="h-full">
+                  <CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {p.label}
                     </CardTitle>
+                    <ProgressRing
+                      value={p.onTimePct ?? 0}
+                      size={44}
+                      strokeWidth={4}
+                      label={p.onTimePct != null ? `${p.onTimePct}%` : "-"}
+                      className={cn(
+                        p.onTimePct == null
+                          ? "text-muted-foreground"
+                          : p.onTimePct >= 80
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : p.onTimePct >= 50
+                          ? "text-amber-500"
+                          : "text-red-600 dark:text-red-400"
+                      )}
+                    />
                   </CardHeader>
                   <CardContent className="space-y-1">
                     <div className="text-2xl font-bold">{p.currentCount}</div>
@@ -461,12 +478,6 @@ const AdminDashboardPage = () => {
                       Estancados:{" "}
                       <span className={p.stagnantCount > 0 ? "font-medium text-red-600" : "font-medium"}>
                         {p.stagnantCount}
-                      </span>
-                    </p>
-                    <p className="text-xs">
-                      % a tiempo:{" "}
-                      <span className="font-medium">
-                        {p.onTimePct != null ? `${p.onTimePct}%` : "-"}
                       </span>
                     </p>
                   </CardContent>
