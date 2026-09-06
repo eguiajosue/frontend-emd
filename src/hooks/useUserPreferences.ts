@@ -14,6 +14,19 @@ export interface UserPreferences {
   themePreference: string | null;
   accentColor: string | null;
   languagePreference: string | null;
+  /**
+   * Intensidad del efecto Liquid Glass (0-100), aplicada escalando las
+   * variables `--glass-opacity-*` de globals.css. `null`/`undefined` =
+   * nunca configurado por el usuario -> se asume 100 (comportamiento actual).
+   * NOTA: si el backend todavía no persiste este campo, igual se manda en el
+   * PATCH (se guarda "optimista" y se pierde al recargar hasta que el
+   * backend lo soporte) — ver reporte de la tarea.
+   */
+  glassIntensity?: number | null;
+  /** Densidad de listas/cards ("comfortable" = actual, "compact" = reducida). */
+  density?: "comfortable" | "compact" | null;
+  /** Si el usuario ya vio el tour de onboarding del dashboard. */
+  hasSeenOnboarding?: boolean | null;
 }
 
 const PREFERENCES_ENDPOINT = "users/me/preferences";

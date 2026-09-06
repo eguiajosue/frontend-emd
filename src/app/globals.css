@@ -299,3 +299,19 @@
     border: 1px solid hsl(var(--border));
   }
 }
+
+/*
+ * Vista compacta (Configuración > "Vista compacta"): reduce padding/spacing
+ * de cards y listas. `[data-density="compact"]` se setea en <html> (ver
+ * useDensity) para que cualquier lista/card del dashboard pueda adaptarse
+ * sin depender de props/contexto React.
+ */
+[data-density="compact"] .density-card {
+  padding: 0.625rem !important;
+}
+[data-density="compact"] .density-stack > * + * {
+  margin-top: 0.375rem !important;
+}
+[data-density="compact"] .density-gap {
+  gap: 0.5rem !important;
+}

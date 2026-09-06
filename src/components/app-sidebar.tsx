@@ -173,7 +173,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarContent>
+      <SidebarContent data-tour="sidebar-nav">
         <SidebarHeader className="p-4">
           <h2 className="text-lg font-semibold tracking-tight">
             Bienvenid@,{" "}
@@ -194,7 +194,11 @@ export function AppSidebar() {
                 ) ? (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={pathname === item.url}>
-                      <a href={item.url} className="relative">
+                      <a
+                        href={item.url}
+                        className="relative"
+                        data-tour={item.title === "Ayuda" ? "help-link" : undefined}
+                      >
                         {pathname === item.url && (
                           <motion.span
                             layoutId="sidebar-active-indicator"
@@ -238,7 +242,9 @@ export function AppSidebar() {
               <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
             </div>
           </div>
-          <ThemeToggle />
+          <span data-tour="theme-toggle">
+            <ThemeToggle />
+          </span>
         </div>
         <Button variant="destructive" className="w-full" onClick={() => signOut()}>
           <LogOut className="mr-2 h-4 w-4" />

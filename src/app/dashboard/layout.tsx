@@ -7,6 +7,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useMotionPreset } from "@/lib/motion";
 import { GradientBlobs } from "@/components/decor/GradientBlobs";
+import { CommandPalette } from "@/components/CommandPalette";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 import { ReactNode } from "react";
 
@@ -35,6 +37,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           </motion.div>
         </AnimatePresence>
       </main>
+      <CommandPalette />
+      <OnboardingTour />
     </SidebarProvider>
   );
 }

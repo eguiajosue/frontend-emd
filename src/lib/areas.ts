@@ -1,3 +1,13 @@
+import {
+  Hammer,
+  Layers,
+  Scissors,
+  PenTool,
+  Zap,
+  Printer,
+  type LucideIcon,
+} from "lucide-react";
+
 /**
  * Áreas de producción a las que puede pertenecer un pedido (`Order.area`).
  * El `value` coincide textualmente con lo que espera el backend (POST/PATCH
@@ -22,4 +32,20 @@ const AREA_LABELS: Record<string, string> = Object.fromEntries(
 export function getAreaLabel(area?: string | null): string {
   if (!area) return "Sin área";
   return AREA_LABELS[area] ?? area;
+}
+
+/** Ícono lucide-react distintivo por área, para usar junto al texto del área. */
+export const AREA_ICONS: Record<AreaValue, LucideIcon> = {
+  taller: Hammer,
+  dtf: Layers,
+  bordado: Scissors,
+  diseno: PenTool,
+  laser: Zap,
+  impresiones: Printer,
+};
+
+/** Ícono de un área; `null` si no se reconoce (área libre/legado). */
+export function getAreaIcon(area?: string | null): LucideIcon | null {
+  if (!area) return null;
+  return AREA_ICONS[area as AreaValue] ?? null;
 }

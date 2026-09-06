@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
-import { getAreaLabel } from "@/lib/areas";
+import { getAreaLabel, getAreaIcon } from "@/lib/areas";
 import { cn } from "@/lib/utils";
 import { useMotionPreset } from "@/lib/motion";
 import { isDeliveredStatus } from "@/lib/orderStatus";
@@ -56,7 +56,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             isCritical && "border-2 border-destructive shadow-[0_0_0_1px_rgba(239,68,68,0.4)]"
           )}
         >
-        <CardContent className="space-y-2 p-4">
+        <CardContent className="density-card density-stack space-y-2 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold">#{order.id}</span>
             {delivered ? (
@@ -90,7 +90,11 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               <span />
             )}
             {order.area && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+              <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+                {(() => {
+                  const AreaIcon = getAreaIcon(order.area);
+                  return AreaIcon ? <AreaIcon className="h-3 w-3" aria-hidden /> : null;
+                })()}
                 {getAreaLabel(order.area)}
               </span>
             )}

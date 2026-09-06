@@ -524,6 +524,25 @@ const AyudaPage = () => {
         </div>
         <SpotlightCard className="max-w-3xl p-1">
           <Accordion type="single" collapsible className="w-full px-3">
+            <AccordionItem value="atajos">
+              <AccordionTrigger>¿Qué atajos de teclado hay?</AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-1.5">
+                  <li>
+                    <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">Ctrl/Cmd + K</kbd>{" "}
+                    abre el buscador rápido (navegar a una sección o buscar un pedido).
+                  </li>
+                  <li>
+                    <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">N</kbd>{" "}
+                    en la pantalla de Pedidos abre &quot;+ Nueva Orden&quot; (sin tener nada escribiendo en un campo).
+                  </li>
+                  <li>
+                    <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">Esc</kbd>{" "}
+                    cierra cualquier ventana o diálogo abierto.
+                  </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="mas-ayuda">
               <AccordionTrigger>¿Necesitás más ayuda?</AccordionTrigger>
               <AccordionContent>

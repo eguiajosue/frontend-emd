@@ -19,9 +19,9 @@ import {
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
+import { useChangeOrderStatus, useOrders, downloadOrdersExport } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useEntityList } from "@/hooks/useEntity";
+import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
 import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -102,15 +102,63 @@ const OrdersPage = () => {
   const { data: users } = useEntityList<User>("users");
   const { deliveredRetentionHours } = useAppSettings();
   const { changeStatus, changingOrderId } = useChangeOrderStatus();
+  const token = useAuthToken();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   useEffect(() => {
     setFilters(filtersFromUrl());
+    // Deep-links usados por el command palette / atajo "N":
+    //  - ?new=1 abre "+ Nueva Orden".
+    //  - ?openOrderId=<id> abre el detalle de ese pedido directamente.
+    // En ambos casos se limpia el query param usado.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      let changed = false;
+      if (params.get("new") === "1") {
+        setCreateOpen(true);
+        params.delete("new");
+        changed = true;
+      }
+      const openId = params.get("openOrderId");
+      if (openId && !Number.isNaN(Number(openId))) {
+        setOpenOrderId(Number(openId));
+        params.delete("openOrderId");
+        changed = true;
+      }
+      if (changed) {
+        const query = params.toString();
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${query ? `?${query}` : ""}`
+        );
+      }
+    } catch {
+      // Sin acceso a la URL: no bloquea el resto de la pantalla.
+    }
   }, []);
+
+  // Atajo "N": abre "+ Nueva Orden" (sólo si nadie tiene foco en un input/textarea
+  // y el usuario puede crear pedidos).
+  useEffect(() => {
+    if (!canManageOperations) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "n" && e.key !== "N") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      e.preventDefault();
+      setCreateOpen(true);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [canManageOperations]);
 
   const updateFilters = useCallback((next: OrdersFilters) => {
     setFilters(next);
@@ -218,6 +266,31 @@ const OrdersPage = () => {
 
     const today = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+  };
+
+  /**
+   * Export server-side vía `GET /orders/export` (CSV), con los mismos filtros
+   * activos de esta pantalla. Endpoint nuevo del backend: si todavía no está
+   * desplegado (404), se avisa con un toast en vez de romper la pantalla.
+   */
+  const handleExportCsv = async () => {
+    setIsExportingCsv(true);
+    try {
+      await downloadOrdersExport(token, {
+        clientId: filters.clientId,
+        statusIds: filters.statusIds,
+        deliveryFrom: filters.dateRange?.from?.toISOString().slice(0, 10),
+        deliveryTo: filters.dateRange?.to?.toISOString().slice(0, 10),
+        area: filters.area,
+        assignedUserId: filters.assignedUserId,
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo exportar el CSV."
+      );
+    } finally {
+      setIsExportingCsv(false);
+    }
   };
 
   const columns: ColumnDef<Order>[] = useMemo(
@@ -364,7 +437,19 @@ const OrdersPage = () => {
           )}
 
           {canManageOperations && (
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              disabled={isExportingCsv}
+              title="Exporta un CSV desde el servidor con los filtros activos"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              {isExportingCsv ? "Exportando..." : "Exportar CSV"}
+            </Button>
+          )}
+
+          {canManageOperations && (
+            <Button data-tour="new-order-button" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
           )}
@@ -391,7 +476,7 @@ const OrdersPage = () => {
               : "Todavía no hay pedidos, creá el primero."}
           </p>
           {canManageOperations && (
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button data-tour="new-order-button" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
           )}

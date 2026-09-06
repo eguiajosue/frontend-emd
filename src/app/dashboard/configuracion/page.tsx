@@ -7,6 +7,7 @@ import { Check, Clock, Laptop, Moon, Sun } from "lucide-react";
 import Title from "@/components/Title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { FormField } from "@/components/ui/form-field";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
+import { useGlassIntensity } from "@/hooks/useGlassIntensity";
+import { useDensity } from "@/hooks/useDensity";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
@@ -36,6 +39,8 @@ interface AreaVisibility {
   generalViewEnabled: boolean;
 }
 
+const DEFAULT_GLASS_INTENSITY_DISPLAY = 100;
+
 const THEME_OPTIONS = [
   { id: "light", label: "Claro", icon: Sun },
   { id: "dark", label: "Oscuro", icon: Moon },
@@ -45,7 +50,14 @@ const THEME_OPTIONS = [
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   const { accent, setAccent, mounted } = useAccentColor();
+  const { intensity, setIntensity, mounted: glassMounted } = useGlassIntensity();
   const { updatePreferences } = useUserPreferences();
+
+  const handleGlassIntensityCommit = (values: number[]) => {
+    const next = values[0] ?? intensity;
+    setIntensity(next);
+    updatePreferences({ glassIntensity: next });
+  };
 
   const handleThemeSelect = (id: string) => {
     setTheme(id);
@@ -149,6 +161,28 @@ function AppearanceSection() {
             </label>
           </div>
         </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Efecto Liquid Glass</p>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {glassMounted ? Math.round(intensity) : DEFAULT_GLASS_INTENSITY_DISPLAY}%
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Controla qué tan translúcidos se ven los paneles y tarjetas con
+            efecto de vidrio. Al mínimo siguen siendo legibles.
+          </p>
+          <Slider
+            value={[glassMounted ? intensity : 100]}
+            min={0}
+            max={100}
+            step={5}
+            onValueChange={(values) => setIntensity(values[0] ?? intensity)}
+            onValueCommit={handleGlassIntensityCommit}
+            aria-label="Intensidad del efecto Liquid Glass"
+          />
+        </div>
       </CardContent>
     </Card>
   );
@@ -216,6 +250,35 @@ function LanguageSection() {
             </button>
           );
         })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function DensitySection() {
+  const { density, setDensity, mounted } = useDensity();
+  const { updatePreferences } = useUserPreferences();
+
+  const handleToggle = (checked: boolean) => {
+    const next = checked ? "compact" : "comfortable";
+    setDensity(next);
+    updatePreferences({ density: next });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Vista compacta</CardTitle>
+        <CardDescription>
+          Reduce el espaciado de las tarjetas y listas de pedidos para ver más
+          contenido en pantalla.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Usar vista compacta</span>
+          <Switch checked={mounted && density === "compact"} onCheckedChange={handleToggle} />
+        </div>
       </CardContent>
     </Card>
   );
@@ -366,6 +429,7 @@ export default function ConfiguracionPage() {
       <Title title="Configuración" />
       <div className="grid gap-6 lg:max-w-2xl">
         <AppearanceSection />
+        <DensitySection />
         <LanguageSection />
         {canManageAreaVisibility && <AreaVisibilitySection />}
         {isAdmin && <DeliveredRetentionSection />}
