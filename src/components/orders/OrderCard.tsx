@@ -9,6 +9,9 @@ import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/l
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel } from "@/lib/areas";
 import { cn } from "@/lib/utils";
+import { staggerItemVariants, DURATION_MICRO, EASE_IN_OUT } from "@/lib/motion";
+
+const hoverTransition = { duration: DURATION_MICRO, ease: EASE_IN_OUT };
 import { Paperclip, UserRound } from "lucide-react";
 import type { Order } from "@/types";
 
@@ -29,26 +32,28 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const isCritical = progress !== null && progress >= 95;
 
   return (
-    <motion.div
-      animate={isCritical ? { scale: [1, 1.02, 1] } : { scale: 1 }}
-      transition={
-        isCritical
-          ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
-          : undefined
-      }
-    >
-      <Card
-        role="button"
-        tabIndex={0}
-        onClick={() => onOpen(order.id)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") onOpen(order.id);
-        }}
-        className={cn(
-          "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md",
-          isCritical && "border-2 border-destructive shadow-[0_0_0_1px_rgba(239,68,68,0.4)]"
-        )}
+    <motion.div variants={staggerItemVariants}>
+      <motion.div
+        animate={isCritical ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+        transition={
+          isCritical
+            ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
+            : undefined
+        }
+        whileHover={{ scale: 1.015, transition: hoverTransition }}
       >
+        <Card
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpen(order.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") onOpen(order.id);
+          }}
+          className={cn(
+            "cursor-pointer shadow-sm transition-shadow duration-200 hover:shadow-md",
+            isCritical && "border-2 border-destructive shadow-[0_0_0_1px_rgba(239,68,68,0.4)]"
+          )}
+        >
         <CardContent className="space-y-2 p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="font-semibold">#{order.id}</span>
@@ -87,7 +92,8 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             className="pt-1"
           />
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

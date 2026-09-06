@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { motion } from "framer-motion";
 import Title from "@/components/Title";
+import { staggerContainerVariants, staggerItemVariants } from "@/lib/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTable } from "@/components/data-table";
@@ -426,9 +428,15 @@ const AdminDashboardPage = () => {
               <Gauge className="h-5 w-5" />
               Rendimiento por área/etapa
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <motion.div
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+              variants={staggerContainerVariants}
+              initial="hidden"
+              animate="show"
+            >
               {performanceByStatus.map((p) => (
-                <Card key={p.statusId}>
+                <motion.div key={p.statusId} variants={staggerItemVariants}>
+                <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {p.label}
@@ -460,8 +468,9 @@ const AdminDashboardPage = () => {
                     </p>
                   </CardContent>
                 </Card>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             <Card>
               <CardHeader>

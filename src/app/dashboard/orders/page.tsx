@@ -27,6 +27,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { OrderCard } from "@/components/orders/OrderCard";
+import { motion } from "framer-motion";
+import { staggerContainerVariants } from "@/lib/motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
 import {
@@ -382,17 +384,22 @@ const OrdersPage = () => {
                 </h3>
                 <span className="text-xs text-muted-foreground">{col.orders.length}</span>
               </div>
-              <div className="space-y-3">
-                {col.orders.length === 0 ? (
-                  <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                    Sin pedidos
-                  </p>
-                ) : (
-                  col.orders.map((order) => (
+              {col.orders.length === 0 ? (
+                <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                  Sin pedidos
+                </p>
+              ) : (
+                <motion.div
+                  className="space-y-3"
+                  variants={staggerContainerVariants}
+                  initial="hidden"
+                  animate="show"
+                >
+                  {col.orders.map((order) => (
                     <OrderCard key={order.id} order={order} onOpen={openDetail} />
-                  ))
-                )}
-              </div>
+                  ))}
+                </motion.div>
+              )}
             </div>
           ))}
         </div>
