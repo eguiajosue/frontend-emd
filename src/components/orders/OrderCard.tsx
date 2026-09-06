@@ -9,9 +9,7 @@ import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/l
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel } from "@/lib/areas";
 import { cn } from "@/lib/utils";
-import { staggerItemVariants, DURATION_MICRO, EASE_IN_OUT } from "@/lib/motion";
-
-const hoverTransition = { duration: DURATION_MICRO, ease: EASE_IN_OUT };
+import { useMotionPreset } from "@/lib/motion";
 import { Paperclip, UserRound } from "lucide-react";
 import type { Order } from "@/types";
 
@@ -30,17 +28,19 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const assignedName = getAssignedUserName(order.assignedUser);
   const progress = useDeliveryProgress(order.creationDate, order.deliveryDate);
   const isCritical = progress !== null && progress >= 95;
+  const { reduced, staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
 
   return (
     <motion.div variants={staggerItemVariants}>
       <motion.div
-        animate={isCritical ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+        animate={isCritical && !reduced ? { scale: [1, 1.02, 1] } : { scale: 1 }}
         transition={
-          isCritical
+          isCritical && !reduced
             ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
             : undefined
         }
-        whileHover={{ scale: 1.015, transition: hoverTransition }}
+        whileHover={{ ...cardHoverMotion.whileHover, transition: cardHoverMotion.transition }}
+        whileTap={{ ...cardTapMotion.whileTap, transition: cardTapMotion.transition }}
       >
         <Card
           role="button"

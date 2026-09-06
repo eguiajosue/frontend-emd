@@ -5,7 +5,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useSocket } from "@/hooks/useSocket";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { routeTransition } from "@/lib/motion";
+import { useMotionPreset } from "@/lib/motion";
 
 import { ReactNode } from "react";
 
@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   // Keeps the real-time notifications socket alive across every dashboard page.
   useSocket();
   const pathname = usePathname();
+  const { routeTransition } = useMotionPreset();
 
   return (
     <SidebarProvider>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { SessionProvider, signOut, useSession } from "next-auth/react";
 import { ThemeProvider, useTheme } from "next-themes";
+import { MotionConfig } from "framer-motion";
 import {
   MutationCache,
   QueryCache,
@@ -127,12 +128,22 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-        <QueryClientProvider client={queryClient}>
-          <SessionErrorWatcher />
-          <PreferencesSync />
-          {children}
-          {isDev && <ReactQueryDevtools initialIsOpen={false} />}
-        </QueryClientProvider>
+        {/*
+          reducedMotion="user": respeta prefers-reduced-motion del sistema para
+          TODO lo animado con framer-motion en la app (springs, stagger, hover,
+          transición de ruta) sin tener que tocar cada componente uno por uno —
+          Framer Motion reduce automáticamente las animaciones a un crossfade
+          simple sin desplazamiento/escala cuando el usuario tiene esa
+          preferencia activada.
+        */}
+        <MotionConfig reducedMotion="user">
+          <QueryClientProvider client={queryClient}>
+            <SessionErrorWatcher />
+            <PreferencesSync />
+            {children}
+            {isDev && <ReactQueryDevtools initialIsOpen={false} />}
+          </QueryClientProvider>
+        </MotionConfig>
       </ThemeProvider>
     </SessionProvider>
   );

@@ -79,10 +79,10 @@ const LoginForm = () => {
           className="w-full max-w-md space-y-8"
         >
           <div className="space-y-2 text-center md:hidden">
-            <h1 className="text-4xl font-extrabold text-white">EMD Bordados</h1>
+            <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-white">EMD Bordados</h1>
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="text-4xl font-bold text-white md:text-foreground">Iniciar Sesión</h2>
+            <h2 className="text-4xl font-bold leading-tight tracking-tight text-white md:text-foreground">Iniciar Sesión</h2>
             <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingrese su nombre de usuario y contraseña para acceder a la plataforma</p>
           </div>
 

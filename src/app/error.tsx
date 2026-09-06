@@ -23,7 +23,7 @@ export default function GlobalError({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
       <AlertTriangle className="h-10 w-10 text-destructive" />
-      <h1 className="text-2xl font-bold">Algo salió mal</h1>
+      <h1 className="text-2xl font-bold leading-tight tracking-tight">Algo salió mal</h1>
       <p className="max-w-md text-sm text-muted-foreground">
         Ocurrió un error inesperado. Podés reintentar la operación o volver al
         inicio.
