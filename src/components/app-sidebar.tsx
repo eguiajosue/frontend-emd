@@ -134,7 +134,7 @@ export function AppSidebar() {
           title: "Usuarios",
           url: "/dashboard/usuarios",
           icon: UserRound,
-          roles: ["admin"],
+          roles: ["admin", "superuser"],
         },
       ],
     },
