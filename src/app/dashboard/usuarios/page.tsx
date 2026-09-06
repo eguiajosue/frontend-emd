@@ -11,6 +11,7 @@ import { useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
 import { getUserColumns } from "@/app/dashboard/users/components/columns";
+import { ADMIN_ROLES as ADMIN_ROLE_NAMES } from "@/lib/roleTaskMapping";
 
 // Debe coincidir exactamente con la política de contraseñas del backend
 // (POST/PATCH /users): mínimo 8 caracteres, al menos una mayúscula y un número.
@@ -22,10 +23,12 @@ const passwordSchema = z
   .regex(/[A-Z]/, "Debe incluir una mayúscula")
   .regex(/[0-9]/, "Debe incluir un número");
 
+// El nombre de usuario ya no se pide: el backend lo genera automáticamente
+// (primera letra del nombre + apellido, con resolución de colisiones) e
+// ignora cualquier valor de `username` que se le mande.
 const createSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().optional().or(z.literal("")),
-  username: z.string().min(1, "El usuario es requerido"),
   password: passwordSchema,
   roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
 });
@@ -35,7 +38,6 @@ const createSchema = z.object({
 const editSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().optional().or(z.literal("")),
-  username: z.string().min(1, "El usuario es requerido"),
   password: z
     .string()
     .optional()
@@ -57,14 +59,22 @@ function initialTabFromUrl(): "usuarios" | "roles" {
  * pantallas separadas en /dashboard/users y /dashboard/roles).
  */
 const UsuariosPage = () => {
-  const { canManageUsers } = usePermissions();
+  const { canManageUsers, isAdmin } = usePermissions();
   const { data: roles } = useEntityList<Role>("roles");
   const [tab, setTab] = useState<"usuarios" | "roles">(initialTabFromUrl);
+
+  // Quien crea/edita usuarios sin ser admin/superuser no debe poder siquiera
+  // ver las opciones de rol "admin"/"superuser" en la lista de checkboxes
+  // (defensa en profundidad: el backend igual sólo permite esta pantalla a
+  // admin/superuser, pero si en el futuro se abre a otro rol esto ya evita
+  // que asignen esos roles desde acá).
+  const selectableRoles = isAdmin
+    ? roles
+    : roles.filter((r) => !ADMIN_ROLE_NAMES.includes(r.name));
 
   const userFields = (editing: User | null): FieldConfig[] => [
     { name: "firstName", label: "Nombre" },
     { name: "lastName", label: "Apellido" },
-    { name: "username", label: "Usuario" },
     {
       name: "password",
       label: editing ? "Nueva Contraseña (opcional)" : "Contraseña",
@@ -75,7 +85,7 @@ const UsuariosPage = () => {
       name: "roleIds",
       label: "Roles",
       type: "multiselect",
-      options: roles.map((r) => ({ value: r.id, label: r.name })),
+      options: selectableRoles.map((r) => ({ value: r.id, label: r.name })),
     },
   ];
 
@@ -114,7 +124,6 @@ const UsuariosPage = () => {
                 ? {
                     firstName: editing.firstName,
                     lastName: editing.lastName ?? "",
-                    username: editing.username,
                     password: "",
                     roleIds: editing.roles?.map((r) => r.id) ?? [],
                   }
