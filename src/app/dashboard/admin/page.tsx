@@ -19,7 +19,7 @@ import { useOrderHistories, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate, getClientName, getUserName } from "@/lib/format";
+import { formatDate, formatDeliveryDate, getClientName, getUserName } from "@/lib/format";
 import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -277,7 +277,7 @@ const AdminDashboardPage = () => {
       id: "deliveryDate",
       header: "Fecha de Entrega",
       cell: ({ row }) =>
-        formatDate(row.original.order.deliveryDate),
+        formatDeliveryDate(row.original.order.deliveryDate),
     },
     {
       id: "timeInStatus",

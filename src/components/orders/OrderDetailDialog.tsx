@@ -18,8 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import {
-  formatDate,
+  combineDateAndTime,
   formatDateTime,
+  formatDeliveryDate,
   getAssignedUserName,
   getOrderClientName,
   getOrderProductName,
@@ -69,6 +70,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
   const [area, setArea] = useState<string | undefined>(undefined);
   const [statusId, setStatusId] = useState<number | undefined>(undefined);
@@ -76,7 +78,19 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   useEffect(() => {
     if (!order) return;
     setDescription(order.description ?? "");
-    setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
+    if (order.deliveryDate) {
+      const d = new Date(order.deliveryDate);
+      setDeliveryDate(order.deliveryDate.slice(0, 10));
+      const hasTime = !Number.isNaN(d.getTime()) && (d.getHours() !== 0 || d.getMinutes() !== 0);
+      setDeliveryTime(
+        hasTime
+          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+          : ""
+      );
+    } else {
+      setDeliveryDate("");
+      setDeliveryTime("");
+    }
     setAssignedUserId(order.assignedUserId ?? undefined);
     setArea(order.area ?? undefined);
     setStatusId(order.statusId);
@@ -87,7 +101,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     try {
       await update(order.id, {
         description,
-        deliveryDate: deliveryDate || undefined,
+        deliveryDate: combineDateAndTime(deliveryDate, deliveryTime),
         assignedUserId: assignedUserId ?? null,
         area,
       });
@@ -171,13 +185,22 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                           onChange={(e) => setDescription(e.target.value)}
                         />
                       </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label>Fecha de entrega</Label>
                           <Input
                             type="date"
                             value={deliveryDate}
                             onChange={(e) => setDeliveryDate(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Hora de entrega (opcional)</Label>
+                          <Input
+                            type="time"
+                            value={deliveryTime}
+                            onChange={(e) => setDeliveryTime(e.target.value)}
+                            disabled={!deliveryDate}
                           />
                         </div>
                         <div className="space-y-1">
@@ -228,7 +251,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
 
                   {!canEdit && (
                     <p>
-                      <b>Fecha de entrega:</b> {formatDate(order.deliveryDate)}
+                      <b>Fecha de entrega:</b> {formatDeliveryDate(order.deliveryDate)}
                     </p>
                   )}
 

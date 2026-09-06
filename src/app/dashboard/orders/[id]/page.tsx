@@ -15,6 +15,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import {
+  combineDateAndTime,
   formatDateTime,
   getAssignedUserName,
   getOrderClientName,
@@ -45,13 +46,26 @@ const OrderDetailPage = () => {
 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Sincroniza el formulario con el pedido cada vez que llega/cambia del servidor.
   useEffect(() => {
     if (!order) return;
     setDescription(order.description ?? "");
-    setDeliveryDate(order.deliveryDate ? order.deliveryDate.slice(0, 10) : "");
+    if (order.deliveryDate) {
+      const d = new Date(order.deliveryDate);
+      setDeliveryDate(order.deliveryDate.slice(0, 10));
+      const hasTime = !Number.isNaN(d.getTime()) && (d.getHours() !== 0 || d.getMinutes() !== 0);
+      setDeliveryTime(
+        hasTime
+          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+          : ""
+      );
+    } else {
+      setDeliveryDate("");
+      setDeliveryTime("");
+    }
   }, [order]);
 
   const canEdit = isAdmin || roles.includes("recepcion");
@@ -68,7 +82,7 @@ const OrderDetailPage = () => {
     try {
       await update(order.id, {
         description,
-        deliveryDate: deliveryDate || undefined,
+        deliveryDate: combineDateAndTime(deliveryDate, deliveryTime),
       });
       toast.success("Pedido actualizado correctamente");
     } catch {
@@ -146,14 +160,25 @@ const OrderDetailPage = () => {
                 disabled={!canEdit}
               />
             </div>
-            <div className="space-y-1">
-              <Label>Fecha de Entrega</Label>
-              <Input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                disabled={!canEdit}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Fecha de Entrega</Label>
+                <Input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Hora de Entrega (opcional)</Label>
+                <Input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  disabled={!canEdit || !deliveryDate}
+                />
+              </div>
             </div>
             {canEdit && (
               <Button onClick={handleSaveDetails} disabled={saving}>

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
-import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel } from "@/lib/areas";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             {order.description}
           </p>
           <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
-            <span>Entrega: {formatDate(order.deliveryDate)}</span>
+            <span>Entrega: {formatDeliveryDate(order.deliveryDate)}</span>
             {order.hasAuthorizationFile && (
               <span title="Tiene hoja de autorización adjunta">
                 <Paperclip className="h-3.5 w-3.5" aria-label="Tiene hoja de autorización" />

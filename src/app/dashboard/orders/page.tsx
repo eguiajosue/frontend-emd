@@ -24,7 +24,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList } from "@/hooks/useEntity";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
-import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -174,7 +174,7 @@ const OrdersPage = () => {
       Estado: (statusMap[order.statusId] || "desconocido").toUpperCase(),
       "Asignado a": getAssignedUserName(order.assignedUser) ?? "Sin asignar",
       "Fecha de Creación": formatDate(order.creationDate),
-      "Fecha de Entrega": formatDate(order.deliveryDate),
+      "Fecha de Entrega": formatDeliveryDate(order.deliveryDate),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -207,7 +207,7 @@ const OrdersPage = () => {
       {
         id: "deliveryDate",
         header: "Fecha de Entrega",
-        cell: ({ row }) => formatDate(row.original.deliveryDate),
+        cell: ({ row }) => formatDeliveryDate(row.original.deliveryDate),
       },
       {
         id: "changeStatus",

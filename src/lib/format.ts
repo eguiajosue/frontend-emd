@@ -31,6 +31,36 @@ export function formatDateTime(
   return date.toLocaleDateString(DATE_LOCALE, options);
 }
 
+/**
+ * Fecha de entrega: muestra solo la fecha cuando la hora es medianoche
+ * (00:00, el valor por defecto cuando no se especificó hora), y fecha + hora
+ * cuando se cargó una hora distinta de medianoche.
+ */
+export function formatDeliveryDate(value?: string | null): string {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+  if (!hasTime) return date.toLocaleDateString(DATE_LOCALE);
+  return `${date.toLocaleDateString(DATE_LOCALE)} ${date.toLocaleTimeString(DATE_LOCALE, {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+}
+
+/**
+ * Combina una fecha (`YYYY-MM-DD`) y una hora opcional (`HH:mm`) en un ISO
+ * datetime. Sin hora, usa medianoche (comportamiento histórico). Devuelve
+ * `undefined` si no hay fecha.
+ */
+export function combineDateAndTime(date?: string, time?: string): string | undefined {
+  if (!date) return undefined;
+  const timePart = time && time.trim() ? time : "00:00";
+  const parsed = new Date(`${date}T${timePart}`);
+  if (Number.isNaN(parsed.getTime())) return undefined;
+  return parsed.toISOString();
+}
+
 export function getClientName(client?: Client | null): string {
   if (!client) return "-";
   return `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim() || "-";

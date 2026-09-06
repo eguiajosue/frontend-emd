@@ -19,6 +19,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { AREA_OPTIONS } from "@/lib/areas";
+import { combineDateAndTime } from "@/lib/format";
 import type {
   AuthorizationFileInput,
   Client,
@@ -113,6 +114,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
   const [rows, setRows] = useState<OrderProductRow[]>([{}]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -128,6 +130,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setAssignedUserId(undefined);
     setDescription("");
     setDeliveryDate("");
+    setDeliveryTime("");
     setRows([{}]);
     setErrors({});
     if (authorizationFilePreview) URL.revokeObjectURL(authorizationFilePreview);
@@ -233,7 +236,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         assignedUserId: parsed.data.assignedUserId,
         statusId: 1,
         description: parsed.data.description,
-        deliveryDate: parsed.data.deliveryDate || undefined,
+        deliveryDate: combineDateAndTime(parsed.data.deliveryDate, deliveryTime),
         orderProducts: parsed.data.orderProducts,
         authorizationFile: authorizationFile ?? undefined,
       });
@@ -293,42 +296,44 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label>Área destino</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                value={area ?? ""}
-                onChange={(e) => setArea(e.target.value || undefined)}
-              >
-                <option value="">Selecciona un área...</option>
-                {AREA_OPTIONS.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-              {errors.area && <p className="text-sm text-destructive">{errors.area}</p>}
-            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Área destino</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                  value={area ?? ""}
+                  onChange={(e) => setArea(e.target.value || undefined)}
+                >
+                  <option value="">Selecciona un área...</option>
+                  {AREA_OPTIONS.map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.area && <p className="text-sm text-destructive">{errors.area}</p>}
+              </div>
 
-            <div className="space-y-1">
-              <Label>Asignar a (opcional)</Label>
-              <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-                value={assignedUserId ?? ""}
-                onChange={(e) =>
-                  setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
-                }
-              >
-                <option value="">Sin asignar</option>
-                {assignableUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Quién va a encargarse de este pedido. Se puede cambiar más adelante.
-              </p>
+              <div className="space-y-1">
+                <Label>Asignar a (opcional)</Label>
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+                  value={assignedUserId ?? ""}
+                  onChange={(e) =>
+                    setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
+                  }
+                >
+                  <option value="">Sin asignar</option>
+                  {assignableUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Quién va a encargarse. Se puede cambiar después.
+                </p>
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -342,13 +347,24 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               )}
             </div>
 
-            <div className="space-y-1">
-              <Label>Fecha de Entrega</Label>
-              <Input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Fecha de Entrega</Label>
+                <Input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Hora de Entrega (opcional)</Label>
+                <Input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  disabled={!deliveryDate}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
