@@ -3,74 +3,203 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Marca: rosa/magenta EMD como acento principal + cian como acento secundario. */
+    --brand-50: 330 100% 97%;
+    --brand-100: 330 95% 93%;
+    --brand-200: 330 90% 86%;
+    --brand-300: 330 88% 76%;
+    --brand-400: 330 84% 64%;
+    --brand-500: 330 81% 53%;
+    --brand-600: 330 82% 44%;
+    --brand-700: 330 80% 36%;
+    --brand-800: 330 74% 30%;
+    --brand-900: 330 68% 24%;
+    --brand-950: 330 70% 14%;
+
+    --accent2-50: 189 94% 95%;
+    --accent2-100: 189 90% 88%;
+    --accent2-200: 189 85% 76%;
+    --accent2-300: 189 80% 62%;
+    --accent2-400: 189 75% 48%;
+    --accent2-500: 189 85% 38%;
+    --accent2-600: 189 90% 30%;
+    --accent2-700: 189 85% 24%;
+    --accent2-800: 189 80% 18%;
+    --accent2-900: 189 75% 13%;
+
+    /* Fondo casi blanco (no blanco puro) y texto casi negro (no negro puro),
+       ver protocolo minimalista §3-4. */
+    --background: 330 20% 98%;
+    --foreground: 330 15% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 330 15% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 330 15% 12%;
+    --primary: 330 81% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 40% 96%;
+    --secondary-foreground: 330 60% 24%;
+    --muted: 330 20% 95.5%;
+    --muted-foreground: 330 8% 42%;
+    --accent: 189 85% 94%;
+    --accent-foreground: 189 85% 18%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem
-  ;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%
-  ;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 330 20% 90%;
+    --input: 330 20% 90%;
+    --ring: 330 81% 46%;
+    --chart-1: 330 81% 53%;
+    --chart-2: 189 85% 38%;
+    --chart-3: 43 90% 55%;
+    --chart-4: 262 70% 60%;
+    --chart-5: 150 60% 42%;
+    --radius: 0.65rem;
+
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 330 15% 24%;
+    --sidebar-primary: 330 81% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%}
+    --sidebar-accent: 330 30% 95%;
+    --sidebar-accent-foreground: 330 70% 30%;
+    --sidebar-border: 330 15% 91%;
+    --sidebar-ring: 330 81% 46%;
+  }
+  .dark {
+    /* Gris oscuro con tinte de marca sutil, nunca negro puro. Texto suavizado,
+       nunca blanco puro (ver protocolo minimalista §3-4). */
+    --background: 330 22% 6%;
+    --foreground: 330 10% 92%;
+    --card: 330 20% 8.5%;
+    --card-foreground: 330 10% 92%;
+    --popover: 330 20% 8.5%;
+    --popover-foreground: 330 10% 92%;
+    /* Acento desaturado ~12% respecto al light (81% -> 70%) para que no vibre
+       sobre fondo oscuro. */
+    --primary: 330 70% 62%;
+    --primary-foreground: 330 30% 8%;
+    --secondary: 330 15% 16%;
+    --secondary-foreground: 330 15% 92%;
+    --muted: 330 15% 15%;
+    --muted-foreground: 330 10% 68%;
+    --accent: 189 50% 16%;
+    --accent-foreground: 189 60% 82%;
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 330 15% 18%;
+    --input: 330 15% 18%;
+    --ring: 330 70% 62%;
+    --chart-1: 330 70% 62%;
+    --chart-2: 189 65% 50%;
+    --chart-3: 43 75% 60%;
+    --chart-4: 262 65% 68%;
+    --chart-5: 150 45% 50%;
+
+    --sidebar-background: 330 25% 7%;
+    --sidebar-foreground: 330 10% 90%;
+    --sidebar-primary: 330 70% 62%;
+    --sidebar-primary-foreground: 330 30% 8%;
+    --sidebar-accent: 330 18% 14%;
+    --sidebar-accent-foreground: 330 15% 92%;
+    --sidebar-border: 330 15% 16%;
+    --sidebar-ring: 330 70% 62%;
+
+    /* Iluminación en capas: cada nivel de elevación es un tono de fondo
+       ligeramente más claro que el de abajo (background < card < elevation-2),
+       ya que el box-shadow casi no se nota sobre fondo oscuro. */
+    --elevation-1: 330 18% 8.5%;
+    --elevation-2: 330 16% 12%;
+  }
+
+  /*
+   * Color de acento (Configuración > Apariencia): sólo redefine --primary y sus
+   * derivados (foreground, ring, sidebar-primary/ring) — el resto de la paleta
+   * (fondo, texto, bordes) no cambia. El atributo data-accent se setea en <html>
+   * desde localStorage (ver AccentProvider) antes del primer paint.
+   */
+  :root[data-accent="blue"] {
+    --primary: 217 91% 46%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 46%;
+    --sidebar-primary: 217 91% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 217 91% 46%;
+  }
+  .dark[data-accent="blue"] {
+    --primary: 217 91% 64%;
+    --primary-foreground: 217 40% 10%;
+    --ring: 217 91% 64%;
+    --sidebar-primary: 217 91% 64%;
+    --sidebar-primary-foreground: 217 40% 10%;
+    --sidebar-ring: 217 91% 64%;
+  }
+
+  :root[data-accent="green"] {
+    --primary: 142 71% 35%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 71% 35%;
+    --sidebar-primary: 142 71% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 142 71% 35%;
+  }
+  .dark[data-accent="green"] {
+    --primary: 142 65% 52%;
+    --primary-foreground: 142 40% 8%;
+    --ring: 142 65% 52%;
+    --sidebar-primary: 142 65% 52%;
+    --sidebar-primary-foreground: 142 40% 8%;
+    --sidebar-ring: 142 65% 52%;
+  }
+
+  :root[data-accent="orange"] {
+    --primary: 24 90% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 24 90% 45%;
+    --sidebar-primary: 24 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 24 90% 45%;
+  }
+  .dark[data-accent="orange"] {
+    --primary: 24 90% 60%;
+    --primary-foreground: 24 45% 10%;
+    --ring: 24 90% 60%;
+    --sidebar-primary: 24 90% 60%;
+    --sidebar-primary-foreground: 24 45% 10%;
+    --sidebar-ring: 24 90% 60%;
+  }
+
+  :root[data-accent="purple"] {
+    --primary: 262 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 262 70% 50%;
+    --sidebar-primary: 262 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 262 70% 50%;
+  }
+  .dark[data-accent="purple"] {
+    --primary: 262 75% 68%;
+    --primary-foreground: 262 40% 10%;
+    --ring: 262 75% 68%;
+    --sidebar-primary: 262 75% 68%;
+    --sidebar-primary-foreground: 262 40% 10%;
+    --sidebar-ring: 262 75% 68%;
+  }
+
+  :root[data-accent="teal"] {
+    --primary: 189 85% 32%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 189 85% 32%;
+    --sidebar-primary: 189 85% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 189 85% 32%;
+  }
+  .dark[data-accent="teal"] {
+    --primary: 189 80% 48%;
+    --primary-foreground: 189 45% 8%;
+    --ring: 189 80% 48%;
+    --sidebar-primary: 189 80% 48%;
+    --sidebar-primary-foreground: 189 45% 8%;
+    --sidebar-ring: 189 80% 48%;
+  }
 }
 @layer base {
   * {
@@ -79,4 +208,51 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/*
+ * Splash de tinta al cambiar de tema (ver src/lib/themeTransition.ts).
+ * Desactivamos el cross-fade por defecto de la View Transitions API: la
+ * revelación del nuevo tema la controla exclusivamente el clip-path animado
+ * a mano sobre ::view-transition-new(root), no la animación nativa.
+ */
+::view-transition-group(root) {
+  animation-duration: 0s;
+}
+::view-transition-old(root) {
+  animation: none;
+  z-index: 0;
+}
+::view-transition-new(root) {
+  animation: none;
+  z-index: 1;
+}
+
+/*
+ * Elevación: superficies sólidas normales (bg-card/bg-popover) más
+ * `shadow-soft` en light mode. En dark mode las sombras casi no se ven sobre
+ * fondo oscuro, así que la profundidad se resuelve como "iluminación en
+ * capas" — cada nivel es un tono de fondo más claro que el de abajo.
+ */
+.dark .elevation-1 {
+  background-color: hsl(var(--elevation-1));
+}
+.dark .elevation-2 {
+  background-color: hsl(var(--elevation-2));
+}
+
+/*
+ * Vista compacta (Configuración > "Vista compacta"): reduce padding/spacing
+ * de cards y listas. `[data-density="compact"]` se setea en <html> (ver
+ * useDensity) para que cualquier lista/card del dashboard pueda adaptarse
+ * sin depender de props/contexto React.
+ */
+[data-density="compact"] .density-card {
+  padding: 0.625rem !important;
+}
+[data-density="compact"] .density-stack > * + * {
+  margin-top: 0.375rem !important;
+}
+[data-density="compact"] .density-gap {
+  gap: 0.5rem !important;
 }

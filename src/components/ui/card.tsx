@@ -2,19 +2,29 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
-      className
-    )}
-    {...props}
-  />
-))
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Nivel de elevación sobre el fondo. En light mode se resuelve como
+   * box-shadow (`shadow-soft`); en dark mode se resuelve como un tono de
+   * fondo ligeramente más claro que el nivel de abajo ("iluminación en
+   * capas") vía las clases utilitarias `.elevation-1`/`.elevation-2`.
+   */
+  elevation?: 1 | 2
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, elevation = 1, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-2xl border bg-card text-card-foreground shadow-soft transition-shadow duration-200",
+        elevation === 2 && "elevation-2",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 Card.displayName = "Card"
 
 const CardHeader = React.forwardRef<

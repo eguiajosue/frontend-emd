@@ -2,12 +2,18 @@
 
 import {
   Package,
-  PackagePlus,
-  Truck,
   UserRound,
-  Building,
   LogOut,
+  LayoutDashboard,
+  HelpCircle,
+  Settings,
+  TrendingUp,
+  History,
+  Bell,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import {
   Sidebar,
   SidebarContent,
@@ -21,32 +27,122 @@ import { useSession, signOut } from "next-auth/react";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
+import { ThemeToggle } from "./ThemeToggle";
+import { BugReportDialog } from "./BugReportDialog";
+import { isOperationalOnly } from "@/lib/roleTaskMapping";
+import { cn } from "@/lib/utils";
+
+// Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
+// taller, impresiones): sólo necesitan ver el estatus de sus pedidos y Ayuda,
+// nada de métricas ni gestión editable.
+const OPERATIONAL_MENU = [
+  {
+    groupLabel: "Producción",
+    items: [
+      {
+        title: "Pedidos",
+        url: "/dashboard/orders",
+        icon: Package,
+      },
+    ],
+  },
+  {
+    groupLabel: "Soporte",
+    items: [
+      {
+        title: "Notificaciones",
+        url: "/dashboard/notificaciones",
+        icon: Bell,
+      },
+      {
+        title: "Ayuda",
+        url: "/dashboard/ayuda",
+        icon: HelpCircle,
+      },
+    ],
+  },
+];
+
+/** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
+function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "Buenas noches";
+  if (hour < 12) return "Buenos días";
+  if (hour < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
+function ConfiguracionLink({ pathname }: { pathname: string }) {
+  const active = pathname === "/dashboard/configuracion";
+  return (
+    <Button
+      variant="ghost"
+      className={cn("w-full justify-start gap-2 mb-2", active && "bg-primary/10 text-primary")}
+      asChild
+    >
+      <a href="/dashboard/configuracion">
+        <Settings className="h-4 w-4" />
+        Configuración
+      </a>
+    </Button>
+  );
+}
 
 export function AppSidebar() {
   const { data: session } = useSession();
-  const userRole = session?.user?.role;
+  const pathname = usePathname();
+  const userRoles = session?.user?.roles || [];
+  const operationalOnly = isOperationalOnly(userRoles);
+
+  // El saludo depende de la hora local del navegador; se calcula sólo tras
+  // montar para evitar un mismatch de hidratación entre servidor y cliente
+  // (en el server siempre cae en "Buenas noches" por defecto, invisible al
+  // usuario porque el mount es prácticamente instantáneo).
+  const [greeting, setGreeting] = useState("Bienvenid@");
+  useEffect(() => setGreeting(getTimeBasedGreeting()), []);
 
   const menuItems = [
     {
-      groupLabel: "Órdenes",
+      groupLabel: "Administración",
       items: [
         {
-          title: "Tablero de Estatus",
-          url: "/dashboard/orderstatus",
-          icon: Package,
-          roles: ["admin", "recepcion", "taller"],
+          title: "Panel General",
+          url: "/dashboard/admin",
+          icon: LayoutDashboard,
+          roles: ["admin", "superuser"],
         },
         {
-          title: "Lista de Pedidos",
+          title: "Rendimiento",
+          url: "/dashboard/admin/rendimiento",
+          icon: TrendingUp,
+          roles: ["admin", "superuser"],
+        },
+      ],
+    },
+    {
+      groupLabel: "Pedidos",
+      items: [
+        {
+          title: "Pedidos",
           url: "/dashboard/orders",
           icon: Package,
-          roles: ["admin", "recepcion"],
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
         },
         {
-          title: "Nueva Orden",
-          url: "/dashboard/orders/new",
-          icon: PackagePlus,
-          roles: ["admin", "recepcion"],
+          title: "Historial",
+          url: "/dashboard/historial",
+          icon: History,
+          roles: ["admin", "superuser", "recepcion"],
         },
       ],
     },
@@ -54,103 +150,112 @@ export function AppSidebar() {
       groupLabel: "Clientes",
       items: [
         {
-          title: "Lista de Clientes",
-          url: "/dashboard/clients",
+          title: "Clientes",
+          url: "/dashboard/clientes",
           icon: UserRound,
           roles: ["admin", "recepcion"],
         },
       ],
     },
     {
-      groupLabel: "Inventario",
+      groupLabel: "Usuarios",
       items: [
         {
-          title: "Lista de Productos",
-          url: "/dashboard/products",
-          icon: Package,
-          roles: ["admin", "taller", "recepcion"],
-        },
-        {
-          title: "Movimientos de Inventario",
-          url: "/dashboard/inventory-transactions",
-          icon: Truck,
-          roles: ["admin", "taller"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Colores y Tamaños",
-      items: [
-        {
-          title: "Lista de Colores",
-          url: "/dashboard/colors",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Lista de Tamaños",
-          url: "/dashboard/sizes",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-        {
-          title: "Tipos de Producto",
-          url: "/dashboard/product-types",
-          icon: Package,
-          roles: ["admin", "recepcion"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Empresas",
-      items: [
-        {
-          title: "Lista de Empresas",
-          url: "/dashboard/companies",
-          icon: Building,
-          roles: ["admin", "recepcion"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Usuarios y Roles",
-      items: [
-        {
-          title: "Lista de Usuarios",
-          url: "/dashboard/users",
+          title: "Usuarios",
+          url: "/dashboard/usuarios",
           icon: UserRound,
-          roles: ["admin"],
+          roles: ["admin", "superuser"],
+        },
+      ],
+    },
+    {
+      groupLabel: "Soporte",
+      items: [
+        {
+          title: "Notificaciones",
+          url: "/dashboard/notificaciones",
+          icon: Bell,
+          // Visible para todos los roles.
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
         },
         {
-          title: "Lista de Roles",
-          url: "/dashboard/roles",
-          icon: UserRound,
-          roles: ["admin"],
+          title: "Ayuda",
+          url: "/dashboard/ayuda",
+          icon: HelpCircle,
+          // Visible para todos los roles.
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
         },
       ],
     },
   ];
 
+  const visibleGroups = operationalOnly ? OPERATIONAL_MENU : menuItems;
+
   return (
     <Sidebar>
-      <SidebarContent>
+      <SidebarContent data-tour="sidebar-nav">
         <SidebarHeader className="p-4">
           <h2 className="text-lg font-semibold tracking-tight">
-            Bienvenid@, {session?.user?.first_name}
+            {greeting},{" "}
+            <span className="text-primary">{session?.user?.first_name}</span>
           </h2>
         </SidebarHeader>
-        {menuItems.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.groupLabel}>
             <SidebarGroupLabel>{group.groupLabel}</SidebarGroupLabel>
             <SidebarMenu>
               {group.items.map((item) =>
-                // Mostrar el botón si el usuario es "admin" o si el rol del usuario está en la lista de roles permitidos
-                userRole === "admin" || (userRole && item.roles.includes(userRole)) ? (
+                // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
+                // completo se filtra por rol, con "admin" viendo todo.
+                operationalOnly ||
+                userRoles.includes("admin") ||
+                userRoles.some((r) =>
+                  "roles" in item ? (item.roles as string[]).includes(r) : true
+                ) ? (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <a href={item.url}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                      <a
+                        href={item.url}
+                        className="relative"
+                        data-tour={item.title === "Ayuda" ? "help-link" : undefined}
+                      >
+                        {pathname === item.url && (
+                          <motion.span
+                            layoutId="sidebar-active-indicator"
+                            className="absolute inset-0 -z-10 rounded-md bg-primary/10"
+                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                          />
+                        )}
+                        <item.icon
+                          className={pathname === item.url ? "text-primary" : undefined}
+                        />
+                        <span
+                          className={
+                            pathname === item.url ? "font-medium text-primary" : undefined
+                          }
+                        >
+                          {item.title}
+                        </span>
                       </a>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -162,19 +267,31 @@ export function AppSidebar() {
       </SidebarContent>
       <div className="mt-auto p-4">
         <Separator className="mb-4" />
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar>
-            <AvatarFallback>
-              {session?.user?.username?.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{session?.user.first_name} {session?.user.last_name}</span>
-            <div className="flex justify-between items-center w-full">
-              <span className="text-xs text-muted-foreground">{session?.user.role}</span>
-              <span className="text-xs text-muted-foreground">@{session?.user.username}</span>
+        <ConfiguracionLink pathname={pathname} />
+        <BugReportDialog />
+        <div className="flex items-center gap-3 mb-4 mt-2">
+          <div className="relative shrink-0">
+            <Avatar className="ring-2 ring-primary/20">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {session?.user?.username?.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            {/* Punto de estado "en línea": sesión activa ahora mismo. */}
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar animate-pulse motion-reduce:animate-none"
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
+            <div className="flex justify-between items-center w-full gap-2">
+              <span className="text-xs text-muted-foreground truncate">{userRoles.join(", ")}</span>
+              <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
             </div>
           </div>
+          <span data-tour="theme-toggle">
+            <ThemeToggle />
+          </span>
         </div>
         <Button variant="destructive" className="w-full" onClick={() => signOut()}>
           <LogOut className="mr-2 h-4 w-4" />

@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,178 +10,109 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { statusLabel, statusOptions } from "@/lib/orderStatus";
-import { useCrud } from "@/hooks/useCrud";
-
-interface OrderProduct {
-  productId: number;
-  quantity: number;
-  product?: { code?: string; productType?: { name: string } };
-}
-
-interface OrderDetail {
-  id: number;
-  description: string;
-  creationDate: string;
-  deliveryDate?: string;
-  statusId: number;
-  client?: { first_name: string; last_name: string };
-  user?: { firstName: string; lastName: string };
-  orderProducts?: OrderProduct[];
-}
-
-interface OrderHistoryEntry {
-  id: number;
-  orderId: number;
-  previousStatusId: number;
-  newStatusId: number;
-  changeDate: string;
-}
-
-const dateFormat: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-};
+import { ErrorState } from "@/components/feedback/states";
+import { StatusBadge } from "@/components/StatusBadge";
+import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import {
+  combineDateAndTime,
+  formatDateTime,
+  getAssignedUserName,
+  getOrderClientName,
+  getOrderProductName,
+  getUserName,
+} from "@/lib/format";
+import { FileText, UserRound } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useEntityMutations } from "@/hooks/useEntity";
+import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
+import type { UpdateOrderPayload } from "@/types";
 
 const OrderDetailPage = () => {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
   const orderId = Number(params?.id);
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { roles, isAdmin } = usePermissions();
+  const {
+    data: order,
+    isPending,
+    isError,
+    refetch,
+  } = useOrder(Number.isNaN(orderId) ? undefined : orderId);
+  const { histories } = useOrderHistory(orderId);
+  const { update } = useEntityMutations<unknown, UpdateOrderPayload>("orders");
+  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [newStatusId, setNewStatusId] = useState<number | undefined>(undefined);
+  const [deliveryTime, setDeliveryTime] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: allHistories } = useCrud<OrderHistoryEntry>("order-histories");
-
-  const token = session?.user?.token;
-  const role = session?.user?.role;
-  const canEdit = role === "admin" || role === "recepcion";
-
-  const histories = useMemo(
-    () =>
-      allHistories
-        .filter((h) => h.orderId === orderId)
-        .sort((a, b) => new Date(b.changeDate).getTime() - new Date(a.changeDate).getTime()),
-    [allHistories, orderId]
-  );
-
-  const fetchOrder = useCallback(async () => {
-    if (!token || !orderId) return;
-    try {
-      setLoading(true);
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${orderId}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (!res.ok) {
-        throw new Error(`Error ${res.status}: ${res.statusText}`);
-      }
-      const json = await res.json();
-      setOrder(json);
-      setDescription(json.description ?? "");
-      setDeliveryDate(json.deliveryDate ? json.deliveryDate.slice(0, 10) : "");
-      setNewStatusId(json.statusId);
-    } catch (error) {
-      console.error("Error al obtener el pedido:", error);
-      toast.error("No se pudo cargar el pedido");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, orderId]);
-
+  // Sincroniza el formulario con el pedido cada vez que llega/cambia del servidor.
   useEffect(() => {
-    fetchOrder();
-  }, [fetchOrder]);
+    if (!order) return;
+    setDescription(order.description ?? "");
+    if (order.deliveryDate) {
+      const d = new Date(order.deliveryDate);
+      setDeliveryDate(order.deliveryDate.slice(0, 10));
+      const hasTime = !Number.isNaN(d.getTime()) && (d.getHours() !== 0 || d.getMinutes() !== 0);
+      setDeliveryTime(
+        hasTime
+          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+          : ""
+      );
+    } else {
+      setDeliveryDate("");
+      setDeliveryTime("");
+    }
+  }, [order]);
+
+  const canEdit = isAdmin || roles.includes("recepcion");
+  // Los roles operativos (dtf, bordado, taller, etc.) pueden avanzar el estado del
+  // pedido cuando este se encuentra en la etapa que les corresponde, aunque no puedan
+  // editar los detalles generales del pedido.
+  const myStageIds = statusIdsForRoles(roles);
+  const canChangeStatus =
+    canEdit || (!!order && myStageIds.includes(order.statusId));
 
   const handleSaveDetails = async () => {
     if (!order) return;
     setSaving(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            description,
-            deliveryDate: deliveryDate || undefined,
-          }),
-        }
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-      toast.success("Pedido actualizado correctamente");
-      fetchOrder();
-    } catch (error) {
-      console.error("Error al actualizar el pedido:", error);
-      toast.error("Ocurrió un error al actualizar el pedido");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleStatusChange = async () => {
-    if (!order || newStatusId === undefined || newStatusId === order.statusId) return;
-    setSaving(true);
-    try {
-      const previousStatusId = order.statusId;
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/orders/${order.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ statusId: newStatusId }),
-        }
-      );
-      if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`);
-
-      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/order-histories`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          orderId: order.id,
-          previousStatusId,
-          newStatusId,
-        }),
+      await update(order.id, {
+        description,
+        deliveryDate: combineDateAndTime(deliveryDate, deliveryTime),
       });
-
-      toast.success("Estado actualizado correctamente");
-      fetchOrder();
-    } catch (error) {
-      console.error("Error al actualizar el estado:", error);
-      toast.error("Ocurrió un error al actualizar el estado");
+      toast.success("Pedido actualizado correctamente");
+    } catch {
+      // El toast de error lo dispara el manejo global de mutaciones.
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
+  const handleStatusChange = async (nextStatusId: number) => {
+    if (!order || nextStatusId === order.statusId) return;
+    await changeStatus(order, nextStatusId);
+  };
+
+  if (isPending) {
     return (
       <div className="space-y-4">
         <Skeleton className="w-full h-10" />
         <Skeleton className="w-full h-40" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        title="No se pudo cargar el pedido"
+        description="Verificá tu conexión o volvé a la lista de pedidos."
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -206,17 +136,21 @@ const OrderDetailPage = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <p>
-              <b>Cliente:</b> {order.client?.first_name} {order.client?.last_name}
+              <b>Cliente:</b> {getOrderClientName(order)}
             </p>
             <p>
-              <b>Creado por:</b> {order.user?.firstName} {order.user?.lastName}
+              <b>Creado por:</b> {getUserName(order.user)}
             </p>
             <p>
-              <b>Fecha de Creación:</b>{" "}
-              {new Date(order.creationDate).toLocaleDateString("es-MX", dateFormat)}
+              <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
             </p>
-            <p>
-              <b>Estado actual:</b> {statusLabel(order.statusId).toUpperCase()}
+            <p className="flex items-center gap-2">
+              <b>Estado actual:</b>{" "}
+              <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+            </p>
+            <p className="flex items-center gap-1">
+              <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+              <b>Asignado a:</b> {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
             </p>
 
             <div className="space-y-1">
@@ -227,19 +161,55 @@ const OrderDetailPage = () => {
                 disabled={!canEdit}
               />
             </div>
-            <div className="space-y-1">
-              <Label>Fecha de Entrega</Label>
-              <Input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                disabled={!canEdit}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Fecha de Entrega</Label>
+                <Input
+                  type="date"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Hora de Entrega (opcional)</Label>
+                <Input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                  disabled={!canEdit || !deliveryDate}
+                />
+              </div>
             </div>
             {canEdit && (
               <Button onClick={handleSaveDetails} disabled={saving}>
                 Guardar Cambios
               </Button>
+            )}
+
+            {order.authorizationFile && (
+              <div className="space-y-2 pt-2">
+                <Label>Hoja de Autorización</Label>
+                {order.authorizationFile.mimeType.startsWith("image/") ? (
+                  <img
+                    src={order.authorizationFile.dataUrl}
+                    alt={order.authorizationFile.filename}
+                    loading="lazy"
+                    className="max-h-64 max-w-full rounded-md border object-contain"
+                  />
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <a
+                      href={order.authorizationFile.dataUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Ver hoja de autorización (PDF)
+                    </a>
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
@@ -249,26 +219,12 @@ const OrderDetailPage = () => {
             <CardTitle>Cambiar Estado</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-              value={newStatusId ?? ""}
-              disabled={!canEdit}
-              onChange={(e) => setNewStatusId(Number(e.target.value))}
-            >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            {canEdit && (
-              <Button
-                onClick={handleStatusChange}
-                disabled={saving || newStatusId === order.statusId}
-              >
-                Actualizar Estado
-              </Button>
-            )}
+            <OrderStatusButtons
+              currentStatusId={order.statusId}
+              canChange={canChangeStatus}
+              isChanging={isChangingStatus}
+              onChange={handleStatusChange}
+            />
 
             <div className="pt-4">
               <h3 className="font-semibold mb-2">Historial de Estados</h3>
@@ -278,13 +234,13 @@ const OrderDetailPage = () => {
                 <ul className="space-y-2 text-sm">
                   {histories.map((h) => (
                     <li key={h.id} className="border-l-2 pl-3">
-                      <span className="font-medium">
-                        {statusLabel(h.previousStatusId, "?").toUpperCase()} →{" "}
-                        {statusLabel(h.newStatusId, "?").toUpperCase()}
+                      <span className="flex flex-wrap items-center gap-1 font-medium">
+                        <StatusBadge statusId={h.previousStatusId} /> →{" "}
+                        <StatusBadge statusId={h.newStatusId} />
                       </span>
                       <br />
                       <span className="text-muted-foreground">
-                        {new Date(h.changeDate).toLocaleDateString("es-MX", dateFormat)}
+                        {formatDateTime(h.changeDate)}
                       </span>
                     </li>
                   ))}
@@ -302,17 +258,20 @@ const OrderDetailPage = () => {
         <CardContent>
           {order.orderProducts && order.orderProducts.length > 0 ? (
             <ul className="space-y-2">
-              {order.orderProducts.map((op) => (
-                <li key={op.productId} className="flex justify-between text-sm border-b pb-1">
-                  <span>
-                    {op.product?.code || op.product?.productType?.name || `Producto #${op.productId}`}
-                  </span>
+              {order.orderProducts.map((op, i) => (
+                <li
+                  key={op.productId ?? `${op.customName}-${i}`}
+                  className="flex justify-between text-sm border-b pb-1"
+                >
+                  <span>{getOrderProductName(op)}</span>
                   <span>Cantidad: {op.quantity}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Este pedido no tiene productos asociados.</p>
+            <p className="text-sm text-muted-foreground">
+              Este pedido no tiene productos asociados.
+            </p>
           )}
         </CardContent>
       </Card>
