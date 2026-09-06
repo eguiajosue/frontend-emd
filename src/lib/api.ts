@@ -43,7 +43,7 @@ export function getErrorMessage(
   if (error instanceof AuthFetchError) return "Tu sesión expiró.";
   if (error instanceof ApiError) {
     if (error.status === 0) return "No se pudo conectar con el servidor.";
-    if (error.status === 403) return "No tenés permisos para realizar esta acción.";
+    if (error.status === 403) return error.message || "No tenés permisos para realizar esta acción.";
     if (error.status === 404) return "No se encontró el recurso solicitado.";
     // El backend manda mensajes específicos y en español incluso para 5xx
     // deliberados (ej. "servicio no configurado todavía", "no se pudo

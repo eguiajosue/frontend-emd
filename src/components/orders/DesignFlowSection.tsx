@@ -32,6 +32,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   UPLOAD_FILE_MAX_BYTES,
@@ -75,9 +76,9 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
     UpdateOrderPayload
   >("orders");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
+  const [montageDialogOpen, setMontageDialogOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (!order.requiresDesign) return null;
@@ -94,29 +95,6 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
   const isAuthorized = currentStatus === DESIGN_FLOW_STATUS_NAMES.AUTORIZADO;
 
   const latestRevision = revisions[revisions.length - 1] ?? null;
-
-  const handleMontageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!isAllowedUploadMime(file.type)) {
-      toast.error("El montaje debe ser PNG, JPG o PDF.");
-      e.target.value = "";
-      return;
-    }
-    if (file.size > UPLOAD_FILE_MAX_BYTES) {
-      toast.error("El montaje no puede pesar más de 5MB.");
-      e.target.value = "";
-      return;
-    }
-    try {
-      const parsedFile = await readFileAsUploadInput(file);
-      await sendMontage(parsedFile);
-    } catch {
-      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
-    } finally {
-      e.target.value = "";
-    }
-  };
 
   const handleProductionAreaChange = async (value: string) => {
     try {
@@ -211,16 +189,9 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
       {/* Acciones contextuales por rol + estado */}
       {canDesign && isDesignTurn && (
         <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
-            className="hidden"
-            onChange={handleMontageFileChange}
-          />
           <Button
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setMontageDialogOpen(true)}
             disabled={isSendingMontage}
             className="gap-1.5"
           >
@@ -231,7 +202,9 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
             )}
             {isSendingMontage ? "Enviando..." : "Enviar montaje a Recepción"}
           </Button>
-          <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
+          <p className="text-xs text-muted-foreground">
+            Arrastrá, adjuntá o pegá una imagen (Ctrl+V). PNG, JPG o PDF, máximo 5MB.
+          </p>
         </div>
       )}
 
@@ -258,6 +231,18 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           <CheckCircle2 className="h-4 w-4" />
           El cliente autorizó el diseño — el pedido pasa a producción.
         </p>
+      )}
+
+      {canDesign && isDesignTurn && (
+        <MontageDialog
+          open={montageDialogOpen}
+          onClose={() => setMontageDialogOpen(false)}
+          isSubmitting={isSendingMontage}
+          onSubmit={async (montageFile) => {
+            const result = await sendMontage(montageFile);
+            if (result !== undefined) setMontageDialogOpen(false);
+          }}
+        />
       )}
 
       {latestRevision && (
@@ -440,6 +425,173 @@ function RevisionFileButton({
       )}
       {label}
     </Button>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dialog: enviar montaje (Diseño) — drag&drop + botón + pegado (Ctrl+V)      */
+/* -------------------------------------------------------------------------- */
+
+function MontageDialog({
+  open,
+  onClose,
+  onSubmit,
+  isSubmitting,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (montageFile: import("@/lib/fileInput").UploadFileInput) => Promise<void>;
+  isSubmitting: boolean;
+}) {
+  const { formButtonMotion } = useMotionPreset();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<import("@/lib/fileInput").UploadFileInput | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileLabel, setFileLabel] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const reset = () => {
+    setFile(null);
+    setPreviewUrl(null);
+    setFileLabel(null);
+    setIsDragging(false);
+  };
+
+  const acceptFile = async (f: File) => {
+    if (!isAllowedUploadMime(f.type)) {
+      toast.error("El montaje debe ser PNG, JPG o PDF.");
+      return;
+    }
+    if (f.size > UPLOAD_FILE_MAX_BYTES) {
+      toast.error("El montaje no puede pesar más de 5MB.");
+      return;
+    }
+    try {
+      const parsed = await readFileAsUploadInput(f);
+      setFile(parsed);
+      setFileLabel(f.name);
+      setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+    } catch {
+      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+    }
+  };
+
+  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (f) await acceptFile(f);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) await acceptFile(f);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const pastedFile = item.getAsFile();
+        if (pastedFile) {
+          e.preventDefault();
+          await acceptFile(pastedFile);
+        }
+        break;
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!file) return;
+    await onSubmit(file);
+    reset();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && !isSubmitting && (onClose(), reset())}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Enviar montaje a Recepción</DialogTitle>
+        </DialogHeader>
+        <div
+          className={cn(
+            "space-y-3 rounded-xl border-2 border-dashed p-4 text-center transition-colors",
+            isDragging ? "border-primary bg-primary/5" : "border-border"
+          )}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          onPaste={handlePaste}
+          tabIndex={0}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
+            className="hidden"
+            onChange={handleInputChange}
+          />
+          {file ? (
+            <div className="space-y-3">
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt={fileLabel ?? "Montaje"}
+                  className="mx-auto max-h-56 max-w-full rounded-lg border object-contain"
+                />
+              ) : (
+                <div className="flex items-center justify-center gap-2 rounded-lg border p-3 text-sm">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{fileLabel}</span>
+                </div>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={reset} className="gap-1.5">
+                <X className="h-4 w-4" />
+                Descartar y elegir otro
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3 py-4">
+              <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Arrastrá una imagen acá, pegala con Ctrl+V, o adjuntala manualmente.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-1.5"
+              >
+                <Paperclip className="h-4 w-4" />
+                Adjuntar archivo
+              </Button>
+              <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={() => (onClose(), reset())} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <motion.div {...(isSubmitting ? {} : formButtonMotion)}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !file} className="gap-1.5">
+              {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isSubmitting ? "Enviando..." : "Confirmar y enviar"}
+            </Button>
+          </motion.div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { statusOptions } from "@/lib/orderStatus";
 import { AREA_OPTIONS } from "@/lib/areas";
 import { getAssignedUserName } from "@/lib/format";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, X } from "lucide-react";
 import type { Client, User } from "@/types";
@@ -61,6 +62,9 @@ interface OrdersFilterBarProps {
  * Pedidos. Filtra en el cliente sobre el array ya devuelto por GET /orders.
  */
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
+  const { isAdmin, roles } = usePermissions();
+  const canFilterByArea = isAdmin || roles.includes("recepcion");
+
   const hasActiveFilters =
     filters.clientId !== undefined ||
     filters.statusIds.length > 0 ||
@@ -136,26 +140,28 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
         </div>
       </div>
 
-      <div className="space-y-1">
-        <Label className="text-xs">Área</Label>
-        <select
-          className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
-          value={filters.area ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...filters,
-              area: e.target.value || undefined,
-            })
-          }
-        >
-          <option value="">Todas</option>
-          {AREA_OPTIONS.map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {canFilterByArea && (
+        <div className="space-y-1">
+          <Label className="text-xs">Área</Label>
+          <select
+            className="flex h-9 w-40 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm"
+            value={filters.area ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...filters,
+                area: e.target.value || undefined,
+              })
+            }
+          >
+            <option value="">Todas</option>
+            {AREA_OPTIONS.map((a) => (
+              <option key={a.value} value={a.value}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-1">
         <Label className="text-xs">Asignado a</Label>
