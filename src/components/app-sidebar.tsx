@@ -10,6 +10,7 @@ import {
   TrendingUp,
   History,
   Bell,
+  MessagesSquare,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -30,6 +31,7 @@ import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { BugReportDialog } from "./BugReportDialog";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
+import { useChatUnreadCount } from "@/hooks/useChat";
 import { cn } from "@/lib/utils";
 
 // Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
@@ -43,6 +45,16 @@ const OPERATIONAL_MENU = [
         title: "Pedidos",
         url: "/dashboard/orders",
         icon: Package,
+      },
+    ],
+  },
+  {
+    groupLabel: "Comunicación",
+    items: [
+      {
+        title: "Chat interno",
+        url: "/dashboard/chat",
+        icon: MessagesSquare,
       },
     ],
   },
@@ -100,6 +112,10 @@ export function AppSidebar() {
   // usuario porque el mount es prácticamente instantáneo).
   const [greeting, setGreeting] = useState("Bienvenid@");
   useEffect(() => setGreeting(getTimeBasedGreeting()), []);
+
+  // Badge de mensajes de chat sin leer: se deriva de la misma query que usa
+  // la pantalla del chat, invalidada en vivo por `useSocket`.
+  const chatUnread = useChatUnreadCount();
 
   const menuItems = [
     {
@@ -165,6 +181,29 @@ export function AppSidebar() {
           url: "/dashboard/usuarios",
           icon: UserRound,
           roles: ["admin", "superuser"],
+        },
+      ],
+    },
+    {
+      groupLabel: "Comunicación",
+      items: [
+        {
+          title: "Chat interno",
+          url: "/dashboard/chat",
+          icon: MessagesSquare,
+          // Visible para todos los roles: los canales de área y los DMs que
+          // cada uno puede ver los resuelve el backend.
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
         },
       ],
     },
@@ -256,6 +295,11 @@ export function AppSidebar() {
                         >
                           {item.title}
                         </span>
+                        {item.url === "/dashboard/chat" && chatUnread > 0 ? (
+                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                            {chatUnread > 99 ? "99+" : chatUnread}
+                          </span>
+                        ) : null}
                       </a>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

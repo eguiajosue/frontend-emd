@@ -20,6 +20,7 @@ export const ENDPOINTS = {
   settings: "settings",
   orderHistory: "orders/history",
   notifications: "notifications",
+  chat: "chat",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;
