@@ -45,7 +45,14 @@ export function getErrorMessage(
     if (error.status === 0) return "No se pudo conectar con el servidor.";
     if (error.status === 403) return "No tenés permisos para realizar esta acción.";
     if (error.status === 404) return "No se encontró el recurso solicitado.";
-    if (error.status >= 500) return "El servidor tuvo un problema. Intentá más tarde.";
+    // El backend manda mensajes específicos y en español incluso para 5xx
+    // deliberados (ej. "servicio no configurado todavía", "no se pudo
+    // enviar el reporte") — sólo caemos al genérico cuando no hay mensaje
+    // útil (crash no controlado, que en producción el backend oculta como
+    // "Error interno del servidor").
+    if (error.status >= 500 && (!error.message || error.message === "Error interno del servidor")) {
+      return "El servidor tuvo un problema. Intentá más tarde.";
+    }
     return error.message || fallback;
   }
   if (error instanceof Error && error.message) return error.message;

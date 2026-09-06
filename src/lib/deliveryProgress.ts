@@ -18,7 +18,16 @@ export function computeDeliveryProgress(
   if (!creationDate || !deliveryDate) return null;
   const start = new Date(creationDate).getTime();
   const end = new Date(deliveryDate).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
+  if (Number.isNaN(start) || Number.isNaN(end)) return null;
+  // Vencido ya (independiente de cómo se relacionen start/end): siempre >100,
+  // más cuanto más tiempo pasó desde el vencimiento. Cubre el caso de editar
+  // la fecha de entrega a una fecha anterior a la creación del pedido, donde
+  // (end - start) da negativo o cero y el cálculo proporcional no aplica.
+  if (end <= now) {
+    const overdueHours = (now - end) / (1000 * 60 * 60);
+    return 100 + Math.min(overdueHours, 100);
+  }
+  if (end <= start) return 100;
   return ((now - start) / (end - start)) * 100;
 }
 
