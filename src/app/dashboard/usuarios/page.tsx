@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { z } from "zod";
+import { UserCog } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudPage } from "@/components/crud/CrudPage";
@@ -161,7 +162,9 @@ const UsuariosPage = () => {
             fields={userFields}
             schema={(editing) => (editing ? editSchema : createSchema)}
             columns={getUserColumns}
-            emptyMessage="No hay usuarios aún."
+            emptyMessage="Sólo estás vos por acá"
+            emptyDescription="Invitá al resto del equipo creando sus cuentas de usuario."
+            emptyIcon={UserCog}
             deleteDescription="Esta acción eliminará al usuario de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Usuario" : "Nuevo Usuario")}
             hideTitle

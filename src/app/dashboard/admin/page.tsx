@@ -23,7 +23,8 @@ import { statusMap } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getClientName, getUserName } from "@/lib/format";
 import type { Order, OrderHistory } from "@/types";
-import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp, LayoutDashboard } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
@@ -434,9 +435,11 @@ const AdminDashboardPage = () => {
           <Skeleton className="h-96 w-full" />
         </div>
       ) : orders.length === 0 ? (
-        <div className="rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-          No hay pedidos aún.
-        </div>
+        <EmptyState
+          icon={LayoutDashboard}
+          title="El panel está esperando su primer pedido"
+          description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer acá apenas se cargue el primero."
+        />
       ) : (
         <div className="grid gap-10 lg:grid-cols-3 lg:items-start">
         <div className="space-y-10 lg:col-span-2">

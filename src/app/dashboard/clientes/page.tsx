@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { z } from "zod";
 import { ColumnDef } from "@tanstack/react-table";
-import { History } from "lucide-react";
+import { History, Users, Building2 } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,9 @@ const ClientesPage = () => {
             fields={clientFields}
             schema={clientSchema}
             columns={clientColumnsWithOrders}
-            emptyMessage="No hay clientes aún."
+            emptyMessage="Todavía no cargaste ningún cliente"
+            emptyDescription="Cuando sumes el primero, vas a poder ver su historial de pedidos acá mismo."
+            emptyIcon={Users}
             deleteDescription="Esta acción eliminará al cliente de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Cliente" : "Nuevo Cliente")}
             hideTitle
@@ -156,7 +158,9 @@ const ClientesPage = () => {
             fields={companyFields}
             schema={companySchema}
             columns={getCompanyColumns}
-            emptyMessage="No hay empresas aún."
+            emptyMessage="Ninguna empresa registrada por ahora"
+            emptyDescription="Agrupá a tus clientes corporativos creando la primera empresa."
+            emptyIcon={Building2}
             deleteDescription="Esta acción eliminará la empresa de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Empresa" : "Nueva Empresa")}
             hideTitle

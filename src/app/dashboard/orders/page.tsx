@@ -38,7 +38,8 @@ import {
   type OrdersFilters,
 } from "@/components/orders/OrdersFilterBar";
 import type { Client, Order, User } from "@/types";
-import { ExternalLink, FileDown, LayoutGrid, List, Plus } from "lucide-react";
+import { ExternalLink, FileDown, LayoutGrid, List, Plus, PackageSearch, FilterX, PartyPopper } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
@@ -468,20 +469,39 @@ const OrdersPage = () => {
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : visibleOrders.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-          <p>
-            {orders.length > 0
-              ? "Ningún pedido coincide con los filtros aplicados."
-              : isOperationalRole
-              ? "No tenés pedidos pendientes en este momento. Buen trabajo."
-              : "Todavía no hay pedidos, creá el primero."}
-          </p>
-          {canManageOperations && (
-            <Button data-tour="new-order-button" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
-            </Button>
-          )}
-        </div>
+        orders.length > 0 ? (
+          <EmptyState
+            icon={FilterX}
+            title="Ningún pedido coincide con estos filtros"
+            description="Probá ajustar o limpiar los filtros para ver el resto de los pedidos."
+            action={{
+              label: "Limpiar filtros",
+              icon: FilterX,
+              onClick: () => updateFilters(EMPTY_ORDERS_FILTERS),
+            }}
+          />
+        ) : isOperationalRole ? (
+          <EmptyState
+            icon={PartyPopper}
+            title="Sin pendientes por ahora — buen trabajo"
+            description="No tenés pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer acá."
+          />
+        ) : (
+          <EmptyState
+            icon={PackageSearch}
+            title="Todavía no hay pedidos en el tablero"
+            description="El primero está a un click de distancia."
+            action={
+              canManageOperations
+                ? {
+                    label: "Nuevo pedido",
+                    icon: Plus,
+                    onClick: () => setCreateOpen(true),
+                  }
+                : undefined
+            }
+          />
+        )
       ) : viewMode === "list" ? (
         <div className="w-full overflow-auto">
           <DataTable columns={columns} data={visibleOrders} onRowClick={(o) => openDetail(o.id)} />
@@ -505,7 +525,7 @@ const OrdersPage = () => {
               </div>
               {col.orders.length === 0 ? (
                 <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  Sin pedidos
+                  Nada por acá todavía
                 </p>
               ) : (
                 <motion.div

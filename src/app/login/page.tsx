@@ -75,7 +75,7 @@ const LoginForm = () => {
             EMD Bordados
           </h1>
           <p className="text-lg mt-4 font-medium text-neutral-200">
-            Sistema de gestión de pedidos e inventario
+            De la idea al bordado: cada pedido, taller y entrega en un solo lugar
           </p>
           <p className="text-sm mt-2 opacity-60">Versión 1.0.0</p>
         </motion.div>
@@ -93,8 +93,8 @@ const LoginForm = () => {
             <h1 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white">EMD Bordados</h1>
           </div>
           <div className="space-y-2 text-center">
-            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white md:text-foreground">Iniciar Sesión</h2>
-            <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingrese su nombre de usuario y contraseña para acceder a la plataforma</p>
+            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white md:text-foreground">Bienvenido de vuelta</h2>
+            <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingresá tu usuario y contraseña para entrar al taller</p>
           </div>
 
           {sessionMessage && (

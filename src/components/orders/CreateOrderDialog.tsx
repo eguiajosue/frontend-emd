@@ -36,6 +36,7 @@ import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { AREA_OPTIONS } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
+import { orderCreatedMessage } from "@/lib/copy";
 import type {
   AuthorizationFileInput,
   Client,
@@ -257,7 +258,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         orderProducts: parsed.data.orderProducts,
         authorizationFile: authorizationFile ?? undefined,
       });
-      toast.success("Pedido creado correctamente");
+      toast.success(orderCreatedMessage());
       resetForm();
       onClose();
       onCreated?.(order);

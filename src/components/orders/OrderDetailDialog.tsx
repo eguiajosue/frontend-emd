@@ -39,7 +39,7 @@ import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { isDeliveredStatus } from "@/lib/orderStatus";
-import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { AREA_OPTIONS, getAreaLabel, getAreaIcon } from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import {
   Accordion,
@@ -203,11 +203,17 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       <b>Asignado a:</b>{" "}
                       {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
                     </p>
-                    {!canEdit && (
-                      <p>
-                        <b>Área:</b> {getAreaLabel(order.area)}
-                      </p>
-                    )}
+                    {!canEdit && (() => {
+                      const AreaIcon = getAreaIcon(order.area);
+                      return (
+                        <p className="flex items-center gap-1">
+                          {AreaIcon && (
+                            <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
+                          <b>Área:</b> {getAreaLabel(order.area)}
+                        </p>
+                      );
+                    })()}
                   </div>
 
                   {!isDeliveredStatus(order.statusId) && (
@@ -360,7 +366,9 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                   <div>
                     <h4 className="mb-2 font-semibold">Historial de Estados</h4>
                     {histories.length === 0 ? (
-                      <p className="text-muted-foreground">Sin historial aún.</p>
+                      <p className="text-muted-foreground">
+                        Recién creado, todavía sin cambios de estado.
+                      </p>
                     ) : (
                       <ul className="space-y-2">
                         {histories.map((h) => (
@@ -392,7 +400,9 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     ) : (
                       <>
                         {notes.length === 0 ? (
-                          <p className="mb-2 text-muted-foreground">Sin notas aún.</p>
+                          <p className="mb-2 text-muted-foreground">
+                            Todavía no hay notas — dejá la primera para el equipo.
+                          </p>
                         ) : (
                           <ul className="mb-3 space-y-2">
                             {notes.map((note) => (
@@ -449,7 +459,9 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                             El historial de cambios todavía no está disponible.
                           </p>
                         ) : auditEntries.length === 0 ? (
-                          <p className="text-muted-foreground">Sin ediciones registradas.</p>
+                          <p className="text-muted-foreground">
+                            Sin ediciones registradas — el pedido está tal cual se creó.
+                          </p>
                         ) : (
                           <ul className="space-y-2">
                             {auditEntries.map((entry) => (

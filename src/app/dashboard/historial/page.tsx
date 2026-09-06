@@ -12,7 +12,8 @@ import { useAuthToken } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { motion } from "framer-motion";
 import { staggerContainerVariants } from "@/lib/motion";
-import { ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileDown, Archive } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const PAGE_SIZE = 20;
 
@@ -71,9 +72,11 @@ const HistorialPage = () => {
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : orders.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-          <p>Todavía no hay pedidos registrados.</p>
-        </div>
+        <EmptyState
+          icon={Archive}
+          title="El historial todavía está en blanco"
+          description="En cuanto se entregue el primer pedido, va a quedar registrado acá para siempre."
+        />
       ) : (
         <>
           <motion.div

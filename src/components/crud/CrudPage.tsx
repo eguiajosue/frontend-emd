@@ -2,16 +2,13 @@
 
 import React, { useMemo, useState } from "react";
 import { z } from "zod";
-import { Plus } from "lucide-react";
+import { Plus, type LucideIcon } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import Title from "@/components/Title";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import {
-  EmptyState,
-  ErrorState,
-  TableSkeleton,
-} from "@/components/feedback/states";
+import { ErrorState, TableSkeleton } from "@/components/feedback/states";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   EntityFormDialog,
   type EntityValues,
@@ -48,6 +45,10 @@ export interface CrudPageProps<T extends BaseEntity> {
   schema: z.ZodTypeAny | ((editing: T | null) => z.ZodTypeAny);
   columns: (args: CrudColumnsArgs<T>) => ColumnDef<T>[];
   emptyMessage?: string;
+  /** Descripción secundaria del estado vacío (segunda línea, más chica). */
+  emptyDescription?: string;
+  /** Ícono ilustrativo del estado vacío; default genérico si no se pasa. */
+  emptyIcon?: LucideIcon;
   deleteDescription?: string;
   /** Valores iniciales del formulario al editar (default: la entidad completa). */
   initialValues?: (editing: T | null) => EntityValues;
@@ -67,6 +68,8 @@ export function CrudPage<T extends BaseEntity>({
   schema,
   columns,
   emptyMessage = "No hay registros aún.",
+  emptyDescription,
+  emptyIcon,
   deleteDescription,
   initialValues,
   toPayload,
@@ -132,7 +135,12 @@ export function CrudPage<T extends BaseEntity>({
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : data.length === 0 ? (
-        <EmptyState message={emptyMessage} />
+        <EmptyState
+          icon={emptyIcon}
+          title={emptyMessage}
+          description={emptyDescription}
+          action={canEdit ? { label: createLabel, icon: Plus, onClick: handleCreate } : undefined}
+        />
       ) : (
         <div className="w-full overflow-auto mt-4">
           <DataTable columns={tableColumns} data={data} />

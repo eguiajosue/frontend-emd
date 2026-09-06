@@ -12,7 +12,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
 import { staggerContainerVariants, staggerItemVariants } from "@/lib/motion";
-import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
+import { Package, Clock, CheckCircle2, Truck, BarChart3 } from "lucide-react";
 
 // recharts es pesado y no crítico para el primer render del dashboard.
 const OrdersByStatusBarChart = dynamic(
@@ -166,9 +166,10 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {totalOrders === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No hay pedidos aún.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
+                    <BarChart3 className="h-6 w-6 text-muted-foreground/50" strokeWidth={1.5} />
+                    <p>El gráfico va a cobrar vida con tu primer pedido.</p>
+                  </div>
                 ) : (
                   <OrdersByStatusBarChart data={chartData} />
                 )}
@@ -181,9 +182,10 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 {pieData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">
-                    No hay pedidos aún.
-                  </p>
+                  <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
+                    <BarChart3 className="h-6 w-6 text-muted-foreground/50" strokeWidth={1.5} />
+                    <p>Todavía no hay nada que distribuir.</p>
+                  </div>
                 ) : (
                   <OrdersByStatusPieChart data={pieData} />
                 )}

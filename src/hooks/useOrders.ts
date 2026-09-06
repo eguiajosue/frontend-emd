@@ -7,6 +7,7 @@ import { ApiError, request, type Paginated } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
 import type { Order, OrderAuditLogEntry, OrderHistory, OrderNote } from "@/types";
+import { orderStatusUpdatedMessage } from "@/lib/copy";
 
 /** Hooks específicos del dominio "pedidos", construidos sobre la capa genérica. */
 
@@ -108,7 +109,7 @@ export function useChangeOrderStatus() {
     },
     onSuccess: ({ orderId }) => {
       invalidate();
-      toast.success(`Pedido #${orderId} actualizado`);
+      toast.success(orderStatusUpdatedMessage(orderId));
     },
   });
 
