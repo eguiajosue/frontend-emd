@@ -16,7 +16,6 @@ import {
 import { ColumnDef } from "@tanstack/react-table";
 import {
   CardsSkeleton,
-  EmptyState,
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
@@ -24,7 +23,6 @@ import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap, statusOptions } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
-import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { formatDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -78,14 +76,11 @@ const OrdersPage = () => {
   const openDetail = useCallback((id: number) => setOpenOrderId(id), []);
   const closeDetail = useCallback(() => setOpenOrderId(null), []);
 
-  // Sólo los roles operativos ven un subconjunto: admin/superuser/recepcion ven todo.
-  const myStageIds = useMemo(() => statusIdsForRoles(roles), [roles]);
-  const isFilteredByStage = !canManageOperations && myStageIds.length > 0;
-
-  const visibleOrders = useMemo(() => {
-    if (!isFilteredByStage) return orders;
-    return orders.filter((o) => myStageIds.includes(o.statusId));
-  }, [orders, isFilteredByStage, myStageIds]);
+  // El backend (GET /orders) ya devuelve, para roles operativos, sólo los pedidos
+  // que ese usuario debe ver (según su rol, la config. de visibilidad por área y si
+  // el pedido está asignado a él). El frontend ya no filtra el resultado.
+  const visibleOrders = orders;
+  const isOperationalRole = !canManageOperations;
 
   const handleExport = () => {
     if (visibleOrders.length === 0) {
@@ -186,12 +181,11 @@ const OrdersPage = () => {
     [changeStatus, changingOrderId, openDetail]
   );
 
-  // Columnas de la vista cuadrícula: todas las etapas para admin/recepcion,
-  // sólo la(s) del rol para roles operativos.
+  // Columnas de la vista cuadrícula: se agrupa visualmente por estado del pedido
+  // usando los datos que ya llegaron filtrados desde el backend (para roles
+  // operativos, GET /orders ya sólo trae lo que ese usuario debe ver).
   const gridColumns = useMemo(() => {
-    const stageIds = isFilteredByStage
-      ? myStageIds
-      : Object.keys(statusMap).map(Number);
+    const stageIds = Object.keys(statusMap).map(Number);
     return stageIds
       .slice()
       .sort((a, b) => a - b)
@@ -200,7 +194,7 @@ const OrdersPage = () => {
         label: statusMap[statusId] ?? `Estado ${statusId}`,
         orders: visibleOrders.filter((o) => o.statusId === statusId),
       }));
-  }, [isFilteredByStage, myStageIds, visibleOrders]);
+  }, [visibleOrders]);
 
   const loading = isPending || isSessionLoading;
 
@@ -210,9 +204,9 @@ const OrdersPage = () => {
         <div>
           <Title title="Pedidos" />
           <p className="text-muted-foreground">
-            {isFilteredByStage ? (
+            {isOperationalRole ? (
               <>
-                Pedidos en la(s) etapa(s) correspondientes a tu(s) rol(es):{" "}
+                Pedidos visibles para tu(s) rol(es):{" "}
                 <span className="font-medium">
                   {roles.join(", ") || "sin rol asignado"}
                 </span>
@@ -271,16 +265,14 @@ const OrdersPage = () => {
         )
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
-      ) : isFilteredByStage && myStageIds.length === 0 ? (
-        <EmptyState message="Tu rol no tiene una etapa de pedido asignada. Contacta a un administrador." />
       ) : visibleOrders.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           <p>
-            {isFilteredByStage
+            {isOperationalRole
               ? "No tenés pedidos pendientes en este momento. Buen trabajo."
               : "Todavía no hay pedidos, creá el primero."}
           </p>
-          {canManageOperations && !isFilteredByStage && (
+          {canManageOperations && (
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Nueva Orden
             </Button>

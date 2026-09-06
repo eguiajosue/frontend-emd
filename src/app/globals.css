@@ -97,6 +97,97 @@
     --sidebar-border: 330 15% 16%;
     --sidebar-ring: 330 85% 62%;
   }
+
+  /*
+   * Color de acento (Configuración > Apariencia): sólo redefine --primary y sus
+   * derivados (foreground, ring, sidebar-primary/ring) — el resto de la paleta
+   * (fondo, texto, bordes) no cambia. El atributo data-accent se setea en <html>
+   * desde localStorage (ver AccentProvider) antes del primer paint.
+   */
+  :root[data-accent="blue"] {
+    --primary: 217 91% 46%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 217 91% 46%;
+    --sidebar-primary: 217 91% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 217 91% 46%;
+  }
+  .dark[data-accent="blue"] {
+    --primary: 217 91% 64%;
+    --primary-foreground: 217 40% 10%;
+    --ring: 217 91% 64%;
+    --sidebar-primary: 217 91% 64%;
+    --sidebar-primary-foreground: 217 40% 10%;
+    --sidebar-ring: 217 91% 64%;
+  }
+
+  :root[data-accent="green"] {
+    --primary: 142 71% 35%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 142 71% 35%;
+    --sidebar-primary: 142 71% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 142 71% 35%;
+  }
+  .dark[data-accent="green"] {
+    --primary: 142 65% 52%;
+    --primary-foreground: 142 40% 8%;
+    --ring: 142 65% 52%;
+    --sidebar-primary: 142 65% 52%;
+    --sidebar-primary-foreground: 142 40% 8%;
+    --sidebar-ring: 142 65% 52%;
+  }
+
+  :root[data-accent="orange"] {
+    --primary: 24 90% 45%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 24 90% 45%;
+    --sidebar-primary: 24 90% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 24 90% 45%;
+  }
+  .dark[data-accent="orange"] {
+    --primary: 24 90% 60%;
+    --primary-foreground: 24 45% 10%;
+    --ring: 24 90% 60%;
+    --sidebar-primary: 24 90% 60%;
+    --sidebar-primary-foreground: 24 45% 10%;
+    --sidebar-ring: 24 90% 60%;
+  }
+
+  :root[data-accent="purple"] {
+    --primary: 262 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 262 70% 50%;
+    --sidebar-primary: 262 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 262 70% 50%;
+  }
+  .dark[data-accent="purple"] {
+    --primary: 262 75% 68%;
+    --primary-foreground: 262 40% 10%;
+    --ring: 262 75% 68%;
+    --sidebar-primary: 262 75% 68%;
+    --sidebar-primary-foreground: 262 40% 10%;
+    --sidebar-ring: 262 75% 68%;
+  }
+
+  :root[data-accent="teal"] {
+    --primary: 189 85% 32%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 189 85% 32%;
+    --sidebar-primary: 189 85% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 189 85% 32%;
+  }
+  .dark[data-accent="teal"] {
+    --primary: 189 80% 48%;
+    --primary-foreground: 189 45% 8%;
+    --ring: 189 80% 48%;
+    --sidebar-primary: 189 80% 48%;
+    --sidebar-primary-foreground: 189 45% 8%;
+    --sidebar-ring: 189 80% 48%;
+  }
 }
 @layer base {
   * {

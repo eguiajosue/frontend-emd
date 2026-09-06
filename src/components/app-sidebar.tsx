@@ -7,6 +7,7 @@ import {
   LogOut,
   LayoutDashboard,
   HelpCircle,
+  Settings,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -25,6 +26,7 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
+import { cn } from "@/lib/utils";
 
 // Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
 // taller, impresiones): sólo necesitan ver el estatus de sus pedidos y Ayuda,
@@ -51,6 +53,22 @@ const OPERATIONAL_MENU = [
     ],
   },
 ];
+
+function ConfiguracionLink({ pathname }: { pathname: string }) {
+  const active = pathname === "/dashboard/configuracion";
+  return (
+    <Button
+      variant="ghost"
+      className={cn("w-full justify-start gap-2 mb-2", active && "bg-primary/10 text-primary")}
+      asChild
+    >
+      <a href="/dashboard/configuracion">
+        <Settings className="h-4 w-4" />
+        Configuración
+      </a>
+    </Button>
+  );
+}
 
 export function AppSidebar() {
   const { data: session } = useSession();
@@ -208,6 +226,7 @@ export function AppSidebar() {
       </SidebarContent>
       <div className="mt-auto p-4">
         <Separator className="mb-4" />
+        <ConfiguracionLink pathname={pathname} />
         <div className="flex items-center gap-3 mb-4">
           <Avatar className="ring-2 ring-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
