@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useMotionPreset } from "@/lib/motion";
 import { CommandPalette } from "@/components/CommandPalette";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import { NotificationBell } from "@/components/NotificationBell";
 
 import { ReactNode } from "react";
 
@@ -21,7 +22,10 @@ export default function Layout({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <AppSidebar />
       <main className="relative w-full min-w-0 overflow-x-hidden p-4 sm:p-6">
-        <SidebarTrigger />
+        <div className="flex items-center justify-between">
+          <SidebarTrigger />
+          <NotificationBell />
+        </div>
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}

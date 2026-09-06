@@ -73,6 +73,10 @@ export function useSocket() {
     const invalidateOrders = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      // Cualquier evento de pedido implica una notificación nueva en el backend
+      // (asignación, cambio de estado): refrescamos la campanita al toque, sin
+      // esperar el poll de 30s.
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("notifications") });
     };
 
     // Toast destacado (más duración, ícono grande) + sonido, para notificaciones

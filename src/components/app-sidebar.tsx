@@ -9,6 +9,7 @@ import {
   Settings,
   TrendingUp,
   History,
+  Bell,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -48,6 +49,11 @@ const OPERATIONAL_MENU = [
   {
     groupLabel: "Soporte",
     items: [
+      {
+        title: "Notificaciones",
+        url: "/dashboard/notificaciones",
+        icon: Bell,
+      },
       {
         title: "Ayuda",
         url: "/dashboard/ayuda",
@@ -165,6 +171,23 @@ export function AppSidebar() {
     {
       groupLabel: "Soporte",
       items: [
+        {
+          title: "Notificaciones",
+          url: "/dashboard/notificaciones",
+          icon: Bell,
+          // Visible para todos los roles.
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "diseno",
+            "laser",
+            "impresiones",
+          ],
+        },
         {
           title: "Ayuda",
           url: "/dashboard/ayuda",

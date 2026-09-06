@@ -249,3 +249,18 @@ export interface AppSettings {
   id: number;
   deliveredRetentionHours: number;
 }
+
+/**
+ * Notificación de usuario (GET /notifications, /notifications/unread-count).
+ * Endpoint nuevo del backend, desplegado en paralelo: el shape puede variar
+ * levemente hasta que se termine de estabilizar (ver `useNotifications`).
+ */
+export interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  body?: string | null;
+  orderId?: number | null;
+  read: boolean;
+  createdAt: string;
+}

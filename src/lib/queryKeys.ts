@@ -19,6 +19,7 @@ export const ENDPOINTS = {
   performanceSummary: "performance/summary",
   settings: "settings",
   orderHistory: "orders/history",
+  notifications: "notifications",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;
