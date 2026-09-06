@@ -21,15 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
+import { getStatusChartColor } from "@/lib/statusColors";
 import { Package, Clock, CheckCircle2, Truck } from "lucide-react";
-
-const CHART_COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
 
 const Dashboard = () => {
   const router = useRouter();
@@ -64,6 +57,7 @@ const Dashboard = () => {
     () =>
       Object.entries(statusMap).map(([id, label]) => ({
         status: label,
+        statusId: Number(id),
         total: statusCounts[Number(id)] || 0,
       })),
     [statusCounts]
@@ -206,10 +200,10 @@ const Dashboard = () => {
                           String(entry.name ?? "").toUpperCase()
                         }
                       >
-                        {pieData.map((_, index) => (
+                        {pieData.map((entry) => (
                           <Cell
-                            key={`cell-${index}`}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            key={`cell-${entry.statusId}`}
+                            fill={getStatusChartColor(entry.statusId)}
                           />
                         ))}
                       </Pie>

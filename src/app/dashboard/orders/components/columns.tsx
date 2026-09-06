@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-import { statusMap } from "@/lib/orderStatus";
+import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate } from "@/lib/format";
 import type { Order } from "@/types";
 
@@ -21,7 +21,7 @@ export const orderColumns: ColumnDef<Order>[] = [
   {
     id: "status",
     header: "Estado",
-    cell: ({ row }) => (statusMap[row.original.statusId] || "desconocido").toUpperCase(),
+    cell: ({ row }) => <StatusBadge statusId={row.original.statusId} />,
   },
   {
     accessorKey: "creationDate",

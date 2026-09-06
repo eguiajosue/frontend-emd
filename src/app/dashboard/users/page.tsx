@@ -9,26 +9,38 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
 import { getUserColumns } from "./components/columns";
 
+// Debe coincidir exactamente con la política de contraseñas del backend
+// (POST/PATCH /users): mínimo 8 caracteres, al menos una mayúscula y un número.
+const PASSWORD_HELP_TEXT =
+  "Mínimo 8 caracteres, con al menos una mayúscula y un número.";
+
+const passwordSchema = z
+  .string()
+  .min(8, "La contraseña debe tener al menos 8 caracteres")
+  .regex(/[A-Z]/, "Debe incluir una mayúscula")
+  .regex(/[0-9]/, "Debe incluir un número");
+
 const createSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().optional().or(z.literal("")),
   username: z.string().min(1, "El usuario es requerido"),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
+  password: passwordSchema,
   roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
 });
 
-// Al editar, la contraseña es opcional (solo se envía si se quiere cambiar).
+// Al editar, la contraseña es opcional (solo se envía si se quiere cambiar),
+// pero si se ingresa algo debe cumplir la misma política que el backend.
 const editSchema = z.object({
   firstName: z.string().min(1, "El nombre es requerido"),
   lastName: z.string().optional().or(z.literal("")),
   username: z.string().min(1, "El usuario es requerido"),
   password: z
     .string()
-    .refine((v) => v === "" || v.length >= 6, {
-      message: "La contraseña debe tener al menos 6 caracteres",
-    })
     .optional()
-    .or(z.literal("")),
+    .or(z.literal(""))
+    .refine((v) => !v || passwordSchema.safeParse(v).success, {
+      message: "Mínimo 8 caracteres, con una mayúscula y un número",
+    }),
   roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
 });
 
@@ -44,6 +56,7 @@ const UsersPage = () => {
       name: "password",
       label: editing ? "Nueva Contraseña (opcional)" : "Contraseña",
       type: "text",
+      helpText: PASSWORD_HELP_TEXT,
     },
     {
       name: "roleIds",

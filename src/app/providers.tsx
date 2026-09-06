@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { SessionProvider } from "next-auth/react";
+import { SessionProvider, signOut, useSession } from "next-auth/react";
+import { ThemeProvider } from "next-themes";
 import {
   MutationCache,
   QueryCache,
@@ -68,16 +69,33 @@ function createQueryClient() {
   });
 }
 
+/** Si el refresh del access token falló (refresh token vencido/inválido), cerramos sesión. */
+function SessionErrorWatcher() {
+  const { data: session } = useSession();
+
+  useEffect(() => {
+    if (session?.error === "RefreshAccessTokenError") {
+      toast.error("Tu sesión expiró. Iniciá sesión nuevamente.");
+      signOut({ callbackUrl: "/login" });
+    }
+  }, [session?.error]);
+
+  return null;
+}
+
 export default function Providers({ children }: { children: ReactNode }) {
   // El QueryClient se crea una sola vez por montaje del árbol de React.
   const [queryClient] = useState(createQueryClient);
 
   return (
     <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        {isDev && <ReactQueryDevtools initialIsOpen={false} />}
-      </QueryClientProvider>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <QueryClientProvider client={queryClient}>
+          <SessionErrorWatcher />
+          {children}
+          {isDev && <ReactQueryDevtools initialIsOpen={false} />}
+        </QueryClientProvider>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

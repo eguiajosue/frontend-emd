@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorState } from "@/components/feedback/states";
-import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { statusOptions } from "@/lib/orderStatus";
+import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { formatDateTime, getClientName, getUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -124,9 +125,8 @@ const OrderDetailPage = () => {
             <p>
               <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
             </p>
-            <p>
-              <b>Estado actual:</b>{" "}
-              {(statusMap[order.statusId] || "desconocido").toUpperCase()}
+            <p className="flex items-center gap-2">
+              <b>Estado actual:</b> <StatusBadge statusId={order.statusId} />
             </p>
 
             <div className="space-y-1">
@@ -188,9 +188,9 @@ const OrderDetailPage = () => {
                 <ul className="space-y-2 text-sm">
                   {histories.map((h) => (
                     <li key={h.id} className="border-l-2 pl-3">
-                      <span className="font-medium">
-                        {(statusMap[h.previousStatusId] || "?").toUpperCase()} →{" "}
-                        {(statusMap[h.newStatusId] || "?").toUpperCase()}
+                      <span className="flex flex-wrap items-center gap-1 font-medium">
+                        <StatusBadge statusId={h.previousStatusId} /> →{" "}
+                        <StatusBadge statusId={h.newStatusId} />
                       </span>
                       <br />
                       <span className="text-muted-foreground">

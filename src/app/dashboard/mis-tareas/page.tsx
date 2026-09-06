@@ -19,7 +19,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ErrorState } from "@/components/feedback/states";
 import { useChangeOrderStatus, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
-import { statusMap, statusOptions } from "@/lib/orderStatus";
+import { statusOptions } from "@/lib/orderStatus";
+import { StatusBadge } from "@/components/StatusBadge";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { formatDate, getOrderClientName } from "@/lib/format";
 import type { Order } from "@/types";
@@ -49,8 +50,7 @@ const MisTareasPage = () => {
     {
       id: "status",
       header: "Estado actual",
-      cell: ({ row }) =>
-        (statusMap[row.original.statusId] || "desconocido").toUpperCase(),
+      cell: ({ row }) => <StatusBadge statusId={row.original.statusId} />,
     },
     {
       id: "deliveryDate",

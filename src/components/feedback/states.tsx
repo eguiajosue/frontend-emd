@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { motion } from "framer-motion";
+import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,10 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-4 mt-4" role="status" aria-label="Cargando">
+    <div className="space-y-3 mt-4" role="status" aria-label="Cargando">
       <Skeleton className="w-full h-10" />
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton key={i} className="w-full h-10" />
+        <Skeleton
+          key={i}
+          className="w-full h-10"
+          style={{ animationDelay: `${i * 60}ms` }}
+        />
       ))}
     </div>
   );
@@ -29,7 +34,11 @@ export function CardsSkeleton({ count = 4 }: { count?: number }) {
       aria-label="Cargando"
     >
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-28 w-full" />
+        <Skeleton
+          key={i}
+          className="h-28 w-full"
+          style={{ animationDelay: `${i * 80}ms` }}
+        />
       ))}
     </div>
   );
@@ -37,9 +46,15 @@ export function CardsSkeleton({ count = 4 }: { count?: number }) {
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="mt-6 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
-      {message}
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground"
+    >
+      <Inbox className="h-8 w-8 text-muted-foreground/60" />
+      <p>{message}</p>
+    </motion.div>
   );
 }
 
@@ -55,7 +70,12 @@ export function ErrorState({
   onRetry,
 }: ErrorStateProps) {
   return (
-    <div className="mt-6 flex flex-col items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-10 text-center">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center"
+    >
       <AlertTriangle className="h-8 w-8 text-destructive" />
       <div>
         <p className="font-medium">{title}</p>
@@ -66,6 +86,6 @@ export function ErrorState({
           <RefreshCw className="mr-2 h-4 w-4" /> Reintentar
         </Button>
       )}
-    </div>
+    </motion.div>
   );
 }

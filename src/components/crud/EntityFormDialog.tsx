@@ -26,6 +26,7 @@ export interface FieldConfig {
   label: string;
   type?: "text" | "number" | "email" | "textarea" | "select" | "date" | "multiselect";
   options?: SelectOption[];
+  helpText?: string;
 }
 
 export type EntityValues = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -97,6 +98,9 @@ export function EntityFormDialog({
           {fields.map((field) => (
             <div key={field.name} className="space-y-1">
               <Label>{field.label}</Label>
+              {field.helpText && (
+                <p className="text-xs text-muted-foreground">{field.helpText}</p>
+              )}
               {field.type === "multiselect" ? (
                 <div className="grid grid-cols-2 gap-2 rounded-md border p-3 sm:grid-cols-3">
                   {field.options?.map((opt) => {

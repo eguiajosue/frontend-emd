@@ -26,6 +26,7 @@ import { ErrorState } from "@/components/feedback/states";
 import { useOrderHistories, useOrders } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
+import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, getClientName, getUserName } from "@/lib/format";
 import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge } from "lucide-react";
@@ -265,8 +266,7 @@ const AdminDashboardPage = () => {
     {
       id: "status",
       header: "Estado",
-      cell: ({ row }) =>
-        (statusMap[row.original.order.statusId] || "desconocido").toUpperCase(),
+      cell: ({ row }) => <StatusBadge statusId={row.original.order.statusId} />,
     },
     {
       id: "creationDate",
