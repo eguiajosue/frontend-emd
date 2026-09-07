@@ -40,6 +40,7 @@ import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas
 import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { cn } from "@/lib/utils";
+import { PreviewImage } from "@/components/ui/preview-image";
 import type {
   AuthorizationFileInput,
   Client,
@@ -730,7 +731,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                 {authorizationFile && (
                   <div className="flex items-center gap-3 rounded-lg border p-2">
                     {authorizationFilePreview ? (
-                      <img
+                      <PreviewImage
                         src={authorizationFilePreview}
                         alt={authorizationFile.filename}
                         className="h-14 w-14 rounded object-cover"

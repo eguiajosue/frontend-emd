@@ -31,6 +31,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { PreviewImage } from "@/components/ui/preview-image";
 import type {
   ChatAttachmentInput,
   ChatConversation,
@@ -130,7 +131,7 @@ function MessageAttachment({ message, mine }: { message: ChatMessage; mine: bool
   if (mimeType.startsWith("image/")) {
     return (
       <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 block">
-        <img
+        <PreviewImage
           src={url}
           alt={filename}
           className="max-h-48 w-auto rounded-xl border border-border/60 object-cover shadow-soft"
@@ -592,7 +593,7 @@ export function MessageThread({
         {attachedFile ? (
           <div className="mb-2 flex items-center gap-3 rounded-2xl border bg-muted/40 px-3 py-2 text-xs shadow-soft">
             {attachedFilePreview ? (
-              <img
+              <PreviewImage
                 src={attachedFilePreview}
                 alt={attachedFile.filename}
                 className="h-9 w-9 shrink-0 rounded-lg object-cover"

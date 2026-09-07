@@ -27,6 +27,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
 import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
 import type { UpdateOrderPayload } from "@/types";
+import { PreviewImage } from "@/components/ui/preview-image";
 
 const OrderDetailPage = () => {
   const params = useParams();
@@ -192,7 +193,7 @@ const OrderDetailPage = () => {
               <div className="space-y-2 pt-2">
                 <Label>Hoja de Autorización</Label>
                 {order.authorizationFile.mimeType.startsWith("image/") ? (
-                  <img
+                  <PreviewImage
                     src={order.authorizationFile.dataUrl}
                     alt={order.authorizationFile.filename}
                     loading="lazy"

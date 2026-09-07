@@ -55,6 +55,7 @@ import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
 import type { Order, UpdateOrderPayload, User } from "@/types";
+import { PreviewImage } from "@/components/ui/preview-image";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -416,7 +417,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                             setLightboxSrc(order.authorizationFile!.dataUrl)
                           }
                         >
-                          <img
+                          <PreviewImage
                             src={order.authorizationFile.dataUrl}
                             alt={order.authorizationFile.filename}
                             loading="lazy"

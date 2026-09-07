@@ -51,6 +51,7 @@ import {
   ZoomIn,
 } from "lucide-react";
 import type { Order, UpdateOrderPayload } from "@/types";
+import { PreviewImage } from "@/components/ui/preview-image";
 
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
@@ -336,7 +337,7 @@ function RevisionTimelineItem({
               className="group relative inline-block overflow-hidden rounded-md border"
               onClick={() => onZoom(montageQuery.data!.url)}
             >
-              <img
+              <PreviewImage
                 src={montageQuery.data.url}
                 alt={revision.montageFileName ?? `Montaje ronda ${revision.round}`}
                 loading="lazy"
@@ -543,7 +544,7 @@ function MontageDialog({
           {file ? (
             <div className="space-y-3">
               {previewUrl ? (
-                <img
+                <PreviewImage
                   src={previewUrl}
                   alt={fileLabel ?? "Montaje"}
                   className="mx-auto max-h-56 max-w-full rounded-lg border object-contain"
