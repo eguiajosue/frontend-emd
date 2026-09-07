@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useEntityList } from "@/hooks/useEntity";
 import { useMotionPreset } from "@/lib/motion";
 import { getAreaIcon, getAreaLabel, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import {
@@ -33,7 +34,7 @@ import {
 } from "@/lib/orderStatus";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { AreaTaskStatus, Order, OrderAreaTask } from "@/types";
+import type { AreaTaskStatus, Order, OrderAreaTask, User } from "@/types";
 
 /** Roles que pueden agregar/quitar áreas y reasignar libremente. */
 const MANAGER_ROLES = ["recepcion", "admin", "superuser"];
@@ -67,6 +68,12 @@ function nextStatus(status: AreaTaskStatus): AreaTaskStatus | null {
   if (status === "pendiente") return "en_proceso";
   if (status === "en_proceso") return "terminado";
   return null;
+}
+
+/** Nombre legible de un usuario del listado. */
+function userLabel(user?: User | null): string {
+  if (!user) return "";
+  return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username;
 }
 
 function assignedLabel(task: OrderAreaTask): string {
@@ -109,6 +116,7 @@ interface AreaTasksSectionProps {
 export function AreaTasksSection({ order }: AreaTasksSectionProps) {
   const orderId = order.id;
   const { roles, session } = usePermissions();
+  const { data: users } = useEntityList<User>("users");
   const { staggerItemVariants } = useMotionPreset();
   const {
     tasks,
@@ -123,6 +131,28 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
 
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const isManager = roles.some((r) => MANAGER_ROLES.includes(r));
+  /** Coordinar quién hace qué es trabajo de Recepción/admin, no del área. */
+  const canAssign = isManager;
+
+  /** Quién puede quedar a cargo de cada área: los usuarios con ese rol. */
+  const usersByArea = useMemo(() => {
+    const map = new Map<string, User[]>();
+    users.forEach((user) => {
+      (user.roles ?? []).forEach((role) => {
+        const list = map.get(role.name) ?? [];
+        list.push(user);
+        map.set(role.name, list);
+      });
+    });
+    // La cuenta compartida del área primero: es el responsable por defecto.
+    map.forEach((list) =>
+      list.sort((a, b) => {
+        if (!!a.isSharedAccount !== !!b.isSharedAccount) return a.isSharedAccount ? -1 : 1;
+        return userLabel(a).localeCompare(userLabel(b));
+      })
+    );
+    return map;
+  }, [users]);
 
   const usedAreas = useMemo(() => new Set(tasks.map((t) => t.area)), [tasks]);
   const availableAreas = PRODUCTION_AREA_OPTIONS.filter(
@@ -150,6 +180,23 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
         next === "terminado"
           ? `${getAreaLabel(task.area)} terminó su parte`
           : `${getAreaLabel(task.area)} en proceso`
+      );
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleAssign = async (task: OrderAreaTask, assignedUserId: number | null) => {
+    try {
+      await assign.mutateAsync({ taskId: task.id, assignedUserId });
+      const name =
+        assignedUserId === null
+          ? null
+          : userLabel(users.find((u) => u.id === assignedUserId));
+      toast.success(
+        name
+          ? `${getAreaLabel(task.area)} queda a cargo de ${name}`
+          : `${getAreaLabel(task.area)} queda sin responsable`
       );
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -270,10 +317,37 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
                   </span>
 
                   <span className="flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <UserRound className="h-3.5 w-3.5 shrink-0" />
-                      <span className="max-w-[12rem] truncate">{assignedLabel(task)}</span>
-                    </span>
+                    {canAssign ? (
+                      // Recepción define a quién le toca. El backend rechaza a
+                      // quien no tenga el rol del área, así que el selector sólo
+                      // ofrece a los que sí lo tienen.
+                      <span className="flex items-center gap-1">
+                        <UserRound className="h-3.5 w-3.5 shrink-0" />
+                        <select
+                          aria-label={`Responsable de ${getAreaLabel(task.area)}`}
+                          className="h-7 max-w-[13rem] rounded-md border border-input bg-transparent px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+                          value={task.assignedUserId ?? ""}
+                          disabled={assign.isPending}
+                          onChange={(e) =>
+                            handleAssign(task, e.target.value ? Number(e.target.value) : null)
+                          }
+                        >
+                          <option value="">Sin asignar</option>
+                          {(usersByArea.get(task.area) ?? []).map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.isSharedAccount
+                                ? `Cualquiera de ${getAreaLabel(task.area)}`
+                                : userLabel(user)}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <UserRound className="h-3.5 w-3.5 shrink-0" />
+                        <span className="max-w-[12rem] truncate">{assignedLabel(task)}</span>
+                      </span>
+                    )}
                     {/* Para quien no trabaja el área (Recepción, sobre todo)
                         esto es la respuesta a "¿en qué va?": desde cuándo la
                         tiene y desde cuándo está así. */}

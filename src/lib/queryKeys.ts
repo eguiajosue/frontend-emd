@@ -12,7 +12,6 @@ export const ENDPOINTS = {
   companies: "companies",
   users: "users",
   roles: "roles",
-  products: "products",
   orderHistories: "order-histories",
   areaVisibility: "area-visibility",
   orderProductPresets: "order-product-presets",

@@ -34,3 +34,18 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Tests
+
+```bash
+npm test          # unitarios (src/lib) + de componentes (src/**/*.test.tsx)
+npm run test:e2e  # 3 flujos end-to-end con Playwright
+```
+
+Los e2e levantan solos lo que necesitan: un backend de mentira
+(`e2e/mock-api.mjs`) y la app compilada apuntada a él. No hacen falta red ni el
+backend real, así que corren igual en CI y en una máquina aislada.
+
+En un entorno que ya trae Chromium y no puede descargarlo, apuntalo con
+`PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chrome npm run test:e2e`. Si no, alcanza con
+`npx playwright install chromium` una vez.

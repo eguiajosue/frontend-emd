@@ -276,7 +276,7 @@ const OrderDetailPage = () => {
             <ul className="space-y-2">
               {order.orderProducts.map((op, i) => (
                 <li
-                  key={op.productId ?? `${op.customName}-${i}`}
+                  key={`${op.customName}-${i}`}
                   className="flex justify-between text-sm border-b pb-1"
                 >
                   <span>{getOrderProductName(op)}</span>

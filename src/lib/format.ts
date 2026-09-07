@@ -89,11 +89,9 @@ export function getOrderClientName(order: Order): string {
  * último cae a un genérico con el id.
  */
 export function getOrderProductName(op: OrderProduct): string {
-  if (op.customName) return op.customName;
-  if (op.product?.code) return op.product.code;
-  if (op.product?.productType?.name) return op.product.productType.name;
-  if (op.productId) return `Producto #${op.productId}`;
-  return "Producto";
+  // El catálogo de productos se retiró: la línea siempre trae su nombre. El
+  // fallback queda por si llega un registro viejo sin él.
+  return op.customName?.trim() || "Producto";
 }
 
 /** Nombre del usuario asignado a un pedido, o `null` si no tiene. */

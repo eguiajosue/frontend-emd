@@ -21,9 +21,6 @@ export interface NamedEntity extends BaseEntity {
 
 export type Role = NamedEntity;
 export type Status = NamedEntity;
-export type Color = NamedEntity;
-export type Size = NamedEntity;
-export type ProductType = NamedEntity;
 
 export interface Company extends BaseEntity {
   name: string;
@@ -60,25 +57,11 @@ export interface AssignedUser extends BaseEntity {
   isSharedAccount?: boolean;
 }
 
-export interface Product extends BaseEntity {
-  productTypeId: number;
-  colorId?: number | null;
-  sizeId?: number | null;
-  code?: string | null;
-  quantity: number;
-  productType?: ProductType | null;
-  color?: Color | null;
-  size?: Size | null;
-}
-
 export interface OrderProduct {
   orderId?: number;
-  /** Legado: producto del catálogo completo. Opcional, reemplazado por `customName` en el flujo simple. */
-  productId?: number;
-  /** Nombre de producto libre (preset o nuevo). Alternativa simple a `productId`. */
-  customName?: string;
+  /** Nombre del producto: escrito a mano o elegido de `OrderProductPreset`. */
+  customName: string;
   quantity: number;
-  product?: Product | null;
 }
 
 /** Preset de nombre de producto frecuente (GET /order-product-presets). */
