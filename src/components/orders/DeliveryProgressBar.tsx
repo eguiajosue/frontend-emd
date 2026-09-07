@@ -1,11 +1,20 @@
 "use client";
 
 import { useDeliveryProgress, getProgressLevel, PROGRESS_LEVEL_COLORS } from "@/lib/deliveryProgress";
+import { cn } from "@/lib/utils";
 
 interface DeliveryProgressBarProps {
   creationDate?: string | null;
   deliveryDate?: string | null;
   className?: string;
+  /**
+   * `"always"` mantiene el texto bajo la barra. `"at-risk"` (por defecto en la
+   * tarjeta del tablero) lo muestra sólo cuando el plazo ya aprieta: repetir
+   * "34% del plazo transcurrido" en cada tarjeta de cada columna es ruido que
+   * tapa justo a las que sí están en rojo. El dato sigue disponible en el
+   * `title` de la barra y en el detalle del pedido.
+   */
+  label?: "always" | "at-risk";
 }
 
 /**
@@ -17,6 +26,7 @@ export function DeliveryProgressBar({
   creationDate,
   deliveryDate,
   className,
+  label: labelMode = "always",
 }: DeliveryProgressBarProps) {
   const progress = useDeliveryProgress(creationDate, deliveryDate);
   if (progress === null) return null;
@@ -29,6 +39,8 @@ export function DeliveryProgressBar({
       ? `Vencido (${Math.round(progress)}%)`
       : `${Math.round(progress)}% del plazo transcurrido`;
 
+  const showLabel = labelMode === "always" || level === "danger" || level === "critical";
+
   return (
     <div className={className} title={label}>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -40,7 +52,16 @@ export function DeliveryProgressBar({
           }}
         />
       </div>
-      <p className="mt-1 text-[10px] text-muted-foreground">{label}</p>
+      {showLabel && (
+        <p
+          className={cn(
+            "mt-1 text-[10px]",
+            level === "critical" ? "font-medium text-destructive" : "text-muted-foreground"
+          )}
+        >
+          {label}
+        </p>
+      )}
     </div>
   );
 }

@@ -44,9 +44,24 @@ import {
   type OrdersFilters,
 } from "@/components/orders/OrdersFilterBar";
 import type { Client, Order, Status, User } from "@/types";
-import { ExternalLink, FileDown, LayoutGrid, List, Plus, PackageSearch, FilterX, PartyPopper } from "lucide-react";
+import {
+  ChevronDown,
+  ExternalLink,
+  FileDown,
+  FilterX,
+  LayoutGrid,
+  List,
+  PackageSearch,
+  PartyPopper,
+  Plus,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -100,7 +115,20 @@ function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
 const PRODUCTION_ROLES: string[] = PRODUCTION_AREA_OPTIONS.map((a) => a.value);
 
 const VIEW_MODE_KEY = "orders-view-mode";
+const CIRCUIT_KEY = "orders-circuit";
 type ViewMode = "list" | "grid";
+
+/**
+ * Cuál de los dos circuitos del taller se está mirando en cuadrícula. Se ve uno
+ * a la vez: apilar los dos tableros dejaba la pantalla como dos dashboards
+ * pegados, con el de abajo siempre fuera de vista.
+ */
+type Circuit = "diseno" | "produccion";
+
+const CIRCUITS: { value: Circuit; label: string }[] = [
+  { value: "diseno", label: "Diseño" },
+  { value: "produccion", label: "Producción" },
+];
 
 /**
  * Pantalla única de "Pedidos" para toda la app (reemplaza a las antiguas
@@ -133,6 +161,8 @@ const OrdersPage = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
   const [isBulkChanging, setIsBulkChanging] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [circuit, setCircuit] = useState<Circuit>("produccion");
   const { bulkChangeStatus } = useBulkChangeOrderStatus();
   const { changeStatus } = useChangeOrderStatus();
 
@@ -204,6 +234,26 @@ const OrdersPage = () => {
       if (stored === "list" || stored === "grid") setViewMode(stored);
     } catch {
       // Sin acceso a localStorage (modo privado, etc.): se queda en "list".
+    }
+  }, []);
+
+  // El circuito elegido se recuerda igual que el modo de vista: quien trabaja
+  // sobre todo en un área no quiere volver a elegirlo en cada visita.
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CIRCUIT_KEY);
+      if (stored === "diseno" || stored === "produccion") setCircuit(stored);
+    } catch {
+      // Sin acceso a localStorage: se queda en "produccion".
+    }
+  }, []);
+
+  const updateCircuit = useCallback((next: Circuit) => {
+    setCircuit(next);
+    try {
+      localStorage.setItem(CIRCUIT_KEY, next);
+    } catch {
+      // No pasa nada si no se puede persistir.
     }
   }, []);
 
@@ -457,18 +507,6 @@ const OrdersPage = () => {
     [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll]
   );
 
-  // Tableros de la vista cuadrícula.
-  //
-  // Las columnas NO pueden salir de `statusMap`: ese mapa sólo tiene los
-  // estados de producción (1/3/4/5/10) y deja fuera los 4 del flujo de Diseño,
-  // cuyos ids los siembra el backend y varían entre entornos. Armarlas desde
-  // ahí hacía que los pedidos "en diseño" se vieran en la lista pero
-  // desaparecieran de la cuadrícula. Se derivan de los estados realmente
-  // presentes en los datos, tomando el nombre del propio pedido.
-  //
-  // Además, Diseño y producción son dos circuitos distintos: quien trabaja en
-  // ambos ve dos tableros separados, cada uno con sus propias etapas, en vez de
-  // una sola grilla que los mezcla (ver WORKFLOW.md §4 en el backend).
   // Áreas de producción del usuario: definen cuál tarea de área manda al
   // ubicar un pedido en el tablero de producción (ver
   // `effectiveProductionStatusId`).
@@ -526,11 +564,17 @@ const OrdersPage = () => {
   const showDesignBoard = worksInDesign || designBoard.orders.length > 0;
   const showProductionBoard = worksInProduction;
   const showBothBoards = showDesignBoard && showProductionBoard;
+  // Con un solo circuito visible no hay selector: manda el que corresponda.
+  const activeCircuit: Circuit = showBothBoards
+    ? circuit
+    : showDesignBoard
+      ? "diseno"
+      : "produccion";
 
   const loading = isPending || isSessionLoading;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Title title="Pedidos" />
@@ -549,48 +593,50 @@ const OrdersPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full border p-1">
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "list" ? "default" : "ghost"}
-              className="gap-1.5"
-              onClick={() => updateViewMode("list")}
-            >
-              <List className="h-4 w-4" /> Lista
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              className="gap-1.5"
-              onClick={() => updateViewMode("grid")}
-            >
-              <LayoutGrid className="h-4 w-4" /> Cuadrícula
-            </Button>
-          </div>
-
           {canManageOperations && (
-            <Button
-              variant="outline"
-              onClick={handleExport}
-              disabled={loading || visibleOrders.length === 0}
-            >
-              <FileDown className="mr-2 h-4 w-4" /> Exportar a Excel
-            </Button>
-          )}
-
-          {canManageOperations && (
-            <Button
-              variant="outline"
-              onClick={handleExportCsv}
-              disabled={isExportingCsv}
-              title="Exporta un CSV desde el servidor con los filtros activos"
-              className={cn(isExportingCsv && "animate-pulse")}
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              {isExportingCsv ? "Exportando..." : "Exportar CSV"}
-            </Button>
+            <Popover open={exportOpen} onOpenChange={setExportOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <FileDown className="h-4 w-4" />
+                  Exportar
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              {/* Dos exportaciones que se usan de vez en cuando no merecen dos
+                  botones permanentes al lado del de crear un pedido. */}
+              <PopoverContent align="end" className="w-64 p-1.5">
+                <button
+                  type="button"
+                  disabled={loading || visibleOrders.length === 0}
+                  onClick={() => {
+                    setExportOpen(false);
+                    handleExport();
+                  }}
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium">Excel</span>
+                  <span className="text-xs text-muted-foreground">
+                    Lo que está a la vista, en tu equipo.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isExportingCsv}
+                  onClick={() => {
+                    setExportOpen(false);
+                    void handleExportCsv();
+                  }}
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <span className="text-sm font-medium">
+                    {isExportingCsv ? "Generando CSV..." : "CSV del servidor"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Mismos filtros, generado por el backend.
+                  </span>
+                </button>
+              </PopoverContent>
+            </Popover>
           )}
 
           {canManageOperations && (
@@ -601,7 +647,99 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      <OrdersFilterBar clients={clients} users={users} filters={filters} onChange={updateFilters} />
+      {/* Una sola banda de controles entre el encabezado y el trabajo: modo de
+          vista, circuito y filtros. Antes eran tres bloques apilados y el
+          tablero empezaba muy abajo. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex shrink-0 items-center gap-1 rounded-full border bg-card p-1">
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "list" ? "default" : "ghost"}
+            className="gap-1.5 rounded-full"
+            onClick={() => updateViewMode("list")}
+          >
+            <List className="h-4 w-4" /> Lista
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            className="gap-1.5 rounded-full"
+            onClick={() => updateViewMode("grid")}
+          >
+            <LayoutGrid className="h-4 w-4" /> Cuadrícula
+          </Button>
+        </div>
+
+        {viewMode === "grid" && showBothBoards && (
+          // `basis-full` en móvil: el grupo del circuito no entra en la misma
+          // línea que el de vista y, sin un contenedor propio, se salía del
+          // ancho en vez de bajar entero.
+          <div className="basis-full sm:basis-auto">
+            {/* Un circuito a la vez. Los dos tableros apilados obligaban a
+                bajar toda la pantalla para llegar al segundo, y el corte entre
+                uno y otro se leía como dos aplicaciones una encima de la otra. */}
+            <div
+              role="tablist"
+              aria-label="Circuito"
+              className="inline-flex items-center gap-1 rounded-full border bg-card p-1"
+            >
+              {CIRCUITS.map((option) => {
+                const active = circuit === option.value;
+                const count =
+                  option.value === "diseno"
+                    ? designBoard.orders.length
+                    : productionBoard.orders.length;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => updateCircuit(option.value)}
+                    className={cn(
+                      "relative flex h-8 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+                      active
+                        ? "text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="orders-circuit-pill"
+                        aria-hidden
+                        className="absolute inset-0 rounded-full bg-primary"
+                        transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                      />
+                    )}
+                    <span className="relative">{option.label}</span>
+                    <span
+                      className={cn(
+                        "relative text-xs tabular-nums",
+                        active
+                          ? "text-primary-foreground/70"
+                          : "text-muted-foreground/70"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <span aria-hidden className="hidden h-6 w-px bg-border sm:block" />
+
+        <OrdersFilterBar
+          clients={clients}
+          users={users}
+          filters={filters}
+          onChange={updateFilters}
+        />
+      </div>
 
       {loading ? (
         viewMode === "list" ? (
@@ -689,37 +827,15 @@ const OrdersPage = () => {
             estimateRowHeight={56}
           />
         </div>
+      ) : activeCircuit === "diseno" ? (
+        <KanbanBoard columns={designBoard.columns} onOpenOrder={openDetail} />
       ) : (
-        <div className="space-y-10">
-          {showDesignBoard && (
-            <KanbanBoard
-              // El título sólo aparece cuando conviven los dos tableros: con uno
-              // solo sería una etiqueta redundante sobre toda la pantalla.
-              title={showBothBoards ? "Diseño" : undefined}
-              description={
-                showBothBoards
-                  ? "Montajes en curso y su avance hasta la autorización del cliente."
-                  : undefined
-              }
-              columns={designBoard.columns}
-              onOpenOrder={openDetail}
-            />
-          )}
-          {showProductionBoard && (
-            <KanbanBoard
-              title={showBothBoards ? "Producción" : undefined}
-              description={
-                showBothBoards
-                  ? "Pedidos ya autorizados o que no pasan por Diseño."
-                  : undefined
-              }
-              columns={productionBoard.columns}
-              onOpenOrder={openDetail}
-              onMoveOrder={handleMoveOrder}
-              canMoveOrder={canMoveOrder}
-            />
-          )}
-        </div>
+        <KanbanBoard
+          columns={productionBoard.columns}
+          onOpenOrder={openDetail}
+          onMoveOrder={handleMoveOrder}
+          canMoveOrder={canMoveOrder}
+        />
       )}
 
       <OrderDetailDialog orderId={openOrderId} onClose={closeDetail} />

@@ -30,17 +30,14 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const delivered = isDeliveredStatus(order.statusId);
   const progress = useDeliveryProgress(order.creationDate, order.deliveryDate);
   const isCritical = !delivered && progress !== null && progress >= 95;
-  const { reduced, staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
+  const { staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
 
   return (
     <motion.div variants={staggerItemVariants}>
+      {/* Sin pulso infinito: en una columna con varias tarjetas vencidas eran
+          seis animaciones latiendo a la vez y la urgencia dejaba de leerse. El
+          borde rojo, la barra en rojo y el texto "Vencido" ya lo dicen. */}
       <motion.div
-        animate={isCritical && !reduced ? { scale: [1, 1.02, 1] } : { scale: 1 }}
-        transition={
-          isCritical && !reduced
-            ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
-            : undefined
-        }
         whileHover={{ ...cardHoverMotion.whileHover, transition: cardHoverMotion.transition }}
         whileTap={{ ...cardTapMotion.whileTap, transition: cardTapMotion.transition }}
       >
@@ -53,7 +50,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
           }}
           className={cn(
             "cursor-pointer shadow-soft transition-shadow duration-200 hover:shadow-soft-md",
-            isCritical && "border-2 border-destructive shadow-[0_0_0_1px_rgba(239,68,68,0.4)]"
+            isCritical && "border-destructive"
           )}
         >
         <CardContent className="density-card density-stack space-y-2 p-4">
@@ -103,6 +100,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             <DeliveryProgressBar
               creationDate={order.creationDate}
               deliveryDate={order.deliveryDate}
+              label="at-risk"
               className="pt-1"
             />
           )}

@@ -14,9 +14,6 @@ export interface KanbanColumn {
 }
 
 interface KanbanBoardProps {
-  /** Sólo se pasa cuando conviven varios tableros (ej. Diseño y Producción). */
-  title?: string;
-  description?: string;
   columns: KanbanColumn[];
   onOpenOrder: (orderId: number) => void;
   /**
@@ -32,11 +29,12 @@ interface KanbanBoardProps {
 /**
  * Tablero de pedidos agrupados por estado.
  *
- * Se usa una vez por circuito: quien trabaja en Diseño y además en un área de
- * producción ve dos tableros separados, porque son dos flujos con etapas
- * distintas y mezclarlos en una sola grilla no se entiende. Quien tiene una
- * sola área ve únicamente el suyo, sin título (ver WORKFLOW.md §4 en el
- * backend).
+ * Las columnas van en UNA sola fila con scroll horizontal, no en una grilla que
+ * se parte en varias filas. Con 5 estados y una grilla de 4 columnas, la quinta
+ * bajaba a una segunda fila y el tablero dejaba de leerse como un flujo de
+ * izquierda a derecha: parecían dos tableros distintos pegados. En una pista
+ * horizontal el orden del flujo es siempre el mismo eje, sin importar el ancho
+ * de la pantalla.
  *
  * Arrastrar una tarjeta a otra columna cambia el estado del pedido. Se usa la
  * API nativa de drag & drop del navegador (sin librería): la tarjeta ya es un
@@ -44,8 +42,6 @@ interface KanbanBoardProps {
  * la columna acepte el `drop`.
  */
 export function KanbanBoard({
-  title,
-  description,
   columns,
   onOpenOrder,
   onMoveOrder,
@@ -67,32 +63,22 @@ export function KanbanBoard({
   };
 
   return (
-    <section className="space-y-4">
-      {title && (
-        <header className="space-y-0.5">
-          <h2 className="font-heading text-lg font-semibold">{title}</h2>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
-        </header>
-      )}
-
-      <div
-        className={cn(
-          "grid gap-4",
-          columns.length <= 1 && "sm:grid-cols-1",
-          columns.length === 2 && "sm:grid-cols-2",
-          columns.length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        )}
-      >
+    // El track sangra hasta el borde del contenido para que el scroll no
+    // arranque recortado, y recupera el padding por dentro.
+    <div className="-mx-1 overflow-x-auto px-1 pb-3 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]">
+      <div className="flex min-w-max items-start gap-5">
         {columns.map((col) => {
           const isTarget = overStatusId === col.statusId && acceptsDrop(col.statusId);
           return (
-            <div
+            <section
               key={col.statusId}
+              aria-label={col.label}
               className={cn(
-                "space-y-3 rounded-2xl border border-transparent p-2 transition-colors",
-                isTarget && "border-primary/40 bg-primary/5"
+                "w-[17.5rem] shrink-0 rounded-2xl px-2 pb-2 transition-colors duration-150",
+                // La columna no es una tarjeta: las tarjetas van adentro y
+                // anidarlas ensucia la jerarquía. Sólo se tiñe mientras es
+                // destino de un arrastre.
+                isTarget && "bg-primary/[0.06]"
               )}
               onDragOver={(e) => {
                 if (!acceptsDrop(col.statusId)) return;
@@ -117,17 +103,28 @@ export function KanbanBoard({
                 onMoveOrder(order, col.statusId);
               }}
             >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <header
+                className={cn(
+                  "sticky top-0 z-10 -mx-2 mb-3 flex items-baseline gap-2 border-b bg-background/85 px-2 pb-2 pt-1 backdrop-blur transition-colors",
+                  isTarget && "border-primary/40"
+                )}
+              >
+                <h3 className="truncate text-[0.8125rem] font-semibold uppercase tracking-[0.06em] text-foreground/70">
                   {col.label}
                 </h3>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="text-xs font-medium tabular-nums text-muted-foreground">
                   {col.orders.length}
                 </span>
-              </div>
+              </header>
+
               {col.orders.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  {isTarget ? "Soltar acá" : "Nada por acá todavía"}
+                <p
+                  className={cn(
+                    "rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground/70 transition-colors",
+                    isTarget && "border-primary/50 text-primary"
+                  )}
+                >
+                  {isTarget ? "Soltar acá" : "Sin pedidos"}
                 </p>
               ) : (
                 <motion.div
@@ -153,7 +150,7 @@ export function KanbanBoard({
                       }}
                       className={cn(
                         draggable && "cursor-grab active:cursor-grabbing",
-                        draggingOrder?.id === order.id && "opacity-50"
+                        draggingOrder?.id === order.id && "opacity-40"
                       )}
                     >
                       <OrderCard order={order} onOpen={onOpenOrder} />
@@ -161,10 +158,10 @@ export function KanbanBoard({
                   ))}
                 </motion.div>
               )}
-            </div>
+            </section>
           );
         })}
       </div>
-    </section>
+    </div>
   );
 }
