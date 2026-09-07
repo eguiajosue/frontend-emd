@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -63,13 +64,16 @@ export function DataTable<TData, TValue>({
 
   if (!virtualize) {
     return (
-      <div className="w-full overflow-x-auto rounded-xl border">
+      <div className="w-full overflow-x-auto rounded-xl border shadow-soft">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="h-11 bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -88,10 +92,13 @@ export function DataTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  className={cn(
+                    "transition-colors",
+                    onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-3">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -119,15 +126,18 @@ export function DataTable<TData, TValue>({
   return (
     <div
       ref={scrollRef}
-      className="w-full overflow-auto rounded-xl border"
+      className="w-full overflow-auto rounded-xl border shadow-soft"
       style={{ maxHeight }}
     >
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-background">
+        <TableHeader className="sticky top-0 z-10 bg-muted/40 backdrop-blur">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
+                <TableHead
+                  key={header.id}
+                  className="h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
                   {header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -159,10 +169,13 @@ export function DataTable<TData, TValue>({
                     ref={virtualizer.measureElement}
                     data-state={row.getIsSelected() && "selected"}
                     onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                    className={onRowClick ? "cursor-pointer" : undefined}
+                    className={cn(
+                      "transition-colors",
+                      onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
+                    )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className="py-3">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}

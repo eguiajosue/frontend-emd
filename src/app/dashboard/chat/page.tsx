@@ -143,7 +143,7 @@ export default function ChatPage() {
         para monitoreo y figuran como tales en la lista de participantes.
       </p>
 
-      <div className="flex h-[calc(100vh-16rem)] min-h-[420px] flex-col overflow-hidden rounded-lg border md:flex-row">
+      <div className="flex h-[calc(100vh-16rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}
@@ -163,7 +163,7 @@ export default function ChatPage() {
       </div>
 
       <Dialog open={directOpen} onOpenChange={setDirectOpen}>
-        <DialogContent>
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle>Nuevo mensaje directo</DialogTitle>
             <DialogDescription>
@@ -174,6 +174,7 @@ export default function ChatPage() {
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
             placeholder="Buscar por nombre o usuario"
+            className="rounded-full"
           />
           <div className="flex gap-1">
             <div className="flex shrink-0 flex-col items-center justify-center py-1 text-[9px] font-medium leading-none text-muted-foreground">
@@ -184,7 +185,7 @@ export default function ChatPage() {
                   disabled={!availableLetters.has(letter)}
                   onClick={() => scrollToLetter(letter)}
                   className={cn(
-                    "px-1 py-[1px] hover:text-primary",
+                    "rounded px-1 py-[1px] transition-colors hover:text-primary",
                     availableLetters.has(letter)
                       ? "text-foreground"
                       : "text-muted-foreground/30"
@@ -220,7 +221,7 @@ export default function ChatPage() {
                     >
                       <Button
                         variant="ghost"
-                        className="w-full justify-start"
+                        className="w-full justify-start rounded-lg"
                         onClick={() => void startDirect(user.id)}
                       >
                         {chatDisplayName(user)}
