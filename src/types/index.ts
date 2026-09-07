@@ -366,14 +366,16 @@ export interface ChatAttachmentInput {
   mimeType: string;
 }
 
+/** Adjunto ya persistido de un mensaje de chat (respuesta de la API/WS). */
+export interface ChatMessageAttachment {
+  filename: string;
+  mimeType: string;
+  size: number | null;
+  dataUrl?: string;
+}
+
 /**
  * Mensaje del chat interno.
- *
- * NOTA: los campos de adjunto (`attachmentUrl`/`attachmentFilename`/
- * `attachmentMimeType`) son una suposición razonable mientras el backend
- * (`backend-emd`, feature en paralelo) termina de definir el shape exacto de
- * `ChatMessage` — revisar contra `send-message.dto.ts` y el modelo Prisma
- * una vez que esa rama se mergee, y ajustar acá si los nombres difieren.
  */
 export interface ChatMessage {
   id: number;
@@ -387,10 +389,7 @@ export interface ChatMessage {
   senderUsername?: string;
   orderId?: number | null;
   order?: ChatOrderRef | null;
-  /** URL (o data URL) del adjunto, si el mensaje tiene uno. */
-  attachmentUrl?: string | null;
-  attachmentFilename?: string | null;
-  attachmentMimeType?: string | null;
+  attachment?: ChatMessageAttachment | null;
 }
 
 /**

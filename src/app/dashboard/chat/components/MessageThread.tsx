@@ -115,10 +115,10 @@ function OrderRefChip({ order, mine }: { order: ChatOrderRef; mine: boolean }) {
 
 /** Adjunto de un mensaje ya enviado: imagen (thumbnail), audio (player) o chip de descarga. */
 function MessageAttachment({ message, mine }: { message: ChatMessage; mine: boolean }) {
-  const url = message.attachmentUrl;
+  const url = message.attachment?.dataUrl;
   if (!url) return null;
-  const mimeType = message.attachmentMimeType ?? "";
-  const filename = message.attachmentFilename ?? "Archivo adjunto";
+  const mimeType = message.attachment?.mimeType ?? "";
+  const filename = message.attachment?.filename ?? "Archivo adjunto";
 
   if (mimeType.startsWith("image/")) {
     return (
