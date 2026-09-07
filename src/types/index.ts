@@ -348,6 +348,14 @@ export interface ChatMember extends ChatUserSummary {
   isMonitor: boolean;
 }
 
+/** Pedido resumido adjunto a un mensaje de chat. */
+export interface ChatOrderRef {
+  id: number;
+  description: string;
+  area: string | null;
+  status: { name: string } | null;
+}
+
 /** Mensaje del chat interno. */
 export interface ChatMessage {
   id: number;
@@ -359,6 +367,8 @@ export interface ChatMessage {
   /** Sólo en los mensajes que llegan en vivo por WebSocket. */
   senderName?: string;
   senderUsername?: string;
+  orderId?: number | null;
+  order?: ChatOrderRef | null;
 }
 
 /**

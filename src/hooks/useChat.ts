@@ -131,13 +131,15 @@ export function useChatMutations() {
     mutationFn: ({
       conversationId,
       body,
+      orderId,
     }: {
       conversationId: number;
       body: string;
+      orderId?: number;
     }) =>
       request<ChatMessage>(
         `${ENDPOINTS.chat}/conversations/${conversationId}/messages`,
-        { method: "POST", token, body: { body } }
+        { method: "POST", token, body: { body, ...(orderId ? { orderId } : {}) } }
       ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -167,8 +169,8 @@ export function useChatMutations() {
   });
 
   return {
-    sendMessage: (conversationId: number, body: string) =>
-      sendMessage.mutateAsync({ conversationId, body }),
+    sendMessage: (conversationId: number, body: string, orderId?: number) =>
+      sendMessage.mutateAsync({ conversationId, body, orderId }),
     isSending: sendMessage.isPending,
     markAsRead: (conversationId: number) =>
       markAsRead.mutateAsync(conversationId).catch(() => undefined),

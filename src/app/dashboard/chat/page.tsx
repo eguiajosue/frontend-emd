@@ -63,10 +63,10 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, lastMessageId]);
 
-  const handleSend = async (body: string) => {
+  const handleSend = async (body: string, orderId?: number) => {
     if (!selectedId) return;
     try {
-      await sendMessage(selectedId, body);
+      await sendMessage(selectedId, body, orderId);
     } catch (err) {
       if (!isSessionExpiredError(err)) {
         toast.error(getErrorMessage(err, "No se pudo enviar el mensaje."));
