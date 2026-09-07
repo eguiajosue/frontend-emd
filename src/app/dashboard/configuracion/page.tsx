@@ -253,6 +253,61 @@ function DensitySection() {
   );
 }
 
+/**
+ * Cómo prefiere ver cada usuario sus tareas de producción. Es preferencia
+ * personal, no la impone el admin (ver WORKFLOW.md §4 en el backend).
+ */
+function AreaViewSection() {
+  const { preferences, updatePreferences } = useUserPreferences();
+  const viewMode = preferences?.areaViewMode ?? "unified";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Vista de mis tareas</CardTitle>
+        <CardDescription>
+          En &quot;Mi trabajo&quot;, cómo se ordenan las tareas cuando trabajás más de
+          un área.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              {
+                value: "unified" as const,
+                label: "Todo junto",
+                hint: "Una sola lista, cada tarea etiquetada con su área.",
+              },
+              {
+                value: "split" as const,
+                label: "Separado por área",
+                hint: "Un bloque por cada área en la que trabajás.",
+              },
+            ]
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={viewMode === option.value}
+              onClick={() => updatePreferences({ areaViewMode: option.value })}
+              className={cn(
+                "flex flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left text-sm transition-colors active:scale-[0.97]",
+                viewMode === option.value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "hover:border-primary/50"
+              )}
+            >
+              <span className="font-medium">{option.label}</span>
+              <span className="text-xs text-muted-foreground">{option.hint}</span>
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SoundSection() {
   const { soundEnabled, setSoundEnabled, mounted } = useSoundPreference();
 
@@ -437,6 +492,7 @@ export default function ConfiguracionPage() {
       <div className="grid gap-6 lg:max-w-2xl">
         <AppearanceSection />
         <DensitySection />
+        <AreaViewSection />
         <SoundSection />
         <LanguageSection />
         {canManageAreaVisibility && <AreaVisibilitySection />}

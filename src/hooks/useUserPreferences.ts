@@ -25,6 +25,12 @@ export interface UserPreferences {
   density?: "comfortable" | "compact" | null;
   /** Si el usuario ya vio el tour de onboarding del dashboard. */
   hasSeenOnboarding?: boolean | null;
+  /**
+   * Cómo prefiere ver este usuario sus tareas de producción: "unified" muestra
+   * todas juntas etiquetadas por área, "split" las agrupa por área. Es
+   * preferencia personal de cada uno (ver WORKFLOW.md §4 en el backend).
+   */
+  areaViewMode?: "unified" | "split" | null;
 }
 
 const PREFERENCES_ENDPOINT = "users/me/preferences";

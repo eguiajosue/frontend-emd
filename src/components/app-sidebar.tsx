@@ -11,6 +11,7 @@ import {
   History,
   Bell,
   MessagesSquare,
+  ClipboardList,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -44,6 +45,13 @@ const OPERATIONAL_MENU = [
   {
     groupLabel: "Producción",
     items: [
+      // Bandeja propia: sólo las tareas de las áreas del usuario, etiquetadas
+      // con la suya (ver WORKFLOW.md §4 en el backend).
+      {
+        title: "Mi trabajo",
+        url: "/dashboard/mi-trabajo",
+        icon: ClipboardList,
+      },
       {
         title: "Pedidos",
         url: "/dashboard/orders",
@@ -130,6 +138,11 @@ export function AppSidebar() {
   const { count: notificationsUnread } = useUnreadNotificationsCount();
   const { reduced: reducedMotion } = useMotionPreset();
 
+  // Áreas de producción reales (Diseño no es una: es la fase previa).
+  const hasProductionArea = userRoles.some((r) =>
+    ["taller", "dtf", "bordado", "laser", "impresiones", "recepcion", "admin", "superuser"].includes(r)
+  );
+
   const menuItems = [
     {
       groupLabel: "Administración",
@@ -151,6 +164,23 @@ export function AppSidebar() {
     {
       groupLabel: "Pedidos",
       items: [
+        {
+          title: "Mi trabajo",
+          url: "/dashboard/mi-trabajo",
+          icon: ClipboardList,
+          // Bandeja de producción: no aplica a Diseño, que tiene su propio
+          // circuito de montajes (WORKFLOW.md §4).
+          roles: [
+            "admin",
+            "superuser",
+            "recepcion",
+            "taller",
+            "dtf",
+            "bordado",
+            "laser",
+            "impresiones",
+          ],
+        },
         {
           title: "Pedidos",
           url: "/dashboard/orders",
@@ -287,11 +317,15 @@ export function AppSidebar() {
               {group.items.map((item) =>
                 // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
                 // completo se filtra por rol, con "admin" viendo todo.
-                operationalOnly ||
-                userRoles.includes("admin") ||
-                userRoles.some((r) =>
-                  "roles" in item ? (item.roles as string[]).includes(r) : true
-                ) ? (() => {
+                // "Mi trabajo" es la bandeja de producción: no tiene sentido
+                // para quien no trabaja ninguna área de producción (ej. un
+                // diseñador puro, que tiene su propio circuito de montajes).
+                (item.url !== "/dashboard/mi-trabajo" || hasProductionArea) &&
+                (operationalOnly ||
+                  userRoles.includes("admin") ||
+                  userRoles.some((r) =>
+                    "roles" in item ? (item.roles as string[]).includes(r) : true
+                  )) ? (() => {
                   // Ítems con contador de pendientes: chat y notificaciones.
                   // Ambos resaltan el ícono y muestran el número, expandidos o
                   // en el rail colapsado.
