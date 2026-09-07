@@ -17,6 +17,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
 import { NotificationTypeBadge } from "@/components/notifications/NotificationTypeBadge";
+import { groupByDay } from "@/lib/notificationGrouping";
 
 /** Cuántas notificaciones se muestran en el dropdown de la campanita. */
 const PREVIEW_LIMIT = 8;
@@ -65,6 +66,9 @@ export function NotificationBell() {
   };
 
   const preview = notifications.slice(0, PREVIEW_LIMIT);
+  // Mismos cortes por día que el panel completo: "Hoy" arriba, después el
+  // resto. Ocho avisos seguidos sin ningún corte se leen como una sola masa.
+  const previewGroups = groupByDay(preview);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -151,44 +155,51 @@ export function NotificationBell() {
               Todo tranquilo por acá. Sin notificaciones nuevas.
             </p>
           ) : (
-            <ul>
-              {preview.map((notification) => (
-                <li key={notification.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(notification)}
-                    className={cn(
-                      "flex w-full items-start gap-2 border-b px-4 py-3 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/60",
-                      !notification.read && "bg-primary/5"
-                    )}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
-                        notification.read ? "bg-transparent" : "bg-primary"
-                      )}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="mb-1 flex">
-                        <NotificationTypeBadge type={notification.type} />
-                      </span>
-                      <span className="block truncate font-medium">
-                        {notification.title}
-                      </span>
-                      {notification.body && (
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                          {notification.body}
+            previewGroups.map((dayGroup) => (
+              <div key={dayGroup.key}>
+                <p className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                  {dayGroup.label}
+                </p>
+                <ul>
+                  {dayGroup.notifications.map((notification) => (
+                    <li key={notification.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelect(notification)}
+                        className={cn(
+                          "flex w-full items-start gap-2 border-b px-4 py-3 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/60",
+                          !notification.read && "bg-primary/5"
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                            notification.read ? "bg-transparent" : "bg-primary"
+                          )}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="mb-1 flex">
+                            <NotificationTypeBadge type={notification.type} />
+                          </span>
+                          <span className="block truncate font-medium">
+                            {notification.title}
+                          </span>
+                          {notification.body && (
+                            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                              {notification.body}
+                            </span>
+                          )}
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground/80">
+                            {relativeTime(notification.createdAt)}
+                          </span>
                         </span>
-                      )}
-                      <span className="mt-0.5 block text-[11px] text-muted-foreground/80">
-                        {relativeTime(notification.createdAt)}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
           )}
         </div>
         <div className="border-t p-2">

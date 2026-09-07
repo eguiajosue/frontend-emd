@@ -17,8 +17,22 @@ import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
 import { NotificationTypeBadge } from "@/components/notifications/NotificationTypeBadge";
+import {
+  NOTIFICATION_GROUP_LABELS,
+  notificationGroup,
+  type NotificationGroup,
+} from "@/lib/notifications";
+import { groupByDay } from "@/lib/notificationGrouping";
 
 type Filter = "all" | "unread" | "read";
+
+/** Categorías del selector, en el orden en que se muestran. */
+const GROUP_FILTERS: NotificationGroup[] = [
+  "pedidos",
+  "diseno",
+  "produccion",
+  "otras",
+];
 
 function relativeTime(value: string): string {
   const date = new Date(value);
@@ -30,6 +44,10 @@ export default function NotificacionesPage() {
   const router = useRouter();
   const { reduced, staggerItemVariants } = useMotionPreset();
   const [filter, setFilter] = useState<Filter>("all");
+  // Categoría (pedidos / diseño / producción / otras) además de leídas o no.
+  // Con una sola lista plana de todo, encontrar "¿qué pasó con mis diseños?"
+  // era leer 100 renglones.
+  const [group, setGroup] = useState<NotificationGroup | "all">("all");
 
   const {
     notifications,
@@ -43,10 +61,26 @@ export default function NotificacionesPage() {
   } = useNotifications(1, 100);
 
   const filtered = useMemo(() => {
-    if (filter === "unread") return notifications.filter((n) => !n.read);
-    if (filter === "read") return notifications.filter((n) => n.read);
-    return notifications;
-  }, [notifications, filter]);
+    return notifications.filter((n) => {
+      if (filter === "unread" && n.read) return false;
+      if (filter === "read" && !n.read) return false;
+      if (group !== "all" && notificationGroup(n.type) !== group) return false;
+      return true;
+    });
+  }, [notifications, filter, group]);
+
+  /** Cuántas hay en cada categoría, para no ofrecer un filtro que da vacío. */
+  const countsByGroup = useMemo(() => {
+    const counts = new Map<NotificationGroup, number>();
+    notifications.forEach((n) => {
+      const key = notificationGroup(n.type);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return counts;
+  }, [notifications]);
+
+  /** Cortes por día ("Hoy", "Ayer", ...) sobre lo que quedó filtrado. */
+  const dayGroups = useMemo(() => groupByDay(filtered), [filtered]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
@@ -88,6 +122,38 @@ export default function NotificacionesPage() {
         </TabsList>
       </Tabs>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setGroup("all")}
+          className={cn(
+            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+            group === "all"
+              ? "border-primary bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted"
+          )}
+        >
+          Todo
+        </button>
+        {GROUP_FILTERS.filter((key) => (countsByGroup.get(key) ?? 0) > 0).map(
+          (key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setGroup(key)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                group === key
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {NOTIFICATION_GROUP_LABELS[key]} ({countsByGroup.get(key)})
+            </button>
+          )
+        )}
+      </div>
+
       {isLoading ? (
         <TableSkeleton rows={6} />
       ) : isError ? (
@@ -117,54 +183,73 @@ export default function NotificacionesPage() {
           }
         />
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((notification, i) => (
-            <motion.li
-              key={notification.id}
-              variants={staggerItemVariants}
-              initial="hidden"
-              animate="show"
-              transition={
-                reduced ? undefined : { ...staggerItemVariants.show.transition, delay: i * 0.02 }
-              }
-            >
-              <button
-                type="button"
-                onClick={() => handleSelect(notification)}
-                className={cn(
-                  "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/60",
-                  !notification.read && "border-primary/30 bg-primary/5"
-                )}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mt-2 h-2 w-2 shrink-0 rounded-full",
-                    notification.read ? "bg-transparent" : "bg-primary"
-                  )}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <NotificationTypeBadge type={notification.type} />
-                      <span className={cn("font-medium", !notification.read && "text-foreground")}>
-                        {notification.title}
+        <div className="space-y-6">
+          {dayGroups.map((dayGroup) => (
+            <section key={dayGroup.key} className="space-y-2">
+              <h2 className="sticky top-0 z-10 bg-background/95 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                {dayGroup.label}
+              </h2>
+              <ul className="space-y-2">
+                {dayGroup.notifications.map((notification, i) => (
+                  <motion.li
+                    key={notification.id}
+                    variants={staggerItemVariants}
+                    initial="hidden"
+                    animate="show"
+                    transition={
+                      reduced
+                        ? undefined
+                        : {
+                            ...staggerItemVariants.show.transition,
+                            delay: i * 0.02,
+                          }
+                    }
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(notification)}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/60",
+                        !notification.read && "border-primary/30 bg-primary/5"
+                      )}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "mt-2 h-2 w-2 shrink-0 rounded-full",
+                          notification.read ? "bg-transparent" : "bg-primary"
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <NotificationTypeBadge type={notification.type} />
+                            <span
+                              className={cn(
+                                "font-medium",
+                                !notification.read && "text-foreground"
+                              )}
+                            >
+                              {notification.title}
+                            </span>
+                          </span>
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            {relativeTime(notification.createdAt)}
+                          </span>
+                        </span>
+                        {notification.body && (
+                          <span className="mt-0.5 block text-sm text-muted-foreground">
+                            {notification.body}
+                          </span>
+                        )}
                       </span>
-                    </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {relativeTime(notification.createdAt)}
-                    </span>
-                  </span>
-                  {notification.body && (
-                    <span className="mt-0.5 block text-sm text-muted-foreground">
-                      {notification.body}
-                    </span>
-                  )}
-                </span>
-              </button>
-            </motion.li>
+                    </button>
+                  </motion.li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

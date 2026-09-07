@@ -8,7 +8,44 @@ export type NotificationType =
   | "area_user_updated_order"
   | "order_assigned"
   | "order_note_added"
+  | "order_ready"
+  | "design_montage_sent"
+  | "design_feedback_added"
+  | "design_approved"
+  | "area_task_created"
+  | "area_task_completed"
   | (string & {});
+
+/**
+ * Grupos con los que se organiza el panel de notificaciones. Cada tipo cae en
+ * uno; los tipos que el backend agregue y todavía no estén mapeados caen en
+ * "otras" en vez de perderse.
+ */
+export type NotificationGroup = "diseno" | "produccion" | "pedidos" | "otras";
+
+export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
+  pedidos: "Pedidos",
+  diseno: "Diseño",
+  produccion: "Producción",
+  otras: "Otras",
+};
+
+const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
+  order_status_changed: "pedidos",
+  order_assigned: "pedidos",
+  order_note_added: "pedidos",
+  area_user_updated_order: "pedidos",
+  design_montage_sent: "diseno",
+  design_feedback_added: "diseno",
+  design_approved: "diseno",
+  area_task_created: "produccion",
+  area_task_completed: "produccion",
+  order_ready: "produccion",
+};
+
+/** Grupo al que pertenece un tipo de notificación (nunca falla). */
+export const notificationGroup = (type: NotificationType): NotificationGroup =>
+  GROUP_BY_TYPE[type] ?? "otras";
 
 export interface NotificationTagMeta {
   /** Texto visible de la etiqueta. */
@@ -43,6 +80,38 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     label: "Nota",
     className:
       "border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200",
+  },
+  order_ready: {
+    label: "Listo para entregar",
+    className:
+      "border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200",
+  },
+  // Circuito de Diseño: montaje enviado -> comentarios del cliente -> autorizado.
+  design_montage_sent: {
+    label: "Montaje enviado",
+    className:
+      "border-transparent bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200",
+  },
+  design_feedback_added: {
+    label: "Cambios solicitados",
+    className:
+      "border-transparent bg-orange-100 text-orange-900 dark:bg-orange-500/20 dark:text-orange-200",
+  },
+  design_approved: {
+    label: "Diseño autorizado",
+    className:
+      "border-transparent bg-teal-100 text-teal-900 dark:bg-teal-500/20 dark:text-teal-200",
+  },
+  // Trabajo por área de producción.
+  area_task_created: {
+    label: "Trabajo asignado al área",
+    className:
+      "border-transparent bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-200",
+  },
+  area_task_completed: {
+    label: "Área terminada",
+    className:
+      "border-transparent bg-lime-100 text-lime-900 dark:bg-lime-500/20 dark:text-lime-200",
   },
 };
 
