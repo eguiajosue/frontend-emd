@@ -21,6 +21,7 @@ import { FormField } from "@/components/ui/form-field";
 import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
+import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import {
   combineDateAndTime,
   formatDateTime,
@@ -386,6 +387,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                   </div>
 
                   <DesignFlowSection order={order} />
+
+                  {/* Producción por área: sólo tiene sentido una vez que el
+                      pedido salió de Diseño (o si nunca pasó por ahí). */}
+                  <AreaTasksSection orderId={order.id} />
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>

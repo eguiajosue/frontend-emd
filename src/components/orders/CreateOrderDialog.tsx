@@ -39,6 +39,7 @@ import { Switch } from "@/components/ui/switch";
 import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
+import { cn } from "@/lib/utils";
 import type {
   AuthorizationFileInput,
   Client,
@@ -163,6 +164,9 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const [clientNameOverride, setClientNameOverride] = useState("");
   const [requiresDesign, setRequiresDesign] = useState(true);
   const [area, setArea] = useState<string | undefined>(undefined);
+  // Áreas de producción EXTRA (además de `area`): un pedido puede necesitar
+  // varias técnicas y todas trabajan en paralelo (ver WORKFLOW.md §3).
+  const [extraAreas, setExtraAreas] = useState<string[]>([]);
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -183,6 +187,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setClientNameOverride("");
     setRequiresDesign(true);
     setArea(undefined);
+    setExtraAreas([]);
     setAssignedUserId(undefined);
     setDescription("");
     setDeliveryDate("");
@@ -253,6 +258,14 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
   };
+
+  // Todas las áreas de producción del pedido: la principal más las extra. Con
+  // montaje la principal puede estar sin definir todavía y quedar sólo las
+  // extra (o ninguna, y se definen al autorizar).
+  const productionAreas = useMemo(() => {
+    const primary = area && area !== DESIGN_ROLE ? [area] : [];
+    return [...new Set([...primary, ...extraAreas])];
+  }, [area, extraAreas]);
 
   // Área que decide a quién se le puede asignar el pedido (ver WORKFLOW.md §1):
   // con montaje siempre es Diseño, sin montaje es el área destino elegida.
@@ -352,6 +365,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         area: parsed.data.requiresDesign ? undefined : parsed.data.area,
         requiresDesign: parsed.data.requiresDesign,
         productionArea: parsed.data.requiresDesign ? parsed.data.area : undefined,
+        productionAreas: productionAreas.length > 0 ? productionAreas : undefined,
         userId: Number(session?.user?.id),
         assignedUserId: parsed.data.assignedUserId,
         statusId: 1,
@@ -578,6 +592,50 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     </p>
                   )}
                 </FormField>
+              </div>
+
+              {/* Un pedido puede necesitar varias técnicas (ej. bordado + dtf).
+                  Todas trabajan en paralelo, cada una con su propia tarea. */}
+              <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+                <p className="text-sm font-medium">¿Necesita más de un área?</p>
+                <p className="text-xs text-muted-foreground">
+                  Marcar las áreas extra que van a trabajar el pedido. Cada una avanza por
+                  su cuenta y el pedido queda listo cuando todas terminan.
+                </p>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {PRODUCTION_AREA_OPTIONS.filter((option) => option.value !== area).map(
+                    (option) => {
+                      const checked = extraAreas.includes(option.value);
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={checked}
+                          onClick={() =>
+                            setExtraAreas((prev) =>
+                              prev.includes(option.value)
+                                ? prev.filter((a) => a !== option.value)
+                                : [...prev, option.value]
+                            )
+                          }
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97]",
+                            checked
+                              ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                              : "border-input text-muted-foreground hover:border-primary hover:text-primary"
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+                {productionAreas.length > 1 && (
+                  <p className="pt-1 text-xs text-primary">
+                    {productionAreas.length} áreas van a trabajar este pedido en paralelo.
+                  </p>
+                )}
               </div>
 
               <FormField label="Descripción" icon={FileText} required error={errors.description}>

@@ -131,6 +131,26 @@ export interface AuthorizationFileInput {
   mimeType: "image/png" | "image/jpeg" | "application/pdf";
 }
 
+/** Avance de un área dentro de un pedido. */
+export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
+
+/**
+ * Trabajo que le toca a UN área dentro de un pedido. Varias áreas conviven en
+ * el mismo pedido y avanzan en paralelo, sin esperarse entre sí.
+ */
+export interface OrderAreaTask {
+  id: number;
+  orderId: number;
+  /** taller | dtf | bordado | laser | impresiones (nunca 'diseno'). */
+  area: string;
+  status: AreaTaskStatus;
+  assignedUserId?: number | null;
+  createdAt: string;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  assignedUser?: AssignedUser | null;
+}
+
 export interface Order extends BaseEntity {
   clientId?: number | null;
   userId?: number;
@@ -145,6 +165,12 @@ export interface Order extends BaseEntity {
   area?: string | null;
   /** `true` si Recepción marcó, al crear el pedido, que pasa primero por Diseño. */
   requiresDesign?: boolean;
+  /**
+   * Trabajo de producción partido por área. Un pedido puede necesitar varias
+   * (ej. bordado + dtf) y todas avanzan EN PARALELO, cada una con su propio
+   * estado y responsable. Ver WORKFLOW.md §3 en el backend.
+   */
+  areaTasks?: OrderAreaTask[];
   /**
    * Área de producción DESTINO (a dónde va cuando termine diseño, o directo
    * si no requiere diseño). Puede definirse al crear o quedar `null` hasta que
@@ -238,6 +264,11 @@ export interface CreateOrderPayload {
   requiresDesign?: boolean;
   /** Área de producción destino, sólo relevante cuando `requiresDesign` es `true`. */
   productionArea?: string;
+  /**
+   * Todas las áreas de producción que van a trabajar el pedido. Pueden ser
+   * varias y avanzan en paralelo; `productionArea` queda como la principal.
+   */
+  productionAreas?: string[];
   description: string;
   deliveryDate?: string;
   orderProducts?: Array<{ productId?: number; customName?: string; quantity: number }>;
