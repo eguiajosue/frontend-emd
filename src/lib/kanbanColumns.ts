@@ -1,5 +1,14 @@
-import { statusMap, isDesignFlowStatusName } from "@/lib/orderStatus";
-import type { Order } from "@/types";
+import {
+  statusMap,
+  isDesignFlowStatusName,
+  DESIGN_BOARD_STATUS_NAMES,
+  PRODUCTION_BOARD_STATUS_IDS,
+  DESIGN_FLOW_STATUS_NAMES,
+  isOrderInDesignStatus,
+  CANCELLED_STATUS_ID,
+  DELIVERED_STATUS_ID,
+} from "@/lib/orderStatus";
+import type { AreaTaskStatus, Order, Status } from "@/types";
 
 export interface KanbanColumnData {
   statusId: number;
@@ -8,53 +17,128 @@ export interface KanbanColumnData {
 }
 
 /**
- * Columnas de un tablero a partir de los pedidos que realmente hay.
+ * Estado de producción "efectivo" de un pedido para el tablero.
  *
- * Importante: las columnas NO pueden derivarse sólo de `statusMap`. Ese mapa
- * cubre los estados de producción (1/3/4/5/10) pero deja fuera los 4 del flujo
- * de Diseño, cuyos ids los siembra el backend y varían entre entornos — por eso
- * se resuelven por nombre. Armar el tablero desde `statusMap` hacía que los
- * pedidos "en diseño" aparecieran en la vista de lista pero desaparecieran de
- * la cuadrícula, porque no encajaban en ninguna columna.
+ * `order.statusId` NO alcanza: desde que el cliente autoriza el montaje, el
+ * pedido queda en "autorizado" — que es información del circuito de Diseño —
+ * mientras el trabajo real de cada área arranca en "pendiente" en su propia
+ * `OrderAreaTask` (ver WORKFLOW.md §3). Si el tablero agrupara por `statusId`,
+ * un pedido recién autorizado le aparecería a Bordado en una columna
+ * "autorizado" en vez de en "pendiente", que es lo que el área espera ver.
  *
- * Los estados de producción conocidos se incluyen aunque estén vacíos, para que
- * el tablero no cambie de forma según haya trabajo o no en cada etapa. Los de
- * Diseño sólo aparecen si hay pedidos en ellos, ya que su id no se conoce de
- * antemano.
+ * `viewerAreas` son las áreas del usuario que mira: si tiene tarea en alguna,
+ * manda esa. Si no (recepción/admin, que ven todo), manda la tarea MENOS
+ * avanzada, porque el pedido no está terminado hasta que terminan todas.
  */
-export function buildKanbanColumns(orders: Order[]): KanbanColumnData[] {
-  const byStatus = new Map<number, { label: string; orders: Order[] }>();
+export function effectiveProductionStatusId(
+  order: Order,
+  viewerAreas: string[] = [],
+): number {
+  // Entregado y cancelado son estados del pedido entero: ninguna tarea de área
+  // los contradice.
+  if (order.statusId === DELIVERED_STATUS_ID) return DELIVERED_STATUS_ID;
+  if (order.statusId === CANCELLED_STATUS_ID) return CANCELLED_STATUS_ID;
 
-  orders.forEach((order) => {
-    const entry = byStatus.get(order.statusId);
-    if (entry) {
-      entry.orders.push(order);
-      return;
+  const tasks = order.areaTasks ?? [];
+  if (tasks.length === 0) {
+    // Sin tareas por área: un pedido "autorizado" ya está listo para producir,
+    // o sea "pendiente" para quien lo va a trabajar.
+    if (isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO)) {
+      return 1;
     }
-    byStatus.set(order.statusId, {
-      label:
-        order.status?.name ?? statusMap[order.statusId] ?? `Estado ${order.statusId}`,
-      orders: [order],
-    });
-  });
+    return order.statusId;
+  }
 
-  Object.entries(statusMap).forEach(([id, label]) => {
-    const statusId = Number(id);
-    if (!byStatus.has(statusId)) {
-      byStatus.set(statusId, { label, orders: [] });
-    }
-  });
-
-  return [...byStatus.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([statusId, value]) => ({ statusId, ...value }));
+  const mine = tasks.filter((task) => viewerAreas.includes(task.area));
+  const relevant = mine.length > 0 ? mine : tasks;
+  const rank: Record<AreaTaskStatus, number> = {
+    pendiente: 0,
+    en_proceso: 1,
+    terminado: 2,
+  };
+  const least = relevant.reduce((acc, task) =>
+    rank[task.status] < rank[acc.status] ? task : acc,
+  );
+  return { pendiente: 1, en_proceso: 3, terminado: 4 }[least.status];
 }
 
 /**
- * Parte los pedidos en los dos circuitos del taller: el de Diseño (montajes
- * hasta la autorización del cliente) y el de producción. Son flujos con etapas
- * distintas, así que se muestran como dos tableros separados a quien trabaja en
- * ambos. Ver WORKFLOW.md §4 en el backend.
+ * Columnas del tablero de PRODUCCIÓN: siempre las mismas cinco (pendiente, en
+ * proceso, terminado, entregado, cancelado), estén vacías o no, para que el
+ * tablero no cambie de forma según haya trabajo o no en cada etapa.
+ *
+ * Los 4 estados del circuito de Diseño NO aparecen acá: son otro flujo, con
+ * otro tablero. Mezclarlos era exactamente lo que hacía que la vista de un
+ * diseñador que además produce se viera revuelta.
+ */
+export function buildProductionColumns(
+  orders: Order[],
+  viewerAreas: string[] = [],
+): KanbanColumnData[] {
+  const byStatus = new Map<number, Order[]>(
+    PRODUCTION_BOARD_STATUS_IDS.map((id) => [id, [] as Order[]]),
+  );
+
+  orders.forEach((order) => {
+    const statusId = effectiveProductionStatusId(order, viewerAreas);
+    const bucket = byStatus.get(statusId);
+    if (bucket) bucket.push(order);
+    // Un estado que no es de producción no inventa columna: el pedido ya está
+    // en el tablero de Diseño.
+  });
+
+  return PRODUCTION_BOARD_STATUS_IDS.map((statusId) => ({
+    statusId,
+    label: statusMap[statusId] ?? `Estado ${statusId}`,
+    orders: byStatus.get(statusId) ?? [],
+  }));
+}
+
+/**
+ * Columnas del tablero de DISEÑO: pendiente + las 4 etapas del circuito de
+ * montaje, en orden y siempre visibles.
+ *
+ * Los ids de los estados de Diseño los siembra el backend y cambian entre
+ * entornos, así que se resuelven por NOMBRE contra el catálogo de `GET /status`
+ * (`statuses`). Mientras ese catálogo no haya cargado se arma con los estados
+ * que traigan los propios pedidos, para no dejar el tablero en blanco.
+ */
+export function buildDesignColumns(
+  orders: Order[],
+  statuses: Status[] = [],
+): KanbanColumnData[] {
+  const idByName = new Map<string, number>();
+  statuses.forEach((status) => {
+    if (status?.name) idByName.set(status.name.toLowerCase(), status.id);
+  });
+  orders.forEach((order) => {
+    const name = order.status?.name?.toLowerCase();
+    if (name && !idByName.has(name)) idByName.set(name, order.statusId);
+  });
+
+  return DESIGN_BOARD_STATUS_NAMES.map((name) => {
+    const statusId = idByName.get(name);
+    return {
+      // Sin id conocido la columna se muestra igual (vacía) con una clave
+      // negativa estable, para no colapsar el tablero por un catálogo que
+      // todavía no llegó.
+      statusId: statusId ?? -(DESIGN_BOARD_STATUS_NAMES.indexOf(name) + 1),
+      label: name,
+      orders: orders.filter(
+        (order) => (order.status?.name ?? "").toLowerCase() === name,
+      ),
+    };
+  });
+}
+
+/**
+ * Parte los pedidos en los dos circuitos del taller.
+ *
+ * Un pedido "autorizado" cae en LOS DOS: para Diseño es el cierre de su
+ * trabajo (columna "autorizado") y para el área que lo va a producir es el
+ * arranque del suyo (columna "pendiente"). Es el paso que pidió el flujo:
+ * recepción → diseño → recepción (autorización) → autorizado en Diseño y
+ * pendiente en el área.
  */
 export function splitDesignAndProduction(orders: Order[]): {
   design: Order[];
@@ -63,8 +147,15 @@ export function splitDesignAndProduction(orders: Order[]): {
   const design: Order[] = [];
   const production: Order[] = [];
   orders.forEach((order) => {
-    if (isDesignFlowStatusName(order.status?.name)) design.push(order);
-    else production.push(order);
+    const name = order.status?.name;
+    const inDesignFlow = isDesignFlowStatusName(name);
+    if (inDesignFlow) design.push(order);
+    if (
+      !inDesignFlow ||
+      isOrderInDesignStatus(name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO)
+    ) {
+      production.push(order);
+    }
   });
   return { design, production };
 }

@@ -12,12 +12,24 @@ import {
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useOrders, downloadOrdersExport, useBulkChangeOrderStatus } from "@/hooks/useOrders";
+import {
+  useOrders,
+  downloadOrdersExport,
+  useBulkChangeOrderStatus,
+  useChangeOrderStatus,
+} from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
 import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
-import { buildKanbanColumns, splitDesignAndProduction } from "@/lib/kanbanColumns";
+import {
+  buildDesignColumns,
+  buildProductionColumns,
+  effectiveProductionStatusId,
+  splitDesignAndProduction,
+} from "@/lib/kanbanColumns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
@@ -31,7 +43,7 @@ import {
   EMPTY_ORDERS_FILTERS,
   type OrdersFilters,
 } from "@/components/orders/OrdersFilterBar";
-import type { Client, Order, User } from "@/types";
+import type { Client, Order, Status, User } from "@/types";
 import { ExternalLink, FileDown, LayoutGrid, List, Plus, PackageSearch, FilterX, PartyPopper } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -42,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatRoleList } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
@@ -83,6 +96,9 @@ function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
   return params;
 }
 
+/** Roles que corresponden a un área de producción (Diseño no es un destino). */
+const PRODUCTION_ROLES: string[] = PRODUCTION_AREA_OPTIONS.map((a) => a.value);
+
 const VIEW_MODE_KEY = "orders-view-mode";
 type ViewMode = "list" | "grid";
 
@@ -103,6 +119,9 @@ const OrdersPage = () => {
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
+  // Catálogo de estados: el tablero de Diseño resuelve sus columnas por nombre
+  // contra esto, porque sus ids los siembra el backend y cambian por entorno.
+  const { data: statuses } = useEntityList<Status>("statuses");
   const { deliveredRetentionHours } = useAppSettings();
   const token = useAuthToken();
 
@@ -115,6 +134,7 @@ const OrdersPage = () => {
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
   const [isBulkChanging, setIsBulkChanging] = useState(false);
   const { bulkChangeStatus } = useBulkChangeOrderStatus();
+  const { changeStatus } = useChangeOrderStatus();
 
   useEffect(() => {
     setFilters(filtersFromUrl());
@@ -449,21 +469,47 @@ const OrdersPage = () => {
   // Además, Diseño y producción son dos circuitos distintos: quien trabaja en
   // ambos ve dos tableros separados, cada uno con sus propias etapas, en vez de
   // una sola grilla que los mezcla (ver WORKFLOW.md §4 en el backend).
+  // Áreas de producción del usuario: definen cuál tarea de área manda al
+  // ubicar un pedido en el tablero de producción (ver
+  // `effectiveProductionStatusId`).
+  const viewerAreas = useMemo(
+    () => roles.filter((role) => PRODUCTION_ROLES.includes(role)),
+    [roles]
+  );
+
+  // Tableros de la vista cuadrícula. Diseño y producción son DOS circuitos con
+  // etapas distintas, así que son dos tableros con sus propias columnas fijas.
+  // Un pedido "autorizado" aparece en los dos: cierra el trabajo de Diseño y
+  // abre el del área que lo produce.
   const { designBoard, productionBoard } = useMemo(() => {
     const { design, production } = splitDesignAndProduction(visibleOrders);
     return {
-      designBoard: {
-        orders: design,
-        // Un tablero de Diseño vacío no muestra columnas fantasma: sus ids se
-        // resuelven por nombre y sólo se conocen si hay pedidos en esa etapa.
-        columns: design.length > 0 ? buildKanbanColumns(design) : [],
-      },
+      designBoard: { orders: design, columns: buildDesignColumns(design, statuses) },
       productionBoard: {
         orders: production,
-        columns: buildKanbanColumns(production),
+        columns: buildProductionColumns(production, viewerAreas),
       },
     };
-  }, [visibleOrders]);
+  }, [visibleOrders, statuses, viewerAreas]);
+
+  // Drag & drop: soltar una tarjeta en otra columna cambia el estado del
+  // pedido. Se permite sólo hacia estados que ese rol puede fijar (mismo
+  // criterio que los botones de estado del detalle) y sólo en producción: el
+  // circuito de Diseño se avanza con sus propias acciones de autorización.
+  const myStageIds = useMemo(() => statusIdsForRoles(roles), [roles]);
+  const canMoveOrder = useCallback(
+    (order: Order, statusId: number) => {
+      if (effectiveProductionStatusId(order, viewerAreas) === statusId) return false;
+      return canManageOperations || myStageIds.includes(statusId);
+    },
+    [canManageOperations, myStageIds, viewerAreas]
+  );
+  const handleMoveOrder = useCallback(
+    (order: Order, statusId: number) => {
+      changeStatus(order, statusId);
+    },
+    [changeStatus]
+  );
 
   // Qué tableros ve este usuario. Un diseñador que además trabaja otra área ve
   // los dos; quien tiene una sola área ve sólo el suyo. Recepción/admin ven
@@ -471,11 +517,14 @@ const OrdersPage = () => {
   const worksInDesign = canManageOperations || roles.includes("diseno");
   const worksInProduction =
     canManageOperations ||
-    roles.some((r) => ["taller", "dtf", "bordado", "laser", "impresiones"].includes(r));
+    roles.some((r) => PRODUCTION_ROLES.includes(r));
   // Si un pedido en diseño llegó igual (ej. rol mixto mal configurado), el
-  // tablero se muestra antes que esconder trabajo.
+  // tablero se muestra antes que esconder trabajo. El de producción, en cambio,
+  // se muestra sólo a quien produce: desde que un pedido queda "autorizado"
+  // aparece también en producción, y a un diseñador puro eso le agregaría un
+  // tablero entero que no es suyo.
   const showDesignBoard = worksInDesign || designBoard.orders.length > 0;
-  const showProductionBoard = worksInProduction || productionBoard.orders.length > 0;
+  const showProductionBoard = worksInProduction;
   const showBothBoards = showDesignBoard && showProductionBoard;
 
   const loading = isPending || isSessionLoading;
@@ -490,7 +539,7 @@ const OrdersPage = () => {
               <>
                 Pedidos visibles para tu(s) rol(es):{" "}
                 <span className="font-medium">
-                  {roles.join(", ") || "sin rol asignado"}
+                  {formatRoleList(roles)}
                 </span>
               </>
             ) : (
@@ -642,7 +691,7 @@ const OrdersPage = () => {
         </div>
       ) : (
         <div className="space-y-10">
-          {showDesignBoard && designBoard.columns.length > 0 && (
+          {showDesignBoard && (
             <KanbanBoard
               // El título sólo aparece cuando conviven los dos tableros: con uno
               // solo sería una etiqueta redundante sobre toda la pantalla.
@@ -666,6 +715,8 @@ const OrdersPage = () => {
               }
               columns={productionBoard.columns}
               onOpenOrder={openDetail}
+              onMoveOrder={handleMoveOrder}
+              canMoveOrder={canMoveOrder}
             />
           )}
         </div>

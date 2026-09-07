@@ -1,97 +1,136 @@
 import { describe, expect, it } from "vitest";
-import { buildKanbanColumns, splitDesignAndProduction } from "./kanbanColumns";
-import type { Order } from "@/types";
+import {
+  buildDesignColumns,
+  buildProductionColumns,
+  effectiveProductionStatusId,
+  splitDesignAndProduction,
+} from "./kanbanColumns";
+import type { Order, Status } from "@/types";
 
-/**
- * Los estados del flujo de Diseño se siembran con ids que varían entre
- * entornos, así que acá se usan ids arbitrarios a propósito: lo que los
- * identifica es el NOMBRE que viene en `order.status`.
- */
-function order(id: number, statusId: number, statusName?: string): Order {
+function makeOrder(partial: Partial<Order> & { id: number }): Order {
   return {
-    id,
-    statusId,
-    description: `Pedido ${id}`,
+    statusId: 1,
+    description: "",
     creationDate: "2026-01-01T00:00:00.000Z",
-    ...(statusName ? { status: { id: statusId, name: statusName } } : {}),
+    deliveredAt: null,
+    ...partial,
   } as Order;
 }
 
-describe("buildKanbanColumns", () => {
-  it("incluye los pedidos en estados de Diseño, que no están en statusMap", () => {
-    // Regresión: armar las columnas desde `statusMap` dejaba estos pedidos
-    // fuera del tablero aunque sí aparecieran en la vista de lista.
-    const columns = buildKanbanColumns([
-      order(1, 6, "en diseño"),
-      order(2, 7, "esperando autorización"),
+const STATUSES: Status[] = [
+  { id: 1, name: "pendiente" },
+  { id: 6, name: "en diseño" },
+  { id: 7, name: "esperando autorización" },
+  { id: 8, name: "cambios solicitados" },
+  { id: 9, name: "autorizado" },
+] as Status[];
+
+describe("buildProductionColumns", () => {
+  it("muestra siempre las 5 columnas de producción y ninguna de diseño", () => {
+    const columns = buildProductionColumns([]);
+    expect(columns.map((c) => c.label)).toEqual([
+      "pendiente",
+      "en proceso",
+      "terminado",
+      "entregado",
+      "cancelado",
     ]);
-
-    const placed = columns.flatMap((col) => col.orders.map((o) => o.id));
-    expect(placed).toEqual(expect.arrayContaining([1, 2]));
   });
 
-  it("no pierde ningún pedido, sea cual sea su estado", () => {
-    const orders = [
-      order(1, 1, "pendiente"),
-      order(2, 3, "en proceso"),
-      order(3, 6, "en diseño"),
-      order(4, 9, "autorizado"),
-      order(5, 99, "estado futuro sin mapear"),
-    ];
-
-    const columns = buildKanbanColumns(orders);
-    const placed = columns.flatMap((col) => col.orders.map((o) => o.id));
-
-    expect(placed.sort()).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it("usa el nombre que trae el pedido como etiqueta de la columna", () => {
-    const columns = buildKanbanColumns([order(1, 6, "en diseño")]);
-
-    expect(columns.find((c) => c.statusId === 6)?.label).toBe("en diseño");
-  });
-
-  it("mantiene las columnas de producción aunque estén vacías", () => {
-    const columns = buildKanbanColumns([]);
-
-    // El tablero no cambia de forma según haya trabajo o no en cada etapa.
-    expect(columns.map((c) => c.statusId)).toEqual([1, 3, 4, 5, 10]);
+  it("no crea columnas para estados del circuito de diseño", () => {
+    // Regresión: sembrar el tablero con todos los estados presentes mezclaba
+    // 'en diseño' entre las columnas de producción.
+    const columns = buildProductionColumns([
+      makeOrder({ id: 1, statusId: 6, status: { id: 6, name: "en diseño" } as Status }),
+    ]);
+    expect(columns).toHaveLength(5);
     expect(columns.every((c) => c.orders.length === 0)).toBe(true);
   });
 
-  it("ordena las columnas por id de estado", () => {
-    const columns = buildKanbanColumns([order(1, 6, "en diseño")]);
-    const ids = columns.map((c) => c.statusId);
-
-    expect(ids).toEqual([...ids].sort((a, b) => a - b));
+  it("ubica un pedido autorizado en 'pendiente' del área que lo va a producir", () => {
+    const order = makeOrder({
+      id: 2,
+      statusId: 9,
+      status: { id: 9, name: "autorizado" } as Status,
+      areaTasks: [{ id: 1, orderId: 2, area: "bordado", status: "pendiente", createdAt: "" }],
+    });
+    expect(effectiveProductionStatusId(order, ["bordado"])).toBe(1);
+    const pendiente = buildProductionColumns([order], ["bordado"])[0];
+    expect(pendiente.orders.map((o) => o.id)).toEqual([2]);
   });
 
-  it("cae al id cuando el pedido no trae nombre ni está en statusMap", () => {
-    const columns = buildKanbanColumns([order(1, 77)]);
+  it("usa la tarea del área de quien mira, no la más avanzada", () => {
+    const order = makeOrder({
+      id: 3,
+      statusId: 9,
+      status: { id: 9, name: "autorizado" } as Status,
+      areaTasks: [
+        { id: 1, orderId: 3, area: "dtf", status: "terminado", createdAt: "" },
+        { id: 2, orderId: 3, area: "bordado", status: "en_proceso", createdAt: "" },
+      ],
+    });
+    expect(effectiveProductionStatusId(order, ["bordado"])).toBe(3);
+    // Sin área propia (recepción/admin) manda la MENOS avanzada: el pedido no
+    // está listo hasta que terminan todas.
+    expect(effectiveProductionStatusId(order, [])).toBe(3);
+  });
 
-    expect(columns.find((c) => c.statusId === 77)?.label).toBe("Estado 77");
+  it("entregado y cancelado ganan sobre cualquier tarea de área", () => {
+    const order = makeOrder({
+      id: 4,
+      statusId: 5,
+      areaTasks: [{ id: 1, orderId: 4, area: "dtf", status: "pendiente", createdAt: "" }],
+    });
+    expect(effectiveProductionStatusId(order, ["dtf"])).toBe(5);
+  });
+});
+
+describe("buildDesignColumns", () => {
+  it("muestra las 4 etapas del circuito de diseño más 'pendiente', en orden", () => {
+    const columns = buildDesignColumns([], STATUSES);
+    expect(columns.map((c) => c.label)).toEqual([
+      "pendiente",
+      "en diseño",
+      "esperando autorización",
+      "cambios solicitados",
+      "autorizado",
+    ]);
+    expect(columns.map((c) => c.statusId)).toEqual([1, 6, 7, 8, 9]);
+  });
+
+  it("resuelve el id desde los propios pedidos si el catálogo no cargó", () => {
+    const order = makeOrder({
+      id: 5,
+      statusId: 42,
+      status: { id: 42, name: "en diseño" } as Status,
+    });
+    const columns = buildDesignColumns([order], []);
+    const enDiseno = columns.find((c) => c.label === "en diseño");
+    expect(enDiseno?.statusId).toBe(42);
+    expect(enDiseno?.orders.map((o) => o.id)).toEqual([5]);
   });
 });
 
 describe("splitDesignAndProduction", () => {
-  it("separa los dos circuitos por nombre de estado", () => {
-    const { design, production } = splitDesignAndProduction([
-      order(1, 6, "en diseño"),
-      order(2, 7, "esperando autorización"),
-      order(3, 8, "cambios solicitados"),
-      order(4, 9, "autorizado"),
-      order(5, 3, "en proceso"),
-      order(6, 4, "terminado"),
-    ]);
-
-    expect(design.map((o) => o.id)).toEqual([1, 2, 3, 4]);
-    expect(production.map((o) => o.id)).toEqual([5, 6]);
+  it("un pedido autorizado cae en los dos circuitos", () => {
+    const order = makeOrder({
+      id: 6,
+      statusId: 9,
+      status: { id: 9, name: "autorizado" } as Status,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design.map((o) => o.id)).toEqual([6]);
+    expect(production.map((o) => o.id)).toEqual([6]);
   });
 
-  it("trata como producción un pedido sin nombre de estado", () => {
-    const { design, production } = splitDesignAndProduction([order(1, 3)]);
-
-    expect(design).toHaveLength(0);
-    expect(production).toHaveLength(1);
+  it("un pedido en diseño NO llega a producción", () => {
+    const order = makeOrder({
+      id: 7,
+      statusId: 6,
+      status: { id: 6, name: "en diseño" } as Status,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design).toHaveLength(1);
+    expect(production).toHaveLength(0);
   });
 });

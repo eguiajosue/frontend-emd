@@ -83,6 +83,13 @@ export function isCancelledStatus(statusId: number): boolean {
 export const STATUS_FLOW_ORDER: number[] = [1, 3, 4, 5];
 
 /**
+ * Columnas fijas del tablero de PRODUCCIÓN, en orden. Son los estados de
+ * `statusMap` y nada más: los 4 del circuito de Diseño viven en su propio
+ * tablero (ver `DESIGN_BOARD_STATUS_NAMES`).
+ */
+export const PRODUCTION_BOARD_STATUS_IDS: number[] = [1, 3, 4, 5, 10];
+
+/**
  * Próximo estado del flujo lineal después de `currentStatusId`, o `null` si
  * ya es el último (entregado) o el estado actual no forma parte del flujo
  * conocido (ej. un estado del flujo de diseño).
@@ -133,3 +140,18 @@ export function isOrderInDesignStatus(
 ): boolean {
   return (statusName ?? "").toLowerCase() === target;
 }
+
+/**
+ * Columnas fijas del tablero de DISEÑO, en orden de avance. Por NOMBRE, no por
+ * id, porque el backend siembra estos estados con ids que varían entre
+ * entornos. "pendiente" abre el tablero (el pedido llegó de Recepción y todavía
+ * nadie lo tomó) y "autorizado" lo cierra (el cliente aprobó; el trabajo pasa
+ * al área de producción).
+ */
+export const DESIGN_BOARD_STATUS_NAMES: string[] = [
+  "pendiente",
+  DESIGN_FLOW_STATUS_NAMES.EN_DISENO,
+  DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION,
+  DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS,
+  DESIGN_FLOW_STATUS_NAMES.AUTORIZADO,
+];

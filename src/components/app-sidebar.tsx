@@ -26,7 +26,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "./ui/sidebar";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { logout } from "@/lib/logout";
 import { Separator } from "./ui/separator";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -443,7 +444,7 @@ export function AppSidebar() {
         <Button
           variant="destructive"
           className={cn(collapsed ? "mx-auto size-8 p-0" : "w-full")}
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={() => void logout()}
           title={collapsed ? "Logout" : undefined}
         >
           <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />

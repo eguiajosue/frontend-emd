@@ -5,6 +5,7 @@ import { Users2 } from "lucide-react";
 import { RowActions } from "@/components/crud/RowActions";
 import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
 import type { User } from "@/types";
+import { getRoleLabel } from "@/lib/roles";
 
 export const getUserColumns = ({
   onEdit,
@@ -39,7 +40,7 @@ export const getUserColumns = ({
               key={r.id}
               className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
             >
-              {r.name}
+              {getRoleLabel(r.name)}
             </span>
           ))
         ) : (

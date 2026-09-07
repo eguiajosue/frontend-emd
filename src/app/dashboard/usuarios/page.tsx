@@ -13,6 +13,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
 import { getUserColumns } from "@/app/dashboard/users/components/columns";
 import { ADMIN_ROLES as ADMIN_ROLE_NAMES } from "@/lib/roleTaskMapping";
+import { getRoleLabel } from "@/lib/roles";
 
 // Debe coincidir exactamente con la política de contraseñas del backend
 // (POST/PATCH /users): mínimo 8 caracteres, al menos una mayúscula y un número.
@@ -110,7 +111,7 @@ const UsuariosPage = () => {
       name: "username",
       label: "Nombre de usuario",
       showIf: (values: EntityValues) => Boolean(values.isSharedAccount),
-      helpText: "ej. taller, dtf, diseno — usada por todo el equipo del área para iniciar sesión.",
+      helpText: "ej. taller, dtf, diseño — usada por todo el equipo del área para iniciar sesión.",
     },
     {
       name: "firstName",
@@ -132,7 +133,7 @@ const UsuariosPage = () => {
       name: "roleIds",
       label: "Roles",
       type: "multiselect",
-      options: selectableRoles.map((r) => ({ value: r.id, label: r.name })),
+      options: selectableRoles.map((r) => ({ value: r.id, label: getRoleLabel(r.name) })),
     },
   ];
 

@@ -21,6 +21,10 @@ export const ENDPOINTS = {
   orderHistory: "orders/history",
   notifications: "notifications",
   chat: "chat",
+  // Catálogo de estados (`GET /status`): los 4 del circuito de Diseño se
+  // siembran con ids que cambian entre entornos, así que el tablero los
+  // resuelve por nombre desde acá en vez de hardcodearlos.
+  statuses: "status",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

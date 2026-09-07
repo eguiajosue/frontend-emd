@@ -1,4 +1,4 @@
-import { signOut } from "next-auth/react";
+import { logout } from "@/lib/logout";
 
 /**
  * Centralized fetch wrapper for all authenticated backend calls.
@@ -15,15 +15,7 @@ let handlingExpiredSession = false;
 async function handleUnauthorized() {
   if (handlingExpiredSession) return;
   handlingExpiredSession = true;
-  try {
-    await signOut({ redirect: false });
-  } finally {
-    if (typeof window !== "undefined") {
-      window.location.href = `/login?message=${encodeURIComponent(
-        SESSION_EXPIRED_MESSAGE
-      )}`;
-    }
-  }
+  await logout(SESSION_EXPIRED_MESSAGE);
 }
 
 export class AuthFetchError extends Error {

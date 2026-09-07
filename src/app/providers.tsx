@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
-import { SessionProvider, signOut, useSession } from "next-auth/react";
+import { SessionProvider, useSession } from "next-auth/react";
+import { logout } from "@/lib/logout";
 import { ThemeProvider, useTheme } from "next-themes";
 import { MotionConfig } from "framer-motion";
 import {
@@ -81,7 +82,7 @@ function SessionErrorWatcher() {
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
       toast.error("La sesión expiró. Iniciar sesión nuevamente.");
-      signOut({ callbackUrl: "/login" });
+      void logout();
     }
   }, [session?.error]);
 
