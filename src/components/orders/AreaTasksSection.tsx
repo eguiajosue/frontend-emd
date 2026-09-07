@@ -26,9 +26,14 @@ import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { getAreaIcon, getAreaLabel, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import {
+  DESIGN_FLOW_STATUS_NAMES,
+  isDesignFlowStatusName,
+  isOrderInDesignStatus,
+} from "@/lib/orderStatus";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { AreaTaskStatus, OrderAreaTask } from "@/types";
+import type { AreaTaskStatus, Order, OrderAreaTask } from "@/types";
 
 /** Roles que pueden agregar/quitar áreas y reasignar libremente. */
 const MANAGER_ROLES = ["recepcion", "admin", "superuser"];
@@ -91,7 +96,7 @@ function taskTiming(task: OrderAreaTask): string | null {
 }
 
 interface AreaTasksSectionProps {
-  orderId: number;
+  order: Order;
 }
 
 /**
@@ -101,7 +106,8 @@ interface AreaTasksSectionProps {
  * todas quedan en "Terminado" el backend deja el pedido listo para entregar
  * (la entrega la confirma Recepción). Ver WORKFLOW.md §3 en el backend.
  */
-export function AreaTasksSection({ orderId }: AreaTasksSectionProps) {
+export function AreaTasksSection({ order }: AreaTasksSectionProps) {
+  const orderId = order.id;
   const { roles, session } = usePermissions();
   const { staggerItemVariants } = useMotionPreset();
   const {
@@ -185,19 +191,32 @@ export function AreaTasksSection({ orderId }: AreaTasksSectionProps) {
   if (isUnavailable) return null;
 
   const allDone = tasks.length > 0 && tasks.every((t) => t.status === "terminado");
+  // Mientras el pedido sigue en el circuito de diseño, esta sección es la que
+  // DEFINE a dónde va después, no la que muestra trabajo en curso. Es el único
+  // lugar donde se elige: antes la misma pregunta estaba también en "Proceso de
+  // diseño" y otra vez al confirmar la autorización, escribiendo campos
+  // distintos.
+  const awaitingAuthorization =
+    !!order.requiresDesign &&
+    isDesignFlowStatusName(order.status?.name) &&
+    !isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
+
+  const subtitle = awaitingAuthorization
+    ? tasks.length === 0
+      ? "Definí acá a qué área pasa el pedido cuando el cliente autorice."
+      : "El pedido pasa a estas áreas en cuanto el cliente autorice."
+    : tasks.length === 0
+      ? "Todavía no hay áreas asignadas a este pedido."
+      : allDone
+        ? "Todas las áreas terminaron: el pedido está listo para entregar."
+        : "Cada área avanza por su cuenta, sin esperar a las demás.";
 
   return (
     <section className="space-y-3 rounded-2xl border bg-muted/20 p-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-heading text-sm font-semibold">Áreas de producción</h3>
-          <p className="text-xs text-muted-foreground">
-            {tasks.length === 0
-              ? "Todavía no hay áreas asignadas a este pedido."
-              : allDone
-              ? "Todas las áreas terminaron: el pedido está listo para entregar."
-              : "Cada área avanza por su cuenta, sin esperar a las demás."}
-          </p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
         </div>
         {allDone && (
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">

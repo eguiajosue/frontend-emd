@@ -4,7 +4,11 @@ import {
   isDeliveredStatus,
   isCancelledStatus,
   isFinishedStatus,
+  isDesignFlowStatusName,
 } from "@/lib/orderStatus";
+
+/** Estado inicial: el pedido todavía no entró a ningún circuito. */
+const PENDING_STATUS_ID = 1;
 import { getAreaLabel } from "@/lib/areas";
 import { getAssignedUserName } from "@/lib/format";
 import type { Order, OrderAreaTask } from "@/types";
@@ -116,19 +120,29 @@ export function buildOrderHandoff(
 
   const productionDone = tasks.length > 0 && tasks.every((t) => t.status === "terminado");
   const productionStarted = tasks.some((t) => t.status !== "pendiente");
-  // El pedido ya dejó atrás el circuito de diseño. Sin esto, un pedido
-  // "terminado" con diseño volvía a marcar Recepción como etapa actual y
-  // proponía "pasarlo a Diseño", con dos etapas encendidas a la vez.
+  // El pedido ya dejó atrás el circuito de diseño: o está autorizado, o su
+  // estado ya no es ninguno de los cuatro de diseño ni el "pendiente" inicial.
+  //
+  // NO se puede deducir de que existan tareas de área: Recepción define las
+  // áreas destino mientras el pedido todavía está en diseño (es el único lugar
+  // donde se eligen), así que un pedido en diseño puede tener tareas ya
+  // planificadas sin haber salido del circuito.
   const pastDesign =
-    authorized || delivered || tasks.length > 0 || isFinishedStatus(order.statusId);
+    authorized ||
+    delivered ||
+    isFinishedStatus(order.statusId) ||
+    (!isDesignFlowStatusName(statusName) && order.statusId !== PENDING_STATUS_ID);
   // Con diseño pero sin ninguna ronda todavía: sigue en manos de Recepción.
   const beforeDesign = !!order.requiresDesign && !inDesign && !waitingAuth && !pastDesign;
 
   // El destino ya está elegido pero el trabajo no puede empezar hasta que el
   // cliente autorice. Distinto de "todavía no le toca": el área ya sabe que le
   // va a caer, y decirlo evita que crea que se traspapeló.
+  const plannedAreas = tasks.map((task) => task.area);
   const productionBlocked =
-    !!order.requiresDesign && !pastDesign && !!order.productionArea;
+    !!order.requiresDesign &&
+    !pastDesign &&
+    (plannedAreas.length > 0 || !!order.productionArea);
 
   // Orden de la cadena, y en qué eslabón está el pedido AHORA. Se calcula una
   // sola vez y los estados se derivan de la posición: así nunca hay dos etapas
@@ -166,8 +180,13 @@ export function buildOrderHandoff(
         if (waitingAuth) return "esperando respuesta del cliente";
         return pastDesign ? "el cliente autorizó" : undefined;
       case "produccion":
-        if (productionBlocked)
-          return `${getAreaLabel(order.productionArea)}: no empieza hasta la autorización`;
+        if (productionBlocked) {
+          const areas =
+            plannedAreas.length > 0
+              ? plannedAreas.map(getAreaLabel).join(", ")
+              : getAreaLabel(order.productionArea);
+          return `${areas}: no empieza hasta la autorización`;
+        }
         if (stateFor("produccion") === "pending") return undefined;
         return productionDetail(tasks);
       case "entrega":

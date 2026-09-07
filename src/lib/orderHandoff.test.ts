@@ -60,6 +60,20 @@ describe("buildOrderHandoff", () => {
     expect(handoff.nextStep).toContain("entrega");
   });
 
+  it("planificar las áreas durante diseño no saca al pedido del circuito", () => {
+    // Regresión: "Áreas de producción" es el único lugar donde se elige el
+    // destino, así que Recepción crea las tareas MIENTRAS el pedido sigue en
+    // diseño. Deducir "ya salió de diseño" de que existan tareas hacía que la
+    // tira saltara a Producción con el montaje todavía sin autorizar.
+    const handoff = buildOrderHandoff(order(6, "en diseño"), [
+      task(1, "bordado", "pendiente"),
+    ]);
+    expect(handoff.current.key).toBe("diseno");
+    const produccion = handoff.stages.find((s) => s.key === "produccion");
+    expect(produccion?.state).toBe("blocked");
+    expect(produccion?.detail).toContain("Bordado");
+  });
+
   it("marca Producción bloqueada sólo si el área destino ya está definida", () => {
     const sinArea = buildOrderHandoff(order(6, "en diseño"), []);
     expect(sinArea.stages.find((s) => s.key === "produccion")?.state).toBe("pending");

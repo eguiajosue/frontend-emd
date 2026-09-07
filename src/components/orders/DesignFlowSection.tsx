@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useMotionPreset, staggerContainerVariants } from "@/lib/motion";
 import { useDesignRevisions, useDesignRevisionFile } from "@/hooks/useDesignRevisions";
-import { useEntityMutations } from "@/hooks/useEntity";
+import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
@@ -50,7 +50,7 @@ import {
   X,
   ZoomIn,
 } from "lucide-react";
-import type { Order, UpdateOrderPayload } from "@/types";
+import type { Order } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
 
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -72,10 +72,12 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
     approveRevision,
     isApproving,
   } = useDesignRevisions(order.id);
-  const { update: updateOrder, isMutating: isSavingArea } = useEntityMutations<
-    Order,
-    UpdateOrderPayload
-  >("orders");
+  // A qué áreas va el pedido: las tareas de área son la fuente de verdad
+  // (misma queryKey que "Áreas de producción", que vive en el mismo detalle,
+  // así que React Query dedupe). Antes esto se preguntaba TRES veces en la
+  // misma tarjeta —acá, en "Áreas de producción" y otra vez al confirmar la
+  // autorización—, y las dos primeras escribían campos distintos.
+  const { tasks: areaTasks } = useAreaTasks(order.id);
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -86,7 +88,6 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
 
   const canDesign = isAdmin || roles.includes("diseno");
   const canReception = isAdmin || roles.includes("recepcion");
-  const canEditProductionArea = canDesign || canReception;
 
   const currentStatus = (order.status?.name ?? "").toLowerCase();
   const isDesignTurn =
@@ -96,15 +97,8 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
   const isAuthorized = currentStatus === DESIGN_FLOW_STATUS_NAMES.AUTORIZADO;
 
   const latestRevision = revisions[revisions.length - 1] ?? null;
-
-  const handleProductionAreaChange = async (value: string) => {
-    try {
-      await updateOrder(order.id, { productionArea: value || null });
-      toast.success("Área de producción actualizada");
-    } catch {
-      // El toast de error lo dispara el manejo global de mutaciones.
-    }
-  };
+  /** Áreas ya planificadas: si las hay, autorizar no vuelve a preguntarlas. */
+  const plannedAreas = areaTasks.map((task) => task.area);
 
   return (
     <div className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
@@ -112,36 +106,6 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
         <Palette className="h-4 w-4 text-primary" />
         <h4 className="font-semibold">Proceso de diseño</h4>
       </div>
-
-      {/* Área de producción destino: distinta del área ACTUAL (order.area, arriba). */}
-      <FormField
-        label="Área de producción (destino)"
-        hint={
-          canEditProductionArea
-            ? "A dónde va el pedido cuando el cliente autorice. Distinta del área actual, que hoy es Diseño."
-            : undefined
-        }
-      >
-        {canEditProductionArea ? (
-          <select
-            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none disabled:opacity-60"
-            value={order.productionArea ?? ""}
-            disabled={isSavingArea}
-            onChange={(e) => handleProductionAreaChange(e.target.value)}
-          >
-            <option value="">Sin definir todavía</option>
-            {PRODUCTION_AREA_OPTIONS.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {order.productionArea ? getAreaLabel(order.productionArea) : "Todavía sin definir"}
-          </p>
-        )}
-      </FormField>
 
       {/* Timeline de rondas */}
       {isLoading ? (
@@ -267,7 +231,7 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           open={approveOpen}
           onClose={() => setApproveOpen(false)}
           isSubmitting={isApproving}
-          needsProductionArea={!order.productionArea}
+          plannedAreas={plannedAreas}
           onSubmit={async (productionArea) => {
             const result = await approveRevision({
               revisionId: latestRevision.id,
@@ -724,17 +688,20 @@ function ApproveDialog({
   onClose,
   onSubmit,
   isSubmitting,
-  needsProductionArea,
+  plannedAreas,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (productionArea?: string) => Promise<void>;
   isSubmitting: boolean;
-  needsProductionArea: boolean;
+  /** Áreas ya definidas en "Áreas de producción". Vacío = falta elegirla acá. */
+  plannedAreas: string[];
 }) {
   const { formButtonMotion } = useMotionPreset();
   const [productionArea, setProductionArea] = useState<string>("");
   const [error, setError] = useState("");
+
+  const needsProductionArea = plannedAreas.length === 0;
 
   const handleSubmit = async () => {
     if (needsProductionArea && !productionArea) {
@@ -756,8 +723,17 @@ function ApproveDialog({
           <p className="text-sm text-muted-foreground">
             El pedido pasa a producción con este montaje. Esta acción no se puede deshacer.
           </p>
-          {needsProductionArea && (
-            <FormField label="Área de producción" required error={error}>
+          {plannedAreas.length > 0 ? (
+            // Ya está decidido en "Áreas de producción": acá se confirma, no se
+            // vuelve a preguntar.
+            <p className="text-sm">
+              <span className="text-muted-foreground">Pasa a </span>
+              <span className="font-medium">
+                {plannedAreas.map(getAreaLabel).join(", ")}
+              </span>
+            </p>
+          ) : (
+            <FormField label="¿A qué área pasa?" required error={error}>
               <select
                 className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                 value={productionArea}

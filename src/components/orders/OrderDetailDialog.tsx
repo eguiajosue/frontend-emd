@@ -394,9 +394,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
 
                   <DesignFlowSection order={order} />
 
-                  {/* Producción por área: sólo tiene sentido una vez que el
-                      pedido salió de Diseño (o si nunca pasó por ahí). */}
-                  <AreaTasksSection orderId={order.id} />
+                  {/* Único lugar donde se decide a qué áreas va el pedido:
+                      mientras está en diseño define el destino, después muestra
+                      el avance de cada una. */}
+                  <AreaTasksSection order={order} />
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>
