@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -36,7 +36,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { Switch } from "@/components/ui/switch";
-import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import type {
@@ -106,6 +106,16 @@ const orderSchema = z
         message: "El área es requerida",
       });
     }
+    // Con montaje el pedido arranca en Diseño y necesita responsable sí o sí
+    // (ver WORKFLOW.md §1.a). "Cualquier diseñador" es una opción válida: se
+    // resuelve a la cuenta compartida del área, no a "sin asignar".
+    if (data.requiresDesign && !data.assignedUserId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["assignedUserId"],
+        message: "Elegir un diseñador (o 'Cualquier diseñador')",
+      });
+    }
   });
 
 /** Labels legibles de cada campo, usados en el resumen de errores. */
@@ -113,7 +123,11 @@ const FIELD_LABELS: Record<string, string> = {
   clientId: "Cliente",
   area: "Área",
   description: "Descripción",
+  assignedUserId: "Asignación",
 };
+
+/** Rol del área de Diseño; los pedidos con montaje arrancan siempre acá. */
+const DESIGN_ROLE = "diseno";
 
 interface OrderProductRow {
   customName?: string;
@@ -240,12 +254,45 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     );
   };
 
-  // Mejora de UX: si hay usuarios con el rol del área elegida, el selector
-  // "Asignar a" se filtra a ellos; si no, se muestran todos los usuarios igual.
-  const usersForArea = area
-    ? users.filter((u) => u.roles?.some((r) => r.name === area))
-    : users;
-  const assignableUsers = usersForArea.length > 0 ? usersForArea : users;
+  // Área que decide a quién se le puede asignar el pedido (ver WORKFLOW.md §1):
+  // con montaje siempre es Diseño, sin montaje es el área destino elegida.
+  const assignmentArea = requiresDesign ? DESIGN_ROLE : area;
+
+  const usersInAssignmentArea = useMemo(
+    () =>
+      assignmentArea
+        ? users.filter((u) => u.roles?.some((r) => r.name === assignmentArea))
+        : [],
+    [users, assignmentArea]
+  );
+
+  /** Cuenta compartida del área ("Área: Diseño"), usada como "cualquiera del área". */
+  const sharedAccountForArea = useMemo(
+    () => usersInAssignmentArea.find((u) => u.isSharedAccount),
+    [usersInAssignmentArea]
+  );
+
+  const individualsInArea = useMemo(
+    () => usersInAssignmentArea.filter((u) => !u.isSharedAccount),
+    [usersInAssignmentArea]
+  );
+
+  // Con montaje el selector muestra SOLO gente de Diseño; sin montaje, sólo
+  // gente del área destino. Si el área todavía no tiene usuarios cargados se
+  // cae a la lista completa para no dejar el formulario sin salida.
+  const assignableUsers =
+    usersInAssignmentArea.length > 0 ? usersInAssignmentArea : assignmentArea ? [] : users;
+
+  // Al cambiar el área de asignación, una selección previa de otra área deja de
+  // ser válida: se limpia y se propone la cuenta compartida del área nueva.
+  useEffect(() => {
+    if (!assignmentArea) return;
+    const stillValid =
+      assignedUserId !== undefined &&
+      usersInAssignmentArea.some((u) => u.id === assignedUserId);
+    if (stillValid) return;
+    setAssignedUserId(sharedAccountForArea?.id);
+  }, [assignmentArea, usersInAssignmentArea, sharedAccountForArea, assignedUserId]);
 
   const currentFormData = () => ({
     clientId,
@@ -469,26 +516,67 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                 </FormField>
 
                 <FormField
-                  label="Asignar a (opcional)"
+                  label={requiresDesign ? "Asignar a diseñador" : "Asignar a"}
                   icon={Users2}
-                  hint="Quién va a encargarse. Se puede cambiar después."
+                  required={requiresDesign}
+                  error={errors.assignedUserId}
+                  hint={
+                    requiresDesign
+                      ? "El pedido arranca en Diseño. Se puede dejar en \"Cualquier diseñador\" para que lo tome quien esté libre."
+                      : area
+                      ? "Por defecto queda a nombre del área. Se puede nominar a una persona concreta."
+                      : "Elegir primero el área destino."
+                  }
                 >
                   <select
+                    ref={(el) => {
+                      fieldRefs.current.assignedUserId = el;
+                    }}
                     className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={assignedUserId ?? ""}
+                    disabled={!assignmentArea}
                     onChange={(e) =>
                       setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
                     }
+                    onBlur={() => validateFieldOnBlur("assignedUserId")}
                   >
-                    <option value="">Sin asignar</option>
-                    {assignableUsers.map((u) => (
+                    {/* Sin montaje la asignación sigue siendo opcional. */}
+                    {!requiresDesign && <option value="">Sin asignar</option>}
+                    {requiresDesign && !sharedAccountForArea && (
+                      <option value="">Elegir diseñador...</option>
+                    )}
+                    {sharedAccountForArea && (
+                      <option value={sharedAccountForArea.id}>
+                        {requiresDesign
+                          ? "Cualquier diseñador (área Diseño)"
+                          : `Área: ${
+                              [sharedAccountForArea.firstName, sharedAccountForArea.lastName]
+                                .filter(Boolean)
+                                .join(" ") || sharedAccountForArea.username
+                            }`}
+                      </option>
+                    )}
+                    {individualsInArea.map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.isSharedAccount
-                          ? `Área: ${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}`
-                          : [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
+                        {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
                       </option>
                     ))}
+                    {/* Fallback: área sin usuarios con ese rol cargados. */}
+                    {assignmentArea &&
+                      usersInAssignmentArea.length === 0 &&
+                      assignableUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
+                        </option>
+                      ))}
                   </select>
+                  {assignmentArea && usersInAssignmentArea.length === 0 && (
+                    <p className="mt-1 text-xs text-destructive">
+                      No hay usuarios con el rol{" "}
+                      {requiresDesign ? "Diseño" : getAreaLabel(assignmentArea)}. Dar de alta
+                      uno para poder asignar el pedido.
+                    </p>
+                  )}
                 </FormField>
               </div>
 
