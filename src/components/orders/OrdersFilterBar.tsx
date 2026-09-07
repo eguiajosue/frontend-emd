@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { statusOptions, statusLabel } from "@/lib/orderStatus";
 import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { ownProductionAreas } from "@/lib/orderScreen";
 import { getAssignedUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
@@ -75,7 +76,16 @@ const SELECT_CLASS =
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
   const { isAdmin, roles } = usePermissions();
-  const canFilterByArea = isAdmin || roles.includes("recepcion");
+  const isManager = isAdmin || roles.includes("recepcion");
+  // Quien trabaja más de un área necesita poder mirar una sola: es lo que daba
+  // el modo "Por área" de la pantalla "Mi trabajo", que se fusionó con esta.
+  // Sólo ofrece SUS áreas — filtrar por una ajena no mostraría nada, porque el
+  // backend ya no se las manda.
+  const ownAreas = ownProductionAreas(roles);
+  const areaChoices = isManager
+    ? AREA_OPTIONS
+    : AREA_OPTIONS.filter((a) => ownAreas.includes(a.value));
+  const canFilterByArea = isManager || ownAreas.length > 1;
 
   const hasActiveFilters =
     filters.clientId !== undefined ||
@@ -235,7 +245,7 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
                 }
               >
                 <option value="">Todas</option>
-                {AREA_OPTIONS.map((a) => (
+                {areaChoices.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
                   </option>

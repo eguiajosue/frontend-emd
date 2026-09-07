@@ -23,7 +23,12 @@ import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
-import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
+import {
+  statusMap,
+  statusOptions,
+  isDeliveredStatus,
+  isFinishedStatus,
+} from "@/lib/orderStatus";
 import {
   buildDesignColumns,
   buildProductionColumns,
@@ -69,7 +74,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatRoleList } from "@/lib/roles";
+import { ordersScreenCopy } from "@/lib/orderScreen";
 import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
@@ -583,25 +588,36 @@ const OrdersPage = () => {
       ? "diseno"
       : "produccion";
 
+  // Pendientes propios: todo lo que este usuario ve y todavía no está
+  // terminado ni entregado. Es la cuenta que traía "Mi trabajo".
+  const pendingCount = useMemo(
+    () =>
+      visibleOrders.filter(
+        (order) => !isFinishedStatus(effectiveProductionStatusId(order, viewerAreas))
+      ).length,
+    [visibleOrders, viewerAreas]
+  );
+
+  const screenCopy = useMemo(
+    () =>
+      ordersScreenCopy(roles, {
+        canManageOperations,
+        pendingCount: canManageOperations ? undefined : pendingCount,
+      }),
+    [roles, canManageOperations, pendingCount]
+  );
+
   const loading = isPending || isSessionLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Title title="Pedidos" />
-          <p className="text-muted-foreground">
-            {isOperationalRole ? (
-              <>
-                Pedidos visibles para tu(s) rol(es):{" "}
-                <span className="font-medium">
-                  {formatRoleList(roles)}
-                </span>
-              </>
-            ) : (
-              "Todos los pedidos de la empresa."
-            )}
-          </p>
+          {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
+              quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
+              Antes eran dos pantallas distintas para el mismo trabajo. */}
+          <Title title={screenCopy.title} />
+          <p className="text-muted-foreground">{screenCopy.description}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

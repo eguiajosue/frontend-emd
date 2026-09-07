@@ -11,7 +11,6 @@ import {
   History,
   Bell,
   MessagesSquare,
-  ClipboardList,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -36,6 +35,7 @@ import { BugReportDialog } from "./BugReportDialog";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
+import { ordersScreenTitle } from "@/lib/orderScreen";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
@@ -46,15 +46,11 @@ const OPERATIONAL_MENU = [
   {
     groupLabel: "Producción",
     items: [
-      // Bandeja propia: sólo las tareas de las áreas del usuario, etiquetadas
-      // con la suya (ver WORKFLOW.md §4 en el backend).
+      // Una sola pantalla de trabajo. "Mi trabajo" mostraba lo mismo que
+      // "Pedidos" con otra forma; el nombre cambia según el rol
+      // (`ordersScreenTitle`), no la pantalla.
       {
-        title: "Mi trabajo",
-        url: "/dashboard/mi-trabajo",
-        icon: ClipboardList,
-      },
-      {
-        title: "Pedidos",
+        title: "Tareas asignadas",
         url: "/dashboard/orders",
         icon: Package,
       },
@@ -139,11 +135,6 @@ export function AppSidebar() {
   const { count: notificationsUnread } = useUnreadNotificationsCount();
   const { reduced: reducedMotion } = useMotionPreset();
 
-  // Áreas de producción reales (Diseño no es una: es la fase previa).
-  const hasProductionArea = userRoles.some((r) =>
-    ["taller", "dtf", "bordado", "laser", "impresiones", "recepcion", "admin", "superuser"].includes(r)
-  );
-
   const menuItems = [
     {
       groupLabel: "Administración",
@@ -166,24 +157,9 @@ export function AppSidebar() {
       groupLabel: "Pedidos",
       items: [
         {
-          title: "Mi trabajo",
-          url: "/dashboard/mi-trabajo",
-          icon: ClipboardList,
-          // Bandeja de producción: no aplica a Diseño, que tiene su propio
-          // circuito de montajes (WORKFLOW.md §4).
-          roles: [
-            "admin",
-            "superuser",
-            "recepcion",
-            "taller",
-            "dtf",
-            "bordado",
-            "laser",
-            "impresiones",
-          ],
-        },
-        {
-          title: "Pedidos",
+          // "Pedidos" para quien administra, "Tareas asignadas" para quien
+          // sólo ejecuta: es la misma pantalla, no significa lo mismo.
+          title: ordersScreenTitle(userRoles),
           url: "/dashboard/orders",
           icon: Package,
           roles: [
@@ -318,10 +294,6 @@ export function AppSidebar() {
               {group.items.map((item) =>
                 // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
                 // completo se filtra por rol, con "admin" viendo todo.
-                // "Mi trabajo" es la bandeja de producción: no tiene sentido
-                // para quien no trabaja ninguna área de producción (ej. un
-                // diseñador puro, que tiene su propio circuito de montajes).
-                (item.url !== "/dashboard/mi-trabajo" || hasProductionArea) &&
                 (operationalOnly ||
                   userRoles.includes("admin") ||
                   userRoles.some((r) =>
