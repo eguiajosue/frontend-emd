@@ -40,7 +40,8 @@ const OrderDetailPage = () => {
     isError,
     refetch,
   } = useOrder(Number.isNaN(orderId) ? undefined : orderId);
-  const { histories } = useOrderHistory(orderId);
+  const canSeeHistory = isAdmin || roles.includes("recepcion");
+  const { histories } = useOrderHistory(orderId, { enabled: canSeeHistory });
   const { update } = useEntityMutations<unknown, UpdateOrderPayload>("orders");
   const { changeStatus, isChangingStatus } = useChangeOrderStatus();
 
@@ -68,7 +69,7 @@ const OrderDetailPage = () => {
     }
   }, [order]);
 
-  const canEdit = isAdmin || roles.includes("recepcion");
+  const canEdit = canSeeHistory;
   // Los roles operativos (dtf, bordado, taller, etc.) pueden avanzar el estado del
   // pedido cuando este se encuentra en la etapa que les corresponde, aunque no puedan
   // editar los detalles generales del pedido.
@@ -226,27 +227,29 @@ const OrderDetailPage = () => {
               onChange={handleStatusChange}
             />
 
-            <div className="pt-4">
-              <h3 className="font-semibold mb-2">Historial de Estados</h3>
-              {histories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Sin historial aún.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {histories.map((h) => (
-                    <li key={h.id} className="border-l-2 pl-3">
-                      <span className="flex flex-wrap items-center gap-1 font-medium">
-                        <StatusBadge statusId={h.previousStatusId} /> →{" "}
-                        <StatusBadge statusId={h.newStatusId} />
-                      </span>
-                      <br />
-                      <span className="text-muted-foreground">
-                        {formatDateTime(h.changeDate)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+            {canSeeHistory && (
+              <div className="pt-4">
+                <h3 className="font-semibold mb-2">Historial de Estados</h3>
+                {histories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sin historial aún.</p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {histories.map((h) => (
+                      <li key={h.id} className="border-l-2 pl-3">
+                        <span className="flex flex-wrap items-center gap-1 font-medium">
+                          <StatusBadge statusId={h.previousStatusId} /> →{" "}
+                          <StatusBadge statusId={h.newStatusId} />
+                        </span>
+                        <br />
+                        <span className="text-muted-foreground">
+                          {formatDateTime(h.changeDate)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -22,8 +22,8 @@ export function useOrder(
   return useEntityDetail<Order>("orders", id, options);
 }
 
-export function useOrderHistories() {
-  return useEntityList<OrderHistory>("orderHistories");
+export function useOrderHistories(options?: { enabled?: boolean }) {
+  return useEntityList<OrderHistory>("orderHistories", { enabled: options?.enabled });
 }
 
 /**
@@ -54,8 +54,8 @@ export function useOrderHistoryList(page: number, limit = 20) {
 }
 
 /** Historial de un pedido puntual, ordenado del cambio más reciente al más viejo. */
-export function useOrderHistory(orderId: number) {
-  const query = useOrderHistories();
+export function useOrderHistory(orderId: number, options?: { enabled?: boolean }) {
+  const query = useOrderHistories({ enabled: options?.enabled });
   const histories = useMemo(
     () =>
       query.data
@@ -194,9 +194,9 @@ function getNoteErrorMessage(error: unknown): string {
  * Historial de ediciones de un pedido (`GET /orders/:id/audit-log`).
  * Endpoint nuevo: 404 defensivo mientras no esté desplegado.
  */
-export function useOrderAuditLog(orderId: number | null) {
+export function useOrderAuditLog(orderId: number | null, options?: { enabled?: boolean }) {
   const token = useAuthToken();
-  const enabled = Boolean(token) && orderId !== null;
+  const enabled = Boolean(token) && orderId !== null && (options?.enabled ?? true);
 
   const query = useQuery<OrderAuditLogEntry[]>({
     queryKey: ["orderAuditLog", orderId],

@@ -71,7 +71,12 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const { data: order, isPending } = useOrder(orderId ?? undefined, {
     enabled: open,
   });
-  const { histories } = useOrderHistory(orderId ?? -1);
+  const { roles, isAdmin } = usePermissions();
+  // Historial de estados e "Historial de cambios" (audit log) son sólo para
+  // quien gestiona pedidos (admin/superuser/recepcion) — los roles operativos
+  // no los necesitan ni deben pedir esos endpoints.
+  const canSeeHistory = isAdmin || roles.includes("recepcion");
+  const { histories } = useOrderHistory(orderId ?? -1, { enabled: open && canSeeHistory });
   const { data: users } = useEntityList<User>("users", { enabled: open });
   const {
     notes,
@@ -84,7 +89,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     entries: auditEntries,
     isLoading: isLoadingAudit,
     isUnavailable: auditUnavailable,
-  } = useOrderAuditLog(open ? orderId : null);
+  } = useOrderAuditLog(open ? orderId : null, { enabled: canSeeHistory });
   // Una oración en español por campo cambiado (ver `@/lib/orderAuditLog`).
   const auditLines = useMemo(
     () => auditEntries.flatMap((entry) => buildAuditLines(entry)),
@@ -95,13 +100,12 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     "orders"
   );
   const { changeStatus, isChangingStatus } = useChangeOrderStatus();
-  const { roles, isAdmin } = usePermissions();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const { formButtonMotion } = useMotionPreset();
 
   // recepcion/admin pueden editar los campos generales del pedido desde acá mismo;
   // los roles operativos sólo pueden avanzar el estado (si el pedido está en su etapa).
-  const canEdit = isAdmin || roles.includes("recepcion");
+  const canEdit = canSeeHistory;
   const myStageIds = statusIdsForRoles(roles);
   // Mientras el pedido está "trabado" en un estado del flujo de diseño (en
   // diseño / esperando autorización / cambios solicitados — todavía no
@@ -396,28 +400,30 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     </div>
                   )}
 
-                  <div>
-                    <h4 className="mb-2 font-semibold">Historial de Estados</h4>
-                    {histories.length === 0 ? (
-                      <p className="text-muted-foreground">
-                        Recién creado, todavía sin cambios de estado.
-                      </p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {histories.map((h) => (
-                          <li key={h.id} className="border-l-2 pl-3">
-                            <span className="flex flex-wrap items-center gap-1 font-medium">
-                              <StatusBadge statusId={h.previousStatusId} /> →{" "}
-                              <StatusBadge statusId={h.newStatusId} />
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateTime(h.changeDate)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                  {canSeeHistory && (
+                    <div>
+                      <h4 className="mb-2 font-semibold">Historial de Estados</h4>
+                      {histories.length === 0 ? (
+                        <p className="text-muted-foreground">
+                          Recién creado, todavía sin cambios de estado.
+                        </p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {histories.map((h) => (
+                            <li key={h.id} className="border-l-2 pl-3">
+                              <span className="flex flex-wrap items-center gap-1 font-medium">
+                                <StatusBadge statusId={h.previousStatusId} /> →{" "}
+                                <StatusBadge statusId={h.newStatusId} />
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatDateTime(h.changeDate)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <h4 className="mb-2 font-semibold">Notas internas</h4>
@@ -476,53 +482,55 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     )}
                   </div>
 
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value="audit-log">
-                      <AccordionTrigger className="font-semibold">
-                        Historial de cambios
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        {isLoadingAudit ? (
-                          <div className="space-y-2">
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                          </div>
-                        ) : auditUnavailable ? (
-                          <p className="text-muted-foreground">
-                            El historial de cambios todavía no está disponible.
-                          </p>
-                        ) : auditLines.length === 0 ? (
-                          <p className="text-muted-foreground">
-                            Sin cambios registrados: el pedido está tal cual se creó.
-                          </p>
-                        ) : (
-                          <ul className="space-y-4">
-                            {auditLines.map((line) => (
-                              <li key={line.key} className="flex items-start gap-3">
-                                <Avatar className="h-8 w-8 shrink-0">
-                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                                    {line.actorInitials}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 space-y-0.5 leading-relaxed">
-                                  <p className="break-words">
-                                    <span className="font-medium">{line.actorName}</span>{" "}
-                                    {line.action}
-                                  </p>
-                                  <p
-                                    className="text-xs text-muted-foreground"
-                                    title={line.absoluteTime}
-                                  >
-                                    {line.relativeTime}
-                                  </p>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                  {canSeeHistory && (
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="audit-log">
+                        <AccordionTrigger className="font-semibold">
+                          Historial de cambios
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          {isLoadingAudit ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-10 w-full" />
+                              <Skeleton className="h-10 w-full" />
+                            </div>
+                          ) : auditUnavailable ? (
+                            <p className="text-muted-foreground">
+                              El historial de cambios todavía no está disponible.
+                            </p>
+                          ) : auditLines.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              Sin cambios registrados: el pedido está tal cual se creó.
+                            </p>
+                          ) : (
+                            <ul className="space-y-4">
+                              {auditLines.map((line) => (
+                                <li key={line.key} className="flex items-start gap-3">
+                                  <Avatar className="h-8 w-8 shrink-0">
+                                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                      {line.actorInitials}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="min-w-0 space-y-0.5 leading-relaxed">
+                                    <p className="break-words">
+                                      <span className="font-medium">{line.actorName}</span>{" "}
+                                      {line.action}
+                                    </p>
+                                    <p
+                                      className="text-xs text-muted-foreground"
+                                      title={line.absoluteTime}
+                                    >
+                                      {line.relativeTime}
+                                    </p>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
                 </div>
               </motion.div>
             )}

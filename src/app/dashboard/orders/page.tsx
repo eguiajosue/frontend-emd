@@ -6,28 +6,22 @@ import * as XLSX from "xlsx";
 import Title from "@/components/Title";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   CardsSkeleton,
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useChangeOrderStatus, useOrders, downloadOrdersExport } from "@/hooks/useOrders";
+import { useOrders, downloadOrdersExport } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
-import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
+import { statusMap, isDeliveredStatus } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
 import { motion } from "framer-motion";
 import { staggerContainerVariants } from "@/lib/motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -102,7 +96,6 @@ const OrdersPage = () => {
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
   const { deliveredRetentionHours } = useAppSettings();
-  const { changeStatus, changingOrderId } = useChangeOrderStatus();
   const token = useAuthToken();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -324,30 +317,9 @@ const OrdersPage = () => {
         id: "changeStatus",
         header: "Avanzar estado",
         cell: ({ row }) => (
-          <Select
-            value={String(row.original.statusId)}
-            onValueChange={(value) => {
-              const next = Number(value);
-              if (next !== row.original.statusId) {
-                changeStatus(row.original, next);
-              }
-            }}
-          >
-            <SelectTrigger
-              className="w-[170px]"
-              onClick={(e) => e.stopPropagation()}
-              disabled={changingOrderId === row.original.id}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>
-                  {opt.label.toUpperCase()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-1.5">
+            <OrderQuickStatusChip order={row.original} />
+          </div>
         ),
       },
       {
@@ -368,7 +340,7 @@ const OrdersPage = () => {
         ),
       },
     ],
-    [changeStatus, changingOrderId, openDetail]
+    [openDetail]
   );
 
   // Columnas de la vista cuadrícula: se agrupa visualmente por estado del pedido

@@ -45,6 +45,28 @@ export function isDeliveredStatus(statusId: number): boolean {
 }
 
 /**
+ * Orden lineal del flujo "normal" de un pedido (pendiente → en proceso →
+ * terminado → entregado). Usado sólo para ofrecer, en la lista de pedidos,
+ * un botón de acción rápida con el "próximo" estado sugerido — no reemplaza
+ * a `OrderStatusButtons` (que permite ir a cualquier estado a mano).
+ */
+export const STATUS_FLOW_ORDER: number[] = [1, 3, 4, 5];
+
+/**
+ * Próximo estado del flujo lineal después de `currentStatusId`, o `null` si
+ * ya es el último (entregado) o el estado actual no forma parte del flujo
+ * conocido (ej. un estado del flujo de diseño).
+ */
+export function getNextStatusOption(
+  currentStatusId: number
+): { value: number; label: string } | null {
+  const index = STATUS_FLOW_ORDER.indexOf(currentStatusId);
+  if (index === -1 || index === STATUS_FLOW_ORDER.length - 1) return null;
+  const nextId = STATUS_FLOW_ORDER[index + 1];
+  return { value: nextId, label: statusMap[nextId] ?? `Estado ${nextId}` };
+}
+
+/**
  * Estados del flujo de diseño (opcional, `Order.requiresDesign`). El backend
  * los siembra con ids que pueden variar entre entornos, así que NUNCA se
  * hardcodean acá — se identifican por NOMBRE contra `order.status?.name`
