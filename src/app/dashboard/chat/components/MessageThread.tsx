@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Eye,
-  ExternalLink,
   File as FileIcon,
   FileUp,
   Paperclip,
@@ -31,6 +30,7 @@ import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
+import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import type {
   ChatAttachmentInput,
   ChatConversation,
@@ -90,26 +90,33 @@ function formatDay(iso: string): string {
   });
 }
 
-function OrderRefChip({ order, mine }: { order: ChatOrderRef; mine: boolean }) {
+function OrderRefChip({
+  order,
+  mine,
+  onOpen,
+}: {
+  order: ChatOrderRef;
+  mine: boolean;
+  onOpen: (orderId: number) => void;
+}) {
   return (
-    <a
-      href={`/dashboard/pedidos/${order.id}`}
-      target="_blank"
-      rel="noopener noreferrer"
+    <button
+      type="button"
+      onClick={() => onOpen(order.id)}
       className={cn(
-        "mt-1 flex items-start gap-2 rounded-md border p-2 text-xs transition-colors hover:opacity-80",
+        "mt-1 flex w-full items-start gap-2 rounded-md border p-2 text-left text-xs transition-colors hover:opacity-80",
         mine
           ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
           : "border-border bg-background/60 text-foreground"
       )}
     >
-      <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
+      <Eye className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
       <div className="min-w-0">
         <p className="font-medium">Pedido #{order.id}</p>
         <p className="truncate opacity-70">{order.description}</p>
         {order.status ? <p className="opacity-60">{order.status.name}</p> : null}
       </div>
-    </a>
+    </button>
   );
 }
 
@@ -245,6 +252,7 @@ export function MessageThread({
   const [attachedOrder, setAttachedOrder] = useState<Order | null>(null);
   const [attachedFile, setAttachedFile] = useState<ChatAttachmentInput | null>(null);
   const [attachedFilePreview, setAttachedFilePreview] = useState<string | null>(null);
+  const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -382,7 +390,7 @@ export function MessageThread({
             )}
           >
             {!mine ? (
-              <p className="pb-0.5 text-xs font-medium opacity-80">{chatDisplayName(author)}</p>
+              <p className="pb-0.5 text-xs font-bold opacity-80">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML acá. */}
@@ -390,7 +398,9 @@ export function MessageThread({
               <p className="whitespace-pre-wrap break-words">{message.body}</p>
             ) : null}
             <MessageAttachment message={message} mine={mine} />
-            {message.order ? <OrderRefChip order={message.order} mine={mine} /> : null}
+            {message.order ? (
+              <OrderRefChip order={message.order} mine={mine} onOpen={setOpenOrderId} />
+            ) : null}
             <p
               className={cn(
                 "pt-1 text-[10px]",
@@ -582,6 +592,8 @@ export function MessageThread({
           </Button>
         </div>
       </div>
+
+      <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </section>
   );
 }

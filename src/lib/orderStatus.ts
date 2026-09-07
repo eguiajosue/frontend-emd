@@ -7,6 +7,7 @@ export const statusMap: { [key: number]: string } = {
   3: "en proceso",
   4: "terminado",
   5: "entregado",
+  10: "cancelado",
 };
 
 // Estados que ya no existen pero que pueden seguir apareciendo en textos
@@ -59,6 +60,18 @@ export const FINISHED_STATUS_ID = 4;
  */
 export function isFinishedStatus(statusId: number): boolean {
   return statusId === FINISHED_STATUS_ID || statusId === DELIVERED_STATUS_ID;
+}
+
+/**
+ * Id de estado "cancelado". Fuente única de verdad para saber si un pedido
+ * fue cancelado (sin depender de comparar el label en texto) — usar
+ * `isCancelledStatus` desde cualquier componente que necesite distinguir
+ * este estado (ej. para suprimir acciones de flujo normal o resaltar en rojo).
+ */
+export const CANCELLED_STATUS_ID = 10;
+
+export function isCancelledStatus(statusId: number): boolean {
+  return statusId === CANCELLED_STATUS_ID;
 }
 
 /**

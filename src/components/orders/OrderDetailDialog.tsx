@@ -34,6 +34,7 @@ import {
   useOrderHistory,
   useOrder,
   useChangeOrderStatus,
+  useDeleteOrder,
   useOrderNotes,
   useOrderAuditLog,
 } from "@/hooks/useOrders";
@@ -49,7 +50,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FileText, Loader2, UserRound, ZoomIn } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
+import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 
@@ -71,7 +73,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const { data: order, isPending } = useOrder(orderId ?? undefined, {
     enabled: open,
   });
-  const { roles, isAdmin } = usePermissions();
+  const { roles, isAdmin, canManageOperations } = usePermissions();
   // Historial de estados e "Historial de cambios" (audit log) son sólo para
   // quien gestiona pedidos (admin/superuser/recepcion) — los roles operativos
   // no los necesitan ni deben pedir esos endpoints.
@@ -100,7 +102,12 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     "orders"
   );
   const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+  const { deleteOrder, isDeleting } = useDeleteOrder();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  // Eliminar un pedido es una acción irreversible reservada a quien gestiona
+  // pedidos (recepción/admin/superuser) — mismo criterio que `canEdit`.
+  const canDelete = canManageOperations;
   const { formButtonMotion } = useMotionPreset();
 
   // recepcion/admin pueden editar los campos generales del pedido desde acá mismo;
@@ -165,6 +172,15 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     await changeStatus(order, nextStatusId);
   };
 
+  const handleConfirmDelete = async () => {
+    if (!order) return;
+    const result = await deleteOrder(order.id);
+    setConfirmDeleteOpen(false);
+    if (result !== undefined) {
+      onClose();
+    }
+  };
+
   const handleAddNote = async () => {
     const text = newNote.trim();
     if (!text) return;
@@ -201,9 +217,29 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                 transition={{ type: "spring", stiffness: 320, damping: 30 }}
               >
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    Pedido #{order.id}{" "}
-                    <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+                  <DialogTitle className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2">
+                      Pedido #{order.id}{" "}
+                      <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+                    </span>
+                    {canDelete && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="Eliminar pedido"
+                        aria-label="Eliminar pedido"
+                        onClick={() => setConfirmDeleteOpen(true)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
                   </DialogTitle>
                 </DialogHeader>
 
@@ -543,6 +579,16 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
           src={lightboxSrc}
           alt="Hoja de autorización"
           onClose={() => setLightboxSrc(null)}
+        />
+      )}
+
+      {order && (
+        <ConfirmDeleteDialog
+          open={confirmDeleteOpen}
+          onOpenChange={setConfirmDeleteOpen}
+          onConfirm={handleConfirmDelete}
+          title={`¿Eliminar el pedido #${order.id}?`}
+          description="Esta acción no se puede deshacer. El pedido y su historial dejarán de estar disponibles."
         />
       )}
     </>

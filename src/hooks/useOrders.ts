@@ -122,6 +122,43 @@ export function useChangeOrderStatus() {
 }
 
 /**
+ * Elimina un pedido (`DELETE /orders/:id`). Sólo recepción/admin/superuser
+ * tienen permiso en el backend — la UI que dispara esto debe ocultarse/
+ * deshabilitarse para el resto de los roles (ver `OrderDetailDialog`).
+ */
+export function useDeleteOrder() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await request<void>(`${ENDPOINTS.orders}/${orderId}`, {
+        method: "DELETE",
+        token,
+      });
+      return { orderId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      toast.success("Pedido eliminado correctamente");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.message
+          ? error.message
+          : "No se pudo eliminar el pedido."
+      );
+    },
+  });
+
+  return {
+    deleteOrder: (orderId: number) => mutation.mutateAsync(orderId).catch(() => undefined),
+    isDeleting: mutation.isPending,
+  };
+}
+
+/**
  * Cambio de estado en bloque (bulk actions), optimista: actualiza el/los
  * cache(s) de "orders" apenas se dispara la acción (antes de esperar a que
  * las requests resuelvan), y si alguna falla revierte SOLO esas filas a su
