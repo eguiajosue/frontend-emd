@@ -50,6 +50,7 @@ export function NotificationBell() {
     if (count > prevCount.current) {
       setJustBumped(true);
       const t = setTimeout(() => setJustBumped(false), 420);
+      prevCount.current = count;
       return () => clearTimeout(t);
     }
     prevCount.current = count;
@@ -71,10 +72,23 @@ export function NotificationBell() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative shrink-0"
+          className={cn(
+            "relative shrink-0 transition-colors",
+            justBumped && !reduced && "text-primary"
+          )}
           aria-label={count > 0 ? `Notificaciones (${count} sin leer)` : "Notificaciones"}
         >
-          <Bell className="h-4 w-4" />
+          <motion.span
+            animate={
+              justBumped && !reduced
+                ? { rotate: [0, -14, 12, -8, 4, 0] }
+                : { rotate: 0 }
+            }
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="flex"
+          >
+            <Bell className="h-4 w-4" />
+          </motion.span>
           <AnimatePresence>
             {count > 0 && (
               <motion.span

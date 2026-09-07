@@ -10,13 +10,25 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { NotificationBell } from "@/components/NotificationBell";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
+import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
+
+const BASE_TITLE = "EMD Bordados";
 
 export default function Layout({ children }: { children: ReactNode }) {
   // Keeps the real-time notifications socket alive across every dashboard page.
   useSocket();
   const pathname = usePathname();
   const { routeTransition } = useMotionPreset();
+  const { count } = useUnreadNotificationsCount();
+
+  // Refleja el conteo de no leídas en el título de la pestaña, ej. "(3) EMD Bordados".
+  useEffect(() => {
+    document.title = count > 0 ? `(${count > 99 ? "99+" : count}) ${BASE_TITLE}` : BASE_TITLE;
+    return () => {
+      document.title = BASE_TITLE;
+    };
+  }, [count]);
 
   return (
     <SidebarProvider defaultOpen={false}>

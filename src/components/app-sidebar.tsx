@@ -93,8 +93,8 @@ function ConfiguracionLink({ pathname }: { pathname: string }) {
     <Button
       variant="ghost"
       className={cn(
-        "w-full gap-2 mb-2",
-        collapsed ? "justify-center px-0" : "justify-start",
+        "gap-2 mb-2",
+        collapsed ? "mx-auto size-8 justify-center p-0" : "w-full justify-start",
         active && "bg-primary/10 text-primary"
       )}
       asChild
@@ -296,22 +296,31 @@ export function AppSidebar() {
                         {pathname === item.url && (
                           <motion.span
                             layoutId="sidebar-active-indicator"
-                            className="absolute inset-0 -z-10 rounded-md bg-primary/10"
+                            className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary/10"
                             transition={{ type: "spring", stiffness: 400, damping: 35 }}
                           />
                         )}
                         <item.icon
                           className={pathname === item.url ? "text-primary" : undefined}
                         />
-                        <span
-                          className={
-                            pathname === item.url ? "font-medium text-primary" : undefined
-                          }
-                        >
-                          {item.title}
-                        </span>
+                        {!collapsed && (
+                          <span
+                            className={
+                              pathname === item.url ? "font-medium text-primary" : undefined
+                            }
+                          >
+                            {item.title}
+                          </span>
+                        )}
                         {item.url === "/dashboard/chat" && chatUnread > 0 ? (
-                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                          <span
+                            className={cn(
+                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground",
+                              collapsed
+                                ? "pointer-events-none absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]"
+                                : "ml-auto"
+                            )}
+                          >
                             {chatUnread > 99 ? "99+" : chatUnread}
                           </span>
                         ) : null}
@@ -361,7 +370,7 @@ export function AppSidebar() {
         </div>
         <Button
           variant="destructive"
-          className={cn("w-full", collapsed && "px-0")}
+          className={cn(collapsed ? "mx-auto size-8 p-0" : "w-full")}
           onClick={() => signOut({ callbackUrl: "/login" })}
           title={collapsed ? "Logout" : undefined}
         >
