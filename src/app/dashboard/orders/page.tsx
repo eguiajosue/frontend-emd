@@ -16,7 +16,7 @@ import {
   useOrders,
   downloadOrdersExport,
   useBulkChangeOrderStatus,
-  useChangeOrderStatus,
+  useMoveOrderStatus,
 } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
@@ -164,7 +164,7 @@ const OrdersPage = () => {
   const [exportOpen, setExportOpen] = useState(false);
   const [circuit, setCircuit] = useState<Circuit>("produccion");
   const { bulkChangeStatus } = useBulkChangeOrderStatus();
-  const { changeStatus } = useChangeOrderStatus();
+
 
   useEffect(() => {
     setFilters(filtersFromUrl());
@@ -515,6 +515,11 @@ const OrdersPage = () => {
     [roles]
   );
 
+  // Mover un pedido escribe donde el tablero lee: la tarea del área cuando la
+  // hay, el estado del pedido cuando no.
+  const { move: moveOrderStatus, canMove: canApplyMove } =
+    useMoveOrderStatus(viewerAreas);
+
   // Tableros de la vista cuadrícula. Diseño y producción son DOS circuitos con
   // etapas distintas, así que son dos tableros con sus propias columnas fijas.
   // Un pedido "autorizado" aparece en los dos: cierra el trabajo de Diseño y
@@ -538,15 +543,18 @@ const OrdersPage = () => {
   const canMoveOrder = useCallback(
     (order: Order, statusId: number) => {
       if (effectiveProductionStatusId(order, viewerAreas) === statusId) return false;
-      return canManageOperations || myStageIds.includes(statusId);
+      if (!canManageOperations && !myStageIds.includes(statusId)) return false;
+      // El destino tiene que ser aplicable de verdad: si el pedido se ubica
+      // por su tarea de área, hace falta una tarea inequívoca que mover.
+      return canApplyMove(order, statusId);
     },
-    [canManageOperations, myStageIds, viewerAreas]
+    [canApplyMove, canManageOperations, myStageIds, viewerAreas]
   );
   const handleMoveOrder = useCallback(
     (order: Order, statusId: number) => {
-      changeStatus(order, statusId);
+      void moveOrderStatus(order, statusId);
     },
-    [changeStatus]
+    [moveOrderStatus]
   );
 
   // Qué tableros ve este usuario. Un diseñador que además trabaja otra área ve

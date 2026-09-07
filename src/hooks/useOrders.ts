@@ -6,8 +6,19 @@ import { toast } from "sonner";
 import { ApiError, request, type Paginated } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
-import type { Order, OrderAuditLogEntry, OrderHistory, OrderNote } from "@/types";
+import type {
+  AreaTaskStatus,
+  Order,
+  OrderAuditLogEntry,
+  OrderHistory,
+  OrderNote,
+} from "@/types";
 import { orderStatusUpdatedMessage } from "@/lib/copy";
+import {
+  AREA_TASK_STATUS_BY_ORDER_STATUS,
+  areaTaskToMove,
+  canApplyOrderMove,
+} from "@/lib/orderMove";
 
 /** Hooks específicos del dominio "pedidos", construidos sobre la capa genérica. */
 
@@ -96,20 +107,36 @@ export function useChangeOrderStatus() {
         token,
         body: { statusId: newStatusId },
       });
-      await request<OrderHistory>(ENDPOINTS.orderHistories, {
-        method: "POST",
-        token,
-        body: {
-          orderId: order.id,
-          previousStatusId: order.statusId,
-          newStatusId,
-        },
-      });
+      // Sin cambio real no se escribe historial: hasta ahora se creaba una
+      // fila por cada click aunque el estado fuera el mismo, y el historial
+      // acumulaba entradas "pendiente -> pendiente".
+      if (order.statusId !== newStatusId) {
+        await request<OrderHistory>(ENDPOINTS.orderHistories, {
+          method: "POST",
+          token,
+          body: {
+            orderId: order.id,
+            previousStatusId: order.statusId,
+            newStatusId,
+          },
+        });
+      }
       return { orderId: order.id };
     },
     onSuccess: ({ orderId }) => {
       invalidate();
       toast.success(orderStatusUpdatedMessage(orderId));
+    },
+    // Sin esto el fallo era MUDO: `changeStatus` traga el rechazo con
+    // `.catch(() => undefined)` y no había ningún `onError`, así que un 400/403
+    // se veía exactamente igual que no hacer nada. Era la razón por la que
+    // "no me deja cambiar el estatus" no venía con ningún mensaje.
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.message
+          ? error.message
+          : "No se pudo cambiar el estado del pedido."
+      );
     },
   });
 
@@ -119,6 +146,87 @@ export function useChangeOrderStatus() {
     isChangingStatus: mutation.isPending,
     changingOrderId: mutation.isPending ? mutation.variables?.order.id : null,
   };
+}
+
+/**
+ * Mueve un pedido a otro estado desde el tablero, escribiendo en el MISMO
+ * lugar del que el tablero lee.
+ *
+ * El bug: el tablero de producción ubica cada pedido por el estado de la
+ * `OrderAreaTask` del área de quien mira (porque tras autorizar el diseño el
+ * pedido queda en "autorizado" mientras cada área arranca en "pendiente"),
+ * pero arrastrar la tarjeta escribía `Order.statusId`. `PATCH /orders/:id`
+ * devolvía 200 y no tocaba las tareas de área, así que la tarjeta volvía sola
+ * a su columna original y parecía que el cambio se hubiera rechazado.
+ *
+ * `PATCH /orders/:id/area-tasks/:taskId/status` es el camino correcto: el
+ * backend, además de mover la tarea, llama a `syncOrderStatusFromTasks` y deja
+ * `Order.statusId` coherente. Sólo se cae al PATCH del pedido cuando no hay
+ * tarea del área de quien mira (pedidos viejos sin tareas) o cuando el destino
+ * es "entregado"/"cancelado", que no existen como estado de área.
+ */
+export function useMoveOrderStatus(viewerAreas: string[]) {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  const { changeStatus } = useChangeOrderStatus();
+
+  const mutation = useMutation({
+    mutationFn: async ({
+      order,
+      taskId,
+      status,
+    }: {
+      order: Order;
+      taskId: number;
+      status: AreaTaskStatus;
+    }) => {
+      await request(`${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`, {
+        method: "PATCH",
+        token,
+        body: { status },
+      });
+      return { orderId: order.id };
+    },
+    onSuccess: ({ orderId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      toast.success(orderStatusUpdatedMessage(orderId));
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.message
+          ? error.message
+          : "No se pudo cambiar el estado del pedido."
+      );
+    },
+  });
+
+  const taskFor = useCallback(
+    (order: Order) => areaTaskToMove(order, viewerAreas),
+    [viewerAreas]
+  );
+
+  const canMove = useCallback(
+    (order: Order, newStatusId: number) =>
+      canApplyOrderMove(order, newStatusId, viewerAreas),
+    [viewerAreas]
+  );
+
+  const move = useCallback(
+    (order: Order, newStatusId: number) => {
+      const areaStatus = AREA_TASK_STATUS_BY_ORDER_STATUS[newStatusId];
+      const task = areaStatus ? taskFor(order) : null;
+      if (task && areaStatus) {
+        return mutation
+          .mutateAsync({ order, taskId: task.id, status: areaStatus })
+          .catch(() => undefined);
+      }
+      return changeStatus(order, newStatusId);
+    },
+    [changeStatus, mutation, taskFor]
+  );
+
+  return { move, canMove, isMoving: mutation.isPending };
 }
 
 /**
