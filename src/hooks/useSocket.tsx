@@ -1,15 +1,27 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
-import { Bell } from "lucide-react";
+import { Bell, MessageSquare } from "lucide-react";
 import { statusMap } from "@/lib/orderStatus";
 import { SOCKET_URL } from "@/lib/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { playNotificationSound } from "@/lib/sound";
+
+/** Payload de "chatMessage" (ver ChatService.sendMessage en el backend). */
+interface ChatMessagePayload {
+  id: number;
+  conversationId: number;
+  body: string;
+  createdAt: string;
+  senderId: number;
+  senderUsername?: string;
+  senderName?: string;
+}
 
 interface OrderNotificationPayload {
   id: number | string;
@@ -43,14 +55,27 @@ const HIGHLIGHT_TOAST_DURATION_MS = 9000;
  *   toast más visible + sonido, porque requiere su atención directa.
  * - "orderStatusChangeNotification": broadcast to every connected client
  *   when an order's status changes.
+ * - "chatMessage": mensaje del chat interno, emitido SOLO a las rooms
+ *   individuales de los miembros de la conversación (la membresía la resuelve
+ *   el backend). Refresca la cache del chat y avisa con un toast cuando el
+ *   usuario no está mirando la pantalla del chat.
+ *
+ * Esta es la ÚNICA conexión de Socket.io de la app (se monta una vez en el
+ * layout del dashboard): cualquier feature nueva debe engancharse acá en vez
+ * de abrir un segundo socket.
  */
 export function useSocket() {
   const { data: session } = useSession();
   const token = session?.user?.token;
   const roles = session?.user?.roles || [];
   const rolesKey = roles.join(",");
+  const userId = session?.user?.id ? Number(session.user.id) : null;
   const socketRef = useRef<Socket | null>(null);
   const queryClient = useQueryClient();
+  // La ruta actual se lee por ref para no reconectar el socket al navegar.
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   useEffect(() => {
     if (!token) return;
@@ -138,9 +163,21 @@ export function useSocket() {
       });
     };
 
+    const handleChatMessage = (message: ChatMessagePayload) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
+      // Los mensajes propios y los que ya se están viendo no interrumpen.
+      if (message.senderId === userId) return;
+      if (pathnameRef.current?.startsWith("/dashboard/chat")) return;
+      toast(`Mensaje de ${message.senderName || message.senderUsername || "un compañero"}`, {
+        description: message.body,
+        icon: <MessageSquare className="h-5 w-5" />,
+      });
+    };
+
     socket.on("newOrderNotification", handleNewOrder);
     socket.on("newAssignedOrderNotification", handleAssignedOrder);
     socket.on("orderStatusChangeNotification", handleStatusChange);
+    socket.on("chatMessage", handleChatMessage);
 
     socket.on("connect_error", (err) => {
       // No loguear headers/token: sólo el mensaje del error de conexión.
@@ -153,10 +190,11 @@ export function useSocket() {
       socket.off("newOrderNotification", handleNewOrder);
       socket.off("newAssignedOrderNotification", handleAssignedOrder);
       socket.off("orderStatusChangeNotification", handleStatusChange);
+      socket.off("chatMessage", handleChatMessage);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, rolesKey, queryClient]);
+  }, [token, rolesKey, queryClient, userId]);
 
   return socketRef;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { ErrorState } from "@/components/feedback/states";
 import { getErrorMessage, isSessionExpiredError } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import {
   chatDisplayName,
   useChatConversations,
@@ -64,10 +63,10 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, lastMessageId]);
 
-  const handleSend = async (body: string, orderId?: number) => {
+  const handleSend = async (body: string) => {
     if (!selectedId) return;
     try {
-      await sendMessage(selectedId, body, orderId);
+      await sendMessage(selectedId, body);
     } catch (err) {
       if (!isSessionExpiredError(err)) {
         toast.error(getErrorMessage(err, "No se pudo enviar el mensaje."));
@@ -88,32 +87,15 @@ export default function ChatPage() {
     }
   };
 
-  const filteredUsers = users
-    .filter((u) => {
-      const needle = userFilter.trim().toLowerCase();
-      if (!needle) return true;
-      return (
-        chatDisplayName(u).toLowerCase().includes(needle) ||
-        u.username.toLowerCase().includes(needle)
-      );
-    })
-    .sort((a, b) =>
-      chatDisplayName(a).localeCompare(chatDisplayName(b), "es", {
-        sensitivity: "base",
-      })
+  const filteredUsers = users.filter((u) => {
+    const needle = userFilter.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      chatDisplayName(u).toLowerCase().includes(needle) ||
+      u.username.toLowerCase().includes(needle) ||
+      u.roles.some((r) => r.toLowerCase().includes(needle))
     );
-
-  const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-  const letterOf = (u: (typeof filteredUsers)[number]) =>
-    chatDisplayName(u).trim().charAt(0).toUpperCase();
-  const availableLetters = new Set(filteredUsers.map(letterOf));
-  const letterRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const userListRef = useRef<HTMLDivElement>(null);
-
-  const scrollToLetter = (letter: string) => {
-    const el = letterRefs.current[letter];
-    if (el) el.scrollIntoView({ block: "start" });
-  };
+  });
 
   if (isError) {
     return (
@@ -166,63 +148,28 @@ export default function ChatPage() {
           <Input
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
-            placeholder="Buscar por nombre o usuario"
+            placeholder="Buscar por nombre, usuario o área"
           />
-          <div className="flex gap-1">
-            <div className="flex shrink-0 flex-col items-center justify-center py-1 text-[9px] font-medium leading-none text-muted-foreground">
-              {ALPHABET.map((letter) => (
-                <button
-                  key={letter}
-                  type="button"
-                  disabled={!availableLetters.has(letter)}
-                  onClick={() => scrollToLetter(letter)}
-                  className={cn(
-                    "px-1 py-[1px] hover:text-primary",
-                    availableLetters.has(letter)
-                      ? "text-foreground"
-                      : "text-muted-foreground/30"
-                  )}
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {filteredUsers.length === 0 ? (
+              <p className="p-2 text-sm text-muted-foreground">
+                No se encontraron usuarios.
+              </p>
+            ) : (
+              filteredUsers.map((user) => (
+                <Button
+                  key={user.id}
+                  variant="ghost"
+                  className="w-full justify-between"
+                  onClick={() => void startDirect(user.id)}
                 >
-                  {letter}
-                </button>
-              ))}
-            </div>
-            <div
-              ref={userListRef}
-              className="max-h-72 flex-1 space-y-1 overflow-y-auto"
-            >
-              {filteredUsers.length === 0 ? (
-                <p className="p-2 text-sm text-muted-foreground">
-                  No se encontraron usuarios.
-                </p>
-              ) : (
-                filteredUsers.map((user, index) => {
-                  const letter = letterOf(user);
-                  const isFirstOfLetter =
-                    index === 0 || letterOf(filteredUsers[index - 1]) !== letter;
-                  return (
-                    <div
-                      key={user.id}
-                      ref={
-                        isFirstOfLetter
-                          ? (el) => {
-                              letterRefs.current[letter] = el;
-                            }
-                          : undefined
-                      }
-                    >
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start"
-                        onClick={() => void startDirect(user.id)}
-                      >
-                        {chatDisplayName(user)}
-                      </Button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                  <span>{chatDisplayName(user)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {user.roles.join(", ") || `@${user.username}`}
+                  </span>
+                </Button>
+              ))
+            )}
           </div>
         </DialogContent>
       </Dialog>
