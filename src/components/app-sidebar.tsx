@@ -312,20 +312,20 @@ export function AppSidebar() {
                             {item.title}
                           </span>
                         )}
-                        {item.url === "/dashboard/chat" && chatUnread > 0 ? (
-                          <span
-                            className={cn(
-                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground",
-                              collapsed
-                                ? "pointer-events-none absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]"
-                                : "ml-auto"
-                            )}
-                          >
+                        {!collapsed && item.url === "/dashboard/chat" && chatUnread > 0 ? (
+                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
                             {chatUnread > 99 ? "99+" : chatUnread}
                           </span>
                         ) : null}
                       </a>
                     </SidebarMenuButton>
+                    {/* Colapsado el badge va sobre el `li` (relative) y no dentro
+                        del botón, que tiene `overflow-hidden` y lo recortaría. */}
+                    {collapsed && item.url === "/dashboard/chat" && chatUnread > 0 ? (
+                      <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-sidebar">
+                        {chatUnread > 99 ? "99+" : chatUnread}
+                      </span>
+                    ) : null}
                   </SidebarMenuItem>
                 ) : null
               )}

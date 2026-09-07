@@ -25,7 +25,7 @@ export default function GlobalError({
       <AlertTriangle className="h-10 w-10 text-destructive" />
       <h1 className="text-2xl font-bold leading-tight tracking-tight">Algo salió mal</h1>
       <p className="max-w-md text-sm text-muted-foreground">
-        Ocurrió un error inesperado. Podés reintentar la operación o volver al
+        Ocurrió un error inesperado. Se puede reintentar la operación o volver al
         inicio.
       </p>
       {error.digest && (

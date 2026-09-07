@@ -8,7 +8,7 @@ import { signOut } from "next-auth/react";
  * every page having to handle expired sessions individually.
  */
 
-const SESSION_EXPIRED_MESSAGE = "Tu sesión expiró, inicia sesión de nuevo";
+const SESSION_EXPIRED_MESSAGE = "La sesión expiró, iniciar sesión de nuevo";
 
 let handlingExpiredSession = false;
 

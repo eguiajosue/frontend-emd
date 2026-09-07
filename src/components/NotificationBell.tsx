@@ -49,7 +49,7 @@ export function NotificationBell() {
   useEffect(() => {
     if (count > prevCount.current) {
       setJustBumped(true);
-      const t = setTimeout(() => setJustBumped(false), 420);
+      const t = setTimeout(() => setJustBumped(false), 900);
       prevCount.current = count;
       return () => clearTimeout(t);
     }
@@ -74,17 +74,34 @@ export function NotificationBell() {
           size="icon"
           className={cn(
             "relative shrink-0 transition-colors",
-            justBumped && !reduced && "text-primary"
+            // Resalte persistente mientras haya no leídas, no sólo un flash al
+            // llegar: la campana queda tintada de marca con un aro suave.
+            count > 0 &&
+              "bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 hover:text-primary"
           )}
           aria-label={count > 0 ? `Notificaciones (${count} sin leer)` : "Notificaciones"}
         >
+          {/* Halo que late al llegar una notificación nueva. */}
+          <AnimatePresence>
+            {justBumped && !reduced && (
+              <motion.span
+                key="ping"
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-md bg-primary/30"
+                initial={{ opacity: 0.7, scale: 0.8 }}
+                animate={{ opacity: 0, scale: 1.6 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+              />
+            )}
+          </AnimatePresence>
           <motion.span
             animate={
               justBumped && !reduced
-                ? { rotate: [0, -14, 12, -8, 4, 0] }
-                : { rotate: 0 }
+                ? { rotate: [0, -16, 14, -10, 6, 0], scale: [1, 1.15, 1] }
+                : { rotate: 0, scale: 1 }
             }
-            transition={{ duration: 0.5, ease: "easeInOut" }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
             className="flex"
           >
             <Bell className="h-4 w-4" />

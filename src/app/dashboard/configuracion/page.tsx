@@ -72,7 +72,7 @@ function AppearanceSection() {
     <Card>
       <CardHeader>
         <CardTitle>Apariencia</CardTitle>
-        <CardDescription>Personalizá cómo se ve la app para vos.</CardDescription>
+        <CardDescription>Personalizar cómo se ve la app.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -191,7 +191,7 @@ function LanguageSection() {
       <CardHeader>
         <CardTitle>Idioma</CardTitle>
         <CardDescription>
-          Elegí el idioma de la interfaz. Por ahora sólo español está disponible.
+          Idioma de la interfaz. Por ahora sólo español está disponible.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
@@ -268,7 +268,7 @@ function SoundSection() {
       <CardHeader>
         <CardTitle>Sonido</CardTitle>
         <CardDescription>
-          Un tono breve al llegar un pedido nuevo o asignado a vos, y otro más
+          Un tono breve al llegar un pedido nuevo o asignado, y otro más
           sutil al guardar cambios. Se puede silenciar en cualquier momento.
         </CardDescription>
       </CardHeader>
@@ -370,7 +370,7 @@ function DeliveredRetentionSection() {
   const handleSave = async () => {
     const hours = Number(value);
     if (!Number.isInteger(hours) || hours < 1 || hours > 720) {
-      toast.error("Ingresá un número entero entre 1 y 720 horas.");
+      toast.error("Ingresar un número entero entre 1 y 720 horas.");
       return;
     }
     try {

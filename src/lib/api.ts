@@ -38,12 +38,12 @@ export class ApiError extends Error {
 /** Mensaje amigable y uniforme para cualquier error de red/API. */
 export function getErrorMessage(
   error: unknown,
-  fallback = "Ocurrió un error inesperado. Intentá de nuevo."
+  fallback = "Ocurrió un error inesperado. Intentar de nuevo."
 ): string {
-  if (error instanceof AuthFetchError) return "Tu sesión expiró.";
+  if (error instanceof AuthFetchError) return "La sesión expiró.";
   if (error instanceof ApiError) {
     if (error.status === 0) return "No se pudo conectar con el servidor.";
-    if (error.status === 403) return error.message || "No tenés permisos para realizar esta acción.";
+    if (error.status === 403) return error.message || "Sin permisos para realizar esta acción.";
     if (error.status === 404) return "No se encontró el recurso solicitado.";
     // El backend manda mensajes específicos y en español incluso para 5xx
     // deliberados (ej. "servicio no configurado todavía", "no se pudo
@@ -51,7 +51,7 @@ export function getErrorMessage(
     // útil (crash no controlado, que en producción el backend oculta como
     // "Error interno del servidor").
     if (error.status >= 500 && (!error.message || error.message === "Error interno del servidor")) {
-      return "El servidor tuvo un problema. Intentá más tarde.";
+      return "El servidor tuvo un problema. Intentar más tarde.";
     }
     return error.message || fallback;
   }

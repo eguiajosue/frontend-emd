@@ -341,7 +341,7 @@ export function MessageThread({
   if (!conversation) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        Elegí una conversación para empezar a chatear.
+        Seleccionar una conversación para empezar a chatear.
       </div>
     );
   }
@@ -380,7 +380,7 @@ export function MessageThread({
         file.type.startsWith("image/") ? URL.createObjectURL(file) : null
       );
     } catch {
-      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+      toast.error("No se pudo leer el archivo. Intentar de nuevo.");
     } finally {
       e.target.value = "";
     }
@@ -640,7 +640,7 @@ export function MessageThread({
                 void handleSend();
               }
             }}
-            placeholder="Escribí un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
+            placeholder="Escribir un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
             className="max-h-40 min-h-[44px] resize-none rounded-2xl"
             maxLength={2000}
           />

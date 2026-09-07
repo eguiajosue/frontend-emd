@@ -152,7 +152,7 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
         <EmptyState
           icon={Palette}
           title="El flujo de diseño todavía no está disponible"
-          description="El servidor no tiene desplegado este endpoint todavía. Probá de nuevo más tarde."
+          description="El servidor no tiene desplegado este endpoint todavía. Intentar nuevamente más tarde."
           className="mt-0 p-6"
         />
       ) : revisions.length === 0 ? (
@@ -161,7 +161,7 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           title="Todavía no hay rondas de diseño"
           description={
             canDesign
-              ? "Subí el primer montaje para que Recepción lo mande al cliente."
+              ? "Falta subir el primer montaje para que Recepción lo mande al cliente."
               : "Diseño todavía no subió el primer montaje."
           }
           className="mt-0 p-6"
@@ -472,7 +472,7 @@ function MontageDialog({
       setFileLabel(f.name);
       setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
     } catch {
-      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+      toast.error("No se pudo leer el archivo. Intentar de nuevo.");
     }
   };
 
@@ -737,7 +737,7 @@ function ApproveDialog({
 
   const handleSubmit = async () => {
     if (needsProductionArea && !productionArea) {
-      setError("Elegí el área de producción antes de confirmar");
+      setError("Seleccionar el área de producción antes de confirmar");
       return;
     }
     setError("");

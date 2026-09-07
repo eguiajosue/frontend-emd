@@ -130,7 +130,7 @@ const ClientesPage = () => {
             schema={clientSchema}
             columns={clientColumnsWithOrders}
             emptyMessage="Todavía no cargaste ningún cliente"
-            emptyDescription="Cuando sumes el primero, vas a poder ver su historial de pedidos acá mismo."
+            emptyDescription="Al cargar el primero, su historial de pedidos aparece acá mismo."
             emptyIcon={Users}
             deleteDescription="Esta acción eliminará al cliente de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Cliente" : "Nuevo Cliente")}
@@ -160,7 +160,7 @@ const ClientesPage = () => {
             schema={companySchema}
             columns={getCompanyColumns}
             emptyMessage="Ninguna empresa registrada por ahora"
-            emptyDescription="Agrupá a tus clientes corporativos creando la primera empresa."
+            emptyDescription="Agrupar a los clientes corporativos creando la primera empresa."
             emptyIcon={Building2}
             deleteDescription="Esta acción eliminará la empresa de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Empresa" : "Nueva Empresa")}

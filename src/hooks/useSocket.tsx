@@ -146,7 +146,7 @@ export function useSocket() {
 
     const handleAssignedOrder = (order: AssignedOrderNotificationPayload) => {
       invalidateOrders();
-      showHighlightedOrderToast(`Pedido #${order.orderId} asignado a vos`, {
+      showHighlightedOrderToast(`Nuevo pedido asignado: #${order.orderId}`, {
         description: order.description,
         area: order.area,
         clientName: order.clientName,

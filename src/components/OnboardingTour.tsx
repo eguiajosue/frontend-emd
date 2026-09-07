@@ -20,7 +20,7 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="sidebar-nav"]',
     title: "Navegación",
-    description: "Desde acá accedés a Pedidos, Historial, Clientes y más, según tu rol.",
+    description: "Desde acá se accede a Pedidos, Historial, Clientes y más, según el rol.",
   },
   {
     selector: '[data-tour="new-order-button"]',
@@ -30,12 +30,12 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="theme-toggle"]',
     title: "Tema",
-    description: "Cambiá entre claro y oscuro cuando quieras, se guarda en tu cuenta.",
+    description: "Alternar entre claro y oscuro en cualquier momento; la preferencia queda guardada en la cuenta.",
   },
   {
     selector: '[data-tour="help-link"]',
     title: "Ayuda",
-    description: "Si algo no queda claro, acá encontrás guías y soporte.",
+    description: "Si algo no queda claro, acá hay guías y soporte.",
   },
 ];
 

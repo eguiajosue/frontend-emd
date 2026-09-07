@@ -80,7 +80,7 @@ function SessionErrorWatcher() {
 
   useEffect(() => {
     if (session?.error === "RefreshAccessTokenError") {
-      toast.error("Tu sesión expiró. Iniciá sesión nuevamente.");
+      toast.error("La sesión expiró. Iniciar sesión nuevamente.");
       signOut({ callbackUrl: "/login" });
     }
   }, [session?.error]);

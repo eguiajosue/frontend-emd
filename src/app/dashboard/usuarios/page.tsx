@@ -162,7 +162,7 @@ const UsuariosPage = () => {
             fields={userFields}
             schema={(editing) => (editing ? editSchema : createSchema)}
             columns={getUserColumns}
-            emptyMessage="Sólo estás vos por acá"
+            emptyMessage="No hay otros usuarios registrados"
             emptyDescription="Invitá al resto del equipo creando sus cuentas de usuario."
             emptyIcon={UserCog}
             deleteDescription="Esta acción eliminará al usuario de forma permanente."

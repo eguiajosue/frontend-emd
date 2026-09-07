@@ -167,7 +167,7 @@ export default function ChatPage() {
           <DialogHeader>
             <DialogTitle>Nuevo mensaje directo</DialogTitle>
             <DialogDescription>
-              Elegí con quién querés hablar.
+              Seleccionar con quién hablar.
             </DialogDescription>
           </DialogHeader>
           <Input

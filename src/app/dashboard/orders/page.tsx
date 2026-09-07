@@ -541,7 +541,7 @@ const OrdersPage = () => {
           <EmptyState
             icon={FilterX}
             title="Ningún pedido coincide con estos filtros"
-            description="Probá ajustar o limpiar los filtros para ver el resto de los pedidos."
+            description="Ajustar o limpiar los filtros para ver el resto de los pedidos."
             action={{
               label: "Limpiar filtros",
               icon: FilterX,
@@ -552,7 +552,7 @@ const OrdersPage = () => {
           <EmptyState
             icon={PartyPopper}
             title="Sin pendientes por ahora — buen trabajo"
-            description="No tenés pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer acá."
+            description="No hay pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer acá."
           />
         ) : (
           <EmptyState

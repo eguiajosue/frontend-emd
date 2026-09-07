@@ -129,7 +129,7 @@ function ChatMockup() {
 const ADMIN_PROFILE: GuideProfile = {
   roleLabel: "administrador",
   intro:
-    "Tenés visibilidad total de la operación: todos los pedidos, todas las áreas, usuarios y métricas.",
+    "Visibilidad total de la operación: todos los pedidos, todas las áreas, usuarios y métricas.",
   steps: [
     {
       icon: <LayoutDashboard className="h-4 w-4" />,
@@ -154,7 +154,7 @@ const ADMIN_PROFILE: GuideProfile = {
       icon: <MessagesSquare className="h-4 w-4" />,
       title: "Chat entre áreas",
       description:
-        "Podés participar o monitorear las conversaciones entre recepción y cada área de producción para destrabar dudas sin salir de la plataforma.",
+        "Se puede participar o monitorear las conversaciones entre recepción y cada área de producción para destrabar dudas sin salir de la plataforma.",
       mockup: <ChatMockup />,
     },
     {
@@ -175,7 +175,7 @@ const ADMIN_PROFILE: GuideProfile = {
 const RECEPCION_PROFILE: GuideProfile = {
   roleLabel: "recepción",
   intro:
-    "Sos la entrada y salida de cada pedido: lo cargás, lo derivás al área correcta y coordinás con el cliente.",
+    "Recepción es la entrada y salida de cada pedido: lo carga, lo deriva al área correcta y coordina con el cliente.",
   steps: [
     {
       icon: <PackagePlus className="h-4 w-4" />,
@@ -188,7 +188,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       icon: <Split className="h-4 w-4" />,
       title: "Asignar el área",
       description:
-        "Si el pedido requiere diseño, se lo derivás a Diseño antes de producción; si no, va directo al área que corresponda (taller, DTF, bordado, láser o impresiones).",
+        "Si el pedido requiere diseño, se deriva a Diseño antes de producción; si no, va directo al área que corresponda (taller, DTF, bordado, láser o impresiones).",
     },
     {
       icon: <Palette className="h-4 w-4" />,
@@ -198,7 +198,7 @@ const RECEPCION_PROFILE: GuideProfile = {
     },
     {
       icon: <ListChecks className="h-4 w-4" />,
-      title: "Tus pendientes y entregas",
+      title: "Pendientes y entregas",
       description:
         "En \"Estatus de Pedidos\" ves los pedidos \"pendientes\" (recién cargados) y \"entregados\" (para cerrar la logística de entrega).",
     },
@@ -213,7 +213,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       icon: <History className="h-4 w-4" />,
       title: "Historial de auditoría",
       description:
-        "Consultá el historial para ver cada cambio de estado de un pedido, con fecha y hora, si necesitás reconstruir qué pasó.",
+        "El historial muestra cada cambio de estado de un pedido, con fecha y hora, para reconstruir qué pasó.",
     },
   ],
 };
@@ -227,7 +227,7 @@ const DISENO_PROFILE: GuideProfile = {
       icon: <ClipboardList className="h-4 w-4" />,
       title: "Pedidos que requieren diseño",
       description:
-        "En \"Estatus de Pedidos\" te aparecen los pedidos que Recepción marcó como \"requiere diseño\" y que están esperando tu parte.",
+        "En \"Estatus de Pedidos\" aparecen los pedidos que Recepción marcó como \"requiere diseño\" y que están esperando la parte de Diseño.",
       mockup: <OrderRowMockup statusValue={2} label="Pedido #129 · En pruebas" />,
     },
     {
@@ -240,13 +240,13 @@ const DISENO_PROFILE: GuideProfile = {
       icon: <Send className="h-4 w-4" />,
       title: "Feedback del cliente",
       description:
-        "Si el cliente pide cambios, el pedido vuelve a vos con el detalle de lo solicitado; subís una nueva versión y se repite el ciclo.",
+        "Si el cliente pide cambios, el pedido vuelve a Diseño con el detalle de lo solicitado; se sube una nueva versión y se repite el ciclo.",
     },
     {
       icon: <CheckCircle2 className="h-4 w-4" />,
       title: "Autorización y pase a producción",
       description:
-        "Cuando el cliente autoriza el montaje, el pedido pasa automáticamente al área de producción elegida — tu parte queda registrada en el historial de montajes.",
+        "Cuando el cliente autoriza el montaje, el pedido pasa automáticamente al área de producción elegida — el trabajo queda registrado en el historial de montajes.",
     },
     {
       icon: <MessagesSquare className="h-4 w-4" />,
@@ -261,13 +261,13 @@ const DISENO_PROFILE: GuideProfile = {
 const PRODUCCION_PROFILE: GuideProfile = {
   roleLabel: "producción",
   intro:
-    "Ves sólo los pedidos que están en la etapa de tu área y avanzás su estado cuando terminás tu parte.",
+    "Se ven sólo los pedidos que están en la etapa del área y su estado avanza cuando el trabajo termina.",
   steps: [
     {
       icon: <ClipboardList className="h-4 w-4" />,
-      title: "Tus pedidos asignados",
+      title: "Pedidos asignados",
       description:
-        "\"Estatus de Pedidos\" muestra únicamente los pedidos \"en proceso\" que le corresponden a tu área — nada de otras etapas, para no generar confusión.",
+        "\"Estatus de Pedidos\" muestra únicamente los pedidos \"en proceso\" que le corresponden al área — nada de otras etapas, para no generar confusión.",
       mockup: <OrderRowMockup statusValue={3} label="Pedido #124 · En proceso" />,
     },
     {
@@ -280,14 +280,14 @@ const PRODUCCION_PROFILE: GuideProfile = {
       icon: <MessagesSquare className="h-4 w-4" />,
       title: "Chat con Recepción",
       description:
-        "Si necesitás aclarar algo de un pedido, escribile a Recepción por chat en vez de interrumpir por otro medio.",
+        "Para aclarar algo de un pedido, conviene escribir a Recepción por chat en vez de interrumpir por otro medio.",
       mockup: <ChatMockup />,
     },
     {
       icon: <Bell className="h-4 w-4" />,
       title: "Notificaciones de asignación",
       description:
-        "La campana de notificaciones te avisa apenas te llega un pedido nuevo o cambia algo relevante para tu área.",
+        "La campana de notificaciones avisa apenas llega un pedido nuevo o cambia algo relevante para el área.",
     },
   ],
 };
@@ -329,7 +329,7 @@ const AyudaPage = () => {
       {hasKnownRole ? (
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">
-            Guía para vos, <Badge variant="secondary" className="align-middle capitalize">{profile.roleLabel}</Badge>
+            Guía para el rol <Badge variant="secondary" className="align-middle capitalize">{profile.roleLabel}</Badge>
           </p>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {profile.intro}
@@ -417,10 +417,10 @@ const AyudaPage = () => {
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="mas-ayuda">
-                <AccordionTrigger>¿Necesitás más ayuda?</AccordionTrigger>
+                <AccordionTrigger>¿Hace falta más ayuda?</AccordionTrigger>
                 <AccordionContent>
-                  Si algo no funciona como esperás o necesitás un permiso que
-                  no tenés, contactá a un administrador de EMD Bordados.
+                  Si algo no funciona como se espera o hace falta un permiso que
+                  no está habilitado, contactar a un administrador de EMD Bordados.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

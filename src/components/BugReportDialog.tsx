@@ -86,7 +86,7 @@ export function BugReportDialog() {
         >
           <Textarea
             id="bug-description"
-            placeholder="Describí el problema (mínimo 10 caracteres)"
+            placeholder="Descripción del problema (mínimo 10 caracteres)"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             onBlur={() => setTouched(true)}

@@ -74,7 +74,7 @@ function readFileAsAuthorizationInput(file: File): Promise<AuthorizationFileInpu
 }
 
 const orderProductSchema = z.object({
-  customName: z.string({ required_error: "Elegí un producto" }).min(1, "Elegí un producto"),
+  customName: z.string({ required_error: "Producto requerido" }).min(1, "Producto requerido"),
   quantity: z.number().min(1, "La cantidad debe ser mayor a 0"),
 });
 
@@ -215,7 +215,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         file.type.startsWith("image/") ? URL.createObjectURL(file) : null
       );
     } catch {
-      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+      toast.error("No se pudo leer el archivo. Intentar de nuevo.");
     } finally {
       e.target.value = "";
     }
@@ -346,7 +346,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
             >
               <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                Revisá los siguientes datos antes de continuar
+                Revisar los siguientes datos antes de continuar
               </p>
               {submitError && <p className="text-sm text-destructive">{submitError}</p>}
               {Object.keys(errors).length > 0 && (
@@ -384,7 +384,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     customValue={clientNameOverride}
                     placeholder="Buscar o escribir nombre de cliente..."
                     createLabel={(value) => `Usar "${value}" como nombre de cliente`}
-                    emptyLabel="No hay clientes registrados. Escribí un nombre para usarlo directamente."
+                    emptyLabel="No hay clientes registrados. Escribir un nombre para usarlo directamente."
                     onSelectItem={(item) => {
                       setClientId(Number(item.id));
                       setClientNameOverride("");
@@ -525,7 +525,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               </div>
             </FormSection>
 
-            <FormSection icon={Package} title="Productos" description="Agregá una línea por cada producto del pedido">
+            <FormSection icon={Package} title="Productos" description="Una línea por cada producto del pedido">
               <div className="space-y-2">
                 {rows.map((row, index) => (
                   <div key={index} className="flex gap-2 items-center">
@@ -536,7 +536,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       customValue={row.customName}
                       placeholder="Buscar o escribir producto..."
                       createLabel={(value) => `Usar "${value}" como producto nuevo`}
-                      emptyLabel="No hay productos frecuentes aún. Escribí uno para usarlo."
+                      emptyLabel="No hay productos frecuentes aún. Escribir uno para usarlo."
                       onSelectItem={(item) => updateRow(index, "customName", item.label)}
                       onUseCustom={(text) => updateRow(index, "customName", text)}
                     />

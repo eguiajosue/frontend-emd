@@ -111,7 +111,7 @@ const OrderDetailPage = () => {
     return (
       <ErrorState
         title="No se pudo cargar el pedido"
-        description="Verificá tu conexión o volvé a la lista de pedidos."
+        description="Verificar la conexión o volver a la lista de pedidos."
         onRetry={() => refetch()}
       />
     );

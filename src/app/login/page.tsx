@@ -25,8 +25,8 @@ const LoginForm = () => {
   const searchParams = useSearchParams()
   const sessionMessage = searchParams.get('message')
 
-  const usernameError = touched.username && username.trim().length === 0 ? 'Ingresá tu nombre de usuario' : undefined
-  const passwordError = touched.password && password.length === 0 ? 'Ingresá tu contraseña' : undefined
+  const usernameError = touched.username && username.trim().length === 0 ? 'Ingresar el nombre de usuario' : undefined
+  const passwordError = touched.password && password.length === 0 ? 'Ingresar la contraseña' : undefined
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,7 +94,7 @@ const LoginForm = () => {
           </div>
           <div className="space-y-2 text-center">
             <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white md:text-foreground">Bienvenido de vuelta</h2>
-            <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingresá tu usuario y contraseña para entrar al taller</p>
+            <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingresar usuario y contraseña para entrar al taller</p>
           </div>
 
           {sessionMessage && (

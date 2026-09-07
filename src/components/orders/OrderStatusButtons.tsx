@@ -45,7 +45,7 @@ export function OrderStatusButtons({
             onClick={() => !disabled && onChange(opt.value)}
             title={
               !canChange
-                ? "No tenés permiso para cambiar el estado de este pedido"
+                ? "Sin permiso para cambiar el estado de este pedido"
                 : opt.label
             }
             className={cn(

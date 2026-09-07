@@ -168,7 +168,7 @@ const Dashboard = () => {
                 {totalOrders === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
                     <BarChart3 className="h-6 w-6 text-muted-foreground/50" strokeWidth={1.5} />
-                    <p>El gráfico va a cobrar vida con tu primer pedido.</p>
+                    <p>El gráfico va a cobrar vida con el primer pedido.</p>
                   </div>
                 ) : (
                   <OrdersByStatusBarChart data={chartData} />
