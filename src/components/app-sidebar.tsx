@@ -33,6 +33,8 @@ import { ThemeToggle } from "./ThemeToggle";
 import { BugReportDialog } from "./BugReportDialog";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { useChatUnreadCount } from "@/hooks/useChat";
+import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
+import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 // Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
@@ -123,6 +125,10 @@ export function AppSidebar() {
   // Badge de mensajes de chat sin leer: se deriva de la misma query que usa
   // la pantalla del chat, invalidada en vivo por `useSocket`.
   const chatUnread = useChatUnreadCount();
+  // Mismo criterio para el ítem "Notificaciones": comparte la query con la
+  // campanita del header, así ambos resaltan a la vez.
+  const { count: notificationsUnread } = useUnreadNotificationsCount();
+  const { reduced: reducedMotion } = useMotionPreset();
 
   const menuItems = [
     {
@@ -285,49 +291,81 @@ export function AppSidebar() {
                 userRoles.includes("admin") ||
                 userRoles.some((r) =>
                   "roles" in item ? (item.roles as string[]).includes(r) : true
-                ) ? (
+                ) ? (() => {
+                  // Ítems con contador de pendientes: chat y notificaciones.
+                  // Ambos resaltan el ícono y muestran el número, expandidos o
+                  // en el rail colapsado.
+                  const unread =
+                    item.url === "/dashboard/chat"
+                      ? chatUnread
+                      : item.url === "/dashboard/notificaciones"
+                      ? notificationsUnread
+                      : 0;
+                  const active = pathname === item.url;
+                  const highlighted = unread > 0 && !active;
+                  return (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={active}>
                       <a
                         href={item.url}
-                        className="relative"
+                        className={cn("relative", highlighted && "text-primary")}
                         data-tour={item.title === "Ayuda" ? "help-link" : undefined}
                       >
-                        {pathname === item.url && (
+                        {active && (
                           <motion.span
                             layoutId="sidebar-active-indicator"
                             className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary/10"
                             transition={{ type: "spring", stiffness: 400, damping: 35 }}
                           />
                         )}
-                        <item.icon
-                          className={pathname === item.url ? "text-primary" : undefined}
-                        />
+                        {/* Fondo tenue permanente mientras haya pendientes. */}
+                        {highlighted && (
+                          <span
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary/10"
+                          />
+                        )}
+                        <motion.span
+                          aria-hidden
+                          className="flex"
+                          animate={
+                            unread > 0 && !reducedMotion
+                              ? { rotate: [0, -10, 8, -5, 0] }
+                              : { rotate: 0 }
+                          }
+                          transition={{ duration: 0.6, ease: "easeInOut" }}
+                        >
+                          <item.icon
+                            className={active || highlighted ? "text-primary" : undefined}
+                          />
+                        </motion.span>
                         {!collapsed && (
                           <span
-                            className={
-                              pathname === item.url ? "font-medium text-primary" : undefined
-                            }
+                            className={cn(
+                              active && "font-medium text-primary",
+                              highlighted && "font-medium"
+                            )}
                           >
                             {item.title}
                           </span>
                         )}
-                        {!collapsed && item.url === "/dashboard/chat" && chatUnread > 0 ? (
+                        {!collapsed && unread > 0 ? (
                           <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
-                            {chatUnread > 99 ? "99+" : chatUnread}
+                            {unread > 99 ? "99+" : unread}
                           </span>
                         ) : null}
                       </a>
                     </SidebarMenuButton>
                     {/* Colapsado el badge va sobre el `li` (relative) y no dentro
                         del botón, que tiene `overflow-hidden` y lo recortaría. */}
-                    {collapsed && item.url === "/dashboard/chat" && chatUnread > 0 ? (
+                    {collapsed && unread > 0 ? (
                       <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-sidebar">
-                        {chatUnread > 99 ? "99+" : chatUnread}
+                        {unread > 99 ? "99+" : unread}
                       </span>
                     ) : null}
                   </SidebarMenuItem>
-                ) : null
+                  );
+                })() : null
               )}
             </SidebarMenu>
           </div>

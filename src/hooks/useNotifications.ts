@@ -25,21 +25,35 @@ function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
+/**
+ * Respuesta de `GET /notifications/unread-count`.
+ *
+ * El backend responde `{ unreadCount }` (ver NotificationService.unreadCount),
+ * pero acá se aceptan ambas claves: durante un tiempo el frontend leyó `count`
+ * y el badge quedaba siempre en 0 porque esa clave nunca venía. Tolerar las dos
+ * evita que un backend viejo/nuevo desplegado a destiempo vuelva a romperlo.
+ */
+type UnreadCountResponse = { unreadCount?: number; count?: number };
+
+function readUnreadCount(data: UnreadCountResponse | undefined): number {
+  return data?.unreadCount ?? data?.count ?? 0;
+}
+
 /** `GET /notifications/unread-count`, refrescado por poll + invalidado en vivo por WS. */
 export function useUnreadNotificationsCount() {
   const token = useAuthToken();
 
-  const query = useQuery<{ count: number }>({
+  const query = useQuery<UnreadCountResponse>({
     queryKey: NOTIFICATIONS_UNREAD_KEY,
     enabled: Boolean(token),
     queryFn: async () => {
       try {
-        return await request<{ count: number }>(
+        return await request<UnreadCountResponse>(
           `${ENDPOINTS.notifications}/unread-count`,
           { token }
         );
       } catch (error) {
-        if (isNotFound(error)) return { count: 0 };
+        if (isNotFound(error)) return { unreadCount: 0 };
         throw error;
       }
     },
@@ -48,7 +62,7 @@ export function useUnreadNotificationsCount() {
     retry: (failureCount, error) => !isNotFound(error) && failureCount < 2,
   });
 
-  return { count: query.data?.count ?? 0, isLoading: query.isLoading };
+  return { count: readUnreadCount(query.data), isLoading: query.isLoading };
 }
 
 /** Listado paginado de notificaciones (`GET /notifications`). */
