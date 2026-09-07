@@ -7,6 +7,7 @@ export const statusMap: { [key: number]: string } = {
   3: "en proceso",
   4: "terminado",
   5: "entregado",
+  10: "cancelado",
 };
 
 // Estados que ya no existen pero que pueden seguir apareciendo en textos
@@ -42,6 +43,57 @@ export const DELIVERED_STATUS_ID = 5;
 
 export function isDeliveredStatus(statusId: number): boolean {
   return statusId === DELIVERED_STATUS_ID;
+}
+
+/**
+ * Id de estado "terminado". Junto con `DELIVERED_STATUS_ID`, marca un pedido
+ * ya cerrado desde el punto de vista de flujos que no deberían ofrecerlo más
+ * (ej. adjuntar como contexto en un mensaje de chat).
+ */
+export const FINISHED_STATUS_ID = 4;
+
+/**
+ * `true` si el pedido ya está "terminado" o "entregado" — es decir, cerrado.
+ * Usar en selectores que no deberían seguir ofreciendo pedidos ya cerrados
+ * (ej. `OrderPicker` del chat interno), a diferencia de `isDeliveredStatus`
+ * que sólo cubre el último paso del flujo.
+ */
+export function isFinishedStatus(statusId: number): boolean {
+  return statusId === FINISHED_STATUS_ID || statusId === DELIVERED_STATUS_ID;
+}
+
+/**
+ * Id de estado "cancelado". Fuente única de verdad para saber si un pedido
+ * fue cancelado (sin depender de comparar el label en texto) — usar
+ * `isCancelledStatus` desde cualquier componente que necesite distinguir
+ * este estado (ej. para suprimir acciones de flujo normal o resaltar en rojo).
+ */
+export const CANCELLED_STATUS_ID = 10;
+
+export function isCancelledStatus(statusId: number): boolean {
+  return statusId === CANCELLED_STATUS_ID;
+}
+
+/**
+ * Orden lineal del flujo "normal" de un pedido (pendiente → en proceso →
+ * terminado → entregado). Usado sólo para ofrecer, en la lista de pedidos,
+ * un botón de acción rápida con el "próximo" estado sugerido — no reemplaza
+ * a `OrderStatusButtons` (que permite ir a cualquier estado a mano).
+ */
+export const STATUS_FLOW_ORDER: number[] = [1, 3, 4, 5];
+
+/**
+ * Próximo estado del flujo lineal después de `currentStatusId`, o `null` si
+ * ya es el último (entregado) o el estado actual no forma parte del flujo
+ * conocido (ej. un estado del flujo de diseño).
+ */
+export function getNextStatusOption(
+  currentStatusId: number
+): { value: number; label: string } | null {
+  const index = STATUS_FLOW_ORDER.indexOf(currentStatusId);
+  if (index === -1 || index === STATUS_FLOW_ORDER.length - 1) return null;
+  const nextId = STATUS_FLOW_ORDER[index + 1];
+  return { value: nextId, label: statusMap[nextId] ?? `Estado ${nextId}` };
 }
 
 /**

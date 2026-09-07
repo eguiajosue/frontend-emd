@@ -679,6 +679,7 @@ function FeedbackDialog({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  aria-label="Quitar archivo"
                   onClick={() => {
                     setFile(null);
                     setFileLabel(null);

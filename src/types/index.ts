@@ -348,7 +348,35 @@ export interface ChatMember extends ChatUserSummary {
   isMonitor: boolean;
 }
 
-/** Mensaje del chat interno. */
+/** Pedido resumido adjunto a un mensaje de chat. */
+export interface ChatOrderRef {
+  id: number;
+  description: string;
+  area: string | null;
+  status: { name: string } | null;
+}
+
+/**
+ * Payload de subida de un adjunto de chat (foto, documento o audio): base64
+ * SIN el prefijo `data:...;base64,`, igual que `AuthorizationFileInput`.
+ */
+export interface ChatAttachmentInput {
+  data: string;
+  filename: string;
+  mimeType: string;
+}
+
+/** Adjunto ya persistido de un mensaje de chat (respuesta de la API/WS). */
+export interface ChatMessageAttachment {
+  filename: string;
+  mimeType: string;
+  size: number | null;
+  dataUrl?: string;
+}
+
+/**
+ * Mensaje del chat interno.
+ */
 export interface ChatMessage {
   id: number;
   conversationId: number;
@@ -359,6 +387,9 @@ export interface ChatMessage {
   /** Sólo en los mensajes que llegan en vivo por WebSocket. */
   senderName?: string;
   senderUsername?: string;
+  orderId?: number | null;
+  order?: ChatOrderRef | null;
+  attachment?: ChatMessageAttachment | null;
 }
 
 /**

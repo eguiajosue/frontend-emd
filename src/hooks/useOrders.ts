@@ -22,8 +22,8 @@ export function useOrder(
   return useEntityDetail<Order>("orders", id, options);
 }
 
-export function useOrderHistories() {
-  return useEntityList<OrderHistory>("orderHistories");
+export function useOrderHistories(options?: { enabled?: boolean }) {
+  return useEntityList<OrderHistory>("orderHistories", { enabled: options?.enabled });
 }
 
 /**
@@ -54,8 +54,8 @@ export function useOrderHistoryList(page: number, limit = 20) {
 }
 
 /** Historial de un pedido puntual, ordenado del cambio más reciente al más viejo. */
-export function useOrderHistory(orderId: number) {
-  const query = useOrderHistories();
+export function useOrderHistory(orderId: number, options?: { enabled?: boolean }) {
+  const query = useOrderHistories({ enabled: options?.enabled });
   const histories = useMemo(
     () =>
       query.data
@@ -119,6 +119,128 @@ export function useChangeOrderStatus() {
     isChangingStatus: mutation.isPending,
     changingOrderId: mutation.isPending ? mutation.variables?.order.id : null,
   };
+}
+
+/**
+ * Elimina un pedido (`DELETE /orders/:id`). Sólo recepción/admin/superuser
+ * tienen permiso en el backend — la UI que dispara esto debe ocultarse/
+ * deshabilitarse para el resto de los roles (ver `OrderDetailDialog`).
+ */
+export function useDeleteOrder() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      await request<void>(`${ENDPOINTS.orders}/${orderId}`, {
+        method: "DELETE",
+        token,
+      });
+      return { orderId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      toast.success("Pedido eliminado correctamente");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof ApiError && error.message
+          ? error.message
+          : "No se pudo eliminar el pedido."
+      );
+    },
+  });
+
+  return {
+    deleteOrder: (orderId: number) => mutation.mutateAsync(orderId).catch(() => undefined),
+    isDeleting: mutation.isPending,
+  };
+}
+
+/**
+ * Cambio de estado en bloque (bulk actions), optimista: actualiza el/los
+ * cache(s) de "orders" apenas se dispara la acción (antes de esperar a que
+ * las requests resuelvan), y si alguna falla revierte SOLO esas filas a su
+ * estado anterior, sin tocar las que sí tuvieron éxito.
+ *
+ * Mientras el backend no exponga `POST /orders/bulk-actions`, se sigue
+ * disparando una request PATCH + POST de historial por pedido en paralelo
+ * (`Promise.allSettled`); si ese endpoint dedicado aparece más adelante,
+ * alcanza con reemplazar el cuerpo de `run` acá sin tocar el resto de la
+ * pantalla (la UI ya asume una function async que puede fallar parcial).
+ */
+export function useBulkChangeOrderStatus() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+  }, [queryClient]);
+
+  const applyStatus = useCallback(
+    (ids: Set<number>, statusById: Map<number, number>) => {
+      queryClient.setQueriesData<Order[]>(
+        { queryKey: queryKeys.all("orders") },
+        (old) =>
+          old?.map((o) =>
+            ids.has(o.id) ? { ...o, statusId: statusById.get(o.id) ?? o.statusId } : o
+          )
+      );
+    },
+    [queryClient]
+  );
+
+  const bulkChangeStatus = useCallback(
+    async (orders: Pick<Order, "id" | "statusId">[], newStatusId: number) => {
+      const allIds = new Set(orders.map((o) => o.id));
+      const newStatusById = new Map(orders.map((o) => [o.id, newStatusId]));
+
+      // 1) Optimista: se ve el cambio de una en la tabla/tarjetas antes de que
+      // ninguna request haya vuelto.
+      applyStatus(allIds, newStatusById);
+
+      const results = await Promise.allSettled(
+        orders.map(async (order) => {
+          await request<Order>(`${ENDPOINTS.orders}/${order.id}`, {
+            method: "PATCH",
+            token,
+            body: { statusId: newStatusId },
+          });
+          await request<OrderHistory>(ENDPOINTS.orderHistories, {
+            method: "POST",
+            token,
+            body: {
+              orderId: order.id,
+              previousStatusId: order.statusId,
+              newStatusId,
+            },
+          });
+        })
+      );
+
+      const failedOrders = orders.filter((_, idx) => results[idx].status === "rejected");
+
+      if (failedOrders.length > 0) {
+        // 2) Rollback per-row: sólo las filas que fallaron vuelven a su estado
+        // original; las que sí se aplicaron quedan como están.
+        const failedIds = new Set(failedOrders.map((o) => o.id));
+        const revertStatusById = new Map(failedOrders.map((o) => [o.id, o.statusId]));
+        applyStatus(failedIds, revertStatusById);
+      }
+
+      invalidate();
+
+      return {
+        succeeded: orders.length - failedOrders.length,
+        failed: failedOrders.length,
+      };
+    },
+    [token, applyStatus, invalidate]
+  );
+
+  return { bulkChangeStatus };
 }
 
 /** `true` si el error es un 404 (endpoint todavía no desplegado, o recurso inexistente). */
@@ -194,9 +316,9 @@ function getNoteErrorMessage(error: unknown): string {
  * Historial de ediciones de un pedido (`GET /orders/:id/audit-log`).
  * Endpoint nuevo: 404 defensivo mientras no esté desplegado.
  */
-export function useOrderAuditLog(orderId: number | null) {
+export function useOrderAuditLog(orderId: number | null, options?: { enabled?: boolean }) {
   const token = useAuthToken();
-  const enabled = Boolean(token) && orderId !== null;
+  const enabled = Boolean(token) && orderId !== null && (options?.enabled ?? true);
 
   const query = useQuery<OrderAuditLogEntry[]>({
     queryKey: ["orderAuditLog", orderId],

@@ -24,6 +24,7 @@ import {
   useChatMutations,
   useChatUsers,
 } from "@/hooks/useChat";
+import type { ChatAttachmentInput } from "@/types";
 import { ConversationList } from "./components/ConversationList";
 import { MessageThread } from "./components/MessageThread";
 
@@ -64,10 +65,14 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, lastMessageId]);
 
-  const handleSend = async (body: string) => {
+  const handleSend = async (
+    body: string,
+    orderId?: number,
+    attachment?: ChatAttachmentInput
+  ) => {
     if (!selectedId) return;
     try {
-      await sendMessage(selectedId, body);
+      await sendMessage(selectedId, body, orderId, attachment);
     } catch (err) {
       if (!isSessionExpiredError(err)) {
         toast.error(getErrorMessage(err, "No se pudo enviar el mensaje."));
@@ -88,20 +93,22 @@ export default function ChatPage() {
     }
   };
 
-  const filteredUsers = users
-    .filter((u) => {
-      const needle = userFilter.trim().toLowerCase();
-      if (!needle) return true;
-      return (
-        chatDisplayName(u).toLowerCase().includes(needle) ||
-        u.username.toLowerCase().includes(needle)
-      );
-    })
-    .sort((a, b) =>
-      chatDisplayName(a).localeCompare(chatDisplayName(b), "es", {
-        sensitivity: "base",
+  const filteredUsers = useMemo(() => {
+    const needle = userFilter.trim().toLowerCase();
+    return users
+      .filter((u) => {
+        if (!needle) return true;
+        return (
+          chatDisplayName(u).toLowerCase().includes(needle) ||
+          u.username.toLowerCase().includes(needle)
+        );
       })
-    );
+      .sort((a, b) =>
+        chatDisplayName(a).localeCompare(chatDisplayName(b), "es", {
+          sensitivity: "base",
+        })
+      );
+  }, [users, userFilter]);
 
   const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const letterOf = (u: (typeof filteredUsers)[number]) =>

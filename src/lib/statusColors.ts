@@ -20,7 +20,8 @@ export type StatusTone =
   | "progress"
   | "success"
   | "done"
-  | "danger";
+  | "danger"
+  | "critical";
 
 const TONE_BY_STATUS_ID: Record<number, StatusTone> = {
   1: "neutral", // pendiente
@@ -28,6 +29,7 @@ const TONE_BY_STATUS_ID: Record<number, StatusTone> = {
   3: "warning", // en proceso
   4: "progress", // terminado
   5: "success", // entregado
+  10: "critical", // cancelado
 };
 
 /**
@@ -55,6 +57,8 @@ const CLASSES_BY_TONE: Record<StatusTone, string> = {
   done: "bg-primary/10 text-primary border-primary/20",
   danger:
     "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800",
+  critical:
+    "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
 };
 
 /** Punto (indicador) sólido por tono, para usar en leyendas/gráficos. */
@@ -66,6 +70,7 @@ const DOT_BY_TONE: Record<StatusTone, string> = {
   success: "bg-emerald-500",
   done: "bg-primary",
   danger: "bg-orange-500",
+  critical: "bg-red-500",
 };
 
 function toneByName(statusName: string | null | undefined): StatusTone | null {
@@ -108,6 +113,7 @@ export const STATUS_CHART_COLORS: Record<number, string> = {
   3: "#f59e0b", // amber-500
   4: "#8b5cf6", // violet-500
   5: "#10b981", // emerald-500
+  10: "#ef4444", // red-500
 };
 
 /** Colores HEX por nombre, para los 4 estados de diseño (ids variables entre entornos). */

@@ -6,20 +6,13 @@ import * as XLSX from "xlsx";
 import Title from "@/components/Title";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   CardsSkeleton,
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useChangeOrderStatus, useOrders, downloadOrdersExport } from "@/hooks/useOrders";
+import { useOrders, downloadOrdersExport, useBulkChangeOrderStatus } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
@@ -28,6 +21,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
 import { motion } from "framer-motion";
 import { staggerContainerVariants } from "@/lib/motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -40,6 +34,14 @@ import {
 import type { Client, Order, User } from "@/types";
 import { ExternalLink, FileDown, LayoutGrid, List, Plus, PackageSearch, FilterX, PartyPopper } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
@@ -102,7 +104,6 @@ const OrdersPage = () => {
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
   const { deliveredRetentionHours } = useAppSettings();
-  const { changeStatus, changingOrderId } = useChangeOrderStatus();
   const token = useAuthToken();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -110,6 +111,10 @@ const OrdersPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
+  const [isBulkChanging, setIsBulkChanging] = useState(false);
+  const { bulkChangeStatus } = useBulkChangeOrderStatus();
 
   useEffect(() => {
     setFilters(filtersFromUrl());
@@ -294,8 +299,89 @@ const OrdersPage = () => {
     }
   };
 
+  // La selección de bulk actions se limpia cuando cambian los filtros o la
+  // vista: evita aplicar un cambio de estado a pedidos que ya no están a la
+  // vista.
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [filters, viewMode]);
+
+  const toggleSelected = useCallback((id: number, checked: boolean) => {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((existingId) => existingId !== id)
+    );
+  }, []);
+
+  const toggleSelectAll = useCallback(
+    (checked: boolean) => {
+      setSelectedIds(checked ? visibleOrders.map((o) => o.id) : []);
+    },
+    [visibleOrders]
+  );
+
+  const clearSelection = useCallback(() => setSelectedIds([]), []);
+
+  const handleBulkStatusChange = async () => {
+    if (!bulkTargetStatus || selectedIds.length === 0) return;
+    const newStatusId = Number(bulkTargetStatus);
+    const targetOrders = visibleOrders.filter(
+      (o) => selectedIds.includes(o.id) && o.statusId !== newStatusId
+    );
+    if (targetOrders.length === 0) {
+      toast.info("Los pedidos seleccionados ya están en ese estado.");
+      return;
+    }
+    setIsBulkChanging(true);
+    // Selección y filtro de estado se limpian de una: la UI ya se actualiza
+    // en forma optimista (ver useBulkChangeOrderStatus), no hace falta
+    // esperar a que las requests resuelvan para que la barra desaparezca.
+    clearSelection();
+    setBulkTargetStatus("");
+    try {
+      const { succeeded: ok, failed } = await bulkChangeStatus(targetOrders, newStatusId);
+      if (ok > 0) {
+        toast.success(
+          `${ok} pedido${ok === 1 ? "" : "s"} actualizado${ok === 1 ? "" : "s"} a "${statusMap[newStatusId] ?? newStatusId}".`
+        );
+      }
+      if (failed > 0) {
+        toast.error(`No se pudo actualizar ${failed} pedido${failed === 1 ? "" : "s"}.`);
+      }
+    } finally {
+      setIsBulkChanging(false);
+    }
+  };
+
+  const selectedCount = selectedIds.length;
+  const allVisibleSelected =
+    visibleOrders.length > 0 && selectedIds.length === visibleOrders.length;
+
   const columns: ColumnDef<Order>[] = useMemo(
     () => [
+      ...(canManageOperations
+        ? [
+            {
+              id: "select",
+              header: () => (
+                <Checkbox
+                  checked={allVisibleSelected}
+                  onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                  aria-label="Seleccionar todos los pedidos"
+                />
+              ),
+              cell: ({ row }: { row: { original: Order } }) => (
+                <Checkbox
+                  checked={selectedIds.includes(row.original.id)}
+                  onCheckedChange={(checked) =>
+                    toggleSelected(row.original.id, checked === true)
+                  }
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Seleccionar pedido #${row.original.id}`}
+                />
+              ),
+            } satisfies ColumnDef<Order>,
+          ]
+        : []),
       { id: "id", header: "Pedido", cell: ({ row }) => `#${row.original.id}` },
       {
         id: "client",
@@ -324,30 +410,9 @@ const OrdersPage = () => {
         id: "changeStatus",
         header: "Avanzar estado",
         cell: ({ row }) => (
-          <Select
-            value={String(row.original.statusId)}
-            onValueChange={(value) => {
-              const next = Number(value);
-              if (next !== row.original.statusId) {
-                changeStatus(row.original, next);
-              }
-            }}
-          >
-            <SelectTrigger
-              className="w-[170px]"
-              onClick={(e) => e.stopPropagation()}
-              disabled={changingOrderId === row.original.id}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {statusOptions.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>
-                  {opt.label.toUpperCase()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-1.5">
+            <OrderQuickStatusChip order={row.original} />
+          </div>
         ),
       },
       {
@@ -362,13 +427,14 @@ const OrdersPage = () => {
               openDetail(row.original.id);
             }}
             title="Ver detalle completo"
+            aria-label={`Ver detalle completo del pedido #${row.original.id}`}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
         ),
       },
     ],
-    [changeStatus, changingOrderId, openDetail]
+    [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll]
   );
 
   // Columnas de la vista cuadrícula: se agrupa visualmente por estado del pedido
@@ -506,7 +572,47 @@ const OrdersPage = () => {
         )
       ) : viewMode === "list" ? (
         <div className="w-full overflow-auto">
-          <DataTable columns={columns} data={visibleOrders} onRowClick={(o) => openDetail(o.id)} />
+          {canManageOperations && selectedCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur"
+            >
+              <span className="text-sm font-medium">
+                {selectedCount} pedido{selectedCount === 1 ? "" : "s"} seleccionado
+                {selectedCount === 1 ? "" : "s"}
+              </span>
+              <Select value={bulkTargetStatus} onValueChange={setBulkTargetStatus}>
+                <SelectTrigger className="h-8 w-48 text-sm">
+                  <SelectValue placeholder="Cambiar estado a..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                disabled={!bulkTargetStatus || isBulkChanging}
+                onClick={handleBulkStatusChange}
+              >
+                {isBulkChanging ? "Aplicando..." : "Aplicar"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>
+                Cancelar
+              </Button>
+            </motion.div>
+          )}
+          <DataTable
+            columns={columns}
+            data={visibleOrders}
+            onRowClick={(o) => openDetail(o.id)}
+            virtualize={visibleOrders.length > 30}
+            estimateRowHeight={56}
+          />
         </div>
       ) : (
         <div
