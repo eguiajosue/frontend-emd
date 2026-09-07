@@ -104,7 +104,7 @@ function OrderRefChip({
       type="button"
       onClick={() => onOpen(order.id)}
       className={cn(
-        "mt-1 flex w-full items-start gap-2 rounded-md border p-2 text-left text-xs transition-colors hover:opacity-80",
+        "mt-1 flex w-full items-start gap-2 rounded-xl border p-2.5 text-left text-xs transition-colors hover:opacity-80",
         mine
           ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
           : "border-border bg-background/60 text-foreground"
@@ -133,7 +133,7 @@ function MessageAttachment({ message, mine }: { message: ChatMessage; mine: bool
         <img
           src={url}
           alt={filename}
-          className="max-h-48 w-auto rounded-md border border-border/60 object-cover"
+          className="max-h-48 w-auto rounded-xl border border-border/60 object-cover shadow-soft"
         />
       </a>
     );
@@ -154,7 +154,7 @@ function MessageAttachment({ message, mine }: { message: ChatMessage; mine: bool
       rel="noopener noreferrer"
       download={filename}
       className={cn(
-        "mt-1 flex items-center gap-2 rounded-md border p-2 text-xs transition-colors hover:opacity-80",
+        "mt-1 flex items-center gap-2 rounded-xl border p-2.5 text-xs transition-colors hover:opacity-80",
         mine
           ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
           : "border-border bg-background/60 text-foreground"
@@ -193,14 +193,14 @@ function OrderPicker({
           type="button"
           size="icon"
           variant={selected ? "default" : "ghost"}
-          className="h-9 w-9 shrink-0"
+          className="h-10 w-10 shrink-0 rounded-full"
           title="Adjuntar pedido como contexto"
           aria-label="Adjuntar pedido como contexto"
         >
           <Paperclip className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-2" side="top" align="start" sideOffset={8}>
+      <PopoverContent className="w-72 rounded-2xl p-2 shadow-soft-md" side="top" align="start" sideOffset={8}>
         <p className="mb-2 px-1 text-xs font-medium text-muted-foreground">
           Adjuntar pedido como contexto
         </p>
@@ -414,18 +414,20 @@ export function MessageThread({
         ) : null}
         <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
           {!mine ? (
-            <Avatar className="h-7 w-7 shrink-0">
-              <AvatarFallback className="text-[10px]">{chatInitials(author)}</AvatarFallback>
+            <Avatar className="h-7 w-7 shrink-0 shadow-soft">
+              <AvatarFallback className="text-[10px] font-semibold">{chatInitials(author)}</AvatarFallback>
             </Avatar>
           ) : null}
           <div
             className={cn(
-              "max-w-[75%] rounded-lg px-3 py-2 text-sm",
-              mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+              "max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow",
+              mine
+                ? "rounded-br-md bg-primary text-primary-foreground shadow-soft"
+                : "rounded-bl-md border bg-card text-foreground shadow-soft"
             )}
           >
             {!mine ? (
-              <p className="pb-0.5 text-xs font-bold opacity-80">{chatDisplayName(author)}</p>
+              <p className="pb-0.5 text-xs font-bold text-primary">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML acá. */}
@@ -569,18 +571,18 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t p-3">
+      <div className="border-t bg-card/60 p-3">
         {attachedOrder ? (
-          <div className="mb-2 flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+          <div className="mb-2 flex items-center gap-2 rounded-2xl border bg-muted/40 px-3 py-2 text-xs shadow-soft">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">
-              <span className="font-medium">Pedido #{attachedOrder.id}</span>{" "}
+              <span className="font-semibold">Pedido #{attachedOrder.id}</span>{" "}
               <span className="text-muted-foreground">{attachedOrder.description}</span>
             </span>
             <button
               type="button"
               onClick={() => setAttachedOrder(null)}
-              className="ml-1 text-muted-foreground hover:text-foreground"
+              className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="Quitar adjunto"
             >
               <X className="h-3 w-3" />
@@ -588,21 +590,21 @@ export function MessageThread({
           </div>
         ) : null}
         {attachedFile ? (
-          <div className="mb-2 flex items-center gap-3 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border bg-muted/40 px-3 py-2 text-xs shadow-soft">
             {attachedFilePreview ? (
               <img
                 src={attachedFilePreview}
                 alt={attachedFile.filename}
-                className="h-9 w-9 shrink-0 rounded object-cover"
+                className="h-9 w-9 shrink-0 rounded-lg object-cover"
               />
             ) : (
               <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
-            <span className="min-w-0 flex-1 truncate font-medium">{attachedFile.filename}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold">{attachedFile.filename}</span>
             <button
               type="button"
               onClick={removeAttachedFile}
-              className="ml-1 text-muted-foreground hover:text-foreground"
+              className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="Quitar archivo"
             >
               <X className="h-3 w-3" />
@@ -622,7 +624,7 @@ export function MessageThread({
             type="button"
             size="icon"
             variant={attachedFile ? "default" : "ghost"}
-            className="h-9 w-9 shrink-0"
+            className="h-10 w-10 shrink-0 rounded-full"
             title="Adjuntar foto, documento o audio"
             aria-label="Adjuntar foto, documento o audio"
             onClick={() => fileInputRef.current?.click()}
@@ -639,12 +641,13 @@ export function MessageThread({
               }
             }}
             placeholder="Escribí un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
-            className="max-h-40 min-h-[44px] resize-none"
+            className="max-h-40 min-h-[44px] resize-none rounded-2xl"
             maxLength={2000}
           />
           <Button
             onClick={() => void handleSend()}
             disabled={isSending || (!draft.trim() && !attachedFile)}
+            className="rounded-full shadow-soft"
           >
             <Send className="mr-1 h-4 w-4" />
             Enviar
