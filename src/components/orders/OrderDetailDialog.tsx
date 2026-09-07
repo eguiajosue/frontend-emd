@@ -22,6 +22,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
+import { OrderHandoff } from "@/components/orders/OrderHandoff";
 import {
   combineDateAndTime,
   formatDateTime,
@@ -246,6 +247,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                 </DialogHeader>
 
                 <div className="mt-4 space-y-4 text-sm">
+                  {/* Primero de quién es el trabajo, después los datos: es lo
+                      que cualquiera viene a averiguar al abrir un pedido. */}
+                  <OrderHandoff order={order} />
+
                   <div className="grid gap-1">
                     <p>
                       <b>Cliente:</b> {getOrderClientName(order)}

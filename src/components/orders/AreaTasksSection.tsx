@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -69,6 +71,25 @@ function assignedLabel(task: OrderAreaTask): string {
   return user.isSharedAccount ? `Área: ${name}` : name;
 }
 
+/**
+ * Desde cuándo la tarea está como está, en relativo ("empezó hace 2 horas").
+ * `null` cuando todavía no empezó: ahí el dato útil es que no arrancó, y eso ya
+ * lo dice el chip de estado.
+ */
+function taskTiming(task: OrderAreaTask): string | null {
+  const stamp =
+    task.status === "terminado"
+      ? task.completedAt
+      : task.status === "en_proceso"
+        ? task.startedAt
+        : null;
+  if (!stamp) return null;
+  const date = new Date(stamp);
+  if (Number.isNaN(date.getTime())) return null;
+  const verb = task.status === "terminado" ? "Terminó" : "Empezó";
+  return `${verb} ${formatDistanceToNow(date, { addSuffix: true, locale: es })}`;
+}
+
 interface AreaTasksSectionProps {
   orderId: number;
 }
@@ -102,8 +123,17 @@ export function AreaTasksSection({ orderId }: AreaTasksSectionProps) {
     (option) => !usedAreas.has(option.value)
   );
 
-  /** Un área ajena sólo se puede mirar; Recepción/admin pueden con todas. */
-  const canWork = (area: string) => isManager || roles.includes(area);
+  /**
+   * Tomar y avanzar una tarea es trabajo del ÁREA, no de quien coordina.
+   *
+   * Antes esto incluía a Recepción/admin, así que a Recepción le aparecían
+   * "Tomar" y "Empezar" en áreas que no trabaja — y "Tomar" se asigna a uno
+   * mismo, con lo cual el backend lo rechazaba:
+   * `PATCH /orders/11/area-tasks/2/assign -> 400: El usuario asignado no
+   * pertenece al área dtf`. Un botón que sólo puede fallar. Recepción conserva
+   * lo suyo: agregar y quitar áreas, y ver quién tiene cada parte.
+   */
+  const canWork = (area: string) => roles.includes(area);
 
   const handleAdvance = async (task: OrderAreaTask) => {
     const next = nextStatus(task.status);
@@ -189,6 +219,7 @@ export function AreaTasksSection({ orderId }: AreaTasksSectionProps) {
               const next = nextStatus(task.status);
               const editable = canWork(task.area);
               const isMine = task.assignedUserId === userId;
+              const timing = taskTiming(task);
 
               return (
                 <motion.li
@@ -219,9 +250,15 @@ export function AreaTasksSection({ orderId }: AreaTasksSectionProps) {
                     {meta.label.toUpperCase()}
                   </span>
 
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <UserRound className="h-3.5 w-3.5" />
-                    <span className="max-w-[12rem] truncate">{assignedLabel(task)}</span>
+                  <span className="flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <UserRound className="h-3.5 w-3.5 shrink-0" />
+                      <span className="max-w-[12rem] truncate">{assignedLabel(task)}</span>
+                    </span>
+                    {/* Para quien no trabaja el área (Recepción, sobre todo)
+                        esto es la respuesta a "¿en qué va?": desde cuándo la
+                        tiene y desde cuándo está así. */}
+                    {timing && <span className="pl-[1.125rem]">{timing}</span>}
                   </span>
 
                   <span className="ml-auto flex items-center gap-1.5">
