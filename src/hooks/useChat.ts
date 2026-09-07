@@ -14,6 +14,7 @@ import { request, unwrapList, type Paginated } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
 import type {
+  ChatAttachmentInput,
   ChatConversation,
   ChatMember,
   ChatMessage,
@@ -132,14 +133,24 @@ export function useChatMutations() {
       conversationId,
       body,
       orderId,
+      attachment,
     }: {
       conversationId: number;
       body: string;
       orderId?: number;
+      attachment?: ChatAttachmentInput;
     }) =>
       request<ChatMessage>(
         `${ENDPOINTS.chat}/conversations/${conversationId}/messages`,
-        { method: "POST", token, body: { body, ...(orderId ? { orderId } : {}) } }
+        {
+          method: "POST",
+          token,
+          body: {
+            body,
+            ...(orderId ? { orderId } : {}),
+            ...(attachment ? { attachment } : {}),
+          },
+        }
       ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -169,8 +180,12 @@ export function useChatMutations() {
   });
 
   return {
-    sendMessage: (conversationId: number, body: string, orderId?: number) =>
-      sendMessage.mutateAsync({ conversationId, body, orderId }),
+    sendMessage: (
+      conversationId: number,
+      body: string,
+      orderId?: number,
+      attachment?: ChatAttachmentInput
+    ) => sendMessage.mutateAsync({ conversationId, body, orderId, attachment }),
     isSending: sendMessage.isPending,
     markAsRead: (conversationId: number) =>
       markAsRead.mutateAsync(conversationId).catch(() => undefined),

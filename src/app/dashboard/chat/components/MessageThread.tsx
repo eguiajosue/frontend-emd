@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, ExternalLink, Paperclip, Send, Users, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  Eye,
+  ExternalLink,
+  File as FileIcon,
+  FileUp,
+  Paperclip,
+  Send,
+  Users,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
@@ -20,7 +30,36 @@ import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
-import type { ChatConversation, ChatMember, ChatMessage, ChatOrderRef, Order } from "@/types";
+import { isFinishedStatus } from "@/lib/orderStatus";
+import type {
+  ChatAttachmentInput,
+  ChatConversation,
+  ChatMember,
+  ChatMessage,
+  ChatOrderRef,
+  Order,
+} from "@/types";
+
+// Mismo criterio que la hoja de autorización de pedidos
+// (`CreateOrderDialog`), adaptado a un límite algo más generoso porque acá
+// también se admiten audios y documentos, no sólo imágenes/PDF chicos.
+const CHAT_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB
+const CHAT_ATTACHMENT_ACCEPT =
+  "image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx";
+
+/** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
+function readFileAsChatAttachment(file: File): Promise<ChatAttachmentInput> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer el archivo"));
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      const base64 = result.split(",")[1] ?? "";
+      resolve({ data: base64, filename: file.name, mimeType: file.type });
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 interface MessageThreadProps {
   conversation: ChatConversation | null;
@@ -29,7 +68,11 @@ interface MessageThreadProps {
   isLoading: boolean;
   isSending: boolean;
   currentUserId: number | null;
-  onSend: (body: string, orderId?: number) => Promise<void>;
+  onSend: (
+    body: string,
+    orderId?: number,
+    attachment?: ChatAttachmentInput
+  ) => Promise<void>;
 }
 
 function formatTime(iso: string): string {
@@ -70,6 +113,52 @@ function OrderRefChip({ order, mine }: { order: ChatOrderRef; mine: boolean }) {
   );
 }
 
+/** Adjunto de un mensaje ya enviado: imagen (thumbnail), audio (player) o chip de descarga. */
+function MessageAttachment({ message, mine }: { message: ChatMessage; mine: boolean }) {
+  const url = message.attachmentUrl;
+  if (!url) return null;
+  const mimeType = message.attachmentMimeType ?? "";
+  const filename = message.attachmentFilename ?? "Archivo adjunto";
+
+  if (mimeType.startsWith("image/")) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" className="mt-1 block">
+        <img
+          src={url}
+          alt={filename}
+          className="max-h-48 w-auto rounded-md border border-border/60 object-cover"
+        />
+      </a>
+    );
+  }
+
+  if (mimeType.startsWith("audio/")) {
+    return (
+      <audio controls className="mt-1 h-9 max-w-full" preload="none">
+        <source src={url} type={mimeType || undefined} />
+      </audio>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={filename}
+      className={cn(
+        "mt-1 flex items-center gap-2 rounded-md border p-2 text-xs transition-colors hover:opacity-80",
+        mine
+          ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
+          : "border-border bg-background/60 text-foreground"
+      )}
+    >
+      <FileIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+      <span className="min-w-0 flex-1 truncate">{filename}</span>
+    </a>
+  );
+}
+
 function OrderPicker({
   selected,
   onSelect,
@@ -81,7 +170,11 @@ function OrderPicker({
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
+  // Un pedido ya terminado/entregado casi nunca hace falta referenciarlo en
+  // un mensaje nuevo — se saca de la lista para no ensuciar el buscador con
+  // pedidos cerrados (ver isFinishedStatus).
   const filtered = orders.filter((o) => {
+    if (isFinishedStatus(o.statusId)) return false;
     const q = filter.toLowerCase();
     return !q || String(o.id).includes(q) || o.description?.toLowerCase().includes(q);
   });
@@ -150,6 +243,9 @@ export function MessageThread({
   const [draft, setDraft] = useState("");
   const [showMembers, setShowMembers] = useState(false);
   const [attachedOrder, setAttachedOrder] = useState<Order | null>(null);
+  const [attachedFile, setAttachedFile] = useState<ChatAttachmentInput | null>(null);
+  const [attachedFilePreview, setAttachedFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
@@ -192,6 +288,11 @@ export function MessageThread({
     setDraft("");
     setShowMembers(false);
     setAttachedOrder(null);
+    setAttachedFile(null);
+    setAttachedFilePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, [conversation?.id]);
 
   if (!conversation) {
@@ -204,11 +305,50 @@ export function MessageThread({
 
   const handleSend = async () => {
     const body = draft.trim();
-    if (!body || isSending) return;
+    // El texto es opcional cuando hay un adjunto (igual que el backend), pero
+    // no se puede mandar un mensaje totalmente vacío.
+    if ((!body && !attachedFile) || isSending) return;
     const orderId = attachedOrder?.id;
+    const attachment = attachedFile ?? undefined;
     setDraft("");
     setAttachedOrder(null);
-    await onSend(body, orderId);
+    setAttachedFile(null);
+    setAttachedFilePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    await onSend(body, orderId, attachment);
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > CHAT_ATTACHMENT_MAX_BYTES) {
+      toast.error("El archivo no puede pesar más de 15MB.");
+      e.target.value = "";
+      return;
+    }
+
+    try {
+      const parsed = await readFileAsChatAttachment(file);
+      setAttachedFile(parsed);
+      setAttachedFilePreview(
+        file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+      );
+    } catch {
+      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const removeAttachedFile = () => {
+    setAttachedFilePreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setAttachedFile(null);
   };
 
   const renderBubble = (message: ChatMessage, day: string, showDay: boolean) => {
@@ -246,7 +386,10 @@ export function MessageThread({
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML acá. */}
-            <p className="whitespace-pre-wrap break-words">{message.body}</p>
+            {message.body ? (
+              <p className="whitespace-pre-wrap break-words">{message.body}</p>
+            ) : null}
+            <MessageAttachment message={message} mine={mine} />
             {message.order ? <OrderRefChip order={message.order} mine={mine} /> : null}
             <p
               className={cn(
@@ -375,8 +518,48 @@ export function MessageThread({
             </button>
           </div>
         ) : null}
+        {attachedFile ? (
+          <div className="mb-2 flex items-center gap-3 rounded-md border bg-muted/40 px-2 py-1.5 text-xs">
+            {attachedFilePreview ? (
+              <img
+                src={attachedFilePreview}
+                alt={attachedFile.filename}
+                className="h-9 w-9 shrink-0 rounded object-cover"
+              />
+            ) : (
+              <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+            <span className="min-w-0 flex-1 truncate font-medium">{attachedFile.filename}</span>
+            <button
+              type="button"
+              onClick={removeAttachedFile}
+              className="ml-1 text-muted-foreground hover:text-foreground"
+              title="Quitar archivo"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : null}
         <div className="flex items-end gap-2">
           <OrderPicker selected={attachedOrder} onSelect={setAttachedOrder} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={CHAT_ATTACHMENT_ACCEPT}
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant={attachedFile ? "default" : "ghost"}
+            className="h-9 w-9 shrink-0"
+            title="Adjuntar foto, documento o audio"
+            aria-label="Adjuntar foto, documento o audio"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp className="h-4 w-4" />
+          </Button>
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -390,7 +573,10 @@ export function MessageThread({
             className="max-h-40 min-h-[44px] resize-none"
             maxLength={2000}
           />
-          <Button onClick={() => void handleSend()} disabled={isSending || !draft.trim()}>
+          <Button
+            onClick={() => void handleSend()}
+            disabled={isSending || (!draft.trim() && !attachedFile)}
+          >
             <Send className="mr-1 h-4 w-4" />
             Enviar
           </Button>

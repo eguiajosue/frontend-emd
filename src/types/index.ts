@@ -356,7 +356,25 @@ export interface ChatOrderRef {
   status: { name: string } | null;
 }
 
-/** Mensaje del chat interno. */
+/**
+ * Payload de subida de un adjunto de chat (foto, documento o audio): base64
+ * SIN el prefijo `data:...;base64,`, igual que `AuthorizationFileInput`.
+ */
+export interface ChatAttachmentInput {
+  data: string;
+  filename: string;
+  mimeType: string;
+}
+
+/**
+ * Mensaje del chat interno.
+ *
+ * NOTA: los campos de adjunto (`attachmentUrl`/`attachmentFilename`/
+ * `attachmentMimeType`) son una suposición razonable mientras el backend
+ * (`backend-emd`, feature en paralelo) termina de definir el shape exacto de
+ * `ChatMessage` — revisar contra `send-message.dto.ts` y el modelo Prisma
+ * una vez que esa rama se mergee, y ajustar acá si los nombres difieren.
+ */
 export interface ChatMessage {
   id: number;
   conversationId: number;
@@ -369,6 +387,10 @@ export interface ChatMessage {
   senderUsername?: string;
   orderId?: number | null;
   order?: ChatOrderRef | null;
+  /** URL (o data URL) del adjunto, si el mensaje tiene uno. */
+  attachmentUrl?: string | null;
+  attachmentFilename?: string | null;
+  attachmentMimeType?: string | null;
 }
 
 /**

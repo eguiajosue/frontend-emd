@@ -45,6 +45,23 @@ export function isDeliveredStatus(statusId: number): boolean {
 }
 
 /**
+ * Id de estado "terminado". Junto con `DELIVERED_STATUS_ID`, marca un pedido
+ * ya cerrado desde el punto de vista de flujos que no deberían ofrecerlo más
+ * (ej. adjuntar como contexto en un mensaje de chat).
+ */
+export const FINISHED_STATUS_ID = 4;
+
+/**
+ * `true` si el pedido ya está "terminado" o "entregado" — es decir, cerrado.
+ * Usar en selectores que no deberían seguir ofreciendo pedidos ya cerrados
+ * (ej. `OrderPicker` del chat interno), a diferencia de `isDeliveredStatus`
+ * que sólo cubre el último paso del flujo.
+ */
+export function isFinishedStatus(statusId: number): boolean {
+  return statusId === FINISHED_STATUS_ID || statusId === DELIVERED_STATUS_ID;
+}
+
+/**
  * Orden lineal del flujo "normal" de un pedido (pendiente → en proceso →
  * terminado → entregado). Usado sólo para ofrecer, en la lista de pedidos,
  * un botón de acción rápida con el "próximo" estado sugerido — no reemplaza
