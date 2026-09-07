@@ -23,6 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "./ui/sidebar";
 import { useSession, signOut } from "next-auth/react";
 import { Separator } from "./ui/separator";
@@ -86,15 +87,21 @@ function getTimeBasedGreeting(): string {
 
 function ConfiguracionLink({ pathname }: { pathname: string }) {
   const active = pathname === "/dashboard/configuracion";
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   return (
     <Button
       variant="ghost"
-      className={cn("w-full justify-start gap-2 mb-2", active && "bg-primary/10 text-primary")}
+      className={cn(
+        "w-full gap-2 mb-2",
+        collapsed ? "justify-center px-0" : "justify-start",
+        active && "bg-primary/10 text-primary"
+      )}
       asChild
     >
-      <a href="/dashboard/configuracion">
-        <Settings className="h-4 w-4" />
-        Configuración
+      <a href="/dashboard/configuracion" title={collapsed ? "Configuración" : undefined}>
+        <Settings className="h-4 w-4 shrink-0" />
+        {!collapsed && "Configuración"}
       </a>
     </Button>
   );
@@ -249,15 +256,23 @@ export function AppSidebar() {
   ];
 
   const visibleGroups = operationalOnly ? OPERATIONAL_MENU : menuItems;
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarContent data-tour="sidebar-nav">
-        <SidebarHeader className="p-4">
-          <h2 className="text-lg font-semibold tracking-tight">
-            {greeting},{" "}
-            <span className="text-primary">{session?.user?.first_name}</span>
-          </h2>
+        <SidebarHeader className={cn("p-4", collapsed && "px-2")}>
+          {collapsed ? (
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
+              E
+            </div>
+          ) : (
+            <h2 className="font-heading text-lg font-semibold tracking-tight">
+              {greeting},{" "}
+              <span className="text-primary">{session?.user?.first_name}</span>
+            </h2>
+          )}
         </SidebarHeader>
         {visibleGroups.map((group) => (
           <div key={group.groupLabel}>
@@ -309,11 +324,16 @@ export function AppSidebar() {
           </div>
         ))}
       </SidebarContent>
-      <div className="mt-auto p-4">
+      <div className={cn("mt-auto p-4", collapsed && "px-2")}>
         <Separator className="mb-4" />
         <ConfiguracionLink pathname={pathname} />
-        <BugReportDialog />
-        <div className="flex items-center gap-3 mb-4 mt-2">
+        {!collapsed && <BugReportDialog />}
+        <div
+          className={cn(
+            "flex items-center gap-3 mb-4 mt-2",
+            collapsed && "flex-col gap-2"
+          )}
+        >
           <div className="relative shrink-0">
             <Avatar className="ring-2 ring-primary/20">
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
@@ -326,20 +346,27 @@ export function AppSidebar() {
               className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar animate-pulse motion-reduce:animate-none"
             />
           </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
-            <div className="flex justify-between items-center w-full gap-2">
-              <span className="text-xs text-muted-foreground truncate">{userRoles.join(", ")}</span>
-              <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
+          {!collapsed && (
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
+              <div className="flex justify-between items-center w-full gap-2">
+                <span className="text-xs text-muted-foreground truncate">{userRoles.join(", ")}</span>
+                <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
+              </div>
             </div>
-          </div>
+          )}
           <span data-tour="theme-toggle">
             <ThemeToggle />
           </span>
         </div>
-        <Button variant="destructive" className="w-full" onClick={() => signOut()}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
+        <Button
+          variant="destructive"
+          className={cn("w-full", collapsed && "px-0")}
+          onClick={() => signOut()}
+          title={collapsed ? "Logout" : undefined}
+        >
+          <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
+          {!collapsed && "Logout"}
         </Button>
       </div>
     </Sidebar>

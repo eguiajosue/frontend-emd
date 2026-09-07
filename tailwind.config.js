@@ -12,7 +12,8 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			heading: ['var(--font-heading)', 'ui-serif', 'Georgia', 'serif']
+  			heading: ['var(--font-heading)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			sans: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif']
   		},
   		boxShadow: {
   			soft: '0 1px 2px -1px hsl(var(--foreground) / 0.06), 0 4px 16px -4px hsl(var(--foreground) / 0.08)',

@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const { routeTransition } = useMotionPreset();
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar />
       <main className="relative w-full min-w-0 overflow-x-hidden p-4 sm:p-6">
         <div className="flex items-center justify-between">
