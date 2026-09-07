@@ -474,7 +474,7 @@ const OrdersPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-md border p-1">
+          <div className="flex items-center gap-1 rounded-full border p-1">
             <Button
               type="button"
               size="sm"
@@ -576,7 +576,7 @@ const OrdersPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-background/95 p-3 shadow-sm backdrop-blur"
+              className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-2xl border bg-background/95 p-3 shadow-soft-md backdrop-blur"
             >
               <span className="text-sm font-medium">
                 {selectedCount} pedido{selectedCount === 1 ? "" : "s"} seleccionado

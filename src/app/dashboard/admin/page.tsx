@@ -351,7 +351,7 @@ const AdminDashboardPage = () => {
           <span
             className={
               isStagnant
-                ? "inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950 dark:text-red-300"
+                ? "inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300"
                 : "text-sm"
             }
           >
@@ -374,7 +374,7 @@ const AdminDashboardPage = () => {
       id: "status",
       header: "Estado",
       cell: ({ row }) => (
-        <span className="inline-flex items-center rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
+        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
           {(
             row.original.order.status?.name ??
             statusMap[row.original.order.statusId] ??
@@ -420,7 +420,7 @@ const AdminDashboardPage = () => {
       <GreetingHeader firstName={session?.user?.first_name} />
 
       <div className="flex justify-end">
-        <Button variant="outline" className="gap-2 shrink-0" asChild>
+        <Button variant="outline" className="gap-2 shrink-0 rounded-full shadow-soft" asChild>
           <a href="/dashboard/admin/rendimiento">
             <TrendingUp className="h-4 w-4" />
             Ver rendimiento de empleados y áreas
@@ -630,7 +630,7 @@ const AdminDashboardPage = () => {
               <span
                 className={
                   stagnantOrders.length > 0
-                    ? "rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white"
+                    ? "rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-soft"
                     : "rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
                 }
               >
