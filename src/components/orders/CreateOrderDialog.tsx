@@ -389,7 +389,8 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       setClientId(Number(item.id));
                       setClientNameOverride("");
                       setErrors((prev) => {
-                        const { clientId: _clientId, ...rest } = prev;
+                        const rest = { ...prev };
+                        delete rest.clientId;
                         return rest;
                       });
                     }}
@@ -397,7 +398,8 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       setClientId(undefined);
                       setClientNameOverride(text);
                       setErrors((prev) => {
-                        const { clientId: _clientId, ...rest } = prev;
+                        const rest = { ...prev };
+                        delete rest.clientId;
                         return rest;
                       });
                     }}
