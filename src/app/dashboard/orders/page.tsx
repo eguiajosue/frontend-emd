@@ -12,7 +12,7 @@ import {
   ErrorState,
   TableSkeleton,
 } from "@/components/feedback/states";
-import { useOrders, downloadOrdersExport, useChangeOrderStatus } from "@/hooks/useOrders";
+import { useOrders, downloadOrdersExport, useBulkChangeOrderStatus } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
@@ -114,7 +114,7 @@ const OrdersPage = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
   const [isBulkChanging, setIsBulkChanging] = useState(false);
-  const { changeStatus } = useChangeOrderStatus();
+  const { bulkChangeStatus } = useBulkChangeOrderStatus();
 
   useEffect(() => {
     setFilters(filtersFromUrl());
@@ -332,12 +332,13 @@ const OrdersPage = () => {
       return;
     }
     setIsBulkChanging(true);
+    // Selección y filtro de estado se limpian de una: la UI ya se actualiza
+    // en forma optimista (ver useBulkChangeOrderStatus), no hace falta
+    // esperar a que las requests resuelvan para que la barra desaparezca.
+    clearSelection();
+    setBulkTargetStatus("");
     try {
-      const results = await Promise.allSettled(
-        targetOrders.map((order) => changeStatus(order, newStatusId))
-      );
-      const failed = results.filter((r) => r.status === "rejected").length;
-      const ok = results.length - failed;
+      const { succeeded: ok, failed } = await bulkChangeStatus(targetOrders, newStatusId);
       if (ok > 0) {
         toast.success(
           `${ok} pedido${ok === 1 ? "" : "s"} actualizado${ok === 1 ? "" : "s"} a "${statusMap[newStatusId] ?? newStatusId}".`
@@ -346,8 +347,6 @@ const OrdersPage = () => {
       if (failed > 0) {
         toast.error(`No se pudo actualizar ${failed} pedido${failed === 1 ? "" : "s"}.`);
       }
-      clearSelection();
-      setBulkTargetStatus("");
     } finally {
       setIsBulkChanging(false);
     }

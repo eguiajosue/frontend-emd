@@ -121,6 +121,91 @@ export function useChangeOrderStatus() {
   };
 }
 
+/**
+ * Cambio de estado en bloque (bulk actions), optimista: actualiza el/los
+ * cache(s) de "orders" apenas se dispara la acción (antes de esperar a que
+ * las requests resuelvan), y si alguna falla revierte SOLO esas filas a su
+ * estado anterior, sin tocar las que sí tuvieron éxito.
+ *
+ * Mientras el backend no exponga `POST /orders/bulk-actions`, se sigue
+ * disparando una request PATCH + POST de historial por pedido en paralelo
+ * (`Promise.allSettled`); si ese endpoint dedicado aparece más adelante,
+ * alcanza con reemplazar el cuerpo de `run` acá sin tocar el resto de la
+ * pantalla (la UI ya asume una function async que puede fallar parcial).
+ */
+export function useBulkChangeOrderStatus() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+  }, [queryClient]);
+
+  const applyStatus = useCallback(
+    (ids: Set<number>, statusById: Map<number, number>) => {
+      queryClient.setQueriesData<Order[]>(
+        { queryKey: queryKeys.all("orders") },
+        (old) =>
+          old?.map((o) =>
+            ids.has(o.id) ? { ...o, statusId: statusById.get(o.id) ?? o.statusId } : o
+          )
+      );
+    },
+    [queryClient]
+  );
+
+  const bulkChangeStatus = useCallback(
+    async (orders: Pick<Order, "id" | "statusId">[], newStatusId: number) => {
+      const allIds = new Set(orders.map((o) => o.id));
+      const newStatusById = new Map(orders.map((o) => [o.id, newStatusId]));
+
+      // 1) Optimista: se ve el cambio de una en la tabla/tarjetas antes de que
+      // ninguna request haya vuelto.
+      applyStatus(allIds, newStatusById);
+
+      const results = await Promise.allSettled(
+        orders.map(async (order) => {
+          await request<Order>(`${ENDPOINTS.orders}/${order.id}`, {
+            method: "PATCH",
+            token,
+            body: { statusId: newStatusId },
+          });
+          await request<OrderHistory>(ENDPOINTS.orderHistories, {
+            method: "POST",
+            token,
+            body: {
+              orderId: order.id,
+              previousStatusId: order.statusId,
+              newStatusId,
+            },
+          });
+        })
+      );
+
+      const failedOrders = orders.filter((_, idx) => results[idx].status === "rejected");
+
+      if (failedOrders.length > 0) {
+        // 2) Rollback per-row: sólo las filas que fallaron vuelven a su estado
+        // original; las que sí se aplicaron quedan como están.
+        const failedIds = new Set(failedOrders.map((o) => o.id));
+        const revertStatusById = new Map(failedOrders.map((o) => [o.id, o.statusId]));
+        applyStatus(failedIds, revertStatusById);
+      }
+
+      invalidate();
+
+      return {
+        succeeded: orders.length - failedOrders.length,
+        failed: failedOrders.length,
+      };
+    },
+    [token, applyStatus, invalidate]
+  );
+
+  return { bulkChangeStatus };
+}
+
 /** `true` si el error es un 404 (endpoint todavía no desplegado, o recurso inexistente). */
 function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
