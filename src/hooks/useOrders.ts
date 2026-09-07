@@ -16,8 +16,9 @@ import type {
 import { orderStatusUpdatedMessage } from "@/lib/copy";
 import {
   AREA_TASK_STATUS_BY_ORDER_STATUS,
-  areaTaskToMove,
+  areaTasksToMove,
   canApplyOrderMove,
+  type MoveActor,
 } from "@/lib/orderMove";
 
 /** Hooks específicos del dominio "pedidos", construidos sobre la capa genérica. */
@@ -165,7 +166,7 @@ export function useChangeOrderStatus() {
  * tarea del área de quien mira (pedidos viejos sin tareas) o cuando el destino
  * es "entregado"/"cancelado", que no existen como estado de área.
  */
-export function useMoveOrderStatus(viewerAreas: string[]) {
+export function useMoveOrderStatus(actor: MoveActor) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
   const { changeStatus } = useChangeOrderStatus();
@@ -173,18 +174,24 @@ export function useMoveOrderStatus(viewerAreas: string[]) {
   const mutation = useMutation({
     mutationFn: async ({
       order,
-      taskId,
+      taskIds,
       status,
     }: {
       order: Order;
-      taskId: number;
+      taskIds: number[];
       status: AreaTaskStatus;
     }) => {
-      await request(`${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`, {
-        method: "PATCH",
-        token,
-        body: { status },
-      });
+      // En paralelo: son tareas independientes y el backend sincroniza el
+      // estado del pedido después de cada una.
+      await Promise.all(
+        taskIds.map((taskId) =>
+          request(`${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`, {
+            method: "PATCH",
+            token,
+            body: { status },
+          })
+        )
+      );
       return { orderId: order.id };
     },
     onSuccess: ({ orderId }) => {
@@ -201,29 +208,32 @@ export function useMoveOrderStatus(viewerAreas: string[]) {
     },
   });
 
-  const taskFor = useCallback(
-    (order: Order) => areaTaskToMove(order, viewerAreas),
-    [viewerAreas]
-  );
-
   const canMove = useCallback(
     (order: Order, newStatusId: number) =>
-      canApplyOrderMove(order, newStatusId, viewerAreas),
-    [viewerAreas]
+      canApplyOrderMove(order, newStatusId, actor),
+    [actor]
   );
 
   const move = useCallback(
     (order: Order, newStatusId: number) => {
       const areaStatus = AREA_TASK_STATUS_BY_ORDER_STATUS[newStatusId];
-      const task = areaStatus ? taskFor(order) : null;
-      if (task && areaStatus) {
+      const targets = areaStatus ? areaTasksToMove(order, actor) : [];
+      if (targets.length > 0 && areaStatus) {
         return mutation
-          .mutateAsync({ order, taskId: task.id, status: areaStatus })
+          .mutateAsync({
+            order,
+            // Las que ya están en el destino no se vuelven a escribir: evita
+            // pisar `startedAt`/`completedAt` y notificaciones repetidas.
+            taskIds: targets
+              .filter((task) => task.status !== areaStatus)
+              .map((task) => task.id),
+            status: areaStatus,
+          })
           .catch(() => undefined);
       }
       return changeStatus(order, newStatusId);
     },
-    [changeStatus, mutation, taskFor]
+    [actor, changeStatus, mutation]
   );
 
   return { move, canMove, isMoving: mutation.isPending };

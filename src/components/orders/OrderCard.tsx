@@ -8,6 +8,7 @@ import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel, getAreaIcon } from "@/lib/areas";
+import { orderAreaTags } from "@/lib/orderAreas";
 import { cn } from "@/lib/utils";
 import { useMotionPreset } from "@/lib/motion";
 import { isDeliveredStatus } from "@/lib/orderStatus";
@@ -31,6 +32,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const progress = useDeliveryProgress(order.creationDate, order.deliveryDate);
   const isCritical = !delivered && progress !== null && progress >= 95;
   const { staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
+  const areaTags = orderAreaTags(order);
 
   return (
     <motion.div variants={staggerItemVariants}>
@@ -86,13 +88,22 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             ) : (
               <span />
             )}
-            {order.area && (
-              <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide">
-                {(() => {
-                  const AreaIcon = getAreaIcon(order.area);
-                  return AreaIcon ? <AreaIcon className="h-3 w-3" aria-hidden /> : null;
-                })()}
-                {getAreaLabel(order.area)}
+            {/* Una etiqueta por área, no una sola: un pedido puede ir a
+                Bordado Y DTF. Ver `orderAreaTags`. */}
+            {areaTags.length > 0 && (
+              <span className="flex flex-wrap items-center justify-end gap-1">
+                {areaTags.map((area) => {
+                  const AreaIcon = getAreaIcon(area);
+                  return (
+                    <span
+                      key={area}
+                      className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+                    >
+                      {AreaIcon && <AreaIcon className="h-3 w-3" aria-hidden />}
+                      {getAreaLabel(area)}
+                    </span>
+                  );
+                })}
               </span>
             )}
           </div>

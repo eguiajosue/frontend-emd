@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
@@ -25,16 +25,17 @@ import {
 import { FileText, UserRound } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityMutations } from "@/hooks/useEntity";
-import { useChangeOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
+import { useMoveOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
 import type { UpdateOrderPayload } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 
 const OrderDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const orderId = Number(params?.id);
 
-  const { roles, isAdmin } = usePermissions();
+  const { roles, isAdmin, canManageOperations } = usePermissions();
   const {
     data: order,
     isPending,
@@ -44,7 +45,18 @@ const OrderDetailPage = () => {
   const canSeeHistory = isAdmin || roles.includes("recepcion");
   const { histories } = useOrderHistory(orderId, { enabled: canSeeHistory });
   const { update } = useEntityMutations<unknown, UpdateOrderPayload>("orders");
-  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+  // Mismo camino que el tablero, el detalle en diálogo y el chip de la lista:
+  // con tareas de área, el estado se escribe en la tarea, que es de donde el
+  // kanban lee.
+  const moveActor = useMemo(
+    () => ({
+      areas: roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      isManager: canManageOperations,
+    }),
+    [roles, canManageOperations]
+  );
+  const { move: moveStatus, isMoving: isChangingStatus } =
+    useMoveOrderStatus(moveActor);
 
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
@@ -96,7 +108,7 @@ const OrderDetailPage = () => {
 
   const handleStatusChange = async (nextStatusId: number) => {
     if (!order || nextStatusId === order.statusId) return;
-    await changeStatus(order, nextStatusId);
+    await moveStatus(order, nextStatusId);
   };
 
   if (isPending) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { areaTaskToMove, canApplyOrderMove } from "./orderMove";
+import { areaTasksToMove, canApplyOrderMove } from "./orderMove";
 import type { Order, OrderAreaTask } from "@/types";
 
 const task = (id: number, area: string, status: OrderAreaTask["status"]): OrderAreaTask =>
@@ -16,52 +16,63 @@ const order = (tasks: OrderAreaTask[] = []): Order =>
     areaTasks: tasks,
   }) as unknown as Order;
 
-describe("areaTaskToMove", () => {
-  it("elige la tarea del área de quien mira", () => {
-    // Regresión: el tablero ubica el pedido por ESTA tarea, así que arrastrar
-    // la tarjeta tiene que escribir acá y no en `Order.statusId` — escribir el
-    // pedido devolvía 200 sin mover nada y la tarjeta volvía a su columna.
+const worker = (...areas: string[]) => ({ areas, isManager: false });
+const manager = { areas: [], isManager: true };
+
+describe("areaTasksToMove", () => {
+  it("quien trabaja un área mueve la suya", () => {
+    // Regresión: el tablero ubica el pedido por ESTA tarea, así que cambiar el
+    // estado tiene que escribir acá y no en `Order.statusId` — escribir el
+    // pedido devolvía 200 y la tarjeta se quedaba en su columna.
     const o = order([task(1, "dtf", "terminado"), task(2, "bordado", "pendiente")]);
-    expect(areaTaskToMove(o, ["bordado"])?.id).toBe(2);
+    expect(areaTasksToMove(o, worker("bordado")).map((t) => t.id)).toEqual([2]);
   });
 
-  it("sin área propia, sólo mueve si hay una única tarea", () => {
-    expect(areaTaskToMove(order([task(1, "dtf", "pendiente")]), [])?.id).toBe(1);
+  it("recepción mueve todas: el pedido entero cambia de estado", () => {
+    const o = order([task(1, "dtf", "pendiente"), task(2, "bordado", "pendiente")]);
+    expect(areaTasksToMove(o, manager).map((t) => t.id)).toEqual([1, 2]);
+  });
+
+  it("sin área propia ni permiso de coordinación, sólo si no hay ambigüedad", () => {
+    const una = order([task(1, "dtf", "pendiente")]);
+    expect(areaTasksToMove(una, worker()).map((t) => t.id)).toEqual([1]);
     const dos = order([task(1, "dtf", "pendiente"), task(2, "bordado", "pendiente")]);
-    expect(areaTaskToMove(dos, [])).toBeNull();
+    expect(areaTasksToMove(dos, worker())).toEqual([]);
   });
 
   it("un pedido sin tareas de área no tiene tarea que mover", () => {
-    expect(areaTaskToMove(order(), ["bordado"])).toBeNull();
+    expect(areaTasksToMove(order(), worker("bordado"))).toEqual([]);
   });
 });
 
 describe("canApplyOrderMove", () => {
   it("permite mover a un estado de producción cuando hay tarea del área", () => {
     const o = order([task(2, "bordado", "pendiente")]);
-    expect(canApplyOrderMove(o, 3, ["bordado"])).toBe(true);
+    expect(canApplyOrderMove(o, 3, worker("bordado"))).toBe(true);
   });
 
   it("bloquea el destino que la tarea ya tiene", () => {
     const o = order([task(2, "bordado", "en_proceso")]);
-    expect(canApplyOrderMove(o, 3, ["bordado"])).toBe(false);
+    expect(canApplyOrderMove(o, 3, worker("bordado"))).toBe(false);
   });
 
-  it("bloquea cuando hay varias áreas y ninguna es la de quien mira", () => {
-    // Recepción arrastrando un pedido que trabajan dos áreas: no hay forma de
-    // saber cuál avanzar, así que no se acepta el drop en vez de escribir el
-    // estado del pedido y desincronizar las tareas.
-    const o = order([task(1, "dtf", "pendiente"), task(2, "bordado", "pendiente")]);
-    expect(canApplyOrderMove(o, 3, [])).toBe(false);
+  it("recepción puede mover aunque una de las dos áreas ya esté ahí", () => {
+    const o = order([task(1, "dtf", "en_proceso"), task(2, "bordado", "pendiente")]);
+    expect(canApplyOrderMove(o, 3, manager)).toBe(true);
+  });
+
+  it("bloquea cuando todas las tareas ya están en el destino", () => {
+    const o = order([task(1, "dtf", "terminado"), task(2, "bordado", "terminado")]);
+    expect(canApplyOrderMove(o, 4, manager)).toBe(false);
   });
 
   it("entregado y cancelado se aplican siempre a nivel pedido", () => {
     const o = order([task(1, "dtf", "pendiente"), task(2, "bordado", "pendiente")]);
-    expect(canApplyOrderMove(o, 5, [])).toBe(true);
-    expect(canApplyOrderMove(o, 10, [])).toBe(true);
+    expect(canApplyOrderMove(o, 5, manager)).toBe(true);
+    expect(canApplyOrderMove(o, 10, manager)).toBe(true);
   });
 
   it("un pedido sin tareas se mueve por el estado del pedido", () => {
-    expect(canApplyOrderMove(order(), 3, ["bordado"])).toBe(true);
+    expect(canApplyOrderMove(order(), 3, worker("bordado"))).toBe(true);
   });
 });

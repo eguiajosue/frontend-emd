@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChangeOrderStatus } from "@/hooks/useOrders";
+import { useMoveOrderStatus } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import {
   getNextStatusOption,
   isDeliveredStatus,
@@ -30,7 +32,16 @@ interface OrderQuickStatusChipProps {
  */
 export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
   const { roles, canManageOperations } = usePermissions();
-  const { changeStatus, changingOrderId } = useChangeOrderStatus();
+  // Mismo camino que el tablero y el detalle: si el pedido tiene tareas de
+  // área, avanzar escribe la tarea, no `Order.statusId`.
+  const moveActor = useMemo(
+    () => ({
+      areas: roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      isManager: canManageOperations,
+    }),
+    [roles, canManageOperations]
+  );
+  const { move, isMoving } = useMoveOrderStatus(moveActor);
 
   const myStageIds = statusIdsForRoles(roles);
   const isInDesignLimbo =
@@ -38,7 +49,7 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
   const canChange =
     !isInDesignLimbo && (canManageOperations || myStageIds.includes(order.statusId));
   const next = getNextStatusOption(order.statusId);
-  const isChanging = changingOrderId === order.id;
+  const isChanging = isMoving;
 
   if (!canChange || !next || isDeliveredStatus(order.statusId)) {
     return <span className="text-xs text-muted-foreground">—</span>;
@@ -53,7 +64,7 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
       disabled={isChanging}
       onClick={(e) => {
         e.stopPropagation();
-        changeStatus(order, next.value);
+        void move(order, next.value);
       }}
     >
       {isChanging && <Loader2 className="h-3 w-3 animate-spin" />}

@@ -515,10 +515,14 @@ const OrdersPage = () => {
     [roles]
   );
 
-  // Mover un pedido escribe donde el tablero lee: la tarea del área cuando la
-  // hay, el estado del pedido cuando no.
+  // Mover un pedido escribe donde el tablero lee: las tareas de área cuando
+  // las hay, el estado del pedido cuando no.
+  const moveActor = useMemo(
+    () => ({ areas: viewerAreas, isManager: canManageOperations }),
+    [viewerAreas, canManageOperations]
+  );
   const { move: moveOrderStatus, canMove: canApplyMove } =
-    useMoveOrderStatus(viewerAreas);
+    useMoveOrderStatus(moveActor);
 
   // Tableros de la vista cuadrícula. Diseño y producción son DOS circuitos con
   // etapas distintas, así que son dos tableros con sus propias columnas fijas.

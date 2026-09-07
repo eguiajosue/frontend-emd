@@ -35,7 +35,7 @@ import {
 import {
   useOrderHistory,
   useOrder,
-  useChangeOrderStatus,
+  useMoveOrderStatus,
   useDeleteOrder,
   useOrderNotes,
   useOrderAuditLog,
@@ -44,7 +44,12 @@ import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { isDeliveredStatus, isDesignFlowStatusName } from "@/lib/orderStatus";
-import { AREA_OPTIONS, getAreaLabel, getAreaIcon } from "@/lib/areas";
+import {
+  AREA_OPTIONS,
+  PRODUCTION_AREA_OPTIONS,
+  getAreaLabel,
+  getAreaIcon,
+} from "@/lib/areas";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import {
   Accordion,
@@ -104,7 +109,17 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
     "orders"
   );
-  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
+  // Áreas propias del usuario: deciden qué tarea de área mueve un cambio de
+  // estado (ver `areaTasksToMove`).
+  const moveActor = useMemo(
+    () => ({
+      areas: roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      isManager: canManageOperations,
+    }),
+    [roles, canManageOperations]
+  );
+  const { move: moveStatus, isMoving: isChangingStatus } =
+    useMoveOrderStatus(moveActor);
   const { deleteOrder, isDeleting } = useDeleteOrder();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -172,7 +187,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   const handleStatusChange = async (nextStatusId: number) => {
     if (!order || nextStatusId === order.statusId) return;
     setStatusId(nextStatusId);
-    await changeStatus(order, nextStatusId);
+    // `moveStatus`, no `changeStatus`: cuando el pedido tiene tareas de área,
+    // el tablero se ubica por ellas. Escribiendo sólo `Order.statusId` la
+    // etiqueta del detalle cambiaba y la tarjeta del kanban no se movía.
+    await moveStatus(order, nextStatusId);
   };
 
   const handleConfirmDelete = async () => {
