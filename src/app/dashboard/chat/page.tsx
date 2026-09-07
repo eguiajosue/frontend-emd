@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
@@ -87,15 +87,49 @@ export default function ChatPage() {
     }
   };
 
-  const filteredUsers = users.filter((u) => {
+  const ALPHABET = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+
+  const filteredUsers = useMemo(() => {
     const needle = userFilter.trim().toLowerCase();
-    if (!needle) return true;
-    return (
-      chatDisplayName(u).toLowerCase().includes(needle) ||
-      u.username.toLowerCase().includes(needle) ||
-      u.roles.some((r) => r.toLowerCase().includes(needle))
-    );
-  });
+    return users
+      .filter((u) => {
+        if (!needle) return true;
+        return (
+          chatDisplayName(u).toLowerCase().includes(needle) ||
+          u.username.toLowerCase().includes(needle)
+        );
+      })
+      .sort((a, b) => chatDisplayName(a).localeCompare(chatDisplayName(b), "es"));
+  }, [users, userFilter]);
+
+  // Group filtered users by first letter for alphabet navigation
+  const letterRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const scrollToLetter = (letter: string) => {
+    letterRefs.current[letter]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
+  const usedLetters = useMemo(() => {
+    const set = new Set<string>();
+    filteredUsers.forEach((u) => {
+      const first = chatDisplayName(u)[0]?.toUpperCase() ?? "";
+      set.add(first);
+    });
+    return set;
+  }, [filteredUsers]);
+
+  // Group users by first letter
+  const groupedUsers = useMemo(() => {
+    const groups: { letter: string; users: typeof filteredUsers }[] = [];
+    let currentLetter = "";
+    filteredUsers.forEach((u) => {
+      const first = chatDisplayName(u)[0]?.toUpperCase() ?? "#";
+      if (first !== currentLetter) {
+        currentLetter = first;
+        groups.push({ letter: first, users: [] });
+      }
+      groups[groups.length - 1].users.push(u);
+    });
+    return groups;
+  }, [filteredUsers]);
 
   if (isError) {
     return (
@@ -148,28 +182,59 @@ export default function ChatPage() {
           <Input
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
-            placeholder="Buscar por nombre, usuario o área"
+            placeholder="Buscar por nombre o usuario"
           />
-          <div className="max-h-72 space-y-1 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
-              <p className="p-2 text-sm text-muted-foreground">
-                No se encontraron usuarios.
-              </p>
-            ) : (
-              filteredUsers.map((user) => (
-                <Button
-                  key={user.id}
-                  variant="ghost"
-                  className="w-full justify-between"
-                  onClick={() => void startDirect(user.id)}
-                >
-                  <span>{chatDisplayName(user)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {user.roles.join(", ") || `@${user.username}`}
-                  </span>
-                </Button>
-              ))
-            )}
+          <div className="flex gap-1">
+            {/* Alphabet slider */}
+            <div className="flex flex-col items-center gap-0.5 py-1 pr-1">
+              {ALPHABET.map((letter) => {
+                const active = usedLetters.has(letter);
+                return (
+                  <button
+                    key={letter}
+                    type="button"
+                    disabled={!active}
+                    onClick={() => scrollToLetter(letter)}
+                    className={
+                      active
+                        ? "text-[10px] font-semibold leading-none text-primary hover:underline"
+                        : "text-[10px] leading-none text-muted-foreground/30 cursor-default"
+                    }
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
+            {/* User list */}
+            <div className="flex-1 max-h-72 space-y-1 overflow-y-auto">
+              {groupedUsers.length === 0 ? (
+                <p className="p-2 text-sm text-muted-foreground">
+                  No se encontraron usuarios.
+                </p>
+              ) : (
+                groupedUsers.map(({ letter, users: group }) => (
+                  <div
+                    key={letter}
+                    ref={(el) => { letterRefs.current[letter] = el; }}
+                  >
+                    <p className="px-2 pt-1 text-[10px] font-bold uppercase text-muted-foreground">
+                      {letter}
+                    </p>
+                    {group.map((user) => (
+                      <Button
+                        key={user.id}
+                        variant="ghost"
+                        className="w-full justify-start"
+                        onClick={() => void startDirect(user.id)}
+                      >
+                        {chatDisplayName(user)}
+                      </Button>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
