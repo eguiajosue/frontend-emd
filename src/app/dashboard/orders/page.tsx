@@ -17,13 +17,13 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
 import { statusMap, statusOptions, isDeliveredStatus } from "@/lib/orderStatus";
+import { buildKanbanColumns, splitDesignAndProduction } from "@/lib/kanbanColumns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { isOverdue } from "@/lib/deliveryProgress";
-import { OrderCard } from "@/components/orders/OrderCard";
+import { KanbanBoard } from "@/components/orders/KanbanBoard";
 import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
 import { motion } from "framer-motion";
-import { staggerContainerVariants } from "@/lib/motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
 import {
@@ -437,20 +437,46 @@ const OrdersPage = () => {
     [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll]
   );
 
-  // Columnas de la vista cuadrícula: se agrupa visualmente por estado del pedido
-  // usando los datos que ya llegaron filtrados desde el backend (para roles
-  // operativos, GET /orders ya sólo trae lo que ese usuario debe ver).
-  const gridColumns = useMemo(() => {
-    const stageIds = Object.keys(statusMap).map(Number);
-    return stageIds
-      .slice()
-      .sort((a, b) => a - b)
-      .map((statusId) => ({
-        statusId,
-        label: statusMap[statusId] ?? `Estado ${statusId}`,
-        orders: visibleOrders.filter((o) => o.statusId === statusId),
-      }));
+  // Tableros de la vista cuadrícula.
+  //
+  // Las columnas NO pueden salir de `statusMap`: ese mapa sólo tiene los
+  // estados de producción (1/3/4/5/10) y deja fuera los 4 del flujo de Diseño,
+  // cuyos ids los siembra el backend y varían entre entornos. Armarlas desde
+  // ahí hacía que los pedidos "en diseño" se vieran en la lista pero
+  // desaparecieran de la cuadrícula. Se derivan de los estados realmente
+  // presentes en los datos, tomando el nombre del propio pedido.
+  //
+  // Además, Diseño y producción son dos circuitos distintos: quien trabaja en
+  // ambos ve dos tableros separados, cada uno con sus propias etapas, en vez de
+  // una sola grilla que los mezcla (ver WORKFLOW.md §4 en el backend).
+  const { designBoard, productionBoard } = useMemo(() => {
+    const { design, production } = splitDesignAndProduction(visibleOrders);
+    return {
+      designBoard: {
+        orders: design,
+        // Un tablero de Diseño vacío no muestra columnas fantasma: sus ids se
+        // resuelven por nombre y sólo se conocen si hay pedidos en esa etapa.
+        columns: design.length > 0 ? buildKanbanColumns(design) : [],
+      },
+      productionBoard: {
+        orders: production,
+        columns: buildKanbanColumns(production),
+      },
+    };
   }, [visibleOrders]);
+
+  // Qué tableros ve este usuario. Un diseñador que además trabaja otra área ve
+  // los dos; quien tiene una sola área ve sólo el suyo. Recepción/admin ven
+  // ambos porque siguen todo el circuito.
+  const worksInDesign = canManageOperations || roles.includes("diseno");
+  const worksInProduction =
+    canManageOperations ||
+    roles.some((r) => ["taller", "dtf", "bordado", "laser", "impresiones"].includes(r));
+  // Si un pedido en diseño llegó igual (ej. rol mixto mal configurado), el
+  // tablero se muestra antes que esconder trabajo.
+  const showDesignBoard = worksInDesign || designBoard.orders.length > 0;
+  const showProductionBoard = worksInProduction || productionBoard.orders.length > 0;
+  const showBothBoards = showDesignBoard && showProductionBoard;
 
   const loading = isPending || isSessionLoading;
 
@@ -615,40 +641,33 @@ const OrdersPage = () => {
           />
         </div>
       ) : (
-        <div
-          className={cn(
-            "grid gap-4",
-            gridColumns.length <= 1 && "sm:grid-cols-1",
-            gridColumns.length === 2 && "sm:grid-cols-2",
-            gridColumns.length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        <div className="space-y-10">
+          {showDesignBoard && designBoard.columns.length > 0 && (
+            <KanbanBoard
+              // El título sólo aparece cuando conviven los dos tableros: con uno
+              // solo sería una etiqueta redundante sobre toda la pantalla.
+              title={showBothBoards ? "Diseño" : undefined}
+              description={
+                showBothBoards
+                  ? "Montajes en curso y su avance hasta la autorización del cliente."
+                  : undefined
+              }
+              columns={designBoard.columns}
+              onOpenOrder={openDetail}
+            />
           )}
-        >
-          {gridColumns.map((col) => (
-            <div key={col.statusId} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  {col.label}
-                </h3>
-                <span className="text-xs text-muted-foreground">{col.orders.length}</span>
-              </div>
-              {col.orders.length === 0 ? (
-                <p className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
-                  Nada por acá todavía
-                </p>
-              ) : (
-                <motion.div
-                  className="space-y-3"
-                  variants={staggerContainerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {col.orders.map((order) => (
-                    <OrderCard key={order.id} order={order} onOpen={openDetail} />
-                  ))}
-                </motion.div>
-              )}
-            </div>
-          ))}
+          {showProductionBoard && (
+            <KanbanBoard
+              title={showBothBoards ? "Producción" : undefined}
+              description={
+                showBothBoards
+                  ? "Pedidos ya autorizados o que no pasan por Diseño."
+                  : undefined
+              }
+              columns={productionBoard.columns}
+              onOpenOrder={openDetail}
+            />
+          )}
         </div>
       )}
 
