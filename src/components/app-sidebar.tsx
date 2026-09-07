@@ -362,7 +362,7 @@ export function AppSidebar() {
         <Button
           variant="destructive"
           className={cn("w-full", collapsed && "px-0")}
-          onClick={() => signOut()}
+          onClick={() => signOut({ callbackUrl: "/login" })}
           title={collapsed ? "Logout" : undefined}
         >
           <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
