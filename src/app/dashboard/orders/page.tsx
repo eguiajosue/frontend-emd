@@ -607,7 +607,13 @@ const OrdersPage = () => {
               </Button>
             </motion.div>
           )}
-          <DataTable columns={columns} data={visibleOrders} onRowClick={(o) => openDetail(o.id)} />
+          <DataTable
+            columns={columns}
+            data={visibleOrders}
+            onRowClick={(o) => openDetail(o.id)}
+            virtualize={visibleOrders.length > 30}
+            estimateRowHeight={56}
+          />
         </div>
       ) : (
         <div

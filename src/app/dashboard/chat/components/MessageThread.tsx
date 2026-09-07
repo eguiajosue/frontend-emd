@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Eye, ExternalLink, Paperclip, Send, Users, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -150,11 +151,42 @@ export function MessageThread({
   const [showMembers, setShowMembers] = useState(false);
   const [attachedOrder, setAttachedOrder] = useState<Order | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  // Threads largos (cientos/miles de mensajes) se virtualizan para mantener el
+  // scroll fluido; los cortos se quedan con la animación de entrada existente.
+  const VIRTUALIZE_THRESHOLD = 60;
+  const shouldVirtualize = messages.length > VIRTUALIZE_THRESHOLD;
+
+  // Precalcula el separador de día por mensaje una sola vez (antes se hacía
+  // con una variable mutable `lastDay` durante el .map, lo cual no es
+  // compatible con el acceso por índice del virtualizador).
+  const messagesWithDay = useMemo(() => {
+    let lastDay = "";
+    return messages.map((message) => {
+      const day = formatDay(message.createdAt);
+      const showDay = day !== lastDay;
+      lastDay = day;
+      return { message, day, showDay };
+    });
   }, [messages]);
+
+  const virtualizer = useVirtualizer({
+    count: messagesWithDay.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 72,
+    overscan: 8,
+    enabled: shouldVirtualize,
+  });
+
+  useEffect(() => {
+    if (shouldVirtualize) {
+      virtualizer.scrollToIndex(messagesWithDay.length - 1, { align: "end" });
+      return;
+    }
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, shouldVirtualize, virtualizer, messagesWithDay.length]);
 
   useEffect(() => {
     setDraft("");
@@ -179,7 +211,56 @@ export function MessageThread({
     await onSend(body, orderId);
   };
 
-  let lastDay = "";
+  const renderBubble = (message: ChatMessage, day: string, showDay: boolean) => {
+    const mine = message.senderId === currentUserId;
+    const author = message.sender ?? {
+      id: message.senderId,
+      username: message.senderUsername ?? "",
+      firstName: message.senderName ?? "Usuario",
+      lastName: null,
+    };
+
+    return (
+      <>
+        {showDay ? (
+          <div className="flex items-center gap-2 py-3">
+            <Separator className="flex-1" />
+            <span className="text-xs capitalize text-muted-foreground">{day}</span>
+            <Separator className="flex-1" />
+          </div>
+        ) : null}
+        <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
+          {!mine ? (
+            <Avatar className="h-7 w-7 shrink-0">
+              <AvatarFallback className="text-[10px]">{chatInitials(author)}</AvatarFallback>
+            </Avatar>
+          ) : null}
+          <div
+            className={cn(
+              "max-w-[75%] rounded-lg px-3 py-2 text-sm",
+              mine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+            )}
+          >
+            {!mine ? (
+              <p className="pb-0.5 text-xs font-medium opacity-80">{chatDisplayName(author)}</p>
+            ) : null}
+            {/* message.body se renderiza como children de React (auto-escapado),
+                nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML acá. */}
+            <p className="whitespace-pre-wrap break-words">{message.body}</p>
+            {message.order ? <OrderRefChip order={message.order} mine={mine} /> : null}
+            <p
+              className={cn(
+                "pt-1 text-[10px]",
+                mine ? "text-primary-foreground/70" : "text-muted-foreground"
+              )}
+            >
+              {formatTime(message.createdAt)}
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  };
 
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col">
@@ -226,88 +307,51 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div className="flex-1 space-y-2 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-4">
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Todavía no hay mensajes en esta conversación.
           </p>
-        ) : (
-          <AnimatePresence initial={false}>
-            {messages.map((message) => {
-              const mine = message.senderId === currentUserId;
-              const day = formatDay(message.createdAt);
-              const showDay = day !== lastDay;
-              lastDay = day;
-              const author = message.sender ?? {
-                id: message.senderId,
-                username: message.senderUsername ?? "",
-                firstName: message.senderName ?? "Usuario",
-                lastName: null,
-              };
-
+        ) : shouldVirtualize ? (
+          <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const { message, day, showDay } = messagesWithDay[virtualRow.index];
               return (
-                <motion.div
+                <div
                   key={message.id}
-                  initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={
-                    reduced
-                      ? { duration: 0.15 }
-                      : { type: "spring", bounce: 0.25, duration: 0.35 }
-                  }
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
                 >
-                  {showDay ? (
-                    <div className="flex items-center gap-2 py-3">
-                      <Separator className="flex-1" />
-                      <span className="text-xs capitalize text-muted-foreground">{day}</span>
-                      <Separator className="flex-1" />
-                    </div>
-                  ) : null}
-                  <div
-                    className={cn(
-                      "flex items-end gap-2",
-                      mine ? "justify-end" : "justify-start"
-                    )}
-                  >
-                    {!mine ? (
-                      <Avatar className="h-7 w-7 shrink-0">
-                        <AvatarFallback className="text-[10px]">
-                          {chatInitials(author)}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : null}
-                    <div
-                      className={cn(
-                        "max-w-[75%] rounded-lg px-3 py-2 text-sm",
-                        mine
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
-                      )}
-                    >
-                      {!mine ? (
-                        <p className="pb-0.5 text-xs font-medium opacity-80">
-                          {chatDisplayName(author)}
-                        </p>
-                      ) : null}
-                      <p className="whitespace-pre-wrap break-words">{message.body}</p>
-                      {message.order ? (
-                        <OrderRefChip order={message.order} mine={mine} />
-                      ) : null}
-                      <p
-                        className={cn(
-                          "pt-1 text-[10px]",
-                          mine ? "text-primary-foreground/70" : "text-muted-foreground"
-                        )}
-                      >
-                        {formatTime(message.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
+                  {renderBubble(message, day, showDay)}
+                </div>
               );
             })}
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {messagesWithDay.map(({ message, day, showDay }) => (
+              <motion.div
+                key={message.id}
+                initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={
+                  reduced
+                    ? { duration: 0.15 }
+                    : { type: "spring", bounce: 0.25, duration: 0.35 }
+                }
+              >
+                {renderBubble(message, day, showDay)}
+              </motion.div>
+            ))}
           </AnimatePresence>
         )}
         <div ref={bottomRef} />
