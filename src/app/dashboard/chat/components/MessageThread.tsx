@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
@@ -93,6 +94,7 @@ function OrderPicker({
           variant={selected ? "default" : "ghost"}
           className="h-9 w-9 shrink-0"
           title="Adjuntar pedido como contexto"
+          aria-label="Adjuntar pedido como contexto"
         >
           <Paperclip className="h-4 w-4" />
         </Button>
@@ -226,7 +228,7 @@ export function MessageThread({
 
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
         {isLoading && messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Cargando mensajes…</p>
+          <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Todavía no hay mensajes en esta conversación.

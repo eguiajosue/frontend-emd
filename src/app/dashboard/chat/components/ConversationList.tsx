@@ -87,7 +87,7 @@ export function ConversationList({
       </div>
       <div className="flex-1 overflow-y-auto p-2">
         {isLoading && conversations.length === 0 ? (
-          <div className="space-y-2 p-1">
+          <div className="space-y-2 p-1" role="status" aria-busy="true" aria-label="Cargando conversaciones">
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />

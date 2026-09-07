@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 /**
  * Estados compartidos de carga / vacío / error.
@@ -13,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-3 mt-4" role="status" aria-label="Cargando">
+    <div className="space-y-3 mt-4" role="status" aria-busy="true" aria-label="Cargando">
       <Skeleton className="w-full h-10" />
       {Array.from({ length: rows }).map((_, i) => (
         <Skeleton
@@ -31,6 +32,7 @@ export function CardsSkeleton({ count = 4 }: { count?: number }) {
     <div
       className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
       role="status"
+      aria-busy="true"
       aria-label="Cargando"
     >
       {Array.from({ length: count }).map((_, i) => (
@@ -39,6 +41,24 @@ export function CardsSkeleton({ count = 4 }: { count?: number }) {
           className="h-28 w-full"
           style={{ animationDelay: `${i * 80}ms` }}
         />
+      ))}
+    </div>
+  );
+}
+
+export function MessageThreadSkeleton() {
+  return (
+    <div className="space-y-3" role="status" aria-busy="true" aria-label="Cargando mensajes">
+      {[70, 45, 85, 55].map((width, i) => (
+        <div
+          key={i}
+          className={cn("flex", i % 2 === 0 ? "justify-start" : "justify-end")}
+        >
+          <Skeleton
+            className="h-10 rounded-2xl"
+            style={{ width: `${width}%`, animationDelay: `${i * 60}ms` }}
+          />
+        </div>
       ))}
     </div>
   );

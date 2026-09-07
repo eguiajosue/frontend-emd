@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { FormField, FormSection } from "@/components/ui/form-field";
 import {
+  AlertCircle,
   FileText,
   Loader2,
   Paperclip,
@@ -107,6 +108,13 @@ const orderSchema = z
     }
   });
 
+/** Labels legibles de cada campo, usados en el resumen de errores. */
+const FIELD_LABELS: Record<string, string> = {
+  clientId: "Cliente",
+  area: "Área",
+  description: "Descripción",
+};
+
 interface OrderProductRow {
   customName?: string;
   quantity?: number;
@@ -147,11 +155,14 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const [deliveryTime, setDeliveryTime] = useState("");
   const [rows, setRows] = useState<OrderProductRow[]>([{}]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [authorizationFile, setAuthorizationFile] = useState<AuthorizationFileInput | null>(null);
   const [authorizationFilePreview, setAuthorizationFilePreview] = useState<string | null>(null);
   const [newClientOpen, setNewClientOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const resetForm = () => {
     setClientId(undefined);
@@ -164,6 +175,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setDeliveryTime("");
     setRows([{}]);
     setErrors({});
+    setSubmitError(null);
     if (authorizationFilePreview) URL.revokeObjectURL(authorizationFilePreview);
     setAuthorizationFile(null);
     setAuthorizationFilePreview(null);
@@ -235,19 +247,42 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     : users;
   const assignableUsers = usersForArea.length > 0 ? usersForArea : users;
 
-  const handleSubmit = async () => {
-    const orderProducts = rows.filter((r) => r.customName && r.quantity);
+  const currentFormData = () => ({
+    clientId,
+    clientNameOverride,
+    area,
+    requiresDesign,
+    description,
+    deliveryDate,
+    assignedUserId,
+    orderProducts: rows.filter((r) => r.customName && r.quantity),
+  });
 
-    const parsed = orderSchema.safeParse({
-      clientId,
-      clientNameOverride,
-      area,
-      requiresDesign,
-      description,
-      deliveryDate,
-      assignedUserId,
-      orderProducts,
+  /** Valida un único campo al perder foco, sin pisar errores de otros campos. */
+  const validateFieldOnBlur = (field: string) => {
+    const parsed = orderSchema.safeParse(currentFormData());
+    setErrors((prev) => {
+      const next = { ...prev };
+      const issue = parsed.success
+        ? undefined
+        : parsed.error.issues.find((i) => String(i.path[0]) === field);
+      if (issue) {
+        next[field] = issue.message;
+      } else {
+        delete next[field];
+      }
+      return next;
     });
+  };
+
+  const scrollToField = (field: string) => {
+    const el = fieldRefs.current[field];
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    el?.focus?.();
+  };
+
+  const handleSubmit = async () => {
+    const parsed = orderSchema.safeParse(currentFormData());
 
     if (!parsed.success) {
       const fieldErrors: Record<string, string> = {};
@@ -255,9 +290,11 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         fieldErrors[String(issue.path[0])] = issue.message;
       });
       setErrors(fieldErrors);
+      requestAnimationFrame(() => errorSummaryRef.current?.focus());
       return;
     }
     setErrors({});
+    setSubmitError(null);
     setSubmitting(true);
     try {
       const order = await create({
@@ -280,8 +317,13 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
       resetForm();
       onClose();
       onCreated?.(order);
-    } catch {
-      // El feedback de error es global (ver src/app/providers.tsx).
+    } catch (error) {
+      // El toast de error ya lo dispara el feedback global (ver
+      // src/app/providers.tsx); acá sólo sumamos el resumen accesible.
+      setSubmitError(
+        error instanceof Error ? error.message : "No se pudo crear el pedido."
+      );
+      requestAnimationFrame(() => errorSummaryRef.current?.focus());
     } finally {
       setSubmitting(false);
     }
@@ -295,10 +337,46 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
             <DialogTitle>Nuevo Pedido</DialogTitle>
           </DialogHeader>
 
+          {(Object.keys(errors).length > 0 || submitError) && (
+            <div
+              ref={errorSummaryRef}
+              role="alert"
+              tabIndex={-1}
+              className="mb-4 space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 outline-none"
+            >
+              <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                Revisá los siguientes datos antes de continuar
+              </p>
+              {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+              {Object.keys(errors).length > 0 && (
+                <ul className="list-inside list-disc space-y-1 text-sm">
+                  {Object.entries(errors).map(([field, message]) => (
+                    <li key={field}>
+                      <button
+                        type="button"
+                        className="text-left text-destructive underline underline-offset-2 hover:no-underline"
+                        onClick={() => scrollToField(field)}
+                      >
+                        {FIELD_LABELS[field] ?? field}: {message}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="space-y-6">
             <FormSection icon={UserRound} title="Datos generales" description="Cliente, área y a quién se asigna el pedido">
               <FormField label="Cliente" icon={UserRound} required error={errors.clientId}>
-                <div className="flex gap-2">
+                <div
+                  ref={(el) => {
+                    fieldRefs.current.clientId = el;
+                  }}
+                  tabIndex={-1}
+                  className="flex gap-2 outline-none"
+                >
                   <CreatableCombobox
                     className="flex-1"
                     items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
@@ -310,10 +388,18 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     onSelectItem={(item) => {
                       setClientId(Number(item.id));
                       setClientNameOverride("");
+                      setErrors((prev) => {
+                        const { clientId: _clientId, ...rest } = prev;
+                        return rest;
+                      });
                     }}
                     onUseCustom={(text) => {
                       setClientId(undefined);
                       setClientNameOverride(text);
+                      setErrors((prev) => {
+                        const { clientId: _clientId, ...rest } = prev;
+                        return rest;
+                      });
                     }}
                   />
                   <Button
@@ -361,9 +447,13 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                   }
                 >
                   <select
+                    ref={(el) => {
+                      fieldRefs.current.area = el;
+                    }}
                     className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={area ?? ""}
                     onChange={(e) => setArea(e.target.value || undefined)}
+                    onBlur={() => validateFieldOnBlur("area")}
                   >
                     <option value="">
                       {requiresDesign ? "Sin definir todavía..." : "Selecciona un área..."}
@@ -402,8 +492,12 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
               <FormField label="Descripción" icon={FileText} required error={errors.description}>
                 <Textarea
+                  ref={(el) => {
+                    fieldRefs.current.description = el;
+                  }}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onBlur={() => validateFieldOnBlur("description")}
                   className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                 />
               </FormField>
@@ -460,6 +554,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       variant="ghost"
                       onClick={() => removeRow(index)}
                       disabled={rows.length === 1}
+                      aria-label="Quitar producto"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

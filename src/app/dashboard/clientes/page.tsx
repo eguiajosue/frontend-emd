@@ -73,6 +73,7 @@ const ClientesPage = () => {
                 size="icon"
                 variant="ghost"
                 title="Ver pedidos del cliente"
+                aria-label="Ver pedidos del cliente"
                 onClick={() => setOrdersClientId(row.original.id)}
               >
                 <History className="h-4 w-4" />
