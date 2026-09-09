@@ -68,7 +68,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="flex flex-col items-start gap-2 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="h-5 w-5 text-primary" />
           Calendario de entregas
@@ -83,7 +83,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[7.5rem] text-center text-sm font-medium capitalize">
+          <span className="min-w-[5.5rem] text-center text-sm font-medium capitalize sm:min-w-[7.5rem]">
             {format(currentMonth, "MMMM yyyy", { locale: es })}
           </span>
           <Button

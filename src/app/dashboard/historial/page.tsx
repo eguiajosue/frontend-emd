@@ -90,7 +90,7 @@ const HistorialPage = () => {
             ))}
           </motion.div>
 
-          <div className="flex items-center justify-between gap-4 pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
             <p className="text-xs text-muted-foreground">
               {meta ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedidos` : null}
             </p>

@@ -12,6 +12,7 @@ import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { ownProductionAreas } from "@/lib/orderScreen";
 import { getAssignedUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, SlidersHorizontal, X } from "lucide-react";
 import type { Client, User } from "@/types";
@@ -75,6 +76,7 @@ const SELECT_CLASS =
 
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   const { isAdmin, roles } = usePermissions();
   const isManager = isAdmin || roles.includes("recepcion");
   // Quien trabaja más de un área necesita poder mirar una sola: es lo que daba
@@ -294,12 +296,12 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
                   {formatRange(filters.dateRange)}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] overflow-x-auto p-0" align="start">
                 <Calendar
                   mode="range"
                   selected={filters.dateRange}
                   onSelect={(range) => onChange({ ...filters, dateRange: range })}
-                  numberOfMonths={2}
+                  numberOfMonths={isMobile ? 1 : 2}
                   initialFocus
                 />
               </PopoverContent>
