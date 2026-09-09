@@ -31,6 +31,22 @@ export interface UserPreferences {
    * preferencia personal de cada uno (ver WORKFLOW.md §4 en el backend).
    */
   areaViewMode?: "unified" | "split" | null;
+  /**
+   * Notificaciones (Fase 4). Modo silencio general: si está activo, el
+   * backend no persiste ni pushea notificaciones (salvo menciones directas,
+   * cuando ese tipo exista).
+   */
+  notificationsMuted?: boolean | null;
+  /**
+   * Sólo notificar menciones directas. Hoy no tiene efecto práctico: el
+   * sistema todavía no tiene un tipo de notificación de "mención" (no hay
+   * @menciones de chat implementadas).
+   */
+  notifyMentionsOnly?: boolean | null;
+  /** Notificar cambios de estado/asignación de pedidos y novedades de producción. */
+  notifyProductionUpdates?: boolean | null;
+  /** Notificar alertas críticas. */
+  notifyCriticalAlerts?: boolean | null;
 }
 
 const PREFERENCES_ENDPOINT = "users/me/preferences";

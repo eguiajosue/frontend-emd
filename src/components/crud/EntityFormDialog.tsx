@@ -141,7 +141,7 @@ export function EntityFormDialog({
                 hint={!error ? field.helpText : undefined}
               >
                 {field.type === "multiselect" ? (
-                  <div className="grid grid-cols-2 gap-2 rounded-lg border border-input p-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 rounded-lg border border-input p-3 sm:grid-cols-3">
                     {field.options?.map((opt) => {
                       const selected: (string | number)[] = Array.isArray(values[field.name])
                         ? values[field.name]

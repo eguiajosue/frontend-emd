@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk, Poppins } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
@@ -34,6 +34,15 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "EMD Bordados",
   description: "Sistema de gestión de pedidos de EMD Bordados",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d91e7a",
 };
 
 export default function RootLayout({

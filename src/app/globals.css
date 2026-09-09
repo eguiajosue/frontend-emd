@@ -55,13 +55,13 @@
     --chart-5: 150 60% 42%;
     --radius: 0.875rem;
 
-    --sidebar-background: 0 0% 99%;
+    --sidebar-background: 330 25% 95%;
     --sidebar-foreground: 330 15% 24%;
     --sidebar-primary: 330 81% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 30% 95%;
+    --sidebar-accent: 330 35% 90%;
     --sidebar-accent-foreground: 330 70% 30%;
-    --sidebar-border: 330 15% 91%;
+    --sidebar-border: 330 15% 82%;
     --sidebar-ring: 330 81% 46%;
   }
   .dark {

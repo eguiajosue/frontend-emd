@@ -1,9 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { Check, Clock, Laptop, Moon, Sun, Volume2, VolumeX } from "lucide-react";
+import {
+  AlertTriangle,
+  AtSign,
+  BellOff,
+  BellRing,
+  Check,
+  Clock,
+  Factory,
+  Laptop,
+  Loader2,
+  Moon,
+  Sun,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import Title from "@/components/Title";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -17,12 +31,14 @@ import { useAccentColor } from "@/hooks/useAccentColor";
 import { useDensity } from "@/hooks/useDensity";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSoundPreference } from "@/hooks/useSoundPreference";
+import { useAuthToken } from "@/hooks/useEntity";
 import { playSuccessSound } from "@/lib/sound";
 import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useAppSettings, useUpdateAppSettings } from "@/hooks/useSettings";
 import { getErrorMessage } from "@/lib/api";
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
 
 /** Roles operativos de producción, con su etiqueta legible. */
 const OPERATIONAL_ROLE_LABELS: { role: string; label: string }[] = [
@@ -289,6 +305,185 @@ function SoundSection() {
   );
 }
 
+/** Fila de un toggle individual de notificaciones, deshabilitada visualmente en modo silencio. */
+function NotificationToggleRow({
+  icon: Icon,
+  label,
+  description,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  description: string;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 py-3 transition-opacity",
+        disabled && "opacity-40"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium leading-none">{label}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+function NotificationsSection() {
+  const { preferences, isLoading, updatePreferences } = useUserPreferences();
+  const token = useAuthToken();
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const muted = preferences?.notificationsMuted ?? false;
+  const mentionsOnly = preferences?.notifyMentionsOnly ?? false;
+  const productionUpdates = preferences?.notifyProductionUpdates ?? true;
+  const criticalAlerts = preferences?.notifyCriticalAlerts ?? true;
+
+  const handleMuteToggle = async (checked: boolean) => {
+    await updatePreferences({ notificationsMuted: checked });
+    if (checked) {
+      // Silenciar todo también corta el push real: sin esto el navegador
+      // seguiría recibiendo notificaciones aunque la app las ignore.
+      await unsubscribeFromPush(token);
+    }
+  };
+
+  const handleEnablePush = async () => {
+    if (!isPushSupported()) {
+      toast.error("Este navegador no soporta notificaciones push.");
+      return;
+    }
+    setPushBusy(true);
+    try {
+      const subscription = await subscribeToPush(token);
+      if (!subscription) {
+        toast.error(
+          "No se pudo activar el push. Revisá los permisos de notificaciones del navegador."
+        );
+        return;
+      }
+      // Activar push mientras el modo silencio está prendido sería
+      // contradictorio: el usuario lo está pidiendo, así que también
+      // reactivamos las notificaciones.
+      if (muted) {
+        await updatePreferences({ notificationsMuted: false });
+      }
+      playSuccessSound();
+      toast.success("Notificaciones push activadas en este dispositivo.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No se pudo activar el push."));
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <CardTitle>Notificaciones</CardTitle>
+            <CardDescription>
+              Qué te avisa EMD y cómo, en la app y por push.
+            </CardDescription>
+          </div>
+          <span
+            aria-hidden
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              muted ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+            )}
+          >
+            {muted ? <BellOff className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/40 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Modo silencio</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Corta todas las notificaciones de la app y el push, como en WhatsApp.
+                </p>
+              </div>
+              <Switch checked={muted} onCheckedChange={handleMuteToggle} />
+            </div>
+
+            <div className="divide-y">
+              <NotificationToggleRow
+                icon={AtSign}
+                label="Sólo menciones directas"
+                description="Avisar únicamente cuando te mencionen a vos. (Próximamente: el chat todavía no tiene @menciones.)"
+                checked={mentionsOnly}
+                disabled={muted}
+                onCheckedChange={(checked) => updatePreferences({ notifyMentionsOnly: checked })}
+              />
+              <NotificationToggleRow
+                icon={Factory}
+                label="Actualizaciones de producción"
+                description="Pedidos asignados, cambios de estado y novedades de área."
+                checked={productionUpdates}
+                disabled={muted}
+                onCheckedChange={(checked) =>
+                  updatePreferences({ notifyProductionUpdates: checked })
+                }
+              />
+              <NotificationToggleRow
+                icon={AlertTriangle}
+                label="Alertas críticas"
+                description="Avisos importantes que no encajan en producción."
+                checked={criticalAlerts}
+                disabled={muted}
+                onCheckedChange={(checked) => updatePreferences({ notifyCriticalAlerts: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 border-t pt-4">
+              <p className="text-xs text-muted-foreground">
+                Activá el push para recibir avisos aunque tengas la pestaña cerrada.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEnablePush}
+                disabled={pushBusy}
+                className="shrink-0"
+              >
+                {pushBusy ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <BellRing className="mr-2 h-4 w-4" />
+                )}
+                Activar notificaciones push
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function AreaVisibilitySection() {
   const { data: rows, isPending, isError } = useEntityList<AreaVisibility>("areaVisibility");
   const { update } = useEntityMutations<AreaVisibility, { generalViewEnabled: boolean }>(
@@ -438,6 +633,7 @@ export default function ConfiguracionPage() {
         <AppearanceSection />
         <DensitySection />
         <SoundSection />
+        <NotificationsSection />
         <LanguageSection />
         {canManageAreaVisibility && <AreaVisibilitySection />}
         {isAdmin && <DeliveredRetentionSection />}

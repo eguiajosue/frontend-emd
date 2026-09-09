@@ -17,6 +17,7 @@ const contentSecurityPolicy = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https: wss: http: ws:",
+  "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -52,4 +53,10 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const withSerwist = require("@serwist/next").default({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  reloadOnOnline: true,
+});
+
+module.exports = withSerwist(nextConfig);

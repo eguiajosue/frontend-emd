@@ -11,6 +11,7 @@ import {
   History,
   Bell,
   MessagesSquare,
+  Download,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { BugReportDialog } from "./BugReportDialog";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { useChatUnreadCount } from "@/hooks/useChat";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 import { ordersScreenTitle } from "@/lib/orderScreen";
 import { useMotionPreset } from "@/lib/motion";
@@ -110,6 +112,35 @@ function ConfiguracionLink({ pathname }: { pathname: string }) {
         <Settings className="h-4 w-4 shrink-0" />
         {!collapsed && "Configuración"}
       </a>
+    </Button>
+  );
+}
+
+/**
+ * Botón discreto de "Instalar app", visible sólo cuando el navegador
+ * disparó `beforeinstallprompt` (ver `useInstallPrompt`) — no hay forma de
+ * saber si es instalable de antemano, así que el botón directamente no
+ * existe hasta ese momento en vez de mostrarse deshabilitado.
+ */
+function InstallAppButton() {
+  const { canInstall, promptInstall } = useInstallPrompt();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+
+  if (!canInstall) return null;
+
+  return (
+    <Button
+      variant="ghost"
+      className={cn(
+        "gap-2 mb-2 text-primary hover:text-primary",
+        collapsed ? "mx-auto size-8 justify-center p-0" : "w-full justify-start"
+      )}
+      onClick={promptInstall}
+      title={collapsed ? "Instalar app" : undefined}
+    >
+      <Download className="h-4 w-4 shrink-0" />
+      {!collapsed && "Instalar app"}
     </Button>
   );
 }
@@ -380,6 +411,7 @@ export function AppSidebar() {
       </SidebarContent>
       <div className={cn("mt-auto p-4", collapsed && "px-2")}>
         <Separator className="mb-4" />
+        <InstallAppButton />
         <ConfiguracionLink pathname={pathname} />
         {!collapsed && <BugReportDialog />}
         <div

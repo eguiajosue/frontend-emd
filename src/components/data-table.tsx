@@ -64,56 +64,100 @@ export function DataTable<TData, TValue>({
 
   if (!virtualize) {
     return (
-      <div className="w-full overflow-x-auto rounded-xl border shadow-soft">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="h-11 bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                  className={cn(
-                    "transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+      <>
+        {/* Escritorio/tablet: tabla con scroll horizontal si hace falta. */}
+        <div className="hidden w-full overflow-x-auto rounded-xl border shadow-soft md:block">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className="h-11 bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No hay resultados.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {rows.length ? (
+                rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                    className={cn(
+                      "transition-colors",
+                      onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className="py-3">
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                    No hay resultados.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Móvil: cada fila como tarjeta, sin scroll horizontal forzado. */}
+        <div className="flex flex-col gap-2.5 md:hidden">
+          {rows.length ? (
+            rows.map((row) => (
+              <div
+                key={row.id}
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                className={cn(
+                  "rounded-xl border bg-card p-3.5 shadow-soft transition-colors",
+                  onRowClick && "cursor-pointer active:bg-primary/[0.04]"
+                )}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const rawHeader = cell.column.columnDef.header;
+                  const isLabeled = typeof rawHeader === "string";
+                  const headerLabel = isLabeled ? rawHeader : null;
+                  return (
+                    <div
+                      key={cell.id}
+                      className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
+                    >
+                      {isLabeled && (
+                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {headerLabel}
+                        </span>
+                      )}
+                      <div className={cn("min-w-0 text-sm", isLabeled ? "text-right" : "w-full")}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          ) : (
+            <div className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
+              No hay resultados.
+            </div>
+          )}
+        </div>
+      </>
     );
   }
 

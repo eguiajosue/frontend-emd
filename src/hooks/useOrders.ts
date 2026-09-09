@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, request, type Paginated } from "@/lib/api";
+import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
 import type {
@@ -103,11 +104,11 @@ export function useChangeOrderStatus() {
       order: Pick<Order, "id" | "statusId">;
       newStatusId: number;
     }) => {
-      await request<Order>(`${ENDPOINTS.orders}/${order.id}`, {
-        method: "PATCH",
-        token,
-        body: { statusId: newStatusId },
-      });
+      await patchStatusChange<Order>(
+        `${ENDPOINTS.orders}/${order.id}`,
+        { statusId: newStatusId },
+        token
+      );
       // Sin cambio real no se escribe historial: hasta ahora se creaba una
       // fila por cada click aunque el estado fuera el mismo, y el historial
       // acumulaba entradas "pendiente -> pendiente".
@@ -185,11 +186,11 @@ export function useMoveOrderStatus(actor: MoveActor) {
       // estado del pedido después de cada una.
       await Promise.all(
         taskIds.map((taskId) =>
-          request(`${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`, {
-            method: "PATCH",
-            token,
-            body: { status },
-          })
+          patchStatusChange(
+            `${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`,
+            { status },
+            token
+          )
         )
       );
       return { orderId: order.id };
