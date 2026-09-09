@@ -118,7 +118,7 @@ export function EntityFormDialog({
                   key={field.name}
                   className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3.5 py-3"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium leading-none">{field.label}</p>
                     {field.helpText && (
                       <p className="mt-1 text-xs text-muted-foreground">{field.helpText}</p>

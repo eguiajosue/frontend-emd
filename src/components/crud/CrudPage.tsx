@@ -121,7 +121,7 @@ export function CrudPage<T extends BaseEntity>({
 
   return (
     <div className="p-0 w-full">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {!hideTitle && <Title title={title} />}
         {canEdit && (
           <Button onClick={handleCreate}>
