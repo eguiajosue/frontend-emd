@@ -675,9 +675,9 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
             <FormSection icon={Package} title="Productos" description="Una línea por cada producto del pedido">
               <div className="space-y-2">
                 {rows.map((row, index) => (
-                  <div key={index} className="flex gap-2 items-center">
+                  <div key={index} className="flex flex-wrap gap-2 items-center">
                     <CreatableCombobox
-                      className="flex-1"
+                      className="min-w-[10rem] flex-1"
                       items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
                       selectedId={null}
                       customValue={row.customName}
