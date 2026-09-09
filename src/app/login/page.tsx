@@ -187,6 +187,10 @@ const LoginForm = () => {
               </span>
             </p>
           </div>
+
+          <p className="text-neutral-500 md:text-muted-foreground/70 text-center text-xs">
+            v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_COMMIT}
+          </p>
         </motion.div>
       </div>
     </div>
