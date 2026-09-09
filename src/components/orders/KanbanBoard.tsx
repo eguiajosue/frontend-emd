@@ -5,6 +5,13 @@ import { motion } from "framer-motion";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { staggerContainerVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Order } from "@/types";
 
 export interface KanbanColumn {
@@ -49,6 +56,7 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const [draggingOrder, setDraggingOrder] = useState<Order | null>(null);
   const [overStatusId, setOverStatusId] = useState<number | null>(null);
+  const [mobileStatusId, setMobileStatusId] = useState<number | null>(null);
 
   if (columns.length === 0) return null;
 
@@ -62,10 +70,80 @@ export function KanbanBoard({
     return true;
   };
 
+  // En pantallas angostas no tiene sentido un tablero de columnas fijas con
+  // scroll horizontal: se ve una a la vez, elegida con un selector.
+  const activeMobileColumn =
+    columns.find((c) => c.statusId === mobileStatusId) ?? columns[0];
+
+  const renderCards = (col: KanbanColumn, isTarget: boolean) =>
+    col.orders.length === 0 ? (
+      <p
+        className={cn(
+          "rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground/70 transition-colors",
+          isTarget && "border-primary/50 text-primary"
+        )}
+      >
+        {isTarget ? "Soltar acá" : "Sin pedidos"}
+      </p>
+    ) : (
+      <motion.div
+        className="space-y-3"
+        variants={staggerContainerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {col.orders.map((order) => (
+          <div
+            key={order.id}
+            draggable={draggable}
+            onDragStart={(e) => {
+              if (!draggable) return;
+              e.dataTransfer.effectAllowed = "move";
+              // Firefox no arranca el arrastre sin payload.
+              e.dataTransfer.setData("text/plain", String(order.id));
+              setDraggingOrder(order);
+            }}
+            onDragEnd={() => {
+              setDraggingOrder(null);
+              setOverStatusId(null);
+            }}
+            className={cn(
+              draggable && "cursor-grab active:cursor-grabbing",
+              draggingOrder?.id === order.id && "opacity-40"
+            )}
+          >
+            <OrderCard order={order} onOpen={onOpenOrder} />
+          </div>
+        ))}
+      </motion.div>
+    );
+
   return (
-    // El track sangra hasta el borde del contenido para que el scroll no
-    // arranque recortado, y recupera el padding por dentro.
-    <div className="-mx-1 overflow-x-auto px-1 pb-3 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin]">
+    <>
+      {/* Móvil: una columna a la vez, elegida con un selector — nada de scroll
+          horizontal por un tablero pensado para escritorio. */}
+      <div className="md:hidden">
+        <Select
+          value={String(activeMobileColumn.statusId)}
+          onValueChange={(v) => setMobileStatusId(Number(v))}
+        >
+          <SelectTrigger className="mb-3">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {columns.map((col) => (
+              <SelectItem key={col.statusId} value={String(col.statusId)}>
+                {col.label} ({col.orders.length})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {renderCards(activeMobileColumn, false)}
+      </div>
+
+      {/* Escritorio/tablet: todas las columnas en una sola fila con scroll
+          horizontal, para leer el flujo completo de izquierda a derecha. */}
+      <div className="-mx-1 hidden overflow-x-auto px-1 pb-3 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin] md:block">
       <div className="flex min-w-max items-start gap-5">
         {columns.map((col) => {
           const isTarget = overStatusId === col.statusId && acceptsDrop(col.statusId);
@@ -117,51 +195,12 @@ export function KanbanBoard({
                 </span>
               </header>
 
-              {col.orders.length === 0 ? (
-                <p
-                  className={cn(
-                    "rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground/70 transition-colors",
-                    isTarget && "border-primary/50 text-primary"
-                  )}
-                >
-                  {isTarget ? "Soltar acá" : "Sin pedidos"}
-                </p>
-              ) : (
-                <motion.div
-                  className="space-y-3"
-                  variants={staggerContainerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {col.orders.map((order) => (
-                    <div
-                      key={order.id}
-                      draggable={draggable}
-                      onDragStart={(e) => {
-                        if (!draggable) return;
-                        e.dataTransfer.effectAllowed = "move";
-                        // Firefox no arranca el arrastre sin payload.
-                        e.dataTransfer.setData("text/plain", String(order.id));
-                        setDraggingOrder(order);
-                      }}
-                      onDragEnd={() => {
-                        setDraggingOrder(null);
-                        setOverStatusId(null);
-                      }}
-                      className={cn(
-                        draggable && "cursor-grab active:cursor-grabbing",
-                        draggingOrder?.id === order.id && "opacity-40"
-                      )}
-                    >
-                      <OrderCard order={order} onOpen={onOpenOrder} />
-                    </div>
-                  ))}
-                </motion.div>
-              )}
+              {renderCards(col, isTarget)}
             </section>
           );
         })}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
