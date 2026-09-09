@@ -104,11 +104,14 @@ const Dashboard = () => {
           >
             <motion.div variants={staggerItemVariants}>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 min-w-0">
+                  <CardTitle
+                    className="truncate text-sm font-medium text-muted-foreground"
+                    title="Total de Pedidos"
+                  >
                     Total de Pedidos
                   </CardTitle>
-                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <Package className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{totalOrders}</div>
@@ -118,11 +121,14 @@ const Dashboard = () => {
 
             <motion.div variants={staggerItemVariants}>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 min-w-0">
+                  <CardTitle
+                    className="truncate text-sm font-medium text-muted-foreground"
+                    title="Pendientes"
+                  >
                     Pendientes
                   </CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{pendingCount}</div>
@@ -132,11 +138,14 @@ const Dashboard = () => {
 
             <motion.div variants={staggerItemVariants}>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 min-w-0">
+                  <CardTitle
+                    className="truncate text-sm font-medium text-muted-foreground"
+                    title="En Proceso"
+                  >
                     En Proceso
                   </CardTitle>
-                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <Truck className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{inProgressCount}</div>
@@ -146,11 +155,14 @@ const Dashboard = () => {
 
             <motion.div variants={staggerItemVariants}>
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 min-w-0">
+                  <CardTitle
+                    className="truncate text-sm font-medium text-muted-foreground"
+                    title="Entregados"
+                  >
                     Entregados
                   </CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{deliveredCount}</div>

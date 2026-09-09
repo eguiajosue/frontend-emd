@@ -205,6 +205,17 @@
   * {
     @apply border-border;
   }
+  html,
+  body {
+    /*
+     * Red de seguridad: los diálogos/popovers/sheets de Radix son portales
+     * fuera de <main>, así que el overflow-x-hidden de <main> (ver
+     * dashboard/layout.tsx) no los cubre. Si algún contenido dentro de un
+     * portal desborda por error, esto evita que se convierta en scroll
+     * horizontal de todo el documento.
+     */
+    overflow-x: hidden;
+  }
   body {
     @apply bg-background text-foreground;
   }
