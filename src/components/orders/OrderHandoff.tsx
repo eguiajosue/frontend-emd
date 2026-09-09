@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, ChevronRight, Lock } from "lucide-react";
+import { Check, ChevronRight, CloudOff, Lock } from "lucide-react";
 import {
   buildOrderHandoff,
   type HandoffStageState,
   type OrderHandoff as OrderHandoffData,
 } from "@/lib/orderHandoff";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { usePendingSync } from "@/hooks/usePendingSync";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
@@ -23,11 +24,19 @@ export function OrderHandoff({ order }: { order: Order }) {
   // Misma queryKey que `AreaTasksSection`, que vive en el mismo diálogo: React
   // Query dedupe, no hay request extra.
   const { tasks } = useAreaTasks(order.id);
-  return <HandoffStrip handoff={buildOrderHandoff(order, tasks)} />;
+  const pendingSync = usePendingSync(order.id);
+  return <HandoffStrip handoff={buildOrderHandoff(order, tasks)} pendingSync={pendingSync} />;
 }
 
 /** Sólo pinta. Separado de la carga de datos para poder verlo en cada estado. */
-export function HandoffStrip({ handoff }: { handoff: OrderHandoffData }) {
+export function HandoffStrip({
+  handoff,
+  pendingSync = false,
+}: {
+  handoff: OrderHandoffData;
+  /** El último cambio de estado se hizo sin red y espera a sincronizarse. */
+  pendingSync?: boolean;
+}) {
   return (
     <section
       aria-label="Pase del pedido"
@@ -36,7 +45,8 @@ export function HandoffStrip({ handoff }: { handoff: OrderHandoffData }) {
         handoff.cancelled ? "border-destructive/40 bg-destructive/5" : "bg-muted/20"
       )}
     >
-      <ol className="flex flex-wrap items-center gap-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ol className="flex flex-wrap items-center gap-y-2">
         {handoff.stages.map((stage, index) => (
           <li key={stage.key} className="flex items-center">
             {index > 0 && (
@@ -59,7 +69,18 @@ export function HandoffStrip({ handoff }: { handoff: OrderHandoffData }) {
             </span>
           </li>
         ))}
-      </ol>
+        </ol>
+
+        {pendingSync && (
+          <span
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-amber-500/50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+            title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
+          >
+            <CloudOff className="h-3 w-3 shrink-0" aria-hidden />
+            Pendiente de sincronizar
+          </span>
+        )}
+      </div>
 
       {!handoff.cancelled && (
         <div className="space-y-0.5 border-t pt-3 text-sm">

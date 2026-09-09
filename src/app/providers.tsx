@@ -18,6 +18,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAccentColor } from "@/hooks/useAccentColor";
 import { useDensity, type Density } from "@/hooks/useDensity";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/language";
+import { registerOnlineDrainFallback } from "@/lib/backgroundSync";
 
 /**
  * Providers globales de la app (sesión + cache de datos + toasts).
@@ -90,6 +91,17 @@ function SessionErrorWatcher() {
 }
 
 /**
+ * Drena la cola de mutaciones offline (`offlineQueue.ts`) apenas vuelve la
+ * red, para los navegadores sin Background Sync (Safari/Firefox) — en los que
+ * sí la soportan, `sw.ts` ya lo hace solo vía el evento `sync`. Ver
+ * `lib/backgroundSync.ts`.
+ */
+function OfflineSyncWatcher() {
+  useEffect(() => registerOnlineDrainFallback(), []);
+  return null;
+}
+
+/**
  * Aplica las preferencias del usuario logueado (tema/acento/idioma) apenas
  * llegan del backend, una sola vez por sesión iniciada, para que cada cuenta
  * vea SU configuración al loguearse sin depender de lo que había guardado
@@ -144,6 +156,7 @@ export default function Providers({ children }: { children: ReactNode }) {
           <QueryClientProvider client={queryClient}>
             <SessionErrorWatcher />
             <PreferencesSync />
+            <OfflineSyncWatcher />
             {children}
             {isDev && <ReactQueryDevtools initialIsOpen={false} />}
           </QueryClientProvider>

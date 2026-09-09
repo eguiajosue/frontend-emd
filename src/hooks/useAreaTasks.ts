@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, request } from "@/lib/api";
+import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
 import type { AreaTaskStatus, OrderAreaTask } from "@/types";
@@ -65,9 +66,10 @@ export function useAreaTasks(orderId: number | null) {
 
   const setStatus = useMutation({
     mutationFn: ({ taskId, status }: { taskId: number; status: AreaTaskStatus }) =>
-      request<OrderAreaTask>(
+      patchStatusChange<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/status`,
-        { token, method: "PATCH", body: { status } }
+        { status },
+        token
       ),
     onSuccess: invalidate,
   });
