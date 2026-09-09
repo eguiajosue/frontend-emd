@@ -1,4 +1,24 @@
 // @ts-check
+const { execSync } = require("child_process");
+const { version: appVersion } = require("./package.json");
+
+/**
+ * Hash corto del commit actual, para mostrarlo en el login y poder verificar
+ * de un vistazo que el deploy corresponde a la última versión pusheada.
+ * Vercel expone VERCEL_GIT_COMMIT_SHA en cada build; fuera de Vercel (local,
+ * u otro proveedor) se resuelve con git directamente. Si ninguno funciona
+ * (ej. build sin .git), no debe romper el build.
+ */
+function resolveGitCommit() {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) {
+    return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
+  }
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    return "dev";
+  }
+}
 
 /**
  * Cabeceras de seguridad conservadoras.
@@ -43,6 +63,10 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
+    NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
+  },
   async headers() {
     return [
       {
