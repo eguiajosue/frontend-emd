@@ -458,7 +458,7 @@ function NotificationsSection() {
               />
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t pt-4">
+            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
                 Activá el push para recibir avisos aunque tengas la pestaña cerrada.
               </p>
