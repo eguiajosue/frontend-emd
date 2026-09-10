@@ -61,7 +61,7 @@ export async function normalizeImageFile(file: File): Promise<File | null> {
 
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
     return null;
   }
@@ -78,6 +78,11 @@ export async function normalizeImageFile(file: File): Promise<File | null> {
     bitmap.close();
     return null;
   }
+  // El canvas es transparente por default; toBlob a JPEG (sin canal alfa)
+  // aplana la transparencia a NEGRO si no se rellena antes. Fondo blanco
+  // explícito para que un PNG con transparencia no salga corrupto.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 

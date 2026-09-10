@@ -59,8 +59,13 @@ export function DataTable<TData, TValue>({
 
   const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
   useEffect(() => {
-    setMobileVisibleCount(MOBILE_PAGE_SIZE);
-  }, [data]);
+    // Sólo achica el conteo visible si la data efectivamente se redujo (ej.
+    // un filtro sacó filas). Un refetch en tiempo real (useSocket invalida
+    // queries en cada evento de pedido) crea una nueva referencia de `data`
+    // con el mismo largo o más filas: no debe resetear "Cargar más" en medio
+    // del uso normal en mobile.
+    setMobileVisibleCount((count) => Math.min(count, Math.max(data.length, MOBILE_PAGE_SIZE)));
+  }, [data.length]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,

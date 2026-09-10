@@ -11,15 +11,19 @@ function makeFile(name: string, type: string, sizeBytes: number): File {
   return new File([content], name, { type });
 }
 
+let createImageBitmapMock: ReturnType<typeof vi.fn>;
+let ctxMock: { fillStyle: string; fillRect: ReturnType<typeof vi.fn>; drawImage: ReturnType<typeof vi.fn> };
+
 describe("normalizeImageFile", () => {
   beforeEach(() => {
-    vi.stubGlobal(
-      "createImageBitmap",
-      vi.fn().mockResolvedValue({ width: 4000, height: 3000, close: vi.fn() })
+    createImageBitmapMock = vi
+      .fn()
+      .mockResolvedValue({ width: 4000, height: 3000, close: vi.fn() });
+    vi.stubGlobal("createImageBitmap", createImageBitmapMock);
+    ctxMock = { fillStyle: "", fillRect: vi.fn(), drawImage: vi.fn() };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+      ctxMock as unknown as CanvasRenderingContext2D
     );
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      drawImage: vi.fn(),
-    } as unknown as CanvasRenderingContext2D);
     vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
       (callback: BlobCallback) => {
         callback(new Blob(["contenido-comprimido"], { type: "image/jpeg" }));
@@ -46,6 +50,19 @@ describe("normalizeImageFile", () => {
     expect(result).not.toBeNull();
     expect(result!.type).toBe("image/jpeg");
     expect(isAllowedUploadMime(result!.type)).toBe(true);
+
+    // Respeta la orientación EXIF de la foto (rotación de cámara de iOS).
+    expect(createImageBitmapMock.mock.calls[0][1]).toEqual({
+      imageOrientation: "from-image",
+    });
+
+    // El canvas se rellena de blanco ANTES de dibujar el bitmap, para que un
+    // PNG con transparencia no termine con fondo negro al comprimir a JPEG.
+    expect(ctxMock.fillRect).toHaveBeenCalledWith(0, 0, expect.any(Number), expect.any(Number));
+    expect(ctxMock.fillStyle).toBe("#ffffff");
+    const fillOrder = ctxMock.fillRect.mock.invocationCallOrder[0];
+    const drawOrder = ctxMock.drawImage.mock.invocationCallOrder[0];
+    expect(fillOrder).toBeLessThan(drawOrder);
   });
 
   it("recomprime un JPEG que supera el límite de tamaño", async () => {
