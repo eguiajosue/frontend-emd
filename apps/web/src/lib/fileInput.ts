@@ -41,3 +41,56 @@ export function readFileAsUploadInput(file: File): Promise<UploadFileInput> {
     reader.readAsDataURL(file);
   });
 }
+
+const MAX_IMAGE_DIMENSION = 2000;
+const IMAGE_JPEG_QUALITY = 0.8;
+
+/**
+ * Normaliza cualquier imagen (incluido HEIC de la cámara de iOS, que Safari
+ * decodifica de forma nativa en <canvas>) a un JPEG liviano: redimensiona el
+ * lado mayor a un máximo de 2000px y comprime a calidad 0.8. Los PDF y las
+ * imágenes que ya cumplen el tipo y el límite de tamaño se devuelven sin
+ * tocar. Si el navegador no puede decodificar el archivo (ej. HEIC en
+ * Chrome, que no tiene soporte nativo), devuelve `null`.
+ */
+export async function normalizeImageFile(file: File): Promise<File | null> {
+  if (file.type === "application/pdf") return file;
+  if (isAllowedUploadMime(file.type) && file.size <= UPLOAD_FILE_MAX_BYTES) {
+    return file;
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    return null;
+  }
+
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    bitmap.close();
+    return null;
+  }
+  // El canvas es transparente por default; toBlob a JPEG (sin canal alfa)
+  // aplana la transparencia a NEGRO si no se rellena antes. Fondo blanco
+  // explícito para que un PNG con transparencia no salga corrupto.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, "image/jpeg", IMAGE_JPEG_QUALITY)
+  );
+  if (!blob) return null;
+
+  const jpegName = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+  return new File([blob], jpegName, { type: "image/jpeg" });
+}

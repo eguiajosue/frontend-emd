@@ -96,8 +96,8 @@ function getTimeBasedGreeting(): string {
 
 function ConfiguracionLink({ pathname }: { pathname: string }) {
   const active = pathname === "/dashboard/configuracion";
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  const collapsed = !isMobile && state === "collapsed";
   return (
     <Button
       variant="ghost"
@@ -124,8 +124,8 @@ function ConfiguracionLink({ pathname }: { pathname: string }) {
  */
 function InstallAppButton() {
   const { canInstall, promptInstall } = useInstallPrompt();
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  const collapsed = !isMobile && state === "collapsed";
 
   if (!canInstall) return null;
 
@@ -220,7 +220,7 @@ export function AppSidebar() {
           title: "Clientes",
           url: "/dashboard/clientes",
           icon: UserRound,
-          roles: ["admin", "recepcion"],
+          roles: ["admin", "recepcion", "superuser"],
         },
       ],
     },
@@ -300,28 +300,62 @@ export function AppSidebar() {
   ];
 
   const visibleGroups = operationalOnly ? OPERATIONAL_MENU : menuItems;
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
+  // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
+  // (ver Sidebar en ui/sidebar.tsx): si se hereda la cookie de escritorio
+  // colapsada, las etiquetas de texto desaparecían aunque hubiera espacio
+  // de sobra para mostrarlas.
+  const collapsed = !isMobile && state === "collapsed";
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent data-tour="sidebar-nav">
-        <SidebarHeader className={cn("p-4", collapsed && "px-2")}>
+        <SidebarHeader className={cn("p-4 pb-5 md:pb-4", collapsed && "px-2")}>
           {collapsed ? (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
               E
             </div>
           ) : (
-            <h2 className="font-heading text-lg font-semibold tracking-tight">
-              {greeting},{" "}
-              <span className="text-primary">{session?.user?.first_name}</span>
-            </h2>
+            <div className="space-y-3">
+              <h2 className="font-heading text-lg font-semibold tracking-tight">
+                {greeting},{" "}
+                <span className="text-primary">{session?.user?.first_name}</span>
+              </h2>
+              {/* Identidad + rol arriba: sólo en móvil (el drawer se abre "en
+                  frío" y conviene confirmar de inmediato la cuenta activa).
+                  En escritorio la misma info ya vive al fondo del rail, donde
+                  no compite con la navegación. */}
+              <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/40 p-2.5 md:hidden">
+                <div className="relative shrink-0">
+                  <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+                    <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+                      {session?.user?.username?.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span
+                    aria-hidden
+                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar"
+                  />
+                </div>
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium">
+                    {session?.user?.first_name} {session?.user?.last_name}
+                  </span>
+                  <span className="truncate text-xs capitalize text-muted-foreground">
+                    {userRoles.join(", ")}
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
         </SidebarHeader>
         {visibleGroups.map((group) => (
           <div key={group.groupLabel}>
-            <SidebarGroupLabel>{group.groupLabel}</SidebarGroupLabel>
-            <SidebarMenu>
+            <SidebarGroupLabel className="text-[0.7rem] font-semibold uppercase tracking-wider md:text-xs md:font-medium md:normal-case md:tracking-normal">
+              {group.groupLabel}
+            </SidebarGroupLabel>
+            <SidebarMenu className="gap-1.5 md:gap-1">
               {group.items.map((item) =>
                 // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
                 // completo se filtra por rol, con "admin" viendo todo.
@@ -414,9 +448,12 @@ export function AppSidebar() {
         <InstallAppButton />
         <ConfiguracionLink pathname={pathname} />
         {!collapsed && <BugReportDialog />}
+        {/* Ya se muestra arriba, junto al saludo, en móvil (ver
+            SidebarHeader) — repetirla aquí duplicaría avatar+rol en la misma
+            pantalla. En escritorio sigue siendo el único lugar donde aparece. */}
         <div
           className={cn(
-            "flex items-center gap-3 mb-4 mt-2",
+            "hidden items-center gap-3 mb-4 mt-2 md:flex",
             collapsed && "flex-col gap-2"
           )}
         >

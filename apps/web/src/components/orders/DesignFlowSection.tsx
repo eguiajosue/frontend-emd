@@ -38,6 +38,7 @@ import {
   ALLOWED_UPLOAD_MIME_TYPES,
   UPLOAD_FILE_MAX_BYTES,
   isAllowedUploadMime,
+  normalizeImageFile,
   readFileAsUploadInput,
 } from "@/lib/fileInput";
 import {
@@ -424,19 +425,26 @@ function MontageDialog({
   };
 
   const acceptFile = async (f: File) => {
-    if (!isAllowedUploadMime(f.type)) {
+    const normalized = await normalizeImageFile(f);
+    if (!normalized) {
       toast.error("El montaje debe ser PNG, JPG o PDF.");
       return;
     }
-    if (f.size > UPLOAD_FILE_MAX_BYTES) {
+    if (!isAllowedUploadMime(normalized.type)) {
+      toast.error("El montaje debe ser PNG, JPG o PDF.");
+      return;
+    }
+    if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
       toast.error("El montaje no puede pesar más de 5MB.");
       return;
     }
     try {
-      const parsed = await readFileAsUploadInput(f);
+      const parsed = await readFileAsUploadInput(normalized);
       setFile(parsed);
-      setFileLabel(f.name);
-      setPreviewUrl(f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+      setFileLabel(normalized.name);
+      setPreviewUrl(
+        normalized.type.startsWith("image/") ? URL.createObjectURL(normalized) : null
+      );
     } catch {
       toast.error("No se pudo leer el archivo. Intentar de nuevo.");
     }
@@ -598,19 +606,25 @@ function FeedbackDialog({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!isAllowedUploadMime(f.type)) {
+    const normalized = await normalizeImageFile(f);
+    if (!normalized) {
       toast.error("El adjunto debe ser PNG, JPG o PDF.");
       e.target.value = "";
       return;
     }
-    if (f.size > UPLOAD_FILE_MAX_BYTES) {
+    if (!isAllowedUploadMime(normalized.type)) {
+      toast.error("El adjunto debe ser PNG, JPG o PDF.");
+      e.target.value = "";
+      return;
+    }
+    if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
       toast.error("El adjunto no puede pesar más de 5MB.");
       e.target.value = "";
       return;
     }
-    const parsed = await readFileAsUploadInput(f);
+    const parsed = await readFileAsUploadInput(normalized);
     setFile(parsed);
-    setFileLabel(f.name);
+    setFileLabel(normalized.name);
   };
 
   const handleSubmit = async () => {
