@@ -1,10 +1,17 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ConversationList } from "./ConversationList";
 import { markUserTyping } from "@/hooks/useChatTyping";
-import type { ChatConversation } from "@/types";
+import type { ChatConversation, ChatMessage } from "@/types";
 
 function makeConversation(overrides: Partial<ChatConversation>): ChatConversation {
+  const lastMessage: ChatMessage = {
+    id: 1,
+    conversationId: 1,
+    body: "Hola",
+    createdAt: "2026-01-01T10:00:00.000Z",
+    senderId: 20,
+  };
   return {
     id: 1,
     type: "direct",
@@ -12,7 +19,7 @@ function makeConversation(overrides: Partial<ChatConversation>): ChatConversatio
     title: "Ana Gómez",
     otherUser: { id: 20, username: "ana", firstName: "Ana", lastName: "Gómez" },
     lastMessageAt: "2026-01-01T10:00:00.000Z",
-    lastMessage: { id: 1, conversationId: 1, body: "Hola", createdAt: "2026-01-01T10:00:00.000Z", senderId: 20 } as any,
+    lastMessage,
     unreadCount: 0,
     isMonitor: false,
     ...overrides,
