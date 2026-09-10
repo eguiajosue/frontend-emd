@@ -16,6 +16,8 @@ import {
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -30,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
+import { useChatTyping } from "@/hooks/useChatTyping";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
@@ -309,6 +312,7 @@ export function MessageThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
+  const typingUserIds = useChatTyping(conversation?.id ?? null);
 
   // Threads largos (cientos/miles de mensajes) se virtualizan para mantener el
   // scroll fluido; los cortos se quedan con la animación de entrada existente.
@@ -397,6 +401,28 @@ export function MessageThread({
       </div>
     );
   }
+
+  const otherMember = members.find((m) => m.id !== currentUserId && !m.isMonitor);
+  const otherIsTyping =
+    conversation.type === "direct" &&
+    otherMember != null &&
+    typingUserIds.includes(otherMember.id);
+
+  // La presencia 1:1 (en línea / última vez / escribiendo) sólo tiene sentido
+  // en conversaciones directas: un canal de área no tiene "un" otro usuario.
+  const presenceLabel = (() => {
+    if (conversation.type !== "direct") return null;
+    if (otherIsTyping) return "escribiendo…";
+    if (!otherMember) return null;
+    if (otherMember.isOnline) return "en línea";
+    if (otherMember.lastSeenAt) {
+      return `última vez ${formatDistanceToNow(new Date(otherMember.lastSeenAt), {
+        addSuffix: true,
+        locale: es,
+      })}`;
+    }
+    return null;
+  })();
 
   const handleSend = async () => {
     const body = draft.trim();
@@ -520,6 +546,16 @@ export function MessageThread({
               ? "Canal entre Recepción y el área"
               : "Mensaje directo"}
           </p>
+          {presenceLabel ? (
+            <p
+              className={cn(
+                "truncate text-xs",
+                otherIsTyping ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {presenceLabel}
+            </p>
+          ) : null}
         </div>
         <Button size="sm" variant="ghost" onClick={() => setShowMembers((v) => !v)}>
           <Users className="mr-1 h-4 w-4" />

@@ -158,3 +158,51 @@ describe("MessageThread - checks de mensajes propios", () => {
     expect(screen.queryByTestId(/check-.*-5/)).not.toBeInTheDocument();
   });
 });
+
+describe("MessageThread - estado del header (presencia y escribiendo)", () => {
+  it('muestra "en línea" cuando el otro miembro está online', () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({ isOnline: true })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.getByText(/en línea/i)).toBeInTheDocument();
+  });
+
+  it("muestra la última conexión cuando está offline y tiene lastSeenAt", () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({ isOnline: false, lastSeenAt: "2026-01-01T09:00:00.000Z" })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.getByText(/última vez/i)).toBeInTheDocument();
+  });
+
+  it("no muestra nada de presencia si nunca se conectó (lastSeenAt null)", () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({ isOnline: false, lastSeenAt: null })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.queryByText(/en línea/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/última vez/i)).not.toBeInTheDocument();
+  });
+});
