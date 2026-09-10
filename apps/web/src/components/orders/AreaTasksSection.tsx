@@ -325,7 +325,7 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
                         <UserRound className="h-3.5 w-3.5 shrink-0" />
                         <select
                           aria-label={`Responsable de ${getAreaLabel(task.area)}`}
-                          className="h-7 max-w-[13rem] rounded-md border border-input bg-transparent px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+                          className="h-7 min-w-0 max-w-[13rem] rounded-md border border-input bg-transparent px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
                           value={task.assignedUserId ?? ""}
                           disabled={assign.isPending}
                           onChange={(e) =>

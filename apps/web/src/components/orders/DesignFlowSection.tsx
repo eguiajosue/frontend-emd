@@ -742,7 +742,7 @@ function ApproveDialog({
           ) : (
             <FormField label="¿A qué área pasa?" required error={error}>
               <select
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                 value={productionArea}
                 onChange={(e) => setProductionArea(e.target.value)}
               >

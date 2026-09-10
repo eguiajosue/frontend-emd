@@ -72,7 +72,7 @@ interface OrdersFilterBarProps {
  */
 /** Un solo lugar para el estilo de los `<select>` nativos del popover. */
 const SELECT_CLASS =
-  "flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "flex h-9 w-full min-w-0 max-w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);

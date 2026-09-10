@@ -395,7 +395,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && handleClose()}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-h-[90vh] sm:overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Nuevo Pedido</DialogTitle>
           </DialogHeader>
@@ -515,7 +515,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     ref={(el) => {
                       fieldRefs.current.area = el;
                     }}
-                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                    className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={area ?? ""}
                     onChange={(e) => setArea(e.target.value || undefined)}
                     onBlur={() => validateFieldOnBlur("area")}
@@ -548,7 +548,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     ref={(el) => {
                       fieldRefs.current.assignedUserId = el;
                     }}
-                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                    className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={assignedUserId ?? ""}
                     disabled={!assignmentArea}
                     onChange={(e) =>

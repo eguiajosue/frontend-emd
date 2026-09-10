@@ -215,7 +215,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl">
           <AnimatePresence mode="wait">
             {isPending || !order ? (
               <motion.div
@@ -333,7 +333,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                         </FormField>
                         <FormField label="Asignar a">
                           <select
-                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                            className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                             value={assignedUserId ?? ""}
                             onChange={(e) =>
                               setAssignedUserId(
@@ -360,7 +360,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                           }
                         >
                           <select
-                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
+                            className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                             value={area ?? ""}
                             onChange={(e) => setArea(e.target.value || undefined)}
                           >
