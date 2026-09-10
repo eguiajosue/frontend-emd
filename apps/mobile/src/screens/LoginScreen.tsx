@@ -10,18 +10,20 @@ import {
   View,
 } from 'react-native';
 import { request, getErrorMessage } from '@emd/api-client';
+import type { StoredSession } from '../lib/session';
 
 interface LoginResponse {
   token: string;
   refreshToken: string;
   id: number;
   username: string;
+  roles: string[];
 }
 
 export function LoginScreen({
   onLoggedIn,
 }: {
-  onLoggedIn: (token: string) => void;
+  onLoggedIn: (session: StoredSession) => void;
 }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -37,7 +39,7 @@ export function LoginScreen({
         method: 'POST',
         body: { username, password },
       });
-      onLoggedIn(res.token);
+      onLoggedIn({ token: res.token, roles: res.roles });
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo iniciar sesión.'));
     } finally {

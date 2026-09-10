@@ -24,7 +24,7 @@ const DOT_COLOR_BY_TONE: Record<string, string> = {
   critical: '#ef4444',
 };
 
-function OrderRow({ order }: { order: Order }) {
+function OrderRow({ order, onPress }: { order: Order; onPress: () => void }) {
   const tone = getStatusTone(order.statusId, order.status?.name);
   const label = getStatusLabel(order.statusId, order.status?.name);
   const clientName =
@@ -33,7 +33,7 @@ function OrderRow({ order }: { order: Order }) {
     'Sin cliente';
 
   return (
-    <View style={styles.row}>
+    <TouchableOpacity style={styles.row} onPress={onPress}>
       <View style={styles.rowHeader}>
         <Text style={styles.rowTitle} numberOfLines={1}>
           #{order.id} · {clientName}
@@ -45,16 +45,18 @@ function OrderRow({ order }: { order: Order }) {
       <Text style={styles.rowDescription} numberOfLines={2}>
         {order.description}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export function OrdersScreen({
   token,
   onLogout,
+  onOpenOrder,
 }: {
   token: string;
   onLogout: () => void;
+  onOpenOrder: (orderId: number) => void;
 }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,9 @@ export function OrdersScreen({
         <FlatList
           data={orders}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <OrderRow order={item} />}
+          renderItem={({ item }) => (
+            <OrderRow order={item} onPress={() => onOpenOrder(item.id)} />
+          )}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }

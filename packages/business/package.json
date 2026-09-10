@@ -5,10 +5,12 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@emd/types": "workspace:*"
+    "@emd/types": "workspace:*",
+    "@emd/api-client": "workspace:*"
   },
   "peerDependencies": {
-    "react": "^18.3.1 || ^19.0.0"
+    "react": "^18.3.1 || ^19.0.0",
+    "@tanstack/react-query": "^5.0.0"
   },
   "devDependencies": {
     "@types/react": "^18"
