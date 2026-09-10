@@ -12,6 +12,14 @@ packages/   Código compartido entre apps (tipos, lógica de negocio, API client
 
 El backend (NestJS + Prisma + Postgres, desplegado en Render) vive en un repo aparte (`backend-emd`) y es compartido por `apps/web` y `apps/mobile`.
 
+> **`apps/mobile` no es parte del workspace de pnpm.** Expo (React 19) y Next.js
+> (React 18) no pueden convivir en el mismo store de pnpm sin romper el chequeo
+> de tipos de Next.js (conflicto de versiones de `@types/react`). Por eso
+> `apps/mobile` tiene su propio `node_modules` aislado (instalado con `npm`,
+> no `pnpm`) y consume `packages/*` vía dependencias `file:`, no `workspace:*`.
+> Esto significa: `pnpm install`/`pnpm turbo run ...` en la raíz **no** tocan
+> `apps/mobile` — necesita sus propios comandos, ver abajo.
+
 ## Desarrollo local
 
 ```bash
@@ -32,20 +40,30 @@ Para trabajar con Mobile (necesita la app **Expo Go** en tu celular, o un simula
 
 ```bash
 cd apps/mobile
+npm install            # instalación aislada, NO pnpm (ver nota arriba)
 cp .env.example .env   # completar EXPO_PUBLIC_BACKEND_URL (ver abajo)
-pnpm start
+npm start
 ```
+
+Si editás algo en `packages/*` mientras trabajás en Mobile, corré `npm install` de nuevo en `apps/mobile` para que la copia `file:` se actualice.
 
 Escaneá el QR con Expo Go (Android) o la cámara (iOS). `EXPO_PUBLIC_BACKEND_URL` debe apuntar a un backend alcanzable desde tu celular — `http://localhost:...` no funciona porque el celular no es la misma máquina; usá la IP de tu red local (`http://192.168.x.x:3000`) o directamente el backend de Render.
 
 ## Build, lint y tests
 
-Desde la raíz (corre en todos los paquetes vía Turborepo):
+Desde la raíz (corre en `apps/web` y `packages/*` vía Turborepo; **no incluye `apps/mobile`**, ver nota arriba):
 
 ```bash
 pnpm build
 pnpm lint
 pnpm test
+```
+
+Para Mobile:
+
+```bash
+cd apps/mobile
+npm run lint   # tsc --noEmit
 ```
 
 ## Tests e2e (Web)

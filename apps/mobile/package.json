@@ -4,9 +4,9 @@
   "private": true,
   "main": "index.ts",
   "dependencies": {
-    "@emd/api-client": "workspace:*",
-    "@emd/business": "workspace:*",
-    "@emd/types": "workspace:*",
+    "@emd/api-client": "file:../../packages/api-client",
+    "@emd/business": "file:../../packages/business",
+    "@emd/types": "file:../../packages/types",
     "expo": "~57.0.21",
     "expo-secure-store": "~57.0.3",
     "expo-status-bar": "~57.0.1",

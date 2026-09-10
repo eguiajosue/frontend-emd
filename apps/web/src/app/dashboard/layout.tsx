@@ -10,12 +10,12 @@ import { CommandPalette } from "@/components/CommandPalette";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { NotificationBell } from "@/components/NotificationBell";
 
-import { ReactNode, useEffect } from "react";
+import { useEffect } from "react";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
 const BASE_TITLE = "EMD Bordados";
 
-export default function Layout({ children }: { children: ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   // Keeps the real-time notifications socket alive across every dashboard page.
   useSocket();
   const pathname = usePathname();
