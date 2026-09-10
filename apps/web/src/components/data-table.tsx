@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -10,6 +10,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -37,6 +38,8 @@ interface DataTableProps<TData, TValue> {
   maxHeight?: number;
 }
 
+const MOBILE_PAGE_SIZE = 30;
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -53,6 +56,11 @@ export function DataTable<TData, TValue>({
 
   const rows = table.getRowModel().rows;
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
+  useEffect(() => {
+    setMobileVisibleCount(MOBILE_PAGE_SIZE);
+  }, [data]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -118,7 +126,7 @@ export function DataTable<TData, TValue>({
         </div>
 
         {/* Móvil: cada fila como tarjeta, sin scroll horizontal forzado. */}
-        <div className="flex flex-col gap-2.5 md:hidden">
+        <div className="flex flex-col gap-2.5 md:hidden" data-testid="mobile-card-list">
           {rows.length ? (
             rows.map((row) => (
               <div
@@ -243,39 +251,50 @@ export function DataTable<TData, TValue>({
           scroll horizontal. Listas grandes en este modo no se virtualizan en
           móvil (menos filas visibles a la vez que en desktop hace el trade-off
           aceptable); si hiciera falta, se puede virtualizar esta lista aparte. */}
-      <div className="flex flex-col gap-2.5 md:hidden">
+      <div className="flex flex-col gap-2.5 md:hidden" data-testid="mobile-card-list">
         {rows.length ? (
-          rows.map((row) => (
-            <div
-              key={row.id}
-              onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-              className={cn(
-                "rounded-xl border bg-card p-3.5 shadow-soft transition-colors",
-                onRowClick && "cursor-pointer active:bg-primary/[0.04]"
-              )}
-            >
-              {row.getVisibleCells().map((cell) => {
-                const rawHeader = cell.column.columnDef.header;
-                const isLabeled = typeof rawHeader === "string";
-                const headerLabel = isLabeled ? rawHeader : null;
-                return (
-                  <div
-                    key={cell.id}
-                    className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
-                  >
-                    {isLabeled && (
-                      <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        {headerLabel}
-                      </span>
-                    )}
-                    <div className={cn("min-w-0 text-sm", isLabeled ? "text-right" : "w-full")}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          <>
+            {rows.slice(0, mobileVisibleCount).map((row) => (
+              <div
+                key={row.id}
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                className={cn(
+                  "rounded-xl border bg-card p-3.5 shadow-soft transition-colors",
+                  onRowClick && "cursor-pointer active:bg-primary/[0.04]"
+                )}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const rawHeader = cell.column.columnDef.header;
+                  const isLabeled = typeof rawHeader === "string";
+                  const headerLabel = isLabeled ? rawHeader : null;
+                  return (
+                    <div
+                      key={cell.id}
+                      className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
+                    >
+                      {isLabeled && (
+                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {headerLabel}
+                        </span>
+                      )}
+                      <div className={cn("min-w-0 text-sm", isLabeled ? "text-right" : "w-full")}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))
+                  );
+                })}
+              </div>
+            ))}
+            {rows.length > mobileVisibleCount && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMobileVisibleCount((c) => c + MOBILE_PAGE_SIZE)}
+              >
+                Cargar más ({rows.length - mobileVisibleCount} restantes)
+              </Button>
+            )}
+          </>
         ) : (
           <div className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
             No hay resultados.
