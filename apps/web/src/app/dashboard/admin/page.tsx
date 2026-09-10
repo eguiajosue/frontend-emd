@@ -450,8 +450,8 @@ const AdminDashboardPage = () => {
           description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer acá apenas se cargue el primero."
         />
       ) : (
-        <div className="grid gap-10 lg:grid-cols-3 lg:items-start">
-        <div className="space-y-10 lg:col-span-2">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-3 lg:items-start">
+        <div className="min-w-0 space-y-10 lg:col-span-2">
           {/* Bento grid de KPIs: la caja de score global es la más grande y
               lleva el número más importante del panel; el resto son cajas
               1x1 por etapa. En mobile colapsa a una columna en orden de
@@ -462,7 +462,7 @@ const AdminDashboardPage = () => {
               Rendimiento por área/etapa
             </h2>
             <motion.div
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
               variants={staggerContainerVariants}
               initial="hidden"
               animate="show"
@@ -470,11 +470,11 @@ const AdminDashboardPage = () => {
               {/* Hero tile: score global de rendimiento */}
               <motion.div
                 variants={staggerItemVariants}
-                className="order-1 sm:col-span-2 lg:col-span-2 lg:row-span-2"
+                className="order-1 min-w-0 sm:col-span-2 lg:col-span-2 lg:row-span-2"
               >
-                <Card className="flex h-full flex-col justify-between p-8">
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm font-medium text-muted-foreground">
+                <Card className="flex h-full min-w-0 flex-col justify-between p-8">
+                  <div className="flex min-w-0 items-start justify-between gap-4">
+                    <p className="min-w-0 text-sm font-medium text-muted-foreground">
                       Score de rendimiento general
                     </p>
                     <ProgressRing
@@ -518,11 +518,11 @@ const AdminDashboardPage = () => {
                 <motion.div
                   key={p.statusId}
                   variants={staggerItemVariants}
-                  className={cn("order-2", idx === 0 && "order-2")}
+                  className={cn("order-2 min-w-0", idx === 0 && "order-2")}
                 >
-                  <Card className="flex h-full flex-col justify-between p-6">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  <Card className="flex h-full min-w-0 flex-col justify-between p-6">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <p className="min-w-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         {p.label}
                       </p>
                       <ProgressRing

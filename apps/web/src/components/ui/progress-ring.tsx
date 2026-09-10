@@ -29,7 +29,7 @@ export function ProgressRing({
 
   return (
     <div
-      className={cn("relative inline-flex items-center justify-center", className)}
+      className={cn("relative inline-flex shrink-0 items-center justify-center", className)}
       style={{ width: size, height: size }}
       role="img"
       aria-label={typeof label === "string" ? label : `${clamped}%`}
