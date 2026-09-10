@@ -31,6 +31,7 @@ yarn-error.log*
 
 # env files (can opt-in for commiting if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -54,6 +55,8 @@ apps/web/public/swe-worker-*.js.map
 # Turborepo
 .turbo
 
-# Expo (apps/mobile, próximo paso)
+# Expo (apps/mobile)
 .expo/
 dist/
+apps/mobile/ios/
+apps/mobile/android/

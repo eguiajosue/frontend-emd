@@ -5,7 +5,7 @@ Monorepo (pnpm + Turborepo) para el sistema interno de gestión de pedidos de EM
 ```
 apps/
   web/      Next.js (App Router) — la app web actual, desplegada en Vercel
-  mobile/   Expo/React Native — app móvil (iOS/Android), en construcción
+  mobile/   Expo/React Native — app móvil (iOS/Android): login + lista de pedidos
 
 packages/   Código compartido entre apps (tipos, lógica de negocio, API client)
 ```
@@ -27,6 +27,16 @@ pnpm dev
 ```
 
 Abrí [http://localhost:3000](http://localhost:3000).
+
+Para trabajar con Mobile (necesita la app **Expo Go** en tu celular, o un simulador):
+
+```bash
+cd apps/mobile
+cp .env.example .env   # completar EXPO_PUBLIC_BACKEND_URL (ver abajo)
+pnpm start
+```
+
+Escaneá el QR con Expo Go (Android) o la cámara (iOS). `EXPO_PUBLIC_BACKEND_URL` debe apuntar a un backend alcanzable desde tu celular — `http://localhost:...` no funciona porque el celular no es la misma máquina; usá la IP de tu red local (`http://192.168.x.x:3000`) o directamente el backend de Render.
 
 ## Build, lint y tests
 
