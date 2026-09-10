@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Camera,
   Check,
@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useChatTyping } from "@/hooks/useChatTyping";
+import { ChatSocketContext } from "@/hooks/useSocket";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
@@ -53,6 +54,10 @@ import type {
 const CHAT_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB
 const CHAT_ATTACHMENT_ACCEPT =
   "image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx";
+
+// Tiempo sin tipear tras el cual se avisa al otro extremo que dejamos de
+// escribir (ver ChatService.handleTyping en el backend).
+const TYPING_STOP_DELAY_MS = 3000;
 
 /** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
 function readFileAsChatAttachment(file: File): Promise<ChatAttachmentInput> {
@@ -313,6 +318,9 @@ export function MessageThread({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
   const typingUserIds = useChatTyping(conversation?.id ?? null);
+  const socketRef = useContext(ChatSocketContext);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   // Threads largos (cientos/miles de mensajes) se virtualizan para mantener el
   // scroll fluido; los cortos se quedan con la animación de entrada existente.
@@ -392,6 +400,23 @@ export function MessageThread({
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    // Cambiar de conversación (o desmontar) corta cualquier "escribiendo…"
+    // pendiente de la conversación anterior, para no dejarlo colgado del
+    // lado del otro usuario.
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (isTypingRef.current && conversation) {
+        // Se lee `.current` a propósito en el cleanup: queremos el socket
+        // vigente en ese momento, no uno capturado al montar el efecto.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      }
+      isTypingRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id]);
 
   if (!conversation) {
@@ -424,6 +449,38 @@ export function MessageThread({
     return null;
   })();
 
+  // Corta el timeout de "escribiendo" pendiente y avisa `chatStopTyping` de
+  // una si hacía falta (no reemite si ya se había avisado o nunca se
+  // empezó a escribir).
+  const stopTyping = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (isTypingRef.current && conversation) {
+      socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      isTypingRef.current = false;
+    }
+  };
+
+  // Avisa `chatTyping` la primera vez que el usuario escribe algo (no en
+  // cada tecla) y reinicia el timeout que dispara `chatStopTyping` a los
+  // TYPING_STOP_DELAY_MS ms sin tipear más.
+  const handleComposerChange = (value: string) => {
+    setDraft(value);
+    if (!conversation) return;
+    if (!isTypingRef.current) {
+      socketRef?.current?.emit("chatTyping", { conversationId: conversation.id });
+      isTypingRef.current = true;
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      isTypingRef.current = false;
+      typingTimeoutRef.current = null;
+    }, TYPING_STOP_DELAY_MS);
+  };
+
   const handleSend = async () => {
     const body = draft.trim();
     // El texto es opcional cuando hay un adjunto (igual que el backend), pero
@@ -438,6 +495,9 @@ export function MessageThread({
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    // Al enviar, el usuario deja de "estar escribiendo" ya mismo — no hace
+    // falta esperar el timeout de 3s.
+    stopTyping();
     await onSend(body, orderId, attachment);
   };
 
@@ -749,7 +809,7 @@ export function MessageThread({
           </Button>
           <Textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => handleComposerChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

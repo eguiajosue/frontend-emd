@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useEffect, useRef, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
@@ -65,6 +65,17 @@ const HIGHLIGHT_TOAST_DURATION_MS = 9000;
  * layout del dashboard): cualquier feature nueva debe engancharse acá en vez
  * de abrir un segundo socket.
  */
+
+/**
+ * Expone el `socketRef` de `useSocket` (montado una sola vez en
+ * `dashboard/layout.tsx`) a componentes hijos que necesiten EMITIR eventos
+ * (por ejemplo, `chatTyping`/`chatStopTyping` desde el composer del chat).
+ * Se pasa el ref, no el socket en sí: la instancia cambia en cada
+ * reconexión, y los consumidores deben leer siempre `.current` en el
+ * momento de emitir en vez de cerrar sobre una instancia vieja.
+ */
+export const ChatSocketContext = createContext<RefObject<Socket | null> | null>(null);
+
 export function useSocket() {
   const { data: session } = useSession();
   const token = session?.user?.token;

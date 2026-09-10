@@ -1,8 +1,10 @@
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { Socket } from "socket.io-client";
 import { MessageThread } from "./MessageThread";
+import { ChatSocketContext } from "@/hooks/useSocket";
 import type { ChatConversation, ChatMember, ChatMessage } from "@/types";
 
 // MessageThread renderiza <OrderPicker> (usa useOrders -> useSession +
@@ -204,5 +206,47 @@ describe("MessageThread - estado del header (presencia y escribiendo)", () => {
     );
     expect(screen.queryByText(/en línea/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/última vez/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("MessageThread - emite chatTyping al escribir", () => {
+  it("emite chatTyping una sola vez al empezar a escribir, y chatStopTyping tras el timeout", () => {
+    vi.useFakeTimers();
+    try {
+      const emit = vi.fn();
+      const fakeSocket = { emit } as unknown as Socket;
+      const fakeSocketRef = { current: fakeSocket };
+
+      renderThread(
+        <ChatSocketContext.Provider value={fakeSocketRef}>
+          <MessageThread
+            conversation={conversation}
+            messages={[]}
+            members={[makeMember({})]}
+            isLoading={false}
+            isSending={false}
+            currentUserId={10}
+            onSend={async () => {}}
+          />
+        </ChatSocketContext.Provider>
+      );
+
+      const textarea = screen.getByRole("textbox");
+      // Simula el usuario tipeando letra por letra (dispara un onChange por
+      // tecla, como en la vida real), sin depender de userEvent + fake
+      // timers (combinación frágil).
+      fireEvent.change(textarea, { target: { value: "h" } });
+      fireEvent.change(textarea, { target: { value: "ho" } });
+      fireEvent.change(textarea, { target: { value: "hol" } });
+      fireEvent.change(textarea, { target: { value: "hola" } });
+
+      expect(emit).toHaveBeenCalledWith("chatTyping", { conversationId: conversation.id });
+      expect(emit).toHaveBeenCalledTimes(1); // no reemite en cada tecla
+
+      vi.advanceTimersByTime(3000);
+      expect(emit).toHaveBeenCalledWith("chatStopTyping", { conversationId: conversation.id });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
