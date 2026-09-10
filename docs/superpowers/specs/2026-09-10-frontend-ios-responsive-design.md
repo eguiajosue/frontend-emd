@@ -2,7 +2,9 @@
 
 Fecha: 2026-09-10
 Estado: propuesta de diseño (pendiente de aprobación)
-Aplicación: `apps/web` (EMD Bordados)
+Alcance principal: `apps/web` en `frontend-emd` (EMD Bordados)
+Alcance secundario: `src/chat` y `src/notifications` en `backend-emd`, acotado a
+lo descrito en la sección 6.6
 
 ## 1. Objetivo
 
@@ -25,6 +27,7 @@ re-discuten durante la implementación:
 | Lenguaje visual | Estructura de iOS (escala tipográfica, espaciado, radios, sombras, jerarquía) conservando el magenta de marca `#d91e7a` como color de acento y acción. |
 | Usuario móvil primario | Operarios en planta (bordado, recepción). Targets grandes, uso a una mano. |
 | Modo de trabajo | Análisis y plan primero; implementación después de aprobación. |
+| Chat | Estructura de WhatsApp, con checks de entrega, indicador de escritura y presencia. Detalle y decisiones propias en la sección 6. |
 
 ## 3. Estado actual
 
@@ -362,11 +365,182 @@ y atajos a Pedidos y Chat.
 No se bloquea el zoom: los inputs ya están a 16 px, así que el zoom por foco no
 ocurre, y mantener el zoom disponible es un requisito de accesibilidad.
 
-## 6. Plan de fases
+## 6. Chat con estructura de WhatsApp
+
+El chat recibe tratamiento propio porque es la única parte del proyecto que
+requiere cambios de backend y porque su patrón de referencia no es iOS genérico
+sino WhatsApp específicamente.
+
+### 6.1 Decisiones
+
+| Decisión | Elección |
+|---|---|
+| Fidelidad visual | Estructura de WhatsApp, color de marca. Las burbujas propias van en magenta, no en el verde de WhatsApp. |
+| Checks de entrega | Incluidos, con los tres estados. Requiere backend. |
+| Escribiendo y en línea | Ambos incluidos. Requiere backend. |
+| Escritorio | Dos paneles fijos, al estilo de WhatsApp Web. |
+| Móvil | Navegación de dos niveles: lista, y push al hilo. |
+
+### 6.2 Estructura de navegación
+
+Bajo 768 px el chat deja de mostrar lista e hilo apilados. Hoy
+`chat/page.tsx:146` y `ConversationList.tsx:127` los apilan con la lista limitada
+a `max-h-[45vh]`, lo que deja unos 230 px de mensajes visibles. Pasa a dos
+niveles: la lista ocupa la pantalla completa, y tocar una conversación empuja el
+hilo con la transición push definida en 5.3, con swipe-back para volver.
+
+Sobre 768 px, dos paneles: lista fija a la izquierda (320 px) e hilo a la
+derecha, con estado vacío cuando no hay conversación seleccionada.
+
+### 6.3 Lista de conversaciones
+
+Fila de 72 px de alto con:
+
+- Avatar circular de 49 px a la izquierda.
+- Nombre de la conversación en `headline` (17 px, semibold).
+- Preview del último mensaje en `subhead` (15 px), en color atenuado, truncado a
+  una línea. Con prefijo de remitente en conversaciones de área.
+- Hora del último mensaje arriba a la derecha, en `footnote`, atenuada; en color
+  de acento cuando hay mensajes sin leer.
+- Badge circular de no leídos abajo a la derecha, alimentado por el
+  `unreadCount` que la API ya entrega en `ChatConversation`.
+- Separador hairline con sangría: empieza donde empieza el texto, no bajo el
+  avatar.
+
+Se añaden swipe actions sobre la fila, reutilizando el mecanismo de 5.4.
+
+Se elimina el índice alfabético A-Z de `chat/page.tsx:180-196`, cuyos targets
+miden unos 10 px (`text-[9px] px-1 py-[1px]`) y que WhatsApp no tiene. Se
+sustituye por un campo de búsqueda al tope de la lista.
+
+### 6.4 Hilo de mensajes
+
+**Agrupación.** Los mensajes consecutivos del mismo remitente forman un grupo:
+solo la primera burbuja lleva cola y solo la primera muestra el nombre del
+remitente en conversaciones de área. La separación entre burbujas del mismo
+grupo baja a 2 px, contra 8 px entre grupos.
+
+**Cola.** Hoy se simula achatando una esquina (`MessageThread.tsx:428-429`, con
+`rounded-br-md` y `rounded-bl-md`). Se sustituye por una cola real dibujada en
+SVG en la esquina inferior del lado correspondiente, que es lo que da la
+silueta reconocible.
+
+**Hora dentro de la burbuja.** En la esquina inferior derecha, en `caption-2`
+(11 px) atenuada. El último renglón de texto reserva espacio a la derecha para
+que la hora no se superponga, que es como lo resuelve WhatsApp.
+
+**Checks.** Junto a la hora, solo en mensajes propios: un check para enviado,
+doble check para entregado, doble check en color de acento para leído.
+
+**Separadores de fecha.** Píldora centrada con fondo translúcido y texto en
+`caption-1` en mayúsculas: "HOY", "AYER" o la fecha.
+
+**Fondo.** Patrón sutil derivado de la identidad de EMD, con opacidad muy baja,
+definido para tema claro y oscuro. Cumple la función del wallpaper de WhatsApp:
+separar visualmente el hilo del resto de la aplicación.
+
+**Header del hilo.** Chevron de retroceso, avatar, nombre y, debajo, la línea de
+estado: "escribiendo…" cuando aplica, en su defecto "en línea", y en su defecto
+la última conexión.
+
+Se conserva lo que ya funciona: adjuntos, imágenes, audio y referencias a
+pedidos.
+
+### 6.5 Composer
+
+Se reconstruye el bloque de `MessageThread.tsx:617-679`, que hoy pone cuatro
+controles, el área de texto y un botón "Enviar" con etiqueta en una sola fila,
+dejando el campo en unos 100 px de ancho a 375 px.
+
+- Campo de texto redondeado que crece hasta cinco líneas.
+- Adjuntos colapsados tras un único botón que abre un action sheet.
+- Botón circular a la derecha que alterna: micrófono cuando el campo está vacío,
+  enviar cuando hay texto.
+- Anclado sobre el teclado mediante el hook de 5.7.
+- `enterKeyHint="send"`. Se elimina el atajo Shift+Enter del placeholder en
+  táctil, donde no aplica.
+
+Se corrige además `MessageThread.tsx:330`, que hace `scrollIntoView` con
+`behavior: "smooth"` en cada cambio y compite con la animación del teclado de
+iOS: pasa a asignación directa de `scrollTop`.
+
+### 6.6 Cambios en el backend
+
+Repositorio `backend-emd` (NestJS + Prisma + Socket.IO). Análisis realizado
+sobre el esquema, el servicio de chat y el gateway de notificaciones.
+
+**Lo que ya existe y se reutiliza.** `ChatConversationMember`
+(`prisma/schema.prisma:369`) ya guarda `lastReadAt` por miembro, y
+`chat.service.ts:355-363` ya lo usa para calcular `unreadCount`. Es decir, la
+noción de "hasta dónde leyó cada usuario" ya está modelada: los checks de lectura
+no requieren tabla nueva, solo exponer ese dato. El endpoint
+`GET /chat/conversations/:id/members` (`chat.controller.ts:76`) ya devuelve los
+miembros y solo necesita incluir el campo.
+
+**Modelo de lectura.** Un mensaje se considera leído por un miembro cuando el
+`lastReadAt` de ese miembro es posterior o igual al `createdAt` del mensaje. En
+conversaciones de área, el doble check en color de acento aparece cuando **todos
+los miembros no monitores, excluyendo al emisor**, cumplen esa condición. Los
+miembros con `isMonitor` en verdadero (administradores y superusuarios que
+observan el canal) quedan excluidos del cálculo: son observadores, y contarlos
+haría que un mensaje nunca se marcara como leído.
+
+**Estado "entregado".** Es el único de los tres estados que no se puede derivar
+de lo existente. Requiere un campo `deliveredAt` en `ChatConversationMember`,
+siguiendo el mismo patrón que `lastReadAt`, actualizado cuando el cliente
+destinatario confirma la recepción por socket.
+
+**Eventos de socket nuevos.** El gateway
+(`src/notifications/notifications.gateway.ts`) hoy es unidireccional: emite
+siete eventos y no escucha ninguno. No existe un solo `@SubscribeMessage` en el
+proyecto, y la decisión está documentada como deliberada en sus líneas 169-174.
+
+Este trabajo la revierte parcialmente, y conviene registrarlo como decisión
+consciente: se añaden tres listeners (`chatDelivered`, `chatTyping`,
+`chatStopTyping`). La mitigación es que **ninguno confía en el payload del
+cliente**: el `conversationId` recibido se valida contra la membresía real
+mediante `ChatService` antes de reemitir nada. El cliente nunca decide a quién
+se le entrega un evento.
+
+Se añaden también dos eventos emitidos: `chatRead`, disparado desde
+`markConversationAsRead` (`chat.service.ts:677-691`) hacia los demás miembros, y
+`presenceChanged`.
+
+**Presencia.** El gateway ya hace `client.join('user:<id>')` en la conexión. Por
+lo tanto el estado en línea se resuelve preguntando si esa sala tiene sockets,
+sin construir un mapa propio de conexiones. Esto es importante porque
+`common/adapters/redis-io.adapter.ts` activa el adaptador de Redis cuando existe
+`REDIS_URL`, y ese adaptador sincroniza las salas entre instancias: consultar la
+sala funciona igual con una instancia o con varias, mientras que un mapa en
+memoria solo sería correcto con una.
+
+Lo que sí falta hoy es que `handleDisconnect` (`:165-167`) no sabe qué usuario se
+desconectó, porque el token decodificado no se guarda en `client.data`. Ese es el
+primer arreglo.
+
+Para "última vez" se añade `lastSeenAt` a `User`, escrito en la desconexión.
+
+**Migraciones.** Prisma Migrate con SQL versionado en `prisma/migrations/`, con
+el formato `<timestamp>_<snake_case>`. Se requieren dos columnas nuevas
+(`ChatConversationMember.deliveredAt` y `User.lastSeenAt`), que pueden ir en una
+sola migración. Ambas son nulables, por lo que no requieren backfill ni implican
+riesgo sobre datos existentes.
+
+**Resumen del trabajo de backend.**
+
+| Función | Esquema | Socket | Endpoints |
+|---|---|---|---|
+| ✓✓ leído | Ninguno; reutiliza `lastReadAt` | Emite `chatRead` | Exponer `lastReadAt` en `/members` |
+| ✓✓ entregado | `deliveredAt` en miembro | Escucha `chatDelivered` | Ninguno |
+| Escribiendo | Ninguno | Escucha `chatTyping`/`chatStopTyping` | Ninguno |
+| En línea | Ninguno | Emite `presenceChanged`; guardar usuario en `client.data` | Incluir estado en `/members` |
+| Última vez | `lastSeenAt` en `User` | Escritura en desconexión | Incluir en `/members` |
+
+## 7. Plan de fases
 
 El orden responde a una restricción concreta: las fases 0 a 2 tocan archivos
 compartidos (`button.tsx`, `globals.css`, `tailwind.config.js`, `motion.ts`), de
-modo que paralelizarlas produciría conflictos. La fase 4 sí es masivamente
+modo que paralelizarlas produciría conflictos. La fase 5 sí es masivamente
 paralelizable porque cada página es independiente una vez fijados la fundación y
 el shell.
 
@@ -381,11 +555,22 @@ header con large title, swipe-back y transiciones push/pop, pull-to-refresh,
 swipe actions, hook de teclado, configuración PWA. Parcialmente paralelizable
 por componente.
 
-**Fase 3 — Corte vertical del operario.** `orders`, `orders/[id]` y `chat`, en
-ese orden. Valida que el shell funciona en la ruta real de trabajo antes de
+**Fase 3 — Corte vertical del operario.** `orders` y `orders/[id]`, en ese
+orden. Valida que el shell funciona en la ruta real de trabajo antes de
 escalarlo al resto. Secuencial, con revisión al final.
 
-**Fase 4 — Resto de páginas.** Dashboard, notificaciones, clientes, usuarios,
+**Fase 4 — Chat con estructura de WhatsApp.** Se divide en dos, y el orden
+importa porque el frontend consume lo que el backend expone:
+
+- **4a, backend.** Migración de las dos columnas, exposición de `lastReadAt` y
+  presencia en `/members`, guardado del usuario en `client.data`, los tres
+  listeners nuevos con validación de membresía, y los eventos `chatRead` y
+  `presenceChanged`. Repositorio `backend-emd`.
+- **4b, frontend.** Navegación de dos niveles en móvil y dos paneles en
+  escritorio, lista de conversaciones, burbujas con cola y agrupación, checks,
+  separadores de fecha, fondo, header con estado y composer nuevo.
+
+**Fase 5 — Resto de páginas.** Dashboard, notificaciones, clientes, usuarios,
 configuración, historial, ayuda, login, rendimiento, admin, más los redirects de
 T11. Incluye resolver T9 (dar trigger táctil al command palette u omitirlo en
 móvil, y ocultar los atajos de teclado en táctil) y T10 (unificar el login).
@@ -393,10 +578,10 @@ Configuración se reconstruye como lista agrupada estilo Ajustes de iOS, para lo
 cual sus siete secciones locales se extraen a `components/settings/`.
 Paralelizable con un agente por página.
 
-**Fase 5 — Escritorio y gráficas.** Verificación de que el escritorio no se
+**Fase 6 — Escritorio y gráficas.** Verificación de que el escritorio no se
 degradó, más la adaptación táctil de Recharts (T8).
 
-## 7. Criterios de aceptación
+## 8. Criterios de aceptación
 
 1. Ningún control interactivo mide menos de 44×44 px bajo 768 px de ancho.
 2. Ninguna página produce scroll horizontal a 375 px de ancho.
@@ -410,17 +595,28 @@ degradó, más la adaptación táctil de Recharts (T8).
 7. El escritorio conserva su comportamiento actual: sidebar, tablas y densidad
    de información no se degradan.
 8. `prefers-reduced-motion` desactiva las animaciones nuevas.
+9. En el chat, un mensaje propio recorre visiblemente los tres estados: enviado,
+   entregado y leído. En un canal de área, el estado leído solo aparece cuando
+   todos los miembros no monitores lo han leído.
+10. El indicador de escritura aparece y desaparece de forma fiable, y el estado
+    en línea es correcto con el adaptador de Redis activo y sin él.
+11. Ningún listener de socket actúa sobre un `conversationId` sin validar antes
+    la membresía real del emisor contra la base de datos.
 
-## 8. Fuera de alcance
+## 9. Fuera de alcance
 
 - Stacks de navegación independientes por tab (justificado en 5.1).
-- Rediseño del backend o de los contratos de API.
+- Cambios de backend fuera del chat. Los del chat están acotados a lo descrito
+  en 6.6: dos columnas nulables, tres listeners de socket y dos eventos nuevos.
+  No se tocan los contratos de pedidos, clientes, usuarios ni notificaciones.
+- Historial de "última vez" más allá de una marca de tiempo por usuario. No se
+  registra actividad detallada.
 - Reemplazo de Recharts por otra librería de gráficas; solo se adapta al tacto.
 - Aplicación nativa real o envoltorio tipo Capacitor. El objetivo es una PWA que
   se sienta nativa.
 - Internacionalización. La aplicación permanece en español.
 
-## 9. Riesgos
+## 10. Riesgos
 
 - **Migración tipográfica amplia.** Subir el cuerpo de 14 a 17 px cambia el
   volumen de todas las pantallas y puede romper layouts que asumían texto
@@ -431,4 +627,18 @@ degradó, más la adaptación táctil de Recharts (T8).
 - **Rendimiento de las tarjetas móviles.** Virtualizar la rama móvil requiere
   altura de fila fija; `measureElement` durante la inercia es costoso en Safari.
 - **Regresión en escritorio.** Todo cambio en los primitivos afecta ambas
-  plataformas. La fase 5 existe específicamente para detectarlo.
+  plataformas. La fase 6 existe específicamente para detectarlo.
+- **Superficie de ataque nueva en el socket.** Pasar el gateway de
+  unidireccional a bidireccional introduce entradas que antes no existían, y
+  revierte una decisión de diseño deliberada del proyecto. Se mitiga validando
+  la membresía contra la base de datos en cada listener y no reemitiendo jamás a
+  destinatarios derivados del payload del cliente.
+- **Volumen de eventos de escritura.** El indicador de "escribiendo" puede
+  generar mucho tráfico de socket si se emite en cada tecla. Se mitiga con
+  supresión en el cliente y expiración por tiempo en el receptor, de modo que un
+  indicador nunca quede colgado si se pierde el evento de cierre.
+- **Presencia entre empleados.** Mostrar quién está en línea cambia la dinámica
+  social de una herramienta de trabajo. La decisión fue tomada explícitamente
+  por el dueño del producto; se registra aquí porque conviene poder revertirla
+  sin desmontar el resto del chat, por lo que se implementa detrás de una
+  condición que permita apagarla.
