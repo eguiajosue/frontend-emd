@@ -220,7 +220,7 @@ export function AppSidebar() {
           title: "Clientes",
           url: "/dashboard/clientes",
           icon: UserRound,
-          roles: ["admin", "recepcion"],
+          roles: ["admin", "recepcion", "superuser"],
         },
       ],
     },

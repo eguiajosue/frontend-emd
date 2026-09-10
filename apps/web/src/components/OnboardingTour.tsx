@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useMotionPreset } from "@/lib/motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 interface TourStep {
@@ -64,6 +65,7 @@ export function OnboardingTour() {
   const { status } = useSession();
   const { preferences, updatePreferences } = useUserPreferences();
   const { reduced } = useMotionPreset();
+  const isMobile = useIsMobile();
   const [stepIndex, setStepIndex] = useState(0);
   const [active, setActive] = useState(false);
   const [rect, setRect] = useState<TargetRect | null>(null);
@@ -73,7 +75,8 @@ export function OnboardingTour() {
     status === "authenticated" &&
     !!preferences &&
     preferences.hasSeenOnboarding !== true &&
-    !dismissed;
+    !dismissed &&
+    !isMobile;
 
   useEffect(() => {
     if (shouldRun && !active) {
