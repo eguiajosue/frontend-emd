@@ -63,6 +63,9 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  // Paquetes del monorepo (código compartido con la futura app Mobile):
+  // son TypeScript sin build propio, Next los transpila igual que su código.
+  transpilePackages: ["@emd/types", "@emd/business", "@emd/api-client"],
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
     NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
