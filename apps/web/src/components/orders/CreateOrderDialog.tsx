@@ -36,6 +36,12 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import {
+  isAllowedUploadMime,
+  normalizeImageFile,
+  readFileAsUploadInput,
+  UPLOAD_FILE_MAX_BYTES,
+} from "@/lib/fileInput";
 import { Switch } from "@/components/ui/switch";
 import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
@@ -51,31 +57,6 @@ import type {
   OrderProductPreset,
   User,
 } from "@/types";
-
-const AUTHORIZATION_FILE_MAX_BYTES = 5 * 1024 * 1024; // 5MB, igual que el límite del backend.
-const ALLOWED_AUTHORIZATION_MIME_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "application/pdf",
-] as const;
-
-/** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
-function readFileAsAuthorizationInput(file: File): Promise<AuthorizationFileInput> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer el archivo"));
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      const base64 = result.split(",")[1] ?? "";
-      resolve({
-        data: base64,
-        filename: file.name,
-        mimeType: file.type as AuthorizationFileInput["mimeType"],
-      });
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
 const orderProductSchema = z.object({
   customName: z.string({ required_error: "Producto requerido" }).min(1, "Producto requerido"),
@@ -215,26 +196,23 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (
-      !ALLOWED_AUTHORIZATION_MIME_TYPES.includes(
-        file.type as (typeof ALLOWED_AUTHORIZATION_MIME_TYPES)[number]
-      )
-    ) {
+    const normalized = await normalizeImageFile(file);
+    if (!normalized || !isAllowedUploadMime(normalized.type)) {
       toast.error("La hoja de autorización debe ser PNG, JPG o PDF.");
       e.target.value = "";
       return;
     }
-    if (file.size > AUTHORIZATION_FILE_MAX_BYTES) {
+    if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
       toast.error("La hoja de autorización no puede pesar más de 5MB.");
       e.target.value = "";
       return;
     }
 
     try {
-      const parsedFile = await readFileAsAuthorizationInput(file);
+      const parsedFile = await readFileAsUploadInput(normalized);
       setAuthorizationFile(parsedFile);
       setAuthorizationFilePreview(
-        file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+        normalized.type.startsWith("image/") ? URL.createObjectURL(normalized) : null
       );
     } catch {
       toast.error("No se pudo leer el archivo. Intentar de nuevo.");
