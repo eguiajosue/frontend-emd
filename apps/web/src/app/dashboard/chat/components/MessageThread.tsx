@@ -666,7 +666,7 @@ export function MessageThread({
               }
             }}
             placeholder="Escribir un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
-            className="max-h-40 min-h-[44px] resize-none rounded-2xl"
+            className="min-w-0 max-h-40 min-h-[44px] flex-1 resize-none rounded-2xl"
             maxLength={2000}
           />
           <Button
