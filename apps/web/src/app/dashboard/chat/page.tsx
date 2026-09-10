@@ -27,6 +27,7 @@ import {
 import type { ChatAttachmentInput } from "@/types";
 import { ConversationList } from "./components/ConversationList";
 import { MessageThread } from "./components/MessageThread";
+import { MediaPanel } from "./components/MediaPanel";
 
 export default function ChatPage() {
   const { data: session } = useSession();
@@ -35,6 +36,10 @@ export default function ChatPage() {
   const { conversations, isLoading, isError, error, refetch } =
     useChatConversations();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // En mobile la lista y el hilo son pantallas separadas (como una app
+  // nativa de mensajería): sólo una está visible a la vez. En md+ esto no
+  // tiene efecto — ambas quedan visibles siempre lado a lado.
+  const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [directOpen, setDirectOpen] = useState(false);
   const [userFilter, setUserFilter] = useState("");
 
@@ -86,6 +91,7 @@ export default function ChatPage() {
       setDirectOpen(false);
       setUserFilter("");
       setSelectedId(conversation.id);
+      setMobileView("thread");
     } catch (err) {
       if (!isSessionExpiredError(err)) {
         toast.error(getErrorMessage(err, "No se pudo abrir el chat."));
@@ -148,8 +154,12 @@ export default function ChatPage() {
           conversations={conversations}
           isLoading={isLoading}
           selectedId={selectedId}
-          onSelect={(conversation) => setSelectedId(conversation.id)}
+          onSelect={(conversation) => {
+            setSelectedId(conversation.id);
+            setMobileView("thread");
+          }}
           onNewDirect={() => setDirectOpen(true)}
+          className={cn(mobileView === "thread" && "hidden md:flex")}
         />
         <MessageThread
           conversation={selected}
@@ -159,7 +169,10 @@ export default function ChatPage() {
           isSending={isSending}
           currentUserId={currentUserId}
           onSend={handleSend}
+          onBack={() => setMobileView("list")}
+          className={cn(mobileView === "list" && "hidden md:flex")}
         />
+        {selected ? <MediaPanel messages={messages} /> : null}
       </div>
 
       <Dialog open={directOpen} onOpenChange={setDirectOpen}>

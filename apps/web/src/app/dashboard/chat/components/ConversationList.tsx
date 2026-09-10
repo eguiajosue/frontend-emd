@@ -1,9 +1,11 @@
 "use client";
 
-import { Hash, MessageSquarePlus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Hash, MessageSquarePlus, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { chatInitials } from "@/hooks/useChat";
@@ -16,6 +18,7 @@ interface ConversationListProps {
   selectedId: number | null;
   onSelect: (conversation: ChatConversation) => void;
   onNewDirect: () => void;
+  className?: string;
 }
 
 function formatTime(iso: string): string {
@@ -139,9 +142,18 @@ export function ConversationList({
   selectedId,
   onSelect,
   onNewDirect,
+  className,
 }: ConversationListProps) {
-  const areas = conversations.filter((c) => c.type === "area");
-  const directs = conversations.filter((c) => c.type === "direct");
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return conversations;
+    return conversations.filter((c) => c.title.toLowerCase().includes(q));
+  }, [conversations, search]);
+
+  const areas = filtered.filter((c) => c.type === "area");
+  const directs = filtered.filter((c) => c.type === "direct");
 
   const renderGroup = (label: string, items: ChatConversation[]) => (
     <div className="mb-4">
@@ -150,7 +162,7 @@ export function ConversationList({
       </p>
       {items.length === 0 ? (
         <p className="px-3 py-2 text-sm text-muted-foreground">
-          No hay conversaciones.
+          {search.trim() ? "Sin resultados." : "No hay conversaciones."}
         </p>
       ) : (
         <ul className="space-y-1">
@@ -168,13 +180,29 @@ export function ConversationList({
   );
 
   return (
-    <aside className="flex max-h-[45vh] w-full min-w-0 flex-col border-b bg-card/40 md:h-full md:max-h-none md:w-80 md:border-b-0 md:border-r">
+    <aside
+      className={cn(
+        "flex max-h-[45vh] w-full min-w-0 flex-col border-b bg-card/40 md:h-full md:max-h-none md:w-80 md:border-b-0 md:border-r",
+        className
+      )}
+    >
       <div className="flex items-center justify-between gap-2 border-b p-3.5">
         <h2 className="text-sm font-semibold tracking-tight">Conversaciones</h2>
         <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>
           <MessageSquarePlus className="h-3.5 w-3.5" />
           Nuevo
         </Button>
+      </div>
+      <div className="border-b p-2.5">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar…"
+            className="h-9 rounded-full pl-8 text-sm"
+          />
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-2.5">
         {isLoading && conversations.length === 0 ? (

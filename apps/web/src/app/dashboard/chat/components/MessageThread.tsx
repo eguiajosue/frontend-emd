@@ -2,6 +2,7 @@
 
 import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
+  ArrowLeft,
   Camera,
   Check,
   CheckCheck,
@@ -86,6 +87,9 @@ interface MessageThreadProps {
     orderId?: number,
     attachment?: ChatAttachmentInput
   ) => Promise<void>;
+  /** Volver a la lista de conversaciones (sólo visible en mobile: en escritorio la lista ya está a la vista). */
+  onBack?: () => void;
+  className?: string;
 }
 
 function formatTime(iso: string): string {
@@ -306,6 +310,8 @@ export function MessageThread({
   isSending,
   currentUserId,
   onSend,
+  onBack,
+  className,
 }: MessageThreadProps) {
   const [draft, setDraft] = useState("");
   const [showMembers, setShowMembers] = useState(false);
@@ -422,7 +428,12 @@ export function MessageThread({
 
   if (!conversation) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
+      <div
+        className={cn(
+          "flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground",
+          className
+        )}
+      >
         Seleccionar una conversación para empezar a chatear.
       </div>
     );
@@ -598,9 +609,22 @@ export function MessageThread({
   };
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+    <section className={cn("flex h-full min-h-0 min-w-0 flex-1 flex-col", className)}>
       <header className="flex items-center justify-between gap-2 border-b p-3">
         <div className="flex min-w-0 items-center gap-2.5">
+          {onBack ? (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 shrink-0 rounded-full md:hidden"
+              onClick={onBack}
+              title="Volver a conversaciones"
+              aria-label="Volver a conversaciones"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          ) : null}
           <span className="relative shrink-0">
             {conversation.type === "area" ? (
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
