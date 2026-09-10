@@ -102,6 +102,24 @@ function OfflineSyncWatcher() {
 }
 
 /**
+ * Registra el Service Worker generado por Serwist (`public/sw.js`).
+ *
+ * Sin este registro, `navigator.serviceWorker.ready` (usado por `lib/push.ts`
+ * y `lib/backgroundSync.ts`) nunca resuelve, y las suscripciones push jamás
+ * llegan a crearse — este era el motivo real de que las notificaciones no
+ * funcionaran en producción.
+ */
+function ServiceWorkerRegistrar() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch((error) => {
+      console.error("No se pudo registrar el Service Worker", error);
+    });
+  }, []);
+  return null;
+}
+
+/**
  * Aplica las preferencias del usuario logueado (tema/acento/idioma) apenas
  * llegan del backend, una sola vez por sesión iniciada, para que cada cuenta
  * vea SU configuración al loguearse sin depender de lo que había guardado
@@ -157,6 +175,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             <SessionErrorWatcher />
             <PreferencesSync />
             <OfflineSyncWatcher />
+            <ServiceWorkerRegistrar />
             {children}
             {isDev && <ReactQueryDevtools initialIsOpen={false} />}
           </QueryClientProvider>
