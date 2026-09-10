@@ -55,6 +55,10 @@ apps/web/public/swe-worker-*.js.map
 # Turborepo
 .turbo
 
+# Worktrees usados por subagentes de Claude Code (estado de la herramienta,
+# no del proyecto)
+.claude/worktrees/
+
 # Expo (apps/mobile)
 .expo/
 dist/
