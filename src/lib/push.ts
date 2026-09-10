@@ -29,6 +29,21 @@ export function isPushSupported(): boolean {
   );
 }
 
+/**
+ * `true` si estamos en Safari/iOS pero la PWA no está instalada a la pantalla
+ * de inicio. iOS sólo permite Web Push a PWAs instaladas (16.4+); si no está
+ * instalada, `subscribeToPush` va a fallar aunque el resto del flujo esté bien.
+ */
+export function isIOSInstallRequired(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (!isIOS) return false;
+  const isStandalone =
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return !isStandalone;
+}
+
 interface VapidPublicKeyResponse {
   publicKey: string | null;
 }

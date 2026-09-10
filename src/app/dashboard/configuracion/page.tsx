@@ -38,7 +38,12 @@ import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useAppSettings, useUpdateAppSettings } from "@/hooks/useSettings";
 import { getErrorMessage } from "@/lib/api";
-import { isPushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
+import {
+  isIOSInstallRequired,
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/push";
 
 /** Roles operativos de producción, con su etiqueta legible. */
 const OPERATIONAL_ROLE_LABELS: { role: string; label: string }[] = [
@@ -362,6 +367,12 @@ function NotificationsSection() {
   const handleEnablePush = async () => {
     if (!isPushSupported()) {
       toast.error("Este navegador no soporta notificaciones push.");
+      return;
+    }
+    if (isIOSInstallRequired()) {
+      toast.error(
+        "En iPhone/iPad, primero agregá EMD a la pantalla de inicio (compartir → Agregar a inicio) para poder activar el push."
+      );
       return;
     }
     setPushBusy(true);
