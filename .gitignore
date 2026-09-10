@@ -55,6 +55,9 @@ apps/web/public/swe-worker-*.js.map
 # Turborepo
 .turbo
 
+# Claude Code agent worktrees (ephemeral, per-session)
+.claude/worktrees/
+
 # Expo (apps/mobile)
 .expo/
 dist/
