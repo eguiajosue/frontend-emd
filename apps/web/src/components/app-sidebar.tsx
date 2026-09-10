@@ -1,17 +1,11 @@
 "use client"
 
 import {
-  Package,
-  UserRound,
   LogOut,
-  LayoutDashboard,
-  HelpCircle,
   Settings,
-  TrendingUp,
-  History,
-  Bell,
-  MessagesSquare,
   Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,53 +31,9 @@ import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
-import { ordersScreenTitle } from "@/lib/orderScreen";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
-// Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
-// taller, impresiones): sólo necesitan ver el estatus de sus pedidos y Ayuda,
-// nada de métricas ni gestión editable.
-const OPERATIONAL_MENU = [
-  {
-    groupLabel: "Producción",
-    items: [
-      // Una sola pantalla de trabajo. "Mi trabajo" mostraba lo mismo que
-      // "Pedidos" con otra forma; el nombre cambia según el rol
-      // (`ordersScreenTitle`), no la pantalla.
-      {
-        title: "Tareas asignadas",
-        url: "/dashboard/orders",
-        icon: Package,
-      },
-    ],
-  },
-  {
-    groupLabel: "Comunicación",
-    items: [
-      {
-        title: "Chat interno",
-        url: "/dashboard/chat",
-        icon: MessagesSquare,
-      },
-    ],
-  },
-  {
-    groupLabel: "Soporte",
-    items: [
-      {
-        title: "Notificaciones",
-        url: "/dashboard/notificaciones",
-        icon: Bell,
-      },
-      {
-        title: "Ayuda",
-        url: "/dashboard/ayuda",
-        icon: HelpCircle,
-      },
-    ],
-  },
-];
+import { OPERATIONAL_MENU, buildMenuItems, isNavItemVisible } from "@/lib/navMenu";
 
 /** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
 function getTimeBasedGreeting(): string {
@@ -166,141 +116,10 @@ export function AppSidebar() {
   const { count: notificationsUnread } = useUnreadNotificationsCount();
   const { reduced: reducedMotion } = useMotionPreset();
 
-  const menuItems = [
-    {
-      groupLabel: "Administración",
-      items: [
-        {
-          title: "Panel General",
-          url: "/dashboard/admin",
-          icon: LayoutDashboard,
-          roles: ["admin", "superuser"],
-        },
-        {
-          title: "Rendimiento",
-          url: "/dashboard/admin/rendimiento",
-          icon: TrendingUp,
-          roles: ["admin", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Pedidos",
-      items: [
-        {
-          // "Pedidos" para quien administra, "Tareas asignadas" para quien
-          // sólo ejecuta: es la misma pantalla, no significa lo mismo.
-          title: ordersScreenTitle(userRoles),
-          url: "/dashboard/orders",
-          icon: Package,
-          roles: [
-            "admin",
-            "superuser",
-            "recepcion",
-            "taller",
-            "dtf",
-            "bordado",
-            "diseno",
-            "laser",
-            "impresiones",
-          ],
-        },
-        {
-          title: "Historial",
-          url: "/dashboard/historial",
-          icon: History,
-          roles: ["admin", "superuser", "recepcion"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Clientes",
-      items: [
-        {
-          title: "Clientes",
-          url: "/dashboard/clientes",
-          icon: UserRound,
-          roles: ["admin", "recepcion", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Usuarios",
-      items: [
-        {
-          title: "Usuarios",
-          url: "/dashboard/usuarios",
-          icon: UserRound,
-          roles: ["admin", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Comunicación",
-      items: [
-        {
-          title: "Chat interno",
-          url: "/dashboard/chat",
-          icon: MessagesSquare,
-          // Visible para todos los roles: los canales de área y los DMs que
-          // cada uno puede ver los resuelve el backend.
-          roles: [
-            "admin",
-            "superuser",
-            "recepcion",
-            "taller",
-            "dtf",
-            "bordado",
-            "diseno",
-            "laser",
-            "impresiones",
-          ],
-        },
-      ],
-    },
-    {
-      groupLabel: "Soporte",
-      items: [
-        {
-          title: "Notificaciones",
-          url: "/dashboard/notificaciones",
-          icon: Bell,
-          // Visible para todos los roles.
-          roles: [
-            "admin",
-            "superuser",
-            "recepcion",
-            "taller",
-            "dtf",
-            "bordado",
-            "diseno",
-            "laser",
-            "impresiones",
-          ],
-        },
-        {
-          title: "Ayuda",
-          url: "/dashboard/ayuda",
-          icon: HelpCircle,
-          // Visible para todos los roles.
-          roles: [
-            "admin",
-            "superuser",
-            "recepcion",
-            "taller",
-            "dtf",
-            "bordado",
-            "diseno",
-            "laser",
-            "impresiones",
-          ],
-        },
-      ],
-    },
-  ];
-
-  const visibleGroups = operationalOnly ? OPERATIONAL_MENU : menuItems;
-  const { state, isMobile } = useSidebar();
+  // Definición de grupos/ítems compartida con `useVisibleNavItems` (barra
+  // móvil): una sola fuente para "qué puede ver cada rol".
+  const visibleGroups = operationalOnly ? OPERATIONAL_MENU : buildMenuItems(userRoles);
+  const { state, isMobile, toggleSidebar } = useSidebar();
   // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
   // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
   // (ver Sidebar en ui/sidebar.tsx): si se hereda la cookie de escritorio
@@ -318,6 +137,19 @@ export function AppSidebar() {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Fila de marca: sólo en el panel expandido de escritorio — en
+                  el Sheet móvil competiría con la tarjeta de identidad de
+                  abajo, que ya cumple ese rol de "confirmar dónde estoy". */}
+              {!isMobile && (
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-xs font-bold text-primary-foreground">
+                    E
+                  </div>
+                  <span className="font-heading text-sm font-semibold tracking-tight">
+                    EMD Bordados
+                  </span>
+                </div>
+              )}
               <h2 className="font-heading text-lg font-semibold tracking-tight">
                 {greeting},{" "}
                 <span className="text-primary">{session?.user?.first_name}</span>
@@ -357,13 +189,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarMenu className="gap-1.5 md:gap-1">
               {group.items.map((item) =>
-                // El menú operativo ya viene pre-filtrado (sin `roles`); el menú
-                // completo se filtra por rol, con "admin" viendo todo.
-                (operationalOnly ||
-                  userRoles.includes("admin") ||
-                  userRoles.some((r) =>
-                    "roles" in item ? (item.roles as string[]).includes(r) : true
-                  )) ? (() => {
+                isNavItemVisible(item, userRoles, operationalOnly) ? (() => {
                   // Ítems con contador de pendientes: chat y notificaciones.
                   // Ambos resaltan el ícono y muestran el número, expandidos o
                   // en el rail colapsado.
@@ -435,6 +261,17 @@ export function AppSidebar() {
                         {unread > 99 ? "99+" : unread}
                       </span>
                     ) : null}
+                    {/* Barra de acento sólida en el borde izquierdo del rail,
+                        sólo en el estado colapsado (referencia A) — aditiva al
+                        fondo tenue de `sidebar-active-indicator`, no lo
+                        reemplaza. El `li` no tiene padding propio, así que
+                        `left-0` ya queda a ras del borde real del rail. */}
+                    {collapsed && active ? (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute left-0 top-1/2 z-10 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary"
+                      />
+                    ) : null}
                   </SidebarMenuItem>
                   );
                 })() : null
@@ -444,6 +281,29 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
       <div className={cn("mt-auto p-4", collapsed && "px-2")}>
+        {/* Chevron de colapsar/expandir el rail, sólo escritorio (en móvil el
+            menú es el Sheet a ancho completo, no tiene estado colapsado). Es
+            aditivo al `SidebarTrigger` de la barra superior — ambos controles
+            hacen lo mismo, como en la referencia A. */}
+        {!isMobile && (
+          <div className={cn("mb-2 flex", collapsed ? "justify-center" : "justify-end")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              {collapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+              <span className="sr-only">
+                {collapsed ? "Expandir menú" : "Colapsar menú"}
+              </span>
+            </Button>
+          </div>
+        )}
         <Separator className="mb-4" />
         <InstallAppButton />
         <ConfiguracionLink pathname={pathname} />
