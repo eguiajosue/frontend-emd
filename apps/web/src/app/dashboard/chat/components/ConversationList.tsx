@@ -182,7 +182,11 @@ export function ConversationList({
   return (
     <aside
       className={cn(
-        "flex max-h-[45vh] w-full min-w-0 flex-col border-b bg-card/40 md:h-full md:max-h-none md:w-80 md:border-b-0 md:border-r",
+        // Antes esto convivía apilado con MessageThread en la misma pantalla
+        // mobile (de ahí el max-h-[45vh] + border-b) — ahora en mobile son
+        // pantallas separadas (ver mobileView en page.tsx), así que la lista
+        // ocupa el alto completo igual que el hilo.
+        "flex h-full w-full min-w-0 flex-col bg-card/40 md:w-80 md:border-r",
         className
       )}
     >
