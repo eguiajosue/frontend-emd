@@ -82,6 +82,16 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
               </AvatarFallback>
             </Avatar>
           )}
+          {/* Punto de presencia "en línea": sólo mensajes directos con el
+              otro usuario conectado ahora mismo (mismo patrón que el
+              indicador de sesión propia en app-sidebar.tsx). */}
+          {conversation.type === "direct" && conversation.otherUser?.isOnline ? (
+            <span
+              aria-hidden
+              data-testid={`presence-badge-${conversation.id}`}
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+            />
+          ) : null}
         </span>
         <span className="relative z-10 min-w-0 flex-1">
           <span className="flex items-center gap-2">

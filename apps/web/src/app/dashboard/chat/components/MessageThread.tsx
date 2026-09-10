@@ -8,6 +8,7 @@ import {
   Eye,
   File as FileIcon,
   FileUp,
+  Hash,
   Paperclip,
   Send,
   Users,
@@ -599,23 +600,52 @@ export function MessageThread({
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between gap-2 border-b p-3">
-        <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold">{conversation.title}</h2>
-          <p className="truncate text-xs text-muted-foreground">
-            {conversation.type === "area"
-              ? "Canal entre Recepción y el área"
-              : "Mensaje directo"}
-          </p>
-          {presenceLabel ? (
-            <p
-              className={cn(
-                "truncate text-xs",
-                otherIsTyping ? "text-primary" : "text-muted-foreground"
-              )}
-            >
-              {presenceLabel}
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="relative shrink-0">
+            {conversation.type === "area" ? (
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Hash className="h-4 w-4" />
+              </span>
+            ) : (
+              <Avatar className="h-9 w-9 shadow-soft">
+                <AvatarFallback className="text-xs font-semibold">
+                  {chatInitials({
+                    username: "",
+                    firstName: conversation.title,
+                    lastName: null,
+                  })}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            {/* Punto de presencia "en línea": mismo criterio y patrón visual
+                que ConversationList/app-sidebar.tsx — refuerza (no reemplaza)
+                el texto de presenceLabel de abajo. */}
+            {conversation.type === "direct" && otherMember?.isOnline ? (
+              <span
+                aria-hidden
+                data-testid="presence-badge"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+              />
+            ) : null}
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-semibold">{conversation.title}</h2>
+            <p className="truncate text-xs text-muted-foreground">
+              {conversation.type === "area"
+                ? "Canal entre Recepción y el área"
+                : "Mensaje directo"}
             </p>
-          ) : null}
+            {presenceLabel ? (
+              <p
+                className={cn(
+                  "truncate text-xs",
+                  otherIsTyping ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                {presenceLabel}
+              </p>
+            ) : null}
+          </div>
         </div>
         <Button size="sm" variant="ghost" onClick={() => setShowMembers((v) => !v)}>
           <Users className="mr-1 h-4 w-4" />

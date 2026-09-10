@@ -17,7 +17,14 @@ function makeConversation(overrides: Partial<ChatConversation>): ChatConversatio
     type: "direct",
     area: null,
     title: "Ana Gómez",
-    otherUser: { id: 20, username: "ana", firstName: "Ana", lastName: "Gómez" },
+    otherUser: {
+      id: 20,
+      username: "ana",
+      firstName: "Ana",
+      lastName: "Gómez",
+      isOnline: false,
+      lastSeenAt: null,
+    },
     lastMessageAt: "2026-01-01T10:00:00.000Z",
     lastMessage,
     unreadCount: 0,
@@ -53,5 +60,78 @@ describe("ConversationList", () => {
     );
     expect(screen.getByText(/escribiendo/i)).toBeInTheDocument();
     expect(screen.queryByText("Hola")).not.toBeInTheDocument();
+  });
+});
+
+describe("ConversationList - badge de presencia sobre el avatar", () => {
+  it("muestra el punto verde cuando el otro usuario de un DM está en línea", () => {
+    render(
+      <ConversationList
+        conversations={[
+          makeConversation({
+            id: 1,
+            otherUser: {
+              id: 20,
+              username: "ana",
+              firstName: "Ana",
+              lastName: "Gómez",
+              isOnline: true,
+              lastSeenAt: null,
+            },
+          }),
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    expect(screen.getByTestId("presence-badge-1")).toBeInTheDocument();
+  });
+
+  it("no muestra el punto cuando el otro usuario está offline", () => {
+    render(
+      <ConversationList
+        conversations={[
+          makeConversation({
+            id: 1,
+            otherUser: {
+              id: 20,
+              username: "ana",
+              firstName: "Ana",
+              lastName: "Gómez",
+              isOnline: false,
+              lastSeenAt: null,
+            },
+          }),
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    expect(screen.queryByTestId("presence-badge-1")).not.toBeInTheDocument();
+  });
+
+  it("no muestra el punto en canales de área (aunque no aplique isOnline)", () => {
+    render(
+      <ConversationList
+        conversations={[
+          makeConversation({
+            id: 2,
+            type: "area",
+            area: "Diseño",
+            title: "Diseño",
+            otherUser: null,
+          }),
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    expect(screen.queryByTestId("presence-badge-2")).not.toBeInTheDocument();
   });
 });
