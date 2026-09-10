@@ -144,7 +144,11 @@ export default function ChatPage() {
     <div>
       <Title title="Chat interno" />
 
-      <div className="flex h-[calc(100dvh-11rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
+      {/* En móvil se descuentan otros 5.5rem: lo mismo que gana de padding
+          extra el contenedor del layout por la barra de tabs flotante
+          (`MobileTabBar`), para que el composer del hilo no quede detrás. En
+          `md+` la barra no existe y la altura vuelve a ser la de siempre. */}
+      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:h-[calc(100dvh-11rem)] md:flex-row">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}

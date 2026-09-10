@@ -1,6 +1,7 @@
 "use client";
 
 import { AppSidebar } from "@/components/app-sidebar";
+import { MobileTabBar } from "@/components/MobileTabBar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
 import { AnimatePresence, motion } from "framer-motion";
@@ -34,6 +35,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <ChatSocketContext.Provider value={socketRef}>
       <SidebarProvider defaultOpen={false}>
         <AppSidebar />
+        <MobileTabBar />
         <main className="relative w-full min-w-0 overflow-x-hidden">
           {/*
            * En móvil es la barra superior de la app: queda fija, despeja el notch
@@ -51,7 +53,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               animate={routeTransition.animate}
               exit={routeTransition.exit}
               transition={routeTransition.transition}
-              className="mt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6"
+              // La barra flotante (`MobileTabBar`, `md:hidden`) ocupa ~4.5rem
+              // de alto (píldora + su margen inferior) más un respiro de
+              // 0.75rem antes del contenido — de ahí los 5.5rem extra sobre
+              // el padding base, hasta el mismo breakpoint `md` en el que la
+              // barra desaparece y el padding vuelve al de siempre.
+              className="mt-4 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-6"
             >
               {children}
             </motion.div>

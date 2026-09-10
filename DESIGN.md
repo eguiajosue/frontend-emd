@@ -70,6 +70,68 @@ theme toggle and logout are unchanged in logic — only the collapsed-state
 rendering (icon-only header/footer, tooltips via `title=`, hidden labels) is
 new.
 
+The role-filtered group/item definitions live in `src/lib/navMenu.ts`
+(`OPERATIONAL_MENU`, `buildMenuItems`, `isNavItemVisible`) rather than inline
+in the component, so the mobile tab bar can read the exact same source of
+truth — see "Mobile navigation" below.
+
+Collapsed rail, active item: the soft `sidebar-active-indicator` tint
+(`layoutId`-animated) stays, plus a solid `bg-primary` bar (3px, rounded,
+`h-5`, vertically centered) flush against the rail's own left edge —
+additive, not a replacement. Expanded panel, active item: the soft tinted
+rounded-rectangle background only (no left bar — the reference's expanded
+state doesn't show one). Expanded panel also gets a compact brand row (logo
+tile + "EMD Bordados" wordmark, `font-heading`) above the greeting,
+desktop-only — the mobile Sheet already leads with its own identity card, so
+duplicating the row there would crowd it.
+
+A small chevron button (`ChevronRight`/`ChevronLeft`, flips with state) sits
+in its own row above the footer separator, desktop-only (`!isMobile`), and
+calls the same `toggleSidebar()` as the top-bar `SidebarTrigger` — both
+controls coexist and do the same thing, matching the reference's own
+bottom-of-rail affordance without removing the existing top-bar one.
+
+## Mobile navigation
+
+`src/components/MobileTabBar.tsx` renders a floating pill tab bar
+(`md:hidden`, so it only exists below the sidebar's own mobile breakpoint):
+`rounded-full bg-card shadow-soft-md`, centered, with side/bottom margin (not
+edge-to-edge) and `padding-bottom: env(safe-area-inset-bottom)` on its outer
+wrapper, matching this app's other mobile-safe-area handling
+(`src/app/dashboard/layout.tsx`).
+
+It shows the first 4 items — role-filtered, same source as the rail — from a
+fixed URL priority order (`/dashboard/admin`, `/dashboard/orders`,
+`/dashboard/chat`, `/dashboard/notificaciones`, `/dashboard/admin/rendimiento`,
+`/dashboard/historial`, `/dashboard/clientes`, `/dashboard/usuarios`,
+`/dashboard/ayuda`), skipping any URL the current role can't see. In practice
+that resolves to Panel General/Pedidos/Chat/Notificaciones for admin and
+superuser, Pedidos/Chat/Notificaciones/Historial for recepción, and Tareas
+asignadas/Chat interno/Notificaciones/Ayuda for the operational roles. A 5th
+"Más" tab is always appended and calls `setOpenMobile(true)` to open the
+existing `AppSidebar` Sheet — it is not a second menu, just the door to the
+one that already exists (full list, config, theme, logout, identity).
+
+The active tab gets a soft `bg-primary/10` rounded-square highlight (`layoutId`
+spring, `mobile-tabbar-highlight` — distinct from the rail's own
+`sidebar-active-indicator` since both can be mounted at once) plus a small
+`bg-primary` dot beneath the icon. Active detection is `pathname === item.url`
+(exact match, so `/dashboard/admin` and `/dashboard/admin/rendimiento` never
+collide).
+
+The role-filtered flat list both surfaces read from is
+`useVisibleNavItems()` (`src/hooks/useVisibleNavItems.ts`) — keep any future
+nav item change in `src/lib/navMenu.ts` so the rail and the tab bar can't
+drift apart.
+
+Because the tab bar permanently occupies bottom screen space, the dashboard
+layout's mobile-only bottom padding and the chat page's mobile card height
+both carry a matching extra offset (`~5.5rem`, sized to the bar's own
+height + margins) up to the same `md` breakpoint where the bar disappears —
+see the inline comments in `src/app/dashboard/layout.tsx` and
+`src/app/dashboard/chat/page.tsx` before changing either the bar's size or
+these paddings.
+
 ## Motion
 
 Framer Motion conventions already in `src/lib/motion.ts` /
