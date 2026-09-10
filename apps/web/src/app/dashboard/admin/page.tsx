@@ -436,7 +436,7 @@ const AdminDashboardPage = () => {
           }}
         />
       ) : loading ? (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-64 w-full" />
@@ -450,7 +450,14 @@ const AdminDashboardPage = () => {
           description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer acá apenas se cargue el primero."
         />
       ) : (
-        <div className="grid min-w-0 gap-10 lg:grid-cols-3 lg:items-start">
+        // `grid-cols-1` explícito: sin él, por debajo de `lg:` la única columna
+        // implícita se autoancha al max-content del contenido más ancho de
+        // cualquiera de las dos columnas (el gráfico, la tabla de drill-down,
+        // las filas de "Próximas entregas") en vez de ocupar el 100% del
+        // contenedor — y como `<main>` recorta con `overflow-x-hidden`, ese
+        // sobreancho no se ve como scroll sino como tarjetas cortadas a la
+        // derecha en mobile.
+        <div className="grid grid-cols-1 min-w-0 gap-10 lg:grid-cols-3 lg:items-start">
         <div className="min-w-0 space-y-10 lg:col-span-2">
           {/* Bento grid de KPIs: la caja de score global es la más grande y
               lleva el número más importante del panel; el resto son cajas
