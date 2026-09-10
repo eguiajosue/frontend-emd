@@ -671,9 +671,16 @@ export function MessageThread({
             ) : null}
           </div>
         </div>
-        <Button size="sm" variant="ghost" onClick={() => setShowMembers((v) => !v)}>
-          <Users className="mr-1 h-4 w-4" />
-          Participantes ({members.length})
+        <Button
+          size="sm"
+          variant="ghost"
+          className="shrink-0 gap-1 px-2 sm:px-3"
+          onClick={() => setShowMembers((v) => !v)}
+          title={`Participantes (${members.length})`}
+          aria-label={`Participantes (${members.length})`}
+        >
+          <Users className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">Participantes </span>({members.length})
         </Button>
       </header>
 
@@ -870,17 +877,18 @@ export function MessageThread({
                 void handleSend();
               }
             }}
-            placeholder="Escribir un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
+            placeholder="Escribir un mensaje…"
             className="min-w-0 max-h-40 min-h-[44px] flex-1 resize-none rounded-2xl"
             maxLength={2000}
           />
           <Button
             onClick={() => void handleSend()}
             disabled={isSending || (!draft.trim() && !attachedFile)}
-            className="rounded-full shadow-soft"
+            className="shrink-0 rounded-full px-3 shadow-soft sm:px-4"
+            aria-label="Enviar"
           >
-            <Send className="mr-1 h-4 w-4" />
-            Enviar
+            <Send className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">Enviar</span>
           </Button>
         </div>
       </div>
