@@ -33,8 +33,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
-      <main className="relative w-full min-w-0 overflow-x-hidden p-4 sm:p-6">
-        <div className="flex items-center justify-between">
+      <main className="relative w-full min-w-0 overflow-x-hidden">
+        {/*
+         * En móvil es la barra superior de la app: queda fija, despeja el notch
+         * y el contenido pasa por debajo. En escritorio vuelve a ser la fila
+         * suelta de siempre.
+         */}
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-6 sm:pb-0 sm:pt-6 sm:backdrop-blur-none">
           <SidebarTrigger />
           <NotificationBell />
         </div>
@@ -45,7 +50,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             animate={routeTransition.animate}
             exit={routeTransition.exit}
             transition={routeTransition.transition}
-            className="mt-4"
+            className="mt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-6"
           >
             {children}
           </motion.div>

@@ -48,6 +48,9 @@ export const viewport: Viewport = {
   themeColor: "#d91e7a",
   width: "device-width",
   initialScale: 1,
+  // Sin esto, env(safe-area-inset-*) siempre vale 0 en iOS y las hojas a
+  // pantalla completa quedan por debajo del notch y del home indicator.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

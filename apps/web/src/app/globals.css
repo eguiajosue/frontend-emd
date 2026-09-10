@@ -215,6 +215,15 @@
      * horizontal de todo el documento.
      */
     overflow-x: hidden;
+    /*
+     * Detalles que separan una web de una app instalada en el teléfono: sin
+     * flash gris al tocar, sin rubber-band que descubre el chrome del
+     * navegador, y sin que el texto se reescale al girar el dispositivo.
+     */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background text-foreground;

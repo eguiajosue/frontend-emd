@@ -42,7 +42,7 @@ export function ClientOrdersDialog({ clientId, onClose }: ClientOrdersDialogProp
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               Pedidos de {client ? getClientName(client) : "cliente"}

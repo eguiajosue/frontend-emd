@@ -45,7 +45,7 @@ export function FormField({
   const { reduced } = useMotionPreset();
 
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("min-w-0 space-y-1.5", className)}>
       {label && (
         <label
           htmlFor={htmlFor}

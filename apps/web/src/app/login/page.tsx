@@ -61,7 +61,7 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
+    <div className="min-h-dvh grid grid-cols-1 md:grid-cols-2">
       <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 text-white relative overflow-hidden">
         <GradientBlobs variant="login" />
         <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
