@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { NetworkFirst, Serwist, StaleWhileRevalidate } from "serwist";
+import { NetworkFirst, Serwist } from "serwist";
 import { listPendingMutations, removePendingMutation } from "@/lib/offlineQueue";
 
 declare global {
@@ -28,10 +28,18 @@ const serwist = new Serwist({
         networkTimeoutSeconds: 4,
       }),
     },
-    // Dashboards/analíticas: instantáneo desde caché, se refresca en segundo plano.
+    // Dashboards/analíticas: red primero (igual que los pedidos en vivo). Con
+    // stale-while-revalidate se veía SIEMPRE la versión cacheada de la visita
+    // anterior en cada navegación — un fix recién desplegado, o un dato que
+    // acaba de cambiar, no se reflejaban hasta la SEGUNDA vez que se entraba
+    // a la pantalla. El fallback a caché (si la red tarda o falla) es lo que
+    // preserva el soporte offline.
     {
       matcher: ({ url }) => /\/dashboard(\/|$)/.test(url.pathname),
-      handler: new StaleWhileRevalidate({ cacheName: "emd-dashboard" }),
+      handler: new NetworkFirst({
+        cacheName: "emd-dashboard",
+        networkTimeoutSeconds: 4,
+      }),
     },
     ...defaultCache,
   ],
