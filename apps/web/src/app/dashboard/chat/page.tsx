@@ -143,7 +143,7 @@ export default function ChatPage() {
         para monitoreo y figuran como tales en la lista de participantes.
       </p>
 
-      <div className="flex h-[calc(100vh-16rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
+      <div className="flex h-[calc(100dvh-16rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}
