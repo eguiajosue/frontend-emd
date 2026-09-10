@@ -81,7 +81,7 @@ const LoginForm = () => {
         </motion.div>
       </div>
 
-      <div className="relative flex items-center justify-center overflow-hidden bg-neutral-950 p-8 md:bg-background">
+      <div className="relative flex items-center justify-center overflow-hidden bg-neutral-950 p-6 sm:p-8 md:bg-background">
         <GradientBlobs variant="subtle" className="md:hidden" />
         <motion.div
           initial={{ opacity: 0, y: 16 }}

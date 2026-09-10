@@ -423,7 +423,7 @@ export function MessageThread({
           ) : null}
           <div
             className={cn(
-              "max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow",
+              "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow sm:max-w-[75%]",
               mine
                 ? "rounded-br-md bg-primary text-primary-foreground shadow-soft"
                 : "rounded-bl-md border bg-card text-foreground shadow-soft"
@@ -456,7 +456,7 @@ export function MessageThread({
   };
 
   return (
-    <section className="flex h-full min-w-0 flex-1 flex-col">
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex items-center justify-between gap-2 border-b p-3">
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{conversation.title}</h2>
@@ -666,7 +666,7 @@ export function MessageThread({
               }
             }}
             placeholder="Escribir un mensaje… (Enter para enviar, Shift+Enter para saltar línea)"
-            className="max-h-40 min-h-[44px] resize-none rounded-2xl"
+            className="min-w-0 max-h-40 min-h-[44px] flex-1 resize-none rounded-2xl"
             maxLength={2000}
           />
           <Button

@@ -60,7 +60,7 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
       type="button"
       variant="outline"
       size="sm"
-      className="h-7 gap-1.5 whitespace-nowrap px-2.5 text-xs"
+      className="h-auto min-h-7 max-w-full gap-1.5 whitespace-normal px-2.5 py-1 text-xs"
       disabled={isChanging}
       onClick={(e) => {
         e.stopPropagation();

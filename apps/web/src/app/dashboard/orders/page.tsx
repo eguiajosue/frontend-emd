@@ -463,7 +463,15 @@ const OrdersPage = () => {
         header: "Cliente",
         cell: ({ row }) => getOrderClientName(row.original),
       },
-      { accessorKey: "description", header: "Descripción" },
+      {
+        accessorKey: "description",
+        header: "Descripción",
+        cell: ({ row }) => (
+          <span className="block max-w-[16rem] truncate" title={row.original.description}>
+            {row.original.description}
+          </span>
+        ),
+      },
       {
         id: "status",
         header: "Estado actual",
@@ -485,7 +493,7 @@ const OrdersPage = () => {
         id: "changeStatus",
         header: "Avanzar estado",
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
             <OrderQuickStatusChip order={row.original} />
           </div>
         ),
