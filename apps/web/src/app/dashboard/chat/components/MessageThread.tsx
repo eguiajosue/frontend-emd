@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Camera,
+  Check,
+  CheckCheck,
   Eye,
   File as FileIcon,
   FileUp,
@@ -240,6 +242,53 @@ function OrderPicker({
   );
 }
 
+type MessageCheckState = "sent" | "delivered" | "read";
+
+/**
+ * ✓ enviado / ✓✓ entregado / ✓✓ azul leído para un mensaje propio, según la
+ * regla del backend: se ignoran los miembros `isMonitor` (admin/superuser
+ * que sólo observan el canal) y al propio emisor.
+ */
+function computeCheckState(
+  message: ChatMessage,
+  members: ChatMember[],
+  currentUserId: number | null
+): MessageCheckState {
+  const others = members.filter(
+    (m) => m.id !== currentUserId && !m.isMonitor
+  );
+  if (others.length === 0) return "sent";
+  const createdAt = new Date(message.createdAt).getTime();
+  const allRead = others.every(
+    (m) => m.lastReadAt != null && new Date(m.lastReadAt).getTime() >= createdAt
+  );
+  if (allRead) return "read";
+  const allDelivered = others.every(
+    (m) => m.deliveredAt != null && new Date(m.deliveredAt).getTime() >= createdAt
+  );
+  if (allDelivered) return "delivered";
+  return "sent";
+}
+
+function MessageCheck({ state, messageId }: { state: MessageCheckState; messageId: number }) {
+  if (state === "sent") {
+    return (
+      <Check
+        data-testid={`check-sent-${messageId}`}
+        className="h-3.5 w-3.5"
+        aria-label="Enviado"
+      />
+    );
+  }
+  return (
+    <CheckCheck
+      data-testid={`check-${state}-${messageId}`}
+      className={cn("h-3.5 w-3.5", state === "read" && "text-sky-300")}
+      aria-label={state === "read" ? "Leído" : "Entregado"}
+    />
+  );
+}
+
 export function MessageThread({
   conversation,
   messages,
@@ -443,11 +492,17 @@ export function MessageThread({
             ) : null}
             <p
               className={cn(
-                "pt-1 text-[10px]",
+                "flex items-center justify-end gap-1 pt-1 text-[10px]",
                 mine ? "text-primary-foreground/70" : "text-muted-foreground"
               )}
             >
               {formatTime(message.createdAt)}
+              {mine ? (
+                <MessageCheck
+                  state={computeCheckState(message, members, currentUserId)}
+                  messageId={message.id}
+                />
+              ) : null}
             </p>
           </div>
         </div>
