@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ConversationList } from "./ConversationList";
 import { markUserTyping } from "@/hooks/useChatTyping";
 import type { ChatConversation, ChatMessage } from "@/types";
@@ -133,5 +133,47 @@ describe("ConversationList - badge de presencia sobre el avatar", () => {
       />
     );
     expect(screen.queryByTestId("presence-badge-2")).not.toBeInTheDocument();
+  });
+});
+
+describe("ConversationList - buscador", () => {
+  it("filtra por título de la conversación", () => {
+    render(
+      <ConversationList
+        conversations={[
+          makeConversation({ id: 1, title: "Ana Gómez" }),
+          makeConversation({ id: 2, title: "Diseño", type: "area", area: "diseno", otherUser: null }),
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
+    expect(screen.getByText("Diseño")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Buscar…"), {
+      target: { value: "ana" },
+    });
+
+    expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
+    expect(screen.queryByText("Diseño")).not.toBeInTheDocument();
+  });
+
+  it('muestra "Sin resultados." cuando el filtro no matchea nada', () => {
+    render(
+      <ConversationList
+        conversations={[makeConversation({ id: 1, title: "Ana Gómez" })]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    fireEvent.change(screen.getByPlaceholderText("Buscar…"), {
+      target: { value: "zzz" },
+    });
+    expect(screen.getAllByText("Sin resultados.")).toHaveLength(2);
   });
 });

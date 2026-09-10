@@ -311,3 +311,38 @@ describe("MessageThread - emite chatTyping al escribir", () => {
     }
   });
 });
+
+describe("MessageThread - navegación mobile (volver a la lista)", () => {
+  it("no muestra botón de volver si no se pasa onBack", () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({})]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.queryByLabelText("Volver a conversaciones")).not.toBeInTheDocument();
+  });
+
+  it("llama a onBack al tocar el botón de volver", () => {
+    const onBack = vi.fn();
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({})]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+        onBack={onBack}
+      />
+    );
+    fireEvent.click(screen.getByLabelText("Volver a conversaciones"));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+});
