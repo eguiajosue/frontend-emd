@@ -90,8 +90,22 @@ ve todas las demás secciones, lo que indica un descuido y no una decisión.
 
 **B6 — Virtualización activa en móvil sobre una lista no virtualizada.**
 `app/dashboard/orders/page.tsx:862` activa `virtualize` con más de 30 filas, pero
-la rama móvil de `data-table.tsx:242-245` no virtualiza deliberadamente. Con 500
-pedidos se montan 500 tarjetas en el teléfono.
+la rama móvil de `data-table.tsx:242-245` no virtualiza deliberadamente. En
+lugar de una lista de tarjetas propia, en ese caso móvil se renderizaba **la
+misma tabla virtualizada de escritorio**: no táctil, con scroll horizontal
+forzado, pensada para un mouse y una pantalla ancha. Es decir, antes del
+arreglo nunca se montaban cientos de tarjetas en el teléfono — ese código de
+tarjetas (`!virtualize`, líneas ~99-166) sólo corre cuando `virtualize` es
+`false`, y por construcción esa rama nunca recibe más de 30 filas.
+
+El arreglo (Task 5 del plan de Fase 0) reemplaza esa tabla de escritorio en
+móvil por una lista de 30 tarjetas paginadas con un botón "Cargar más". Es,
+ante todo, una mejora de UX táctil (tarjetas en vez de una tabla que scrollea
+horizontalmente en un teléfono), no una corrección de performance por evitar
+montar cientos de nodos DOM — eso nunca ocurría en la rama móvil original. El
+trabajo de virtualización real de Fase 5 (scroll infinito) debe partir de esta
+base corregida: hoy no hay una regresión de cientos de tarjetas que resolver,
+sino una lista paginada por lotes de 30 a mejorar con scroll infinito.
 
 ### 3.3 Problemas transversales
 

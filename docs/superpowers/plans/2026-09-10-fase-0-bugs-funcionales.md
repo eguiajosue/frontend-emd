@@ -346,8 +346,21 @@ a:
       <div className="flex h-[calc(100dvh-16rem)] min-h-[420px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
 ```
 
-`100dvh` (dynamic viewport height) se achica cuando el teclado de iOS ocupa
-parte de la pantalla; `100vh` no. Soportado desde iOS Safari 15.4.
+`100dvh` (dynamic viewport height) se achica cuando la barra de herramientas
+de Safari colapsa/aparece; `100vh` en iOS resuelve siempre contra el viewport
+*grande* (barra colapsada), así que hoy siempre se pasa de alto. Soportado
+desde iOS Safari 15.4.
+
+**Corrección post-revisión (no cambia el alcance de esta tarea):** el teclado
+virtual de iOS Safari **no** achica `dvh` en absoluto — `dvh` sigue la barra
+de herramientas del navegador, no el teclado. Este fix por sí solo, entonces,
+no resuelve del todo el problema de que el teclado tape el campo de texto en
+iOS Safari; sigue siendo una mejora real sobre `100vh` (que en iOS siempre se
+pasa de alto contra el viewport grande), y el ajuste del piso `min-h` (ver
+hallazgo de revisión de rama completa: bajarlo de `420px` a `280px`) evita que
+ese piso anule el cálculo dinámico en pantallas chicas. Pero la solución
+completa requiere manejar `window.visualViewport`, que queda fuera de alcance
+de esta tarea acotada y se deja como trabajo de seguimiento.
 
 - [ ] **Step 4: Correr el test y verificar que pasa**
 
