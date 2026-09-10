@@ -5,6 +5,13 @@ import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { statusOptions, statusLabel } from "@/lib/orderStatus";
@@ -70,9 +77,8 @@ interface OrdersFilterBarProps {
  * quitan de a uno — que es la información que hace falta leer de un vistazo,
  * y que el panel abierto no daba.
  */
-/** Un solo lugar para el estilo de los `<select>` nativos del popover. */
-const SELECT_CLASS =
-  "flex h-9 w-full min-w-0 max-w-full rounded-md border border-input bg-transparent px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+/** Label uniforme para cada campo del popover. */
+const FIELD_LABEL_CLASS = "text-xs font-medium text-muted-foreground";
 
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
@@ -114,11 +120,16 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
     [users]
   );
 
-  // El <select> nativo sólo maneja strings: "" = sin filtro, "unassigned" =
-  // filtro explícito "Sin asignar" (assignedUserId === null), y cualquier
-  // otro valor es el id numérico del usuario.
+  // El Select sólo maneja strings: "all" = sin filtro, "unassigned" = filtro
+  // explícito "Sin asignar" (assignedUserId === null), y cualquier otro valor
+  // es el id numérico del usuario. Radix Select no admite value="", de ahí el
+  // sentinel "all" en vez de cadena vacía.
   const assignedUserSelectValue =
-    filters.assignedUserId === undefined ? "" : filters.assignedUserId === null ? "unassigned" : String(filters.assignedUserId);
+    filters.assignedUserId === undefined
+      ? "all"
+      : filters.assignedUserId === null
+        ? "unassigned"
+        : String(filters.assignedUserId);
 
   /** Chips de lo que está filtrado ahora, cada uno con su forma de quitarse. */
   const activeChips: { key: string; label: string; clear: () => void }[] = [];
@@ -181,7 +192,10 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className={cn("gap-2", hasActiveFilters && "border-primary/50 text-primary")}
+            className={cn(
+              "gap-2 rounded-full",
+              hasActiveFilters && "border-primary/50 text-primary"
+            )}
           >
             <SlidersHorizontal className="h-4 w-4" />
             Filtros
@@ -192,30 +206,92 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-[21rem] space-y-4 p-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Cliente</Label>
-            <select
-              className={SELECT_CLASS}
-              value={filters.clientId ?? ""}
-              onChange={(e) =>
-                onChange({
-                  ...filters,
-                  clientId: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            >
-              <option value="">Todos</option>
-              {sortedClients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {clientLabel(c)}
-                </option>
-              ))}
-            </select>
+        <PopoverContent align="start" className="w-[22rem] space-y-4 p-4">
+          {/* Cliente, Área y Asignado a son los tres selectores de "quién" del
+              pedido: van agrupados y más apretados entre sí que respecto al
+              resto de los filtros. */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className={FIELD_LABEL_CLASS}>Cliente</Label>
+              <Select
+                value={filters.clientId === undefined ? "all" : String(filters.clientId)}
+                onValueChange={(value) =>
+                  onChange({
+                    ...filters,
+                    clientId: value === "all" ? undefined : Number(value),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {sortedClients.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {clientLabel(c)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={cn("grid gap-2", canFilterByArea ? "grid-cols-2" : "grid-cols-1")}>
+              {canFilterByArea && (
+                <div className="space-y-1.5">
+                  <Label className={FIELD_LABEL_CLASS}>Área</Label>
+                  <Select
+                    value={filters.area ?? "all"}
+                    onValueChange={(value) =>
+                      onChange({ ...filters, area: value === "all" ? undefined : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {areaChoices.map((a) => (
+                        <SelectItem key={a.value} value={a.value}>
+                          {a.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label className={FIELD_LABEL_CLASS}>Asignado a</Label>
+                <Select
+                  value={assignedUserSelectValue}
+                  onValueChange={(value) =>
+                    onChange({
+                      ...filters,
+                      assignedUserId:
+                        value === "all" ? undefined : value === "unassigned" ? null : Number(value),
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="unassigned">Sin asignar</SelectItem>
+                    {sortedUsers.map((u) => (
+                      <SelectItem key={u.id} value={String(u.id)}>
+                        {userLabel(u)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Estatus</Label>
+            <Label className={FIELD_LABEL_CLASS}>Estatus</Label>
             <div className="flex flex-wrap gap-1.5">
               {statusOptions.map((opt) => (
                 <button
@@ -236,56 +312,8 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
             </div>
           </div>
 
-          {canFilterByArea && (
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Área</Label>
-              <select
-                className={SELECT_CLASS}
-                value={filters.area ?? ""}
-                onChange={(e) =>
-                  onChange({ ...filters, area: e.target.value || undefined })
-                }
-              >
-                <option value="">Todas</option>
-                {areaChoices.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Asignado a</Label>
-            <select
-              className={SELECT_CLASS}
-              value={assignedUserSelectValue}
-              onChange={(e) => {
-                const value = e.target.value;
-                onChange({
-                  ...filters,
-                  assignedUserId:
-                    value === ""
-                      ? undefined
-                      : value === "unassigned"
-                        ? null
-                        : Number(value),
-                });
-              }}
-            >
-              <option value="">Todos</option>
-              <option value="unassigned">Sin asignar</option>
-              {sortedUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {userLabel(u)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Fecha de entrega</Label>
+            <Label className={FIELD_LABEL_CLASS}>Fecha de entrega</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
