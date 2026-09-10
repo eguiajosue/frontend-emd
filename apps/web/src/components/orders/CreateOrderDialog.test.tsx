@@ -12,13 +12,17 @@ vi.mock("@/hooks/usePermissions", () => ({
 }));
 
 describe("CreateOrderDialog", () => {
-  it("el botón Crear Pedido vive dentro del footer anclado del diálogo", () => {
+  it("la navegación del wizard vive fuera del área con scroll del diálogo", () => {
     render(
       <CreateOrderDialog open onClose={() => {}} onCreated={() => {}} />
     );
-    const button = screen.getByRole("button", { name: /Crear Pedido/i });
-    // DialogFooter es el único contenedor directo que NO tiene la clase de
-    // scroll `overflow-y-auto` que sí tiene el body del diálogo.
+    // El wizard reemplazó el footer de un solo botón por una barra de
+    // navegación fija (Atrás/Cancelar + Siguiente/Crear Pedido) — "Crear
+    // Pedido" sólo aparece en el último paso, así que se verifica con
+    // "Cancelar", que está presente desde el primer paso.
+    const button = screen.getByRole("button", { name: /Cancelar/i });
+    // La barra de navegación es la única zona que NO debe tener la clase de
+    // scroll `overflow-y-auto` que sí tiene el contenido del paso actual.
     const scrollBody = button.closest(".overflow-y-auto");
     expect(scrollBody).toBeNull();
   });
