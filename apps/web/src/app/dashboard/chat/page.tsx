@@ -143,13 +143,8 @@ export default function ChatPage() {
   return (
     <div>
       <Title title="Chat interno" />
-      <p className="pb-4 text-sm text-muted-foreground">
-        Canales entre Recepción y cada área, y mensajes directos entre usuarios.
-        Las cuentas de administración participan de todas las conversaciones
-        para monitoreo y figuran como tales en la lista de participantes.
-      </p>
 
-      <div className="flex h-[calc(100dvh-16rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
+      <div className="flex h-[calc(100dvh-11rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:flex-row">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}
