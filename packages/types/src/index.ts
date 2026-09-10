@@ -359,6 +359,17 @@ export interface ChatUserOption extends ChatUserSummary {
   lastSeenAt: string | null;
 }
 
+/**
+ * `otherUser` de una conversación directa (GET /chat/conversations): además
+ * del resumen mínimo, trae presencia en tiempo real. No se agrega a
+ * `ChatUserSummary` porque ese tipo también se usa donde no hay presencia
+ * (p. ej. `ChatMessage.sender`).
+ */
+export interface ChatConversationOtherUser extends ChatUserSummary {
+  isOnline: boolean;
+  lastSeenAt: string | null;
+}
+
 /** Participante de una conversación; `isMonitor` marca a admin/superuser. */
 export interface ChatMember extends ChatUserSummary {
   isMonitor: boolean;
@@ -424,7 +435,7 @@ export interface ChatConversation {
   type: "area" | "direct";
   area: string | null;
   title: string;
-  otherUser: ChatUserSummary | null;
+  otherUser: ChatConversationOtherUser | null;
   lastMessageAt: string | null;
   lastMessage: ChatMessage | null;
   unreadCount: number;

@@ -31,7 +31,14 @@ const conversation: ChatConversation = {
   type: "direct",
   area: null,
   title: "Ana Gómez",
-  otherUser: { id: 20, username: "ana", firstName: "Ana", lastName: "Gómez" },
+  otherUser: {
+    id: 20,
+    username: "ana",
+    firstName: "Ana",
+    lastName: "Gómez",
+    isOnline: false,
+    lastSeenAt: null,
+  },
   lastMessageAt: "2026-01-01T10:00:00.000Z",
   lastMessage: null,
   unreadCount: 0,
@@ -206,6 +213,60 @@ describe("MessageThread - estado del header (presencia y escribiendo)", () => {
     );
     expect(screen.queryByText(/en línea/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/última vez/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("MessageThread - badge de presencia en el header", () => {
+  it("muestra el punto verde sobre el avatar cuando el otro miembro está en línea", () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({ isOnline: true })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.getByTestId("presence-badge")).toBeInTheDocument();
+  });
+
+  it("no muestra el punto cuando el otro miembro está offline", () => {
+    renderThread(
+      <MessageThread
+        conversation={conversation}
+        messages={[]}
+        members={[makeMember({ isOnline: false })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.queryByTestId("presence-badge")).not.toBeInTheDocument();
+  });
+
+  it("no muestra el punto en canales de área", () => {
+    const areaConversation: ChatConversation = {
+      ...conversation,
+      type: "area",
+      area: "Diseño",
+      title: "Diseño",
+      otherUser: null,
+    };
+    renderThread(
+      <MessageThread
+        conversation={areaConversation}
+        messages={[]}
+        members={[makeMember({ isOnline: true, isMonitor: false })]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+    expect(screen.queryByTestId("presence-badge")).not.toBeInTheDocument();
   });
 });
 
