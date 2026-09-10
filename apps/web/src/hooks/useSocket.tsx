@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useEffect, useRef, type RefObject } from "react";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
@@ -11,6 +11,7 @@ import { SOCKET_URL } from "@/lib/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { playNotificationSound } from "@/lib/sound";
+import { markUserTyping, markUserStoppedTyping } from "@/hooks/useChatTyping";
 
 /** Payload de "chatMessage" (ver ChatService.sendMessage en el backend). */
 interface ChatMessagePayload {
@@ -64,6 +65,17 @@ const HIGHLIGHT_TOAST_DURATION_MS = 9000;
  * layout del dashboard): cualquier feature nueva debe engancharse acá en vez
  * de abrir un segundo socket.
  */
+
+/**
+ * Expone el `socketRef` de `useSocket` (montado una sola vez en
+ * `dashboard/layout.tsx`) a componentes hijos que necesiten EMITIR eventos
+ * (por ejemplo, `chatTyping`/`chatStopTyping` desde el composer del chat).
+ * Se pasa el ref, no el socket en sí: la instancia cambia en cada
+ * reconexión, y los consumidores deben leer siempre `.current` en el
+ * momento de emitir en vez de cerrar sobre una instancia vieja.
+ */
+export const ChatSocketContext = createContext<RefObject<Socket | null> | null>(null);
+
 export function useSocket() {
   const { data: session } = useSession();
   const token = session?.user?.token;
@@ -163,8 +175,16 @@ export function useSocket() {
       });
     };
 
+    // El cliente confirma haber recibido un mensaje en vivo; el backend usa
+    // esto para el check "entregado" (ver NotificationsGateway.handleChatDelivered).
+    const ackDelivered = (message: ChatMessagePayload) => {
+      if (message.senderId === userId) return; // no hace falta confirmarse a uno mismo
+      socket.emit("chatDelivered", { conversationId: message.conversationId });
+    };
+
     const handleChatMessage = (message: ChatMessagePayload) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
+      ackDelivered(message);
       // Los mensajes propios y los que ya se están viendo no interrumpen.
       if (message.senderId === userId) return;
       if (pathnameRef.current?.startsWith("/dashboard/chat")) return;
@@ -174,10 +194,35 @@ export function useSocket() {
       });
     };
 
+    // chatRead/chatDelivered/presenceChanged sólo invalidan la cache del
+    // chat: el dato en sí (lastReadAt/deliveredAt/isOnline/lastSeenAt) se
+    // vuelve a pedir a GET /chat/conversations/:id/members, no se aplica a
+    // mano acá — mantiene una sola fuente de verdad.
+    const handleChatRead = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
+    };
+    const handleChatDelivered = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
+    };
+    const handlePresenceChanged = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
+    };
+    const handleChatTyping = (payload: { conversationId: number; userId: number }) => {
+      markUserTyping(payload.conversationId, payload.userId);
+    };
+    const handleChatStopTyping = (payload: { conversationId: number; userId: number }) => {
+      markUserStoppedTyping(payload.conversationId, payload.userId);
+    };
+
     socket.on("newOrderNotification", handleNewOrder);
     socket.on("newAssignedOrderNotification", handleAssignedOrder);
     socket.on("orderStatusChangeNotification", handleStatusChange);
     socket.on("chatMessage", handleChatMessage);
+    socket.on("chatRead", handleChatRead);
+    socket.on("chatDelivered", handleChatDelivered);
+    socket.on("presenceChanged", handlePresenceChanged);
+    socket.on("chatTyping", handleChatTyping);
+    socket.on("chatStopTyping", handleChatStopTyping);
 
     socket.on("connect_error", (err) => {
       // No loguear headers/token: sólo el mensaje del error de conexión.
@@ -191,6 +236,11 @@ export function useSocket() {
       socket.off("newAssignedOrderNotification", handleAssignedOrder);
       socket.off("orderStatusChangeNotification", handleStatusChange);
       socket.off("chatMessage", handleChatMessage);
+      socket.off("chatRead", handleChatRead);
+      socket.off("chatDelivered", handleChatDelivered);
+      socket.off("presenceChanged", handlePresenceChanged);
+      socket.off("chatTyping", handleChatTyping);
+      socket.off("chatStopTyping", handleChatStopTyping);
       socket.disconnect();
       socketRef.current = null;
     };

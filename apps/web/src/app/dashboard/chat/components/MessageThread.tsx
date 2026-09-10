@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   Camera,
+  Check,
+  CheckCheck,
   Eye,
   File as FileIcon,
   FileUp,
@@ -14,6 +16,8 @@ import {
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -28,6 +32,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
+import { useChatTyping } from "@/hooks/useChatTyping";
+import { ChatSocketContext } from "@/hooks/useSocket";
 import { useMotionPreset } from "@/lib/motion";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
@@ -48,6 +54,10 @@ import type {
 const CHAT_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB
 const CHAT_ATTACHMENT_ACCEPT =
   "image/*,application/pdf,audio/*,.doc,.docx,.xls,.xlsx";
+
+// Tiempo sin tipear tras el cual se avisa al otro extremo que dejamos de
+// escribir (ver ChatService.handleTyping en el backend).
+const TYPING_STOP_DELAY_MS = 3000;
 
 /** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
 function readFileAsChatAttachment(file: File): Promise<ChatAttachmentInput> {
@@ -240,6 +250,53 @@ function OrderPicker({
   );
 }
 
+type MessageCheckState = "sent" | "delivered" | "read";
+
+/**
+ * ✓ enviado / ✓✓ entregado / ✓✓ azul leído para un mensaje propio, según la
+ * regla del backend: se ignoran los miembros `isMonitor` (admin/superuser
+ * que sólo observan el canal) y al propio emisor.
+ */
+function computeCheckState(
+  message: ChatMessage,
+  members: ChatMember[],
+  currentUserId: number | null
+): MessageCheckState {
+  const others = members.filter(
+    (m) => m.id !== currentUserId && !m.isMonitor
+  );
+  if (others.length === 0) return "sent";
+  const createdAt = new Date(message.createdAt).getTime();
+  const allRead = others.every(
+    (m) => m.lastReadAt != null && new Date(m.lastReadAt).getTime() >= createdAt
+  );
+  if (allRead) return "read";
+  const allDelivered = others.every(
+    (m) => m.deliveredAt != null && new Date(m.deliveredAt).getTime() >= createdAt
+  );
+  if (allDelivered) return "delivered";
+  return "sent";
+}
+
+function MessageCheck({ state, messageId }: { state: MessageCheckState; messageId: number }) {
+  if (state === "sent") {
+    return (
+      <Check
+        data-testid={`check-sent-${messageId}`}
+        className="h-3.5 w-3.5"
+        aria-label="Enviado"
+      />
+    );
+  }
+  return (
+    <CheckCheck
+      data-testid={`check-${state}-${messageId}`}
+      className={cn("h-3.5 w-3.5", state === "read" && "text-sky-300")}
+      aria-label={state === "read" ? "Leído" : "Entregado"}
+    />
+  );
+}
+
 export function MessageThread({
   conversation,
   messages,
@@ -260,6 +317,10 @@ export function MessageThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
+  const typingUserIds = useChatTyping(conversation?.id ?? null);
+  const socketRef = useContext(ChatSocketContext);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTypingRef = useRef(false);
 
   // Threads largos (cientos/miles de mensajes) se virtualizan para mantener el
   // scroll fluido; los cortos se quedan con la animación de entrada existente.
@@ -339,6 +400,23 @@ export function MessageThread({
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    // Cambiar de conversación (o desmontar) corta cualquier "escribiendo…"
+    // pendiente de la conversación anterior, para no dejarlo colgado del
+    // lado del otro usuario.
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+      if (isTypingRef.current && conversation) {
+        // Se lee `.current` a propósito en el cleanup: queremos el socket
+        // vigente en ese momento, no uno capturado al montar el efecto.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      }
+      isTypingRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id]);
 
   if (!conversation) {
@@ -348,6 +426,60 @@ export function MessageThread({
       </div>
     );
   }
+
+  const otherMember = members.find((m) => m.id !== currentUserId && !m.isMonitor);
+  const otherIsTyping =
+    conversation.type === "direct" &&
+    otherMember != null &&
+    typingUserIds.includes(otherMember.id);
+
+  // La presencia 1:1 (en línea / última vez / escribiendo) sólo tiene sentido
+  // en conversaciones directas: un canal de área no tiene "un" otro usuario.
+  const presenceLabel = (() => {
+    if (conversation.type !== "direct") return null;
+    if (otherIsTyping) return "escribiendo…";
+    if (!otherMember) return null;
+    if (otherMember.isOnline) return "en línea";
+    if (otherMember.lastSeenAt) {
+      return `última vez ${formatDistanceToNow(new Date(otherMember.lastSeenAt), {
+        addSuffix: true,
+        locale: es,
+      })}`;
+    }
+    return null;
+  })();
+
+  // Corta el timeout de "escribiendo" pendiente y avisa `chatStopTyping` de
+  // una si hacía falta (no reemite si ya se había avisado o nunca se
+  // empezó a escribir).
+  const stopTyping = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (isTypingRef.current && conversation) {
+      socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      isTypingRef.current = false;
+    }
+  };
+
+  // Avisa `chatTyping` la primera vez que el usuario escribe algo (no en
+  // cada tecla) y reinicia el timeout que dispara `chatStopTyping` a los
+  // TYPING_STOP_DELAY_MS ms sin tipear más.
+  const handleComposerChange = (value: string) => {
+    setDraft(value);
+    if (!conversation) return;
+    if (!isTypingRef.current) {
+      socketRef?.current?.emit("chatTyping", { conversationId: conversation.id });
+      isTypingRef.current = true;
+    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socketRef?.current?.emit("chatStopTyping", { conversationId: conversation.id });
+      isTypingRef.current = false;
+      typingTimeoutRef.current = null;
+    }, TYPING_STOP_DELAY_MS);
+  };
 
   const handleSend = async () => {
     const body = draft.trim();
@@ -363,6 +495,9 @@ export function MessageThread({
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
+    // Al enviar, el usuario deja de "estar escribiendo" ya mismo — no hace
+    // falta esperar el timeout de 3s.
+    stopTyping();
     await onSend(body, orderId, attachment);
   };
 
@@ -443,11 +578,17 @@ export function MessageThread({
             ) : null}
             <p
               className={cn(
-                "pt-1 text-[10px]",
+                "flex items-center justify-end gap-1 pt-1 text-[10px]",
                 mine ? "text-primary-foreground/70" : "text-muted-foreground"
               )}
             >
               {formatTime(message.createdAt)}
+              {mine ? (
+                <MessageCheck
+                  state={computeCheckState(message, members, currentUserId)}
+                  messageId={message.id}
+                />
+              ) : null}
             </p>
           </div>
         </div>
@@ -465,6 +606,16 @@ export function MessageThread({
               ? "Canal entre Recepción y el área"
               : "Mensaje directo"}
           </p>
+          {presenceLabel ? (
+            <p
+              className={cn(
+                "truncate text-xs",
+                otherIsTyping ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              {presenceLabel}
+            </p>
+          ) : null}
         </div>
         <Button size="sm" variant="ghost" onClick={() => setShowMembers((v) => !v)}>
           <Users className="mr-1 h-4 w-4" />
@@ -658,7 +809,7 @@ export function MessageThread({
           </Button>
           <Textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => handleComposerChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

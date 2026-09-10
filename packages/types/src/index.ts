@@ -355,11 +355,20 @@ export interface ChatUserSummary {
 /** Usuario elegible para abrir un mensaje directo (GET /chat/users). */
 export interface ChatUserOption extends ChatUserSummary {
   roles: string[];
+  isOnline: boolean;
+  lastSeenAt: string | null;
 }
 
 /** Participante de una conversación; `isMonitor` marca a admin/superuser. */
 export interface ChatMember extends ChatUserSummary {
   isMonitor: boolean;
+  /** Último mensaje leído por este miembro en esta conversación (null = nunca leyó). */
+  lastReadAt: string | null;
+  /** Última vez que el cliente de este miembro confirmó tener la conexión viva. */
+  deliveredAt: string | null;
+  isOnline: boolean;
+  /** Última desconexión del último socket vivo de este usuario (null = nunca se conectó). */
+  lastSeenAt: string | null;
 }
 
 /** Pedido resumido adjunto a un mensaje de chat. */

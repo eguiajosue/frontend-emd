@@ -33,3 +33,9 @@ if (isBrowserLike && !window.ResizeObserver) {
     disconnect() {}
   };
 }
+
+// Tampoco implementa scrollIntoView, que MessageThread usa para bajar al
+// último mensaje tras cada render.
+if (isBrowserLike && !window.Element.prototype.scrollIntoView) {
+  window.Element.prototype.scrollIntoView = vi.fn();
+}
