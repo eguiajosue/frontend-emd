@@ -37,7 +37,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon.svg",
-    apple: "/icons/icon.svg",
+    // iOS Safari usa esto para el ícono de "Agregar a inicio" y no soporta
+    // SVG de forma confiable ahí (a veces muestra un ícono genérico en
+    // blanco) — necesita sí o sí un PNG.
+    apple: "/icons/icon-512.png",
   },
 };
 
