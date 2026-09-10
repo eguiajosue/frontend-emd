@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -762,19 +763,19 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                 )}
               </div>
             </FormSection>
-
-            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
-              <Button type="button" variant="secondary" onClick={handleClose} disabled={submitting} className="w-full sm:w-auto">
-                Cancelar
-              </Button>
-              <motion.div className="w-full sm:w-auto" {...(submitting ? {} : formButtonMotion)}>
-                <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
-                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {submitting ? "Guardando..." : "Crear Pedido"}
-                </Button>
-              </motion.div>
-            </div>
           </div>
+
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={handleClose} disabled={submitting} className="w-full sm:w-auto">
+              Cancelar
+            </Button>
+            <motion.div className="w-full sm:w-auto" {...(submitting ? {} : formButtonMotion)}>
+              <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? "Guardando..." : "Crear Pedido"}
+              </Button>
+            </motion.div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
