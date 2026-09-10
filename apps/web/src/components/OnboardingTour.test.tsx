@@ -50,7 +50,7 @@ describe("OnboardingTour", () => {
             y: 100,
             toJSON: () => ({}),
           }),
-        } as any;
+        } as unknown as Element;
       }
       return originalQuerySelector.call(document, selector);
     });
