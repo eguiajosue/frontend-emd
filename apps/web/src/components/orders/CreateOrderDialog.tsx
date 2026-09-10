@@ -438,7 +438,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     fieldRefs.current.clientId = el;
                   }}
                   tabIndex={-1}
-                  className="flex gap-2 outline-none"
+                  className="flex flex-col gap-2 outline-none sm:flex-row"
                 >
                   <CreatableCombobox
                     className="flex-1"
@@ -471,7 +471,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="shrink-0 gap-1.5"
+                    className="w-full shrink-0 gap-1.5 sm:w-auto"
                     onClick={() => setNewClientOpen(true)}
                     title="Dar de alta un cliente completo (teléfono, email, empresa) sin salir de este formulario"
                   >
@@ -763,12 +763,12 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               </div>
             </FormSection>
 
-            <div className="flex justify-end gap-2 border-t border-border pt-4">
-              <Button type="button" variant="secondary" onClick={handleClose} disabled={submitting}>
+            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+              <Button type="button" variant="secondary" onClick={handleClose} disabled={submitting} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <motion.div {...(submitting ? {} : formButtonMotion)}>
-                <Button onClick={handleSubmit} disabled={submitting}>
+              <motion.div className="w-full sm:w-auto" {...(submitting ? {} : formButtonMotion)}>
+                <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   {submitting ? "Guardando..." : "Crear Pedido"}
                 </Button>

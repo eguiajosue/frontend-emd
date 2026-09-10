@@ -659,7 +659,7 @@ const AdminDashboardPage = () => {
               </h2>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full min-w-0 sm:w-[180px]">
                     <SelectValue placeholder="Filtrar por estado" />
                   </SelectTrigger>
                   <SelectContent>
@@ -672,7 +672,7 @@ const AdminDashboardPage = () => {
                   </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[220px]">
+                  <SelectTrigger className="w-full min-w-0 sm:w-[220px]">
                     <SelectValue placeholder="Ordenar por" />
                   </SelectTrigger>
                   <SelectContent>

@@ -124,7 +124,7 @@ export function ConversationList({
   );
 
   return (
-    <aside className="flex h-full w-full min-w-0 flex-col border-b bg-card/40 md:w-80 md:border-b-0 md:border-r">
+    <aside className="flex max-h-[45vh] w-full min-w-0 flex-col border-b bg-card/40 md:h-full md:max-h-none md:w-80 md:border-b-0 md:border-r">
       <div className="flex items-center justify-between gap-2 border-b p-3.5">
         <h2 className="text-sm font-semibold tracking-tight">Conversaciones</h2>
         <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>

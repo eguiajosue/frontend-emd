@@ -463,7 +463,15 @@ const OrdersPage = () => {
         header: "Cliente",
         cell: ({ row }) => getOrderClientName(row.original),
       },
-      { accessorKey: "description", header: "Descripción" },
+      {
+        accessorKey: "description",
+        header: "Descripción",
+        cell: ({ row }) => (
+          <span className="block max-w-[16rem] truncate" title={row.original.description}>
+            {row.original.description}
+          </span>
+        ),
+      },
       {
         id: "status",
         header: "Estado actual",
