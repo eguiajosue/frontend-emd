@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { useMotionPreset, staggerContainerVariants } from "@/lib/motion";
 import { useDesignRevisions, useDesignRevisionFile } from "@/hooks/useDesignRevisions";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
@@ -530,16 +531,19 @@ function MontageDialog({
               <p className="text-sm text-muted-foreground">
                 Arrastrá una imagen acá, pegala con Ctrl+V, o adjuntala manualmente.
               </p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-1.5"
-              >
-                <Paperclip className="h-4 w-4" />
-                Adjuntar archivo
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-1.5"
+                >
+                  <Paperclip className="h-4 w-4" />
+                  Adjuntar archivo
+                </Button>
+                <CameraCaptureButton onChange={handleInputChange} />
+              </div>
               <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
             </div>
           )}
@@ -654,12 +658,15 @@ function FeedbackDialog({
                 </Button>
               </div>
             ) : (
-              <input
-                type="file"
-                accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
-                onChange={handleFileChange}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="file"
+                  accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
+                  onChange={handleFileChange}
+                  className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                />
+                <CameraCaptureButton onChange={handleFileChange} />
+              </div>
             )}
           </FormField>
         </div>

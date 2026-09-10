@@ -41,6 +41,7 @@ import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import type {
   AuthorizationFileInput,
   Client,
@@ -717,13 +718,16 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
             <FormSection icon={Paperclip} title="Adjuntos" description="Hoja de autorización, opcional">
               <div className="space-y-2">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,application/pdf"
-                  onChange={handleAuthorizationFileChange}
-                  className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,application/pdf"
+                    onChange={handleAuthorizationFileChange}
+                    className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                  />
+                  <CameraCaptureButton onChange={handleAuthorizationFileChange} />
+                </div>
                 <p className="text-xs text-muted-foreground">
                   PNG, JPG o PDF. Máximo 5MB.
                 </p>

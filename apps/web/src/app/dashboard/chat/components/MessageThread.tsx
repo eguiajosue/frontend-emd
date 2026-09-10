@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
+  Camera,
   Eye,
   File as FileIcon,
   FileUp,
@@ -255,6 +256,7 @@ export function MessageThread({
   const [attachedFilePreview, setAttachedFilePreview] = useState<string | null>(null);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { reduced } = useMotionPreset();
@@ -621,6 +623,28 @@ export function MessageThread({
             onChange={handleFileChange}
             className="hidden"
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => {
+              void handleFileChange(e);
+              e.target.value = "";
+            }}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-10 w-10 shrink-0 rounded-full"
+            title="Tomar foto"
+            aria-label="Tomar foto"
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera className="h-4 w-4" />
+          </Button>
           <Button
             type="button"
             size="icon"
