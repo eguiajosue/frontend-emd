@@ -5,13 +5,6 @@ import { motion } from "framer-motion";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { staggerContainerVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { Order } from "@/types";
 
 export interface KanbanColumn {
@@ -120,24 +113,53 @@ export function KanbanBoard({
 
   return (
     <>
-      {/* Móvil: una columna a la vez, elegida con un selector — nada de scroll
-          horizontal por un tablero pensado para escritorio. */}
+      {/* Móvil: una columna a la vez, elegida con pastillas de scroll
+          horizontal — mismo patrón animado que el selector de circuito de
+          "Pedidos" (spring `layoutId` sobre un fondo magenta), en vez de un
+          `<Select>` que exige abrir un menú para ver las otras columnas. */}
       <div className="md:hidden">
-        <Select
-          value={String(activeMobileColumn.statusId)}
-          onValueChange={(v) => setMobileStatusId(Number(v))}
+        <div
+          role="tablist"
+          aria-label="Columna"
+          className="-mx-1 mb-3 flex items-center gap-1 overflow-x-auto rounded-full border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <SelectTrigger className="mb-3">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {columns.map((col) => (
-              <SelectItem key={col.statusId} value={String(col.statusId)}>
-                {col.label} ({col.orders.length})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {columns.map((col) => {
+            const active = col.statusId === activeMobileColumn.statusId;
+            return (
+              <button
+                key={col.statusId}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setMobileStatusId(col.statusId)}
+                className={cn(
+                  "relative flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium transition-colors",
+                  active
+                    ? "text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="kanban-mobile-column-pill"
+                    aria-hidden
+                    className="absolute inset-0 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  />
+                )}
+                <span className="relative">{col.label}</span>
+                <span
+                  className={cn(
+                    "relative text-xs tabular-nums",
+                    active ? "text-primary-foreground/70" : "text-muted-foreground/70"
+                  )}
+                >
+                  {col.orders.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
         {renderCards(activeMobileColumn, false)}
       </div>
 
