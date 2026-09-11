@@ -177,6 +177,15 @@ export interface Order extends BaseEntity {
   authorizationFile?: AuthorizationFile | null;
   /** ISO timestamp de cuándo el pedido pasó a "entregado", o `null` si nunca llegó a ese estado. */
   deliveredAt: string | null;
+  /**
+   * ISO timestamp de cuándo el pedido quedó archivado (lo sella el backend al
+   * autorizarse el montaje), o `null` si sigue activo.
+   *
+   * Archivado significa sólo que sale del tablero ACTIVO de Diseño: el pedido
+   * se sigue viendo en la vista Lista, la búsqueda y el historial, y su trabajo
+   * de producción sigue corriendo normalmente.
+   */
+  archivedAt?: string | null;
 }
 
 export interface OrderHistory extends BaseEntity {
@@ -277,6 +286,26 @@ export interface UpdateOrderPayload {
 export type DesignRevisionFileInput = AuthorizationFileInput;
 
 /**
+ * Metadata de UN archivo de una ronda de diseño. Una hoja de autorización
+ * puede ser varias imágenes o un PDF, así que tanto el montaje como el
+ * feedback son listas. El contenido no viaja acá: se pide aparte con
+ * `GET /orders/:id/design-revisions/:revisionId/files/:fileId`.
+ */
+export interface DesignRevisionFile {
+  id: number;
+  filename: string;
+  mimeType: string;
+}
+
+/** Respuesta de `GET /orders/:id/design-revisions/:revisionId/files/:fileId`. */
+export interface DesignRevisionFileContent {
+  filename: string;
+  mimeType: string;
+  /** `data:<mime>;base64,<data>`, lista para usar en <img src> o como href. */
+  dataUrl: string;
+}
+
+/**
  * Una ronda del flujo de diseño (`GET /orders/:id/design-revisions`).
  * Endpoint nuevo, desplegado en paralelo por el equipo de backend: el shape
  * puede variar levemente hasta que se termine de estabilizar.
@@ -285,14 +314,23 @@ export interface DesignRevision extends BaseEntity {
   orderId: number;
   /** Número de ronda, arranca en 1. */
   round: number;
+  /** Legacy: apunta al PRIMER archivo de `montageFiles`. */
   montageFileName?: string | null;
+  /** Legacy: apunta al PRIMER archivo de `montageFiles`. */
   montageFileMime?: string | null;
+  /** Legacy: `true` si `montageFiles` tiene al menos un archivo. */
   hasMontageFile: boolean;
+  /** Todos los archivos del montaje de esta ronda (1..10). */
+  montageFiles?: DesignRevisionFile[];
   sentAt?: string | null;
   sentByUserId?: number | null;
   feedbackText?: string | null;
+  /** Legacy: apunta al PRIMER archivo de `feedbackFiles`. */
   feedbackFileName?: string | null;
+  /** Legacy: `true` si `feedbackFiles` tiene al menos un archivo. */
   hasFeedbackFile: boolean;
+  /** Todos los adjuntos del feedback de esta ronda (0..10). */
+  feedbackFiles?: DesignRevisionFile[];
   feedbackAt?: string | null;
   feedbackByUserId?: number | null;
   approved: boolean;

@@ -62,6 +62,7 @@ import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { DownloadFileButton } from "@/components/ui/download-file-button";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -463,6 +464,15 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                           </a>
                         </Button>
                       )}
+                      {/* Recepción la baja para mandársela al cliente por
+                          fuera del sistema: abrirla en una pestaña no alcanza. */}
+                      <div className="mt-2">
+                        <DownloadFileButton
+                          href={order.authorizationFile.dataUrl}
+                          filename={order.authorizationFile.filename}
+                          label="Descargar hoja de autorización"
+                        />
+                      </div>
                     </div>
                   )}
 

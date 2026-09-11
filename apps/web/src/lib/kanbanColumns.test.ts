@@ -86,16 +86,28 @@ describe("buildProductionColumns", () => {
 });
 
 describe("buildDesignColumns", () => {
-  it("muestra las 4 etapas del circuito de diseño más 'pendiente', en orden", () => {
+  it("muestra las etapas activas del circuito de diseño, sin 'autorizado'", () => {
+    // Autorizar ARCHIVA el pedido para Diseño: su trabajo terminó, así que no
+    // hay columna "autorizado" en este tablero (sigue visible en la Lista).
     const columns = buildDesignColumns([], STATUSES);
     expect(columns.map((c) => c.label)).toEqual([
       "pendiente",
       "en diseño",
       "esperando autorización",
       "cambios solicitados",
-      "autorizado",
     ]);
-    expect(columns.map((c) => c.statusId)).toEqual([1, 6, 7, 8, 9]);
+    expect(columns.map((c) => c.statusId)).toEqual([1, 6, 7, 8]);
+  });
+
+  it("un pedido autorizado no entra en ninguna columna del tablero de diseño", () => {
+    const order = makeOrder({
+      id: 8,
+      statusId: 9,
+      status: { id: 9, name: "autorizado" } as Status,
+      archivedAt: "2026-01-02T00:00:00.000Z",
+    });
+    const columns = buildDesignColumns([order], STATUSES);
+    expect(columns.every((c) => c.orders.length === 0)).toBe(true);
   });
 
   it("resuelve el id desde los propios pedidos si el catálogo no cargó", () => {
@@ -112,14 +124,15 @@ describe("buildDesignColumns", () => {
 });
 
 describe("splitDesignAndProduction", () => {
-  it("un pedido autorizado cae en los dos circuitos", () => {
+  it("un pedido autorizado sale del tablero de Diseño y queda sólo en producción", () => {
     const order = makeOrder({
       id: 6,
       statusId: 9,
       status: { id: 9, name: "autorizado" } as Status,
+      archivedAt: "2026-01-02T00:00:00.000Z",
     });
     const { design, production } = splitDesignAndProduction([order]);
-    expect(design.map((o) => o.id)).toEqual([6]);
+    expect(design).toHaveLength(0);
     expect(production.map((o) => o.id)).toEqual([6]);
   });
 

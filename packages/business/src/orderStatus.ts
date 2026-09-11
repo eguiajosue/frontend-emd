@@ -145,13 +145,16 @@ export function isOrderInDesignStatus(
  * Columnas fijas del tablero de DISEÑO, en orden de avance. Por NOMBRE, no por
  * id, porque el backend siembra estos estados con ids que varían entre
  * entornos. "pendiente" abre el tablero (el pedido llegó de Recepción y todavía
- * nadie lo tomó) y "autorizado" lo cierra (el cliente aprobó; el trabajo pasa
- * al área de producción).
+ * nadie lo tomó).
+ *
+ * "autorizado" NO es una columna de este tablero: al autorizarse, el pedido se
+ * ARCHIVA para Diseño (el backend sella `Order.archivedAt`) y sale del tablero
+ * activo — su trabajo terminó y el del área de producción recién empieza. El
+ * pedido sigue accesible en la vista Lista, la búsqueda y el historial.
  */
 export const DESIGN_BOARD_STATUS_NAMES: string[] = [
   "pendiente",
   DESIGN_FLOW_STATUS_NAMES.EN_DISENO,
   DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION,
   DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS,
-  DESIGN_FLOW_STATUS_NAMES.AUTORIZADO,
 ];

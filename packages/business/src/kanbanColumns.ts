@@ -134,11 +134,12 @@ export function buildDesignColumns(
 /**
  * Parte los pedidos en los dos circuitos del taller.
  *
- * Un pedido "autorizado" cae en LOS DOS: para Diseño es el cierre de su
- * trabajo (columna "autorizado") y para el área que lo va a producir es el
- * arranque del suyo (columna "pendiente"). Es el paso que pidió el flujo:
- * recepción → diseño → recepción (autorización) → autorizado en Diseño y
- * pendiente en el área.
+ * Un pedido "autorizado" cae SÓLO en producción: al autorizarse se archiva
+ * para Diseño (sale de su tablero activo) y arranca el trabajo del área que lo
+ * produce, en su columna "pendiente". Es el paso que pidió el flujo:
+ * recepción → diseño → recepción (autorización) → archivado en Diseño y
+ * pendiente en el área. El pedido archivado sigue estando en la vista Lista,
+ * la búsqueda y el historial: sólo desaparece del kanban de Diseño.
  */
 export function splitDesignAndProduction(orders: Order[]): {
   design: Order[];
@@ -148,14 +149,15 @@ export function splitDesignAndProduction(orders: Order[]): {
   const production: Order[] = [];
   orders.forEach((order) => {
     const name = order.status?.name;
-    const inDesignFlow = isDesignFlowStatusName(name);
-    if (inDesignFlow) design.push(order);
-    if (
-      !inDesignFlow ||
-      isOrderInDesignStatus(name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO)
-    ) {
-      production.push(order);
+    const isAuthorized = isOrderInDesignStatus(
+      name,
+      DESIGN_FLOW_STATUS_NAMES.AUTORIZADO,
+    );
+    if (isDesignFlowStatusName(name) && !isAuthorized) {
+      design.push(order);
+      return;
     }
+    production.push(order);
   });
   return { design, production };
 }

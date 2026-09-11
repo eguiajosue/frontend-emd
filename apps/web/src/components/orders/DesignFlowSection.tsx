@@ -27,13 +27,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { useMotionPreset, staggerContainerVariants } from "@/lib/motion";
-import { useDesignRevisions, useDesignRevisionFile } from "@/hooks/useDesignRevisions";
+import {
+  useDesignRevisions,
+  useDesignRevisionFile,
+  useDesignRevisionFileContent,
+} from "@/hooks/useDesignRevisions";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { downloadFromUrl } from "@/lib/download";
+import { DownloadFileButton } from "@/components/ui/download-file-button";
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   UPLOAD_FILE_MAX_BYTES,
@@ -43,6 +49,7 @@ import {
 } from "@/lib/fileInput";
 import {
   CheckCircle2,
+  Download,
   FileText,
   Loader2,
   MessagesSquare,
@@ -52,7 +59,8 @@ import {
   X,
   ZoomIn,
 } from "lucide-react";
-import type { Order } from "@/types";
+import type { DesignRevisionFile, Order } from "@/types";
+import type { UploadFileInput } from "@/lib/fileInput";
 import { PreviewImage } from "@/components/ui/preview-image";
 
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -170,7 +178,8 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
             {isSendingMontage ? "Enviando..." : "Enviar montaje a Recepción"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Arrastrá, adjuntá o pegá una imagen (Ctrl+V). PNG, JPG o PDF, máximo 5MB.
+            Arrastrá, adjuntá o pegá imágenes (Ctrl+V). Pueden ser varias. PNG,
+            JPG o PDF, máximo 5MB cada una.
           </p>
         </div>
       )}
@@ -205,8 +214,8 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           open={montageDialogOpen}
           onClose={() => setMontageDialogOpen(false)}
           isSubmitting={isSendingMontage}
-          onSubmit={async (montageFile) => {
-            const result = await sendMontage(montageFile);
+          onSubmit={async (montageFiles) => {
+            const result = await sendMontage(montageFiles);
             if (result !== undefined) setMontageDialogOpen(false);
           }}
         />
@@ -217,11 +226,11 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           open={feedbackOpen}
           onClose={() => setFeedbackOpen(false)}
           isSubmitting={isSubmittingFeedback}
-          onSubmit={async (feedbackText, feedbackFile) => {
+          onSubmit={async (feedbackText, feedbackFiles) => {
             const result = await submitFeedback({
               revisionId: latestRevision.id,
               feedbackText,
-              feedbackFile,
+              feedbackFiles,
             });
             if (result !== undefined) setFeedbackOpen(false);
           }}
@@ -265,12 +274,21 @@ function RevisionTimelineItem({
   onZoom: (src: string) => void;
 }) {
   const { staggerItemVariants } = useMotionPreset();
+  // Una hoja de autorización puede ser VARIAS imágenes o un PDF: el backend
+  // manda todos en `montageFiles`/`feedbackFiles`. Los campos legacy
+  // (`hasMontageFile` y compañía) apuntan al primero y se siguen usando de
+  // fallback mientras un servidor viejo no devuelva las listas.
+  const montageFiles = revision.montageFiles ?? [];
+  const feedbackFiles = revision.feedbackFiles ?? [];
+  const useLegacyMontage = montageFiles.length === 0 && revision.hasMontageFile;
+  const useLegacyFeedbackFile = feedbackFiles.length === 0 && revision.hasFeedbackFile;
+
   const isImageMontage = (revision.montageFileMime ?? "").startsWith("image/");
   const montageQuery = useDesignRevisionFile(
     orderId,
     revision.id,
     "montage",
-    revision.hasMontageFile && isImageMontage
+    useLegacyMontage && isImageMontage
   );
 
   const state: { label: string; classes: string } = revision.approved
@@ -278,6 +296,8 @@ function RevisionTimelineItem({
     : revision.feedbackText
     ? { label: "Con cambios", classes: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300" }
     : { label: "Enviada", classes: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" };
+
+  const legacyMontageName = revision.montageFileName ?? `montaje-ronda-${revision.round}`;
 
   return (
     <motion.li
@@ -295,24 +315,46 @@ function RevisionTimelineItem({
         <p className="text-xs text-muted-foreground">Montaje enviado {formatDateTime(revision.sentAt)}</p>
       )}
 
-      {revision.hasMontageFile &&
+      {montageFiles.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {montageFiles.map((file) => (
+            <RevisionFileCard
+              key={file.id}
+              orderId={orderId}
+              revisionId={revision.id}
+              file={file}
+              onZoom={onZoom}
+            />
+          ))}
+        </div>
+      )}
+
+      {useLegacyMontage &&
         (isImageMontage ? (
           montageQuery.data ? (
-            <button
-              type="button"
-              className="group relative inline-block overflow-hidden rounded-md border"
-              onClick={() => onZoom(montageQuery.data!.url)}
-            >
-              <PreviewImage
-                src={montageQuery.data.url}
-                alt={revision.montageFileName ?? `Montaje ronda ${revision.round}`}
-                loading="lazy"
-                className="max-h-48 max-w-full object-contain"
-              />
-              <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-                <ZoomIn className="h-5 w-5" />
-              </span>
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                className="group relative inline-block overflow-hidden rounded-md border"
+                onClick={() => onZoom(montageQuery.data!.url)}
+              >
+                <PreviewImage
+                  src={montageQuery.data.url}
+                  alt={legacyMontageName}
+                  loading="lazy"
+                  className="max-h-48 max-w-full object-contain"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+                  <ZoomIn className="h-5 w-5" />
+                </span>
+              </button>
+              <div>
+                <DownloadFileButton
+                  href={montageQuery.data.url}
+                  filename={legacyMontageName}
+                />
+              </div>
+            </div>
           ) : (
             <Skeleton className="h-32 w-full max-w-xs" />
           )
@@ -321,6 +363,7 @@ function RevisionTimelineItem({
             orderId={orderId}
             revisionId={revision.id}
             kind="montage"
+            filename={legacyMontageName}
             label={`Ver montaje (${revision.montageFileName ?? "PDF"})`}
           />
         ))}
@@ -332,12 +375,26 @@ function RevisionTimelineItem({
             {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt)}` : ""}
           </p>
           <p className="whitespace-pre-wrap">{revision.feedbackText}</p>
-          {revision.hasFeedbackFile && (
+          {feedbackFiles.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-3">
+              {feedbackFiles.map((file) => (
+                <RevisionFileCard
+                  key={file.id}
+                  orderId={orderId}
+                  revisionId={revision.id}
+                  file={file}
+                  onZoom={onZoom}
+                />
+              ))}
+            </div>
+          )}
+          {useLegacyFeedbackFile && (
             <div className="mt-2">
               <RevisionFileButton
                 orderId={orderId}
                 revisionId={revision.id}
                 kind="feedback-file"
+                filename={revision.feedbackFileName ?? `adjunto-ronda-${revision.round}`}
                 label={`Ver adjunto${revision.feedbackFileName ? ` (${revision.feedbackFileName})` : ""}`}
               />
             </div>
@@ -355,49 +412,248 @@ function RevisionTimelineItem({
   );
 }
 
-/** Botón que trae el archivo (blob URL) recién al hacer click, y lo abre en pestaña nueva. */
+/**
+ * UN archivo de una ronda: las imágenes se muestran (con zoom) y los PDF se
+ * traen recién al pedirlos. En los dos casos se puede DESCARGAR, que es lo que
+ * necesita Recepción para reenviarle el montaje al cliente por fuera del
+ * sistema.
+ */
+function RevisionFileCard({
+  orderId,
+  revisionId,
+  file,
+  onZoom,
+}: {
+  orderId: number;
+  revisionId: number;
+  file: DesignRevisionFile;
+  onZoom: (src: string) => void;
+}) {
+  const isImage = file.mimeType.startsWith("image/");
+  const [requested, setRequested] = useState(false);
+  const query = useDesignRevisionFileContent(
+    orderId,
+    revisionId,
+    file.id,
+    isImage || requested
+  );
+
+  if (isImage) {
+    if (!query.data) return <Skeleton className="h-32 w-32" />;
+    return (
+      <div className="space-y-1.5">
+        <button
+          type="button"
+          className="group relative block overflow-hidden rounded-md border"
+          onClick={() => onZoom(query.data!.dataUrl)}
+        >
+          <PreviewImage
+            src={query.data.dataUrl}
+            alt={file.filename}
+            loading="lazy"
+            className="max-h-48 max-w-full object-contain"
+          />
+          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
+            <ZoomIn className="h-5 w-5" />
+          </span>
+        </button>
+        <DownloadFileButton href={query.data.dataUrl} filename={file.filename} />
+      </div>
+    );
+  }
+
+  if (!query.data) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setRequested(true)}
+        disabled={requested && query.isLoading}
+        className="gap-1.5"
+      >
+        {requested && query.isLoading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <FileText className="h-3.5 w-3.5" />
+        )}
+        {`Ver ${file.filename}`}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="outline" size="sm" asChild>
+        <a href={query.data.dataUrl} target="_blank" rel="noopener noreferrer">
+          <FileText className="mr-2 h-3.5 w-3.5" />
+          {file.filename}
+        </a>
+      </Button>
+      <DownloadFileButton href={query.data.dataUrl} filename={file.filename} />
+    </div>
+  );
+}
+
+/**
+ * Fallback legacy (servidor que todavía no manda `montageFiles`): trae el
+ * archivo como blob URL recién al hacer click. "Ver" lo abre en una pestaña y
+ * "Descargar" lo guarda con su nombre original.
+ */
 function RevisionFileButton({
   orderId,
   revisionId,
   kind,
   label,
+  filename,
 }: {
   orderId: number;
   revisionId: number;
   kind: "montage" | "feedback-file";
   label: string;
+  filename: string;
 }) {
-  const [requested, setRequested] = useState(false);
-  const query = useDesignRevisionFile(orderId, revisionId, kind, requested);
+  // El `seq` hace que dos clicks seguidos en el MISMO botón sigan siendo dos
+  // pedidos distintos (el estado cambia igual aunque la acción se repita).
+  const [action, setAction] = useState<{ kind: "open" | "download"; seq: number } | null>(
+    null
+  );
+  const query = useDesignRevisionFile(orderId, revisionId, kind, action !== null);
 
   useEffect(() => {
-    if (requested && query.data?.url) {
-      window.open(query.data.url, "_blank", "noopener,noreferrer");
+    const url = query.data?.url;
+    if (!action || !url) return;
+    if (action.kind === "open") {
+      window.open(url, "_blank", "noopener,noreferrer");
+    } else {
+      void downloadFromUrl(url, filename).catch(() =>
+        toast.error("No se pudo descargar el archivo.")
+      );
     }
-  }, [requested, query.data]);
+    // Consumida la acción, se limpia para no repetirla en el próximo render.
+    setAction(null);
+  }, [action, query.data, filename]);
+
+  const run = (next: "open" | "download") => {
+    setAction((prev) => ({ kind: next, seq: (prev?.seq ?? 0) + 1 }));
+  };
+
+  const isBusy = action !== null && query.isLoading;
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => setRequested(true)}
-      disabled={requested && query.isLoading}
-      className="gap-1.5"
-    >
-      {requested && query.isLoading ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <FileText className="h-3.5 w-3.5" />
-      )}
-      {label}
-    </Button>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => run("open")}
+        disabled={isBusy}
+        className="gap-1.5"
+      >
+        {isBusy ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <FileText className="h-3.5 w-3.5" />
+        )}
+        {label}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => run("download")}
+        disabled={isBusy}
+        className="gap-1.5"
+      >
+        <Download className="h-3.5 w-3.5" />
+        Descargar
+      </Button>
+    </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 /* Dialog: enviar montaje (Diseño) — drag&drop + botón + pegado (Ctrl+V)      */
 /* -------------------------------------------------------------------------- */
+
+interface StagedFile {
+  input: UploadFileInput;
+  /** Blob URL de vista previa (sólo imágenes); `null` para PDF. */
+  previewUrl: string | null;
+}
+
+const MAX_UPLOAD_FILES = 10;
+
+/**
+ * Valida y lee un `File` del navegador. Devuelve `null` (y avisa con un toast)
+ * si no pasa el tipo o el límite de 5MB por archivo.
+ */
+async function stageFile(file: File, subject: string): Promise<StagedFile | null> {
+  const normalized = await normalizeImageFile(file);
+  if (!normalized || !isAllowedUploadMime(normalized.type)) {
+    toast.error(`${subject} debe ser PNG, JPG o PDF.`);
+    return null;
+  }
+  if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
+    toast.error(`${subject} no puede pesar más de 5MB.`);
+    return null;
+  }
+  try {
+    const input = await readFileAsUploadInput(normalized);
+    return {
+      input,
+      previewUrl: normalized.type.startsWith("image/")
+        ? URL.createObjectURL(normalized)
+        : null,
+    };
+  } catch {
+    toast.error("No se pudo leer el archivo. Intentar de nuevo.");
+    return null;
+  }
+}
+
+/** Lista de archivos ya elegidos, cada uno con su vista previa y su X. */
+function StagedFileList({
+  files,
+  onRemove,
+  disabled,
+}: {
+  files: StagedFile[];
+  onRemove: (index: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <ul className="space-y-2">
+      {files.map((staged, index) => (
+        <li
+          key={`${staged.input.filename}-${index}`}
+          className="flex items-center gap-2 rounded-lg border p-2 text-left text-sm"
+        >
+          {staged.previewUrl ? (
+            <PreviewImage
+              src={staged.previewUrl}
+              alt={staged.input.filename}
+              className="h-12 w-12 shrink-0 rounded object-cover"
+            />
+          ) : (
+            <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+          )}
+          <span className="min-w-0 flex-1 truncate">{staged.input.filename}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            aria-label={`Quitar ${staged.input.filename}`}
+            onClick={() => onRemove(index)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function MontageDialog({
   open,
@@ -407,80 +663,78 @@ function MontageDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (montageFile: import("@/lib/fileInput").UploadFileInput) => Promise<void>;
+  onSubmit: (montageFiles: UploadFileInput[]) => Promise<void>;
   isSubmitting: boolean;
 }) {
   const { formButtonMotion } = useMotionPreset();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<import("@/lib/fileInput").UploadFileInput | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [fileLabel, setFileLabel] = useState<string | null>(null);
+  // Una hoja de autorización puede ser varias imágenes (o un PDF), así que el
+  // montaje es una LISTA: cada archivo elegido se acumula en vez de reemplazar
+  // al anterior.
+  const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   const reset = () => {
-    setFile(null);
-    setPreviewUrl(null);
-    setFileLabel(null);
+    setFiles((prev) => {
+      prev.forEach((staged) => staged.previewUrl && URL.revokeObjectURL(staged.previewUrl));
+      return [];
+    });
     setIsDragging(false);
   };
 
-  const acceptFile = async (f: File) => {
-    const normalized = await normalizeImageFile(f);
-    if (!normalized) {
-      toast.error("El montaje debe ser PNG, JPG o PDF.");
-      return;
+  const acceptFiles = async (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    const room = MAX_UPLOAD_FILES - files.length;
+    if (incoming.length > room) {
+      toast.error(`Se pueden enviar hasta ${MAX_UPLOAD_FILES} archivos por ronda.`);
+      if (room <= 0) return;
     }
-    if (!isAllowedUploadMime(normalized.type)) {
-      toast.error("El montaje debe ser PNG, JPG o PDF.");
-      return;
+    const staged: StagedFile[] = [];
+    for (const file of incoming.slice(0, room)) {
+      const result = await stageFile(file, "El montaje");
+      if (result) staged.push(result);
     }
-    if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
-      toast.error("El montaje no puede pesar más de 5MB.");
-      return;
-    }
-    try {
-      const parsed = await readFileAsUploadInput(normalized);
-      setFile(parsed);
-      setFileLabel(normalized.name);
-      setPreviewUrl(
-        normalized.type.startsWith("image/") ? URL.createObjectURL(normalized) : null
-      );
-    } catch {
-      toast.error("No se pudo leer el archivo. Intentar de nuevo.");
-    }
+    if (staged.length > 0) setFiles((prev) => [...prev, ...staged]);
+  };
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => {
+      const staged = prev[index];
+      if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (f) await acceptFile(f);
+    await acceptFiles(picked);
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
-    const f = e.dataTransfer.files?.[0];
-    if (f) await acceptFile(f);
+    await acceptFiles(Array.from(e.dataTransfer.files ?? []));
   };
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
+    const pasted: File[] = [];
     for (const item of items) {
       if (item.type.startsWith("image/")) {
         const pastedFile = item.getAsFile();
-        if (pastedFile) {
-          e.preventDefault();
-          await acceptFile(pastedFile);
-        }
-        break;
+        if (pastedFile) pasted.push(pastedFile);
       }
     }
+    if (pasted.length === 0) return;
+    e.preventDefault();
+    await acceptFiles(pasted);
   };
 
   const handleSubmit = async () => {
-    if (!file) return;
-    await onSubmit(file);
+    if (files.length === 0) return;
+    await onSubmit(files.map((staged) => staged.input));
     reset();
   };
 
@@ -510,58 +764,58 @@ function MontageDialog({
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
             className="hidden"
             onChange={handleInputChange}
           />
-          {file ? (
-            <div className="space-y-3">
-              {previewUrl ? (
-                <PreviewImage
-                  src={previewUrl}
-                  alt={fileLabel ?? "Montaje"}
-                  className="mx-auto max-h-56 max-w-full rounded-lg border object-contain"
-                />
-              ) : (
-                <div className="flex items-center justify-center gap-2 rounded-lg border p-3 text-sm">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="truncate">{fileLabel}</span>
-                </div>
-              )}
-              <Button type="button" variant="ghost" size="sm" onClick={reset} className="gap-1.5">
-                <X className="h-4 w-4" />
-                Descartar y elegir otro
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3 py-4">
-              <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Arrastrá una imagen acá, pegala con Ctrl+V, o adjuntala manualmente.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="gap-1.5"
-                >
-                  <Paperclip className="h-4 w-4" />
-                  Adjuntar archivo
-                </Button>
-                <CameraCaptureButton onChange={handleInputChange} />
-              </div>
-              <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
-            </div>
+          {files.length > 0 && (
+            <StagedFileList files={files} onRemove={removeFile} disabled={isSubmitting} />
           )}
+          <div className="space-y-3 py-2">
+            {files.length === 0 && (
+              <>
+                <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Arrastrá las imágenes acá, pegalas con Ctrl+V, o adjuntalas
+                  manualmente.
+                </p>
+              </>
+            )}
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-1.5"
+              >
+                <Paperclip className="h-4 w-4" />
+                {files.length === 0 ? "Adjuntar archivos" : "Agregar otro"}
+              </Button>
+              <CameraCaptureButton onChange={handleInputChange} />
+              {files.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={reset} className="gap-1.5">
+                  <X className="h-4 w-4" />
+                  Quitar todos
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno.
+            </p>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={() => (onClose(), reset())} disabled={isSubmitting}>
             Cancelar
           </Button>
           <motion.div {...(isSubmitting ? {} : formButtonMotion)}>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !file} className="gap-1.5">
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || files.length === 0}
+              className="gap-1.5"
+            >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isSubmitting ? "Enviando..." : "Confirmar y enviar"}
             </Button>
@@ -584,47 +838,48 @@ function FeedbackDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (
-    feedbackText: string,
-    feedbackFile?: import("@/lib/fileInput").UploadFileInput
-  ) => Promise<void>;
+  onSubmit: (feedbackText: string, feedbackFiles?: UploadFileInput[]) => Promise<void>;
   isSubmitting: boolean;
 }) {
   const { formButtonMotion } = useMotionPreset();
   const [text, setText] = useState("");
-  const [file, setFile] = useState<import("@/lib/fileInput").UploadFileInput | null>(null);
-  const [fileLabel, setFileLabel] = useState<string | null>(null);
+  // El cliente puede mandar varias fotos marcando qué cambiar, así que el
+  // adjunto del feedback también es una lista (opcional).
+  const [files, setFiles] = useState<StagedFile[]>([]);
   const [error, setError] = useState("");
 
   const reset = () => {
     setText("");
-    setFile(null);
-    setFileLabel(null);
+    setFiles((prev) => {
+      prev.forEach((staged) => staged.previewUrl && URL.revokeObjectURL(staged.previewUrl));
+      return [];
+    });
     setError("");
   };
 
+  const removeFile = (index: number) => {
+    setFiles((prev) => {
+      const staged = prev[index];
+      if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const normalized = await normalizeImageFile(f);
-    if (!normalized) {
-      toast.error("El adjunto debe ser PNG, JPG o PDF.");
-      e.target.value = "";
-      return;
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (picked.length === 0) return;
+    const room = MAX_UPLOAD_FILES - files.length;
+    if (picked.length > room) {
+      toast.error(`Se pueden adjuntar hasta ${MAX_UPLOAD_FILES} archivos.`);
+      if (room <= 0) return;
     }
-    if (!isAllowedUploadMime(normalized.type)) {
-      toast.error("El adjunto debe ser PNG, JPG o PDF.");
-      e.target.value = "";
-      return;
+    const staged: StagedFile[] = [];
+    for (const file of picked.slice(0, room)) {
+      const result = await stageFile(file, "El adjunto");
+      if (result) staged.push(result);
     }
-    if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
-      toast.error("El adjunto no puede pesar más de 5MB.");
-      e.target.value = "";
-      return;
-    }
-    const parsed = await readFileAsUploadInput(normalized);
-    setFile(parsed);
-    setFileLabel(normalized.name);
+    if (staged.length > 0) setFiles((prev) => [...prev, ...staged]);
   };
 
   const handleSubmit = async () => {
@@ -633,7 +888,10 @@ function FeedbackDialog({
       return;
     }
     setError("");
-    await onSubmit(text.trim(), file ?? undefined);
+    await onSubmit(
+      text.trim(),
+      files.length > 0 ? files.map((staged) => staged.input) : undefined
+    );
     reset();
   };
 
@@ -653,35 +911,25 @@ function FeedbackDialog({
               className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
             />
           </FormField>
-          <FormField label="Adjunto (opcional)">
-            {file ? (
-              <div className="flex items-center gap-2 rounded-lg border p-2 text-sm">
-                <Paperclip className="h-4 w-4 text-muted-foreground" />
-                <span className="min-w-0 flex-1 truncate">{fileLabel}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Quitar archivo"
-                  onClick={() => {
-                    setFile(null);
-                    setFileLabel(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
+          <FormField label="Adjuntos (opcional)">
+            <div className="space-y-2">
+              {files.length > 0 && (
+                <StagedFileList files={files} onRemove={removeFile} disabled={isSubmitting} />
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="file"
+                  multiple
                   accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
                   onChange={handleFileChange}
                   className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
                 />
                 <CameraCaptureButton onChange={handleFileChange} />
               </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno.
+              </p>
+            </div>
           </FormField>
         </div>
         <DialogFooter>

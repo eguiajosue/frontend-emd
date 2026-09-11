@@ -20,7 +20,11 @@ import { authFetch, authHeaders } from "@/lib/authFetch";
 import { apiUrl } from "@/lib/config";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
-import type { DesignRevision, DesignRevisionFileInput } from "@/types";
+import type {
+  DesignRevision,
+  DesignRevisionFileContent,
+  DesignRevisionFileInput,
+} from "@/types";
 
 function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
@@ -75,11 +79,14 @@ export function useDesignRevisions(orderId: number | null) {
   }, [queryClient, orderId]);
 
   const sendMontageMutation = useMutation({
-    mutationFn: (montageFile: DesignRevisionFileInput) =>
+    // Una hoja de autorización puede ser varias imágenes o un PDF: el montaje
+    // viaja siempre como lista (`montageFiles`, 1..10). El campo legacy
+    // `montageFile` lo sigue aceptando el backend, pero ya no se manda.
+    mutationFn: (montageFiles: DesignRevisionFileInput[]) =>
       request<DesignRevision>(designRevisionsPath(orderId as number), {
         method: "POST",
         token,
-        body: { montageFile },
+        body: { montageFiles },
       }),
     onSuccess: () => {
       invalidate();
@@ -92,15 +99,15 @@ export function useDesignRevisions(orderId: number | null) {
     mutationFn: ({
       revisionId,
       feedbackText,
-      feedbackFile,
+      feedbackFiles,
     }: {
       revisionId: number;
       feedbackText: string;
-      feedbackFile?: DesignRevisionFileInput;
+      feedbackFiles?: DesignRevisionFileInput[];
     }) =>
       request<DesignRevision>(
         `${designRevisionsPath(orderId as number)}/${revisionId}/feedback`,
-        { method: "PATCH", token, body: { feedbackText, feedbackFile } }
+        { method: "PATCH", token, body: { feedbackText, feedbackFiles } }
       ),
     onSuccess: () => {
       invalidate();
@@ -133,14 +140,14 @@ export function useDesignRevisions(orderId: number | null) {
     isLoading: query.isLoading,
     isUnavailable: isNotFound(query.error),
 
-    sendMontage: (montageFile: DesignRevisionFileInput) =>
-      sendMontageMutation.mutateAsync(montageFile).catch(() => undefined),
+    sendMontage: (montageFiles: DesignRevisionFileInput[]) =>
+      sendMontageMutation.mutateAsync(montageFiles).catch(() => undefined),
     isSendingMontage: sendMontageMutation.isPending,
 
     submitFeedback: (args: {
       revisionId: number;
       feedbackText: string;
-      feedbackFile?: DesignRevisionFileInput;
+      feedbackFiles?: DesignRevisionFileInput[];
     }) => feedbackMutation.mutateAsync(args).catch(() => undefined),
     isSubmittingFeedback: feedbackMutation.isPending,
 
@@ -182,5 +189,35 @@ export function useDesignRevisionFile(
       const blob = await res.blob();
       return { url: URL.createObjectURL(blob), mime: blob.type };
     },
+  });
+}
+
+/**
+ * UN archivo concreto de una ronda
+ * (`GET /orders/:id/design-revisions/:revisionId/files/:fileId`), con el
+ * contenido ya en `dataUrl` — sirve tanto de `src` de un `<img>` como de
+ * `href` de un `<a download>`, así que la descarga individual no necesita
+ * blobs ni `window.open`.
+ */
+export function useDesignRevisionFileContent(
+  orderId: number | null,
+  revisionId: number | null,
+  fileId: number | null,
+  enabled: boolean
+) {
+  const token = useAuthToken();
+  const active =
+    enabled && Boolean(token) && orderId !== null && revisionId !== null && fileId !== null;
+
+  return useQuery<DesignRevisionFileContent>({
+    queryKey: ["designRevisionFileContent", orderId, revisionId, fileId],
+    enabled: active,
+    staleTime: Infinity,
+    gcTime: 15 * 60 * 1000,
+    queryFn: () =>
+      request<DesignRevisionFileContent>(
+        `${designRevisionsPath(orderId as number)}/${revisionId}/files/${fileId}`,
+        { token }
+      ),
   });
 }

@@ -28,6 +28,9 @@ import { useEntityMutations } from "@/hooks/useEntity";
 import { useMoveOrderStatus, useOrder, useOrderHistory } from "@/hooks/useOrders";
 import type { UpdateOrderPayload } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { DownloadFileButton } from "@/components/ui/download-file-button";
+import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
+import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 
 const OrderDetailPage = () => {
@@ -223,6 +226,13 @@ const OrderDetailPage = () => {
                     </a>
                   </Button>
                 )}
+                {/* Recepción la baja para mandársela al cliente por fuera del
+                    sistema: abrirla en una pestaña no alcanza. */}
+                <DownloadFileButton
+                  href={order.authorizationFile.dataUrl}
+                  filename={order.authorizationFile.filename}
+                  label="Descargar hoja de autorización"
+                />
               </div>
             )}
           </CardContent>
@@ -239,6 +249,15 @@ const OrderDetailPage = () => {
               isChanging={isChangingStatus}
               onChange={handleStatusChange}
             />
+
+            {/* El link directo a /dashboard/orders/[id] tiene que servir para
+                TRABAJAR el pedido, igual que el diálogo de detalle: subir
+                montaje, autorizar y tomar la tarea del área. */}
+            <DesignFlowSection order={order} />
+
+            {/* Único lugar donde se decide a qué áreas va el pedido; después
+                muestra el avance de cada una. */}
+            <AreaTasksSection order={order} />
 
             {canSeeHistory && (
               <div className="pt-4">
