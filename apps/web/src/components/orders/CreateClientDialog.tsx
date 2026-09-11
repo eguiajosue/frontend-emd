@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -31,22 +31,36 @@ interface CreateClientDialogProps {
   onClose: () => void;
   /** Se llama con el cliente recién creado, para auto-seleccionarlo en el formulario de pedido. */
   onCreated: (client: Client) => void;
+  /** Precarga el nombre si el usuario ya lo había escrito en el combobox de cliente. */
+  initialFirstName?: string;
 }
 
 /**
  * Alta rápida de cliente sin salir del formulario de pedido. Sólo pide
  * `first_name` (único campo obligatorio en el backend); el resto es opcional.
  */
-export function CreateClientDialog({ open, onClose, onCreated }: CreateClientDialogProps) {
+export function CreateClientDialog({
+  open,
+  onClose,
+  onCreated,
+  initialFirstName = "",
+}: CreateClientDialogProps) {
   const { create } = useEntityMutations<Client, CreateClientPayload>("clients");
   const { formButtonMotion } = useMotionPreset();
-  const [firstName, setFirstName] = useState("");
+  const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // El diálogo queda montado entre aperturas (lo controla `open`): sin esto,
+  // reabrirlo con un `initialFirstName` distinto (ej. otro pedido) no se
+  // reflejaría porque el `useState` sólo toma el valor inicial una vez.
+  useEffect(() => {
+    if (open) setFirstName(initialFirstName);
+  }, [open, initialFirstName]);
 
   const validate = (values: { first_name: string; last_name: string; phone: string; email: string }) => {
     const parsed = quickClientSchema.safeParse(values);

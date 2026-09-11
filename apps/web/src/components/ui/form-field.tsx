@@ -82,6 +82,8 @@ export function FormField({
         {error ? (
           <motion.p
             key="error"
+            id={htmlFor ? `${htmlFor}-error` : undefined}
+            role="alert"
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -4 }}

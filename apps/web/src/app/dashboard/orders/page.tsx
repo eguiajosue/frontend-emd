@@ -48,7 +48,7 @@ import {
   EMPTY_ORDERS_FILTERS,
   type OrdersFilters,
 } from "@/components/orders/OrdersFilterBar";
-import type { Client, Order, Status, User } from "@/types";
+import type { Client, Order, OrderProductPreset, Status, User } from "@/types";
 import {
   ChevronDown,
   ExternalLink,
@@ -152,6 +152,10 @@ const OrdersPage = () => {
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
+  // Precargado acá (igual que clients/users) para que los chips "Frecuentes"
+  // del paso Productos del wizard no arranquen fríos la primera vez que se
+  // abre en la sesión.
+  useEntityList<OrderProductPreset>("orderProductPresets");
   // Catálogo de estados: el tablero de Diseño resuelve sus columnas por nombre
   // contra esto, porque sus ids los siembra el backend y cambian por entorno.
   const { data: statuses } = useEntityList<Status>("statuses");
@@ -161,6 +165,12 @@ const OrdersPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // Precarga del cliente al reabrir el wizard desde "Crear otro pedido para
+  // {cliente}" en el toast de éxito (ver CreateOrderDialog).
+  const [createPrefillClient, setCreatePrefillClient] = useState<{
+    id?: number;
+    label: string;
+  } | null>(null);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -878,8 +888,17 @@ const OrdersPage = () => {
       <OrderDetailDialog orderId={openOrderId} onClose={closeDetail} />
       <CreateOrderDialog
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => {
+          setCreateOpen(false);
+          setCreatePrefillClient(null);
+        }}
         onCreated={(order) => openDetail(order.id)}
+        initialClientId={createPrefillClient?.id}
+        initialClientNameOverride={createPrefillClient?.id ? undefined : createPrefillClient?.label}
+        onCreateAnother={(clientId, clientNameOverride) => {
+          setCreatePrefillClient({ id: clientId, label: clientNameOverride });
+          setCreateOpen(true);
+        }}
       />
     </div>
   );

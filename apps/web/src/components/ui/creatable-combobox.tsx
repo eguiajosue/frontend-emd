@@ -33,6 +33,13 @@ interface CreatableComboboxProps {
   emptyLabel?: string;
   className?: string;
   disabled?: boolean;
+  /** Asociación con un `<label htmlFor>` externo (ej. `FormField`). */
+  id?: string;
+  required?: boolean;
+  /** Presente cuando el campo tiene un error de validación — refleja `aria-invalid`. */
+  invalid?: boolean;
+  /** id del mensaje de error asociado, para `aria-describedby`. */
+  describedBy?: string;
 }
 
 /**
@@ -52,6 +59,10 @@ export function CreatableCombobox({
   emptyLabel = "No se encontraron resultados.",
   className,
   disabled,
+  id,
+  required,
+  invalid,
+  describedBy,
 }: CreatableComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -77,13 +88,17 @@ export function CreatableCombobox({
     >
       <PopoverTrigger asChild>
         <Button
+          id={id}
           type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-required={required}
+          aria-invalid={invalid}
+          aria-describedby={describedBy}
           disabled={disabled}
           className={cn(
-            "h-9 w-full justify-between font-normal",
+            "h-11 w-full justify-between font-normal sm:h-9",
             !displayValue && "text-muted-foreground",
             className
           )}
