@@ -27,6 +27,19 @@ import { getAssignedUserName, getUserName } from "@/lib/format";
 import type { Order } from "@/types";
 
 /**
+ * A propósito NO se usa `canManageOperations` (= admin o recepción): ese
+ * permiso sirve para reasignar pedidos a OTRA persona, pero "atender" es
+ * tomar el pedido para trabajarlo uno mismo. Admin genera pedidos, no los
+ * trabaja — el backend rechaza a admin puro con 403
+ * (`@Auth(RECEPCION, SUPERUSER)` en `take-reception`); mostrarle el botón
+ * sería ofrecer una acción que sólo puede fallar. El único rol que hace de
+ * todo, incluido tomar, es superuser.
+ */
+function canTakeReceptionRole(roles: string[]): boolean {
+  return roles.includes("recepcion") || roles.includes("superuser");
+}
+
+/**
  * Destinatario efectivo de las notificaciones del pedido: quien lo atiende si
  * alguien lo tomó, y si no, quien lo creó.
  */
@@ -36,7 +49,7 @@ function effectiveReceptionUserId(order: Order): number | null {
 
 export function OrderAttendance({ order }: { order: Order }) {
   const { data: session } = useSession();
-  const { canManageOperations } = usePermissions();
+  const { roles } = usePermissions();
   const { takeReception, isTakingReception } = useTakeOrderReception();
 
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
@@ -50,7 +63,8 @@ export function OrderAttendance({ order }: { order: Order }) {
 
   const responsibleId = effectiveReceptionUserId(order);
   const isMine = currentUserId !== null && currentUserId === responsibleId;
-  const canTake = canManageOperations && currentUserId !== null && !isMine;
+  const canTake =
+    canTakeReceptionRole(roles) && currentUserId !== null && !isMine;
 
   return (
     <div className="grid gap-1">

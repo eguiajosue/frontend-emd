@@ -125,17 +125,18 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
    * Si ya lo tiene una persona real, el botón no aparece (y el backend igual
    * responde 400, cuyo mensaje se muestra tal cual).
    *
-   * `roles.includes("diseno")` y no `canDesign`: tomar el pedido es
-   * asignárselo, y el backend exige que quien lo toma pertenezca al área
-   * Diseño. A un admin que NO es diseñador el endpoint le responde 400 aunque
-   * la ruta lo deje pasar — sería un botón que sólo puede fallar (mismo
+   * `roles.includes("diseno") || roles.includes("superuser")`, NO `canDesign`
+   * (que también deja pasar a admin): tomar el pedido es asignárselo, y el
+   * backend exige pertenecer al área Diseño — salvo superuser, el único rol
+   * que hace de todo. A un admin puro el endpoint le responde 403 aunque la
+   * ruta lo dejara pasar — sería un botón que sólo puede fallar (mismo
    * criterio que "Tomar" en `AreaTasksSection`).
    */
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
   const isInSharedPool =
     order.assignedUserId == null || order.assignedUser?.isSharedAccount === true;
   const canTakeDesign =
-    roles.includes("diseno") &&
+    (roles.includes("diseno") || roles.includes("superuser")) &&
     currentUserId !== null &&
     isInSharedPool &&
     order.assignedUserId !== currentUserId;
