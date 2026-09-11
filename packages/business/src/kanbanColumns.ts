@@ -134,12 +134,20 @@ export function buildDesignColumns(
 /**
  * Parte los pedidos en los dos circuitos del taller.
  *
- * Un pedido "autorizado" cae SÓLO en producción: al autorizarse se archiva
- * para Diseño (sale de su tablero activo) y arranca el trabajo del área que lo
- * produce, en su columna "pendiente". Es el paso que pidió el flujo:
- * recepción → diseño → recepción (autorización) → archivado en Diseño y
- * pendiente en el área. El pedido archivado sigue estando en la vista Lista,
- * la búsqueda y el historial: sólo desaparece del kanban de Diseño.
+ * Va al tablero de DISEÑO un pedido que sigue siendo trabajo vivo de Diseño:
+ * cualquiera de los 4 estados del circuito, más un pedido con
+ * `requiresDesign` todavía en "pendiente" (recién creado por Recepción y
+ * todavía sin tomar). Ese último caso faltaba: el pedido le aparecía a
+ * producción y a un diseñador puro no le aparecía en NINGÚN tablero, o sea
+ * que el pedido recién asignado le era invisible.
+ *
+ * Sale del tablero de Diseño un pedido ARCHIVADO (`archivedAt`, que el
+ * backend sella al autorizarse y limpia al reabrir la ronda) o "autorizado":
+ * su trabajo de diseño terminó y arranca el del área que lo produce, en su
+ * columna "pendiente". Las dos reglas son coherentes entre sí — se leen las
+ * dos para no depender de que el backend haya sellado/limpiado el campo. El
+ * pedido archivado sigue estando en la vista Lista, la búsqueda y el
+ * historial: sólo desaparece del kanban de Diseño.
  */
 export function splitDesignAndProduction(orders: Order[]): {
   design: Order[];
@@ -149,11 +157,20 @@ export function splitDesignAndProduction(orders: Order[]): {
   const production: Order[] = [];
   orders.forEach((order) => {
     const name = order.status?.name;
+    const isArchived = order.archivedAt != null;
     const isAuthorized = isOrderInDesignStatus(
       name,
       DESIGN_FLOW_STATUS_NAMES.AUTORIZADO,
     );
-    if (isDesignFlowStatusName(name) && !isAuthorized) {
+    // Un pedido con diseño todavía sin tomar: el backend lo deja en
+    // "pendiente" hasta que Diseño arranca.
+    const effectiveName = (name ?? statusMap[order.statusId] ?? "").toLowerCase();
+    const isUntakenDesign = order.requiresDesign === true && effectiveName === "pendiente";
+    if (
+      !isArchived &&
+      !isAuthorized &&
+      (isDesignFlowStatusName(name) || isUntakenDesign)
+    ) {
       design.push(order);
       return;
     }

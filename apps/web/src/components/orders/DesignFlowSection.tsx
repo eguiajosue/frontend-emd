@@ -55,6 +55,7 @@ import {
   MessagesSquare,
   Palette,
   Paperclip,
+  RotateCcw,
   Upload,
   X,
   ZoomIn,
@@ -81,7 +82,7 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
     isSubmittingFeedback,
     approveRevision,
     isApproving,
-  } = useDesignRevisions(order.id);
+  } = useDesignRevisions(order.id, { enabled: order.requiresDesign });
   // A qué áreas va el pedido: las tareas de área son la fuente de verdad
   // (misma queryKey que "Áreas de producción", que vive en el mismo detalle,
   // así que React Query dedupe). Antes esto se preguntaba TRES veces en la
@@ -149,11 +150,14 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           animate="show"
         >
           <AnimatePresence initial={false}>
-            {revisions.map((revision) => (
+            {revisions.map((revision, index) => (
               <RevisionTimelineItem
                 key={revision.id}
                 orderId={order.id}
                 revision={revision}
+                // Sólo la ronda vigente (la última) trae sus imágenes sola:
+                // las viejas se bajan al verse o al pedirlas.
+                isCurrentRound={index === revisions.length - 1}
                 onZoom={setLightboxSrc}
               />
             ))}
@@ -179,7 +183,7 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           </Button>
           <p className="text-xs text-muted-foreground">
             Arrastrá, adjuntá o pegá imágenes (Ctrl+V). Pueden ser varias. PNG,
-            JPG o PDF, máximo 5MB cada una.
+            JPG o PDF, máximo 5MB cada una y 7MB en total.
           </p>
         </div>
       )}
@@ -215,8 +219,9 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           onClose={() => setMontageDialogOpen(false)}
           isSubmitting={isSendingMontage}
           onSubmit={async (montageFiles) => {
-            const result = await sendMontage(montageFiles);
-            if (result !== undefined) setMontageDialogOpen(false);
+            const ok = await sendMontage(montageFiles);
+            if (ok) setMontageDialogOpen(false);
+            return ok;
           }}
         />
       )}
@@ -227,12 +232,13 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           onClose={() => setFeedbackOpen(false)}
           isSubmitting={isSubmittingFeedback}
           onSubmit={async (feedbackText, feedbackFiles) => {
-            const result = await submitFeedback({
+            const ok = await submitFeedback({
               revisionId: latestRevision.id,
               feedbackText,
               feedbackFiles,
             });
-            if (result !== undefined) setFeedbackOpen(false);
+            if (ok) setFeedbackOpen(false);
+            return ok;
           }}
         />
       )}
@@ -244,11 +250,12 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           isSubmitting={isApproving}
           plannedAreas={plannedAreas}
           onSubmit={async (productionArea) => {
-            const result = await approveRevision({
+            const ok = await approveRevision({
               revisionId: latestRevision.id,
               productionArea,
             });
-            if (result !== undefined) setApproveOpen(false);
+            if (ok) setApproveOpen(false);
+            return ok;
           }}
         />
       )}
@@ -267,10 +274,13 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
 function RevisionTimelineItem({
   orderId,
   revision,
+  isCurrentRound,
   onZoom,
 }: {
   orderId: number;
   revision: import("@/types").DesignRevision;
+  /** La ronda vigente precarga sus imágenes; las anteriores, bajo demanda. */
+  isCurrentRound: boolean;
   onZoom: (src: string) => void;
 }) {
   const { staggerItemVariants } = useMotionPreset();
@@ -323,6 +333,7 @@ function RevisionTimelineItem({
               orderId={orderId}
               revisionId={revision.id}
               file={file}
+              eager={isCurrentRound}
               onZoom={onZoom}
             />
           ))}
@@ -383,6 +394,7 @@ function RevisionTimelineItem({
                   orderId={orderId}
                   revisionId={revision.id}
                   file={file}
+                  eager={isCurrentRound}
                   onZoom={onZoom}
                 />
               ))}
@@ -422,24 +434,101 @@ function RevisionFileCard({
   orderId,
   revisionId,
   file,
+  eager,
   onZoom,
 }: {
   orderId: number;
   revisionId: number;
   file: DesignRevisionFile;
+  /** Ronda vigente: sus imágenes se traen sin esperar a que se vean. */
+  eager: boolean;
   onZoom: (src: string) => void;
 }) {
   const isImage = file.mimeType.startsWith("image/");
   const [requested, setRequested] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const placeholderRef = useRef<HTMLDivElement>(null);
+
+  // Antes TODAS las imágenes de TODAS las rondas se bajaban en base64 apenas
+  // se abría el detalle (3 rondas x 5 imágenes = 15 GETs de data URLs). Ahora
+  // sólo la ronda vigente precarga; las anteriores esperan a entrar en
+  // pantalla (o a que se las pida a mano).
+  const shouldLoadImage = eager || isVisible || requested;
+
+  useEffect(() => {
+    if (!isImage || shouldLoadImage) return;
+    const node = placeholderRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isImage, shouldLoadImage]);
+
   const query = useDesignRevisionFileContent(
     orderId,
     revisionId,
     file.id,
-    isImage || requested
+    isImage ? shouldLoadImage : requested
+  );
+
+  /** Un error de descarga no puede dejar el skeleton girando para siempre. */
+  const retry = (
+    <div className="flex w-32 flex-col items-start gap-1.5 rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+      <span className="truncate" title={file.filename}>
+        No se pudo cargar {file.filename}.
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => void query.refetch()}
+        disabled={query.isFetching}
+        className="gap-1.5"
+      >
+        {query.isFetching ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <RotateCcw className="h-3.5 w-3.5" />
+        )}
+        Reintentar
+      </Button>
+    </div>
   );
 
   if (isImage) {
-    if (!query.data) return <Skeleton className="h-32 w-32" />;
+    if (query.isError) return retry;
+    if (!query.data) {
+      return (
+        <div ref={placeholderRef}>
+          {shouldLoadImage ? (
+            <Skeleton className="h-32 w-32" />
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setRequested(true)}
+              className="h-32 w-32 flex-col gap-1.5 text-xs"
+            >
+              <ZoomIn className="h-4 w-4" />
+              Ver imagen
+            </Button>
+          )}
+        </div>
+      );
+    }
     return (
       <div className="space-y-1.5">
         <button
@@ -461,6 +550,8 @@ function RevisionFileCard({
       </div>
     );
   }
+
+  if (query.isError) return retry;
 
   if (!query.data) {
     return (
@@ -585,6 +676,33 @@ interface StagedFile {
 const MAX_UPLOAD_FILES = 10;
 
 /**
+ * Tope REAL del total de una ronda. El body-parser de Express corta en 10mb y
+ * el JSON viaja en base64 (~+34% sobre los bytes del archivo), así que más de
+ * ~7MB de archivos devuelve un 413 con HTML — no el `{message}` de Nest —, y
+ * el usuario veía el toast genérico "No se pudo completar la acción" DESPUÉS
+ * de haber perdido los archivos. Se corta acá, antes de mandar.
+ */
+const MAX_UPLOAD_TOTAL_BYTES = 7 * 1024 * 1024;
+
+const MAX_UPLOAD_TOTAL_LABEL = "7MB";
+
+/** Bytes reales que representa un base64 ya leído (sin el prefijo `data:`). */
+function uploadInputBytes(input: UploadFileInput): number {
+  return Math.floor(input.data.length * 0.75);
+}
+
+function stagedTotalBytes(files: StagedFile[]): number {
+  return files.reduce((total, staged) => total + uploadInputBytes(staged.input), 0);
+}
+
+/** Revoca las vistas previas de una lista de archivos ya descartados. */
+function revokePreviews(files: StagedFile[]) {
+  files.forEach((staged) => {
+    if (staged.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+  });
+}
+
+/**
  * Valida y lee un `File` del navegador. Devuelve `null` (y avisa con un toast)
  * si no pasa el tipo o el límite de 5MB por archivo.
  */
@@ -610,6 +728,41 @@ async function stageFile(file: File, subject: string): Promise<StagedFile | null
     toast.error("No se pudo leer el archivo. Intentar de nuevo.");
     return null;
   }
+}
+
+/**
+ * Lee los archivos entrantes respetando el tope por archivo (5MB), la cantidad
+ * máxima por ronda y el TOTAL acumulado (7MB reales). Los que no entran no se
+ * agregan y se avisa con un toast claro.
+ */
+async function stageIncomingFiles(
+  incoming: File[],
+  current: StagedFile[],
+  subject: string,
+  tooManyMessage: string
+): Promise<StagedFile[]> {
+  const room = MAX_UPLOAD_FILES - current.length;
+  if (incoming.length > room) {
+    toast.error(tooManyMessage);
+    if (room <= 0) return [];
+  }
+  const staged: StagedFile[] = [];
+  let total = stagedTotalBytes(current);
+  for (const file of incoming.slice(0, Math.max(room, 0))) {
+    const result = await stageFile(file, subject);
+    if (!result) continue;
+    const size = uploadInputBytes(result.input);
+    if (total + size > MAX_UPLOAD_TOTAL_BYTES) {
+      if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
+      toast.error(
+        `No entra: entre todos los archivos no se pueden superar los ${MAX_UPLOAD_TOTAL_LABEL}. Quitá alguno o mandalos en dos rondas.`
+      );
+      break;
+    }
+    total += size;
+    staged.push(result);
+  }
+  return staged;
 }
 
 /** Lista de archivos ya elegidos, cada uno con su vista previa y su X. */
@@ -663,7 +816,8 @@ function MontageDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (montageFiles: UploadFileInput[]) => Promise<void>;
+  /** Devuelve `true` si el envío salió bien (recién ahí se limpia el diálogo). */
+  onSubmit: (montageFiles: UploadFileInput[]) => Promise<boolean>;
   isSubmitting: boolean;
 }) {
   const { formButtonMotion } = useMotionPreset();
@@ -674,35 +828,29 @@ function MontageDialog({
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Revocar FUERA del updater: en StrictMode el updater corre dos veces y la
+  // segunda revocaría una URL ya revocada (o una todavía en uso).
   const reset = () => {
-    setFiles((prev) => {
-      prev.forEach((staged) => staged.previewUrl && URL.revokeObjectURL(staged.previewUrl));
-      return [];
-    });
+    revokePreviews(files);
+    setFiles([]);
     setIsDragging(false);
   };
 
   const acceptFiles = async (incoming: File[]) => {
     if (incoming.length === 0) return;
-    const room = MAX_UPLOAD_FILES - files.length;
-    if (incoming.length > room) {
-      toast.error(`Se pueden enviar hasta ${MAX_UPLOAD_FILES} archivos por ronda.`);
-      if (room <= 0) return;
-    }
-    const staged: StagedFile[] = [];
-    for (const file of incoming.slice(0, room)) {
-      const result = await stageFile(file, "El montaje");
-      if (result) staged.push(result);
-    }
+    const staged = await stageIncomingFiles(
+      incoming,
+      files,
+      "El montaje",
+      `Se pueden enviar hasta ${MAX_UPLOAD_FILES} archivos por ronda.`
+    );
     if (staged.length > 0) setFiles((prev) => [...prev, ...staged]);
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const staged = prev[index];
-      if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
-      return prev.filter((_, i) => i !== index);
-    });
+    const staged = files[index];
+    if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -734,8 +882,10 @@ function MontageDialog({
 
   const handleSubmit = async () => {
     if (files.length === 0) return;
-    await onSubmit(files.map((staged) => staged.input));
-    reset();
+    // Sólo se limpia si el envío salió bien: si falla, los archivos siguen
+    // cargados y se puede reintentar sin volver a elegirlos.
+    const ok = await onSubmit(files.map((staged) => staged.input));
+    if (ok) reset();
   };
 
   return (
@@ -802,7 +952,8 @@ function MontageDialog({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno.
+              PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno
+              y {MAX_UPLOAD_TOTAL_LABEL} en total.
             </p>
           </div>
         </div>
@@ -838,7 +989,11 @@ function FeedbackDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (feedbackText: string, feedbackFiles?: UploadFileInput[]) => Promise<void>;
+  /** Devuelve `true` si el envío salió bien (recién ahí se limpia el diálogo). */
+  onSubmit: (
+    feedbackText: string,
+    feedbackFiles?: UploadFileInput[]
+  ) => Promise<boolean>;
   isSubmitting: boolean;
 }) {
   const { formButtonMotion } = useMotionPreset();
@@ -848,37 +1003,30 @@ function FeedbackDialog({
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [error, setError] = useState("");
 
+  // Revocar FUERA del updater (StrictMode lo corre dos veces).
   const reset = () => {
     setText("");
-    setFiles((prev) => {
-      prev.forEach((staged) => staged.previewUrl && URL.revokeObjectURL(staged.previewUrl));
-      return [];
-    });
+    revokePreviews(files);
+    setFiles([]);
     setError("");
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => {
-      const staged = prev[index];
-      if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
-      return prev.filter((_, i) => i !== index);
-    });
+    const staged = files[index];
+    if (staged?.previewUrl) URL.revokeObjectURL(staged.previewUrl);
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (picked.length === 0) return;
-    const room = MAX_UPLOAD_FILES - files.length;
-    if (picked.length > room) {
-      toast.error(`Se pueden adjuntar hasta ${MAX_UPLOAD_FILES} archivos.`);
-      if (room <= 0) return;
-    }
-    const staged: StagedFile[] = [];
-    for (const file of picked.slice(0, room)) {
-      const result = await stageFile(file, "El adjunto");
-      if (result) staged.push(result);
-    }
+    const staged = await stageIncomingFiles(
+      picked,
+      files,
+      "El adjunto",
+      `Se pueden adjuntar hasta ${MAX_UPLOAD_FILES} archivos.`
+    );
     if (staged.length > 0) setFiles((prev) => [...prev, ...staged]);
   };
 
@@ -888,11 +1036,13 @@ function FeedbackDialog({
       return;
     }
     setError("");
-    await onSubmit(
+    // Si la mutación falla, el texto tipeado y los adjuntos siguen ahí: antes
+    // se perdían los párrafos de cambios que acababa de escribir Recepción.
+    const ok = await onSubmit(
       text.trim(),
       files.length > 0 ? files.map((staged) => staged.input) : undefined
     );
-    reset();
+    if (ok) reset();
   };
 
   return (
@@ -927,7 +1077,8 @@ function FeedbackDialog({
                 <CameraCaptureButton onChange={handleFileChange} />
               </div>
               <p className="text-xs text-muted-foreground">
-                PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno.
+                PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno
+                y {MAX_UPLOAD_TOTAL_LABEL} en total.
               </p>
             </div>
           </FormField>
@@ -961,7 +1112,7 @@ function ApproveDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (productionArea?: string) => Promise<void>;
+  onSubmit: (productionArea?: string) => Promise<boolean>;
   isSubmitting: boolean;
   /** Áreas ya definidas en "Áreas de producción". Vacío = falta elegirla acá. */
   plannedAreas: string[];
@@ -978,8 +1129,8 @@ function ApproveDialog({
       return;
     }
     setError("");
-    await onSubmit(productionArea || undefined);
-    setProductionArea("");
+    const ok = await onSubmit(productionArea || undefined);
+    if (ok) setProductionArea("");
   };
 
   return (

@@ -12,8 +12,13 @@
  * absorbe acá y la UI muestra el empty state en vez de romper.
  */
 
-import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, request } from "@/lib/api";
 import { authFetch, authHeaders } from "@/lib/authFetch";
@@ -48,10 +53,16 @@ function designRevisionsPath(orderId: number) {
  * más las 3 mutations del flujo. Invalida revisiones + pedido (detalle y
  * lista) tras cada acción, así el estado/área del pedido se refresca solo.
  */
-export function useDesignRevisions(orderId: number | null) {
+export function useDesignRevisions(
+  orderId: number | null,
+  options: { enabled?: boolean } = {},
+) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
-  const enabled = Boolean(token) && orderId !== null;
+  // `options.enabled` deja apagar el flujo entero para un pedido que NO
+  // requiere diseño: el panel no se renderiza, así que pedir las rondas era
+  // un GET al pepe por cada pedido abierto.
+  const enabled = (options.enabled ?? true) && Boolean(token) && orderId !== null;
 
   const query = useQuery<DesignRevision[]>({
     queryKey: ["designRevisions", orderId],
@@ -140,19 +151,30 @@ export function useDesignRevisions(orderId: number | null) {
     isLoading: query.isLoading,
     isUnavailable: isNotFound(query.error),
 
+    /** `true` si la mutación salió bien; `false` si falló (ya avisada con un toast). */
     sendMontage: (montageFiles: DesignRevisionFileInput[]) =>
-      sendMontageMutation.mutateAsync(montageFiles).catch(() => undefined),
+      sendMontageMutation
+        .mutateAsync(montageFiles)
+        .then(() => true)
+        .catch(() => false),
     isSendingMontage: sendMontageMutation.isPending,
 
     submitFeedback: (args: {
       revisionId: number;
       feedbackText: string;
       feedbackFiles?: DesignRevisionFileInput[];
-    }) => feedbackMutation.mutateAsync(args).catch(() => undefined),
+    }) =>
+      feedbackMutation
+        .mutateAsync(args)
+        .then(() => true)
+        .catch(() => false),
     isSubmittingFeedback: feedbackMutation.isPending,
 
     approveRevision: (args: { revisionId: number; productionArea?: string }) =>
-      approveMutation.mutateAsync(args).catch(() => undefined),
+      approveMutation
+        .mutateAsync(args)
+        .then(() => true)
+        .catch(() => false),
     isApproving: approveMutation.isPending,
   };
 }
@@ -164,6 +186,32 @@ export function useDesignRevisions(orderId: number | null) {
  * no se puede linkear directo). `enabled=false` mientras no haga falta
  * (ej. antes de expandir la ronda) para no traer archivos de más.
  */
+const DESIGN_REVISION_FILE_KEY = "designRevisionFile";
+
+/** Clientes ya suscritos, para no encadenar un listener por componente montado. */
+const revokeSubscribedClients = new WeakSet<QueryClient>();
+
+/**
+ * Las blob URLs que crea `useDesignRevisionFile` viven mientras la entrada
+ * siga en la caché de React Query; cuando la caché la tira (gcTime) nadie las
+ * revocaba y el documento se quedaba con el blob entero en memoria. Una única
+ * suscripción por `QueryClient` las revoca al removerse.
+ */
+function useRevokeBlobUrlOnCacheRemoval() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (revokeSubscribedClients.has(queryClient)) return;
+    revokeSubscribedClients.add(queryClient);
+    queryClient.getQueryCache().subscribe((event) => {
+      if (event.type !== "removed") return;
+      const key = event.query.queryKey;
+      if (!Array.isArray(key) || key[0] !== DESIGN_REVISION_FILE_KEY) return;
+      const data = event.query.state.data as { url?: string } | null | undefined;
+      if (data?.url?.startsWith("blob:")) URL.revokeObjectURL(data.url);
+    });
+  }, [queryClient]);
+}
+
 export function useDesignRevisionFile(
   orderId: number | null,
   revisionId: number | null,
@@ -171,10 +219,11 @@ export function useDesignRevisionFile(
   enabled: boolean
 ) {
   const token = useAuthToken();
+  useRevokeBlobUrlOnCacheRemoval();
   const active = enabled && Boolean(token) && orderId !== null && revisionId !== null;
 
   return useQuery<{ url: string; mime: string } | null>({
-    queryKey: ["designRevisionFile", orderId, revisionId, kind],
+    queryKey: [DESIGN_REVISION_FILE_KEY, orderId, revisionId, kind],
     enabled: active,
     staleTime: Infinity,
     gcTime: 15 * 60 * 1000,

@@ -38,6 +38,12 @@ interface AssignedOrderNotificationPayload {
   area?: string;
   deliveryDate?: string;
   clientName?: string;
+  /**
+   * Motivo del aviso. El backend reusa este evento para el montaje enviado, y
+   * sin esto los dos se titulaban "Nuevo pedido asignado", que es falso para
+   * el segundo. Ausente (backend viejo) = pedido asignado.
+   */
+  reason?: "order_assigned" | "design_montage_sent";
 }
 
 /** Duración (ms) del toast destacado de pedido asignado/nuevo para el área. */
@@ -158,7 +164,11 @@ export function useSocket() {
 
     const handleAssignedOrder = (order: AssignedOrderNotificationPayload) => {
       invalidateOrders();
-      showHighlightedOrderToast(`Nuevo pedido asignado: #${order.orderId}`, {
+      const title =
+        order.reason === "design_montage_sent"
+          ? `Hoja de autorización lista: pedido #${order.orderId}`
+          : `Nuevo pedido asignado: #${order.orderId}`;
+      showHighlightedOrderToast(title, {
         description: order.description,
         area: order.area,
         clientName: order.clientName,

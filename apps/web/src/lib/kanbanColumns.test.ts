@@ -136,6 +136,74 @@ describe("splitDesignAndProduction", () => {
     expect(production.map((o) => o.id)).toEqual([6]);
   });
 
+  it("un pedido archivado sale del tablero de Diseño aunque el estado siga siendo del circuito", () => {
+    // `archivedAt` es criterio propio: el backend lo sella al autorizar y lo
+    // limpia al reabrir la ronda.
+    const order = makeOrder({
+      id: 9,
+      statusId: 7,
+      status: { id: 7, name: "esperando autorización" } as Status,
+      archivedAt: "2026-01-02T00:00:00.000Z",
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design).toHaveLength(0);
+    expect(production.map((o) => o.id)).toEqual([9]);
+  });
+
+  it("un pedido autorizado sin archivedAt igual sale del tablero de Diseño", () => {
+    const order = makeOrder({
+      id: 10,
+      statusId: 9,
+      status: { id: 9, name: "autorizado" } as Status,
+      archivedAt: null,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design).toHaveLength(0);
+    expect(production.map((o) => o.id)).toEqual([10]);
+  });
+
+  it("una ronda reabierta (archivedAt limpio) vuelve al tablero de Diseño", () => {
+    const order = makeOrder({
+      id: 11,
+      statusId: 8,
+      status: { id: 8, name: "cambios solicitados" } as Status,
+      archivedAt: null,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design.map((o) => o.id)).toEqual([11]);
+    expect(production).toHaveLength(0);
+  });
+
+  it("un pedido con requiresDesign en 'pendiente' va a Diseño, no a producción", () => {
+    // Regresión: un pedido recién creado y asignado a un diseñador puro no
+    // aparecía en NINGÚN tablero.
+    const order = makeOrder({
+      id: 12,
+      statusId: 1,
+      requiresDesign: true,
+      status: { id: 1, name: "pendiente" } as Status,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design.map((o) => o.id)).toEqual([12]);
+    expect(production).toHaveLength(0);
+    // Y cae en la columna "pendiente" del tablero de Diseño.
+    const columns = buildDesignColumns(design, STATUSES);
+    expect(columns[0].label).toBe("pendiente");
+    expect(columns[0].orders.map((o) => o.id)).toEqual([12]);
+  });
+
+  it("un pedido SIN requiresDesign en 'pendiente' sigue yendo a producción", () => {
+    const order = makeOrder({
+      id: 13,
+      statusId: 1,
+      requiresDesign: false,
+      status: { id: 1, name: "pendiente" } as Status,
+    });
+    const { design, production } = splitDesignAndProduction([order]);
+    expect(design).toHaveLength(0);
+    expect(production.map((o) => o.id)).toEqual([13]);
+  });
+
   it("un pedido en diseño NO llega a producción", () => {
     const order = makeOrder({
       id: 7,
