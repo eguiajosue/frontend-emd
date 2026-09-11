@@ -119,10 +119,10 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
                   </span>
                 );
               })}
-              {order.hasAuthorizationFile && (
+              {order.hasClientResourceFile && (
                 <span
                   className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                  title="Tiene hoja de autorización adjunta"
+                  title="Tiene archivos del cliente adjuntos"
                 >
                   <Paperclip className="h-3 w-3" aria-hidden />
                   Adjunto

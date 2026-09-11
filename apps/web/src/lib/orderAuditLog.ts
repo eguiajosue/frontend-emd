@@ -65,6 +65,12 @@ const FIELDS: Record<string, FieldMeta> = {
     setPhrase: (value) => `asignó el pedido a ${value}`,
     unsetPhrase: () => "quitó la asignación del pedido",
   },
+  attendedByUserId: {
+    label: "quién atiende el pedido",
+    kind: "user",
+    setPhrase: (value) => `dejó el pedido a cargo de ${value}`,
+    unsetPhrase: () => "dejó el pedido a cargo de quien lo creó",
+  },
   requiresDesign: { label: "si el pedido requiere diseño", kind: "boolean" },
   clientId: { label: "el cliente", kind: "client" },
   clientNameOverride: { label: "el nombre del cliente", kind: "text" },
@@ -212,6 +218,9 @@ export function auditAbsoluteTime(value: string): string {
 const ACTION_PHRASES: Record<string, string> = {
   created: "creó el pedido",
   create: "creó el pedido",
+  // Tomas explícitas: el diff crudo (ids de usuario) no dice nada, la frase sí.
+  reception_taken: "pasó a atender el pedido",
+  design_taken: "tomó el pedido",
   design_montage_sent: "envió un montaje para autorización",
   design_feedback_added: "cargó el comentario del cliente sobre el montaje",
   design_approved: "registró la autorización del diseño",

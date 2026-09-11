@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiError, request, type Paginated } from "@/lib/api";
+import { ApiError, getErrorMessage, request, type Paginated } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
@@ -238,6 +238,80 @@ export function useMoveOrderStatus(actor: MoveActor) {
   );
 
   return { move, canMove, isMoving: mutation.isPending };
+}
+
+/**
+ * "Atender" un pedido ajeno desde Recepción (`POST /orders/:id/take-reception`).
+ *
+ * Las notificaciones del circuito van a UNA persona, no al rol: la que creó el
+ * pedido. Si está de franco, el pedido se traba porque nadie más se entera.
+ * Con esto otra recepcionista pasa a ser la destinataria efectiva
+ * (`attendedByUserId ?? userId`) sin borrar quién lo creó, que no cambia nunca.
+ *
+ * Idempotente en el backend: volver a tocarlo estando ya a cargo no rompe.
+ */
+export function useTakeOrderReception() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (orderId: number) =>
+      request<Order>(`${ENDPOINTS.orders}/${orderId}/take-reception`, {
+        method: "POST",
+        token,
+      }),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      toast.success(`Atendés el pedido #${order.id}: las notificaciones te llegan a vos.`);
+    },
+    // El backend explica el rechazo en español (rol sin permiso, pedido
+    // inexistente): mostrar SU mensaje, no uno genérico.
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
+    },
+  });
+
+  return {
+    takeReception: (orderId: number) =>
+      mutation.mutateAsync(orderId).then(() => true).catch(() => false),
+    isTakingReception: mutation.isPending,
+  };
+}
+
+/**
+ * "Tomar pedido" desde Diseño (`POST /orders/:id/take-design`).
+ *
+ * Cuando Recepción elige "Cualquier diseñador" el pedido queda a nombre de la
+ * cuenta compartida del área; esto lo pasa a nombre de quien lo toma. Es
+ * EXPLÍCITO a pedido del dueño: abrir el pedido no se lo adjudica a nadie.
+ *
+ * El backend responde 400 si ya lo tiene otra persona real — ese mensaje se
+ * muestra tal cual, que es el dato útil ("lo tiene Fulano").
+ */
+export function useTakeOrderDesign() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (orderId: number) =>
+      request<Order>(`${ENDPOINTS.orders}/${orderId}/take-design`, {
+        method: "POST",
+        token,
+      }),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      toast.success(`Tomaste el pedido #${order.id}`);
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
+    },
+  });
+
+  return {
+    takeDesign: (orderId: number) =>
+      mutation.mutateAsync(orderId).then(() => true).catch(() => false),
+    isTakingDesign: mutation.isPending,
+  };
 }
 
 /**

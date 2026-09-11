@@ -9,7 +9,8 @@ interface ImageLightboxProps {
 }
 
 /**
- * Lightbox simple para ampliar la hoja de autorización cuando es una imagen.
+ * Lightbox simple para ampliar un adjunto del pedido cuando es una imagen
+ * (los archivos del cliente del alta y el montaje de cada ronda de diseño).
  * Se carga con next/dynamic (ver OrderDetailDialog) porque sólo hace falta
  * cuando el usuario hace click para ampliar.
  */

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -33,6 +34,7 @@ import {
   useDesignRevisionFileContent,
 } from "@/hooks/useDesignRevisions";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { useTakeOrderDesign } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
@@ -57,6 +59,7 @@ import {
   Paperclip,
   RotateCcw,
   Upload,
+  UserRound,
   X,
   ZoomIn,
 } from "lucide-react";
@@ -72,6 +75,8 @@ interface DesignFlowSectionProps {
 
 export function DesignFlowSection({ order }: DesignFlowSectionProps) {
   const { roles, isAdmin } = usePermissions();
+  const { data: session } = useSession();
+  const { takeDesign, isTakingDesign } = useTakeOrderDesign();
   const {
     revisions,
     isLoading,
@@ -110,6 +115,30 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
   const latestRevision = revisions[revisions.length - 1] ?? null;
   /** Áreas ya planificadas: si las hay, autorizar no vuelve a preguntarlas. */
   const plannedAreas = areaTasks.map((task) => task.area);
+
+  /**
+   * "Tomar pedido": cuando Recepción eligió "Cualquier diseñador", el pedido
+   * queda a nombre de la cuenta compartida del área (o sin nadie) y no es de
+   * ningún diseñador en particular. El dueño lo quiere EXPLÍCITO: abrir el
+   * pedido no se lo adjudica a nadie, hay que apretar el botón.
+   *
+   * Si ya lo tiene una persona real, el botón no aparece (y el backend igual
+   * responde 400, cuyo mensaje se muestra tal cual).
+   *
+   * `roles.includes("diseno")` y no `canDesign`: tomar el pedido es
+   * asignárselo, y el backend exige que quien lo toma pertenezca al área
+   * Diseño. A un admin que NO es diseñador el endpoint le responde 400 aunque
+   * la ruta lo deje pasar — sería un botón que sólo puede fallar (mismo
+   * criterio que "Tomar" en `AreaTasksSection`).
+   */
+  const currentUserId = session?.user?.id ? Number(session.user.id) : null;
+  const isInSharedPool =
+    order.assignedUserId == null || order.assignedUser?.isSharedAccount === true;
+  const canTakeDesign =
+    roles.includes("diseno") &&
+    currentUserId !== null &&
+    isInSharedPool &&
+    order.assignedUserId !== currentUserId;
 
   return (
     <div className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
@@ -163,6 +192,29 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
             ))}
           </AnimatePresence>
         </motion.ol>
+      )}
+
+      {canTakeDesign && (
+        <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void takeDesign(order.id)}
+            disabled={isTakingDesign}
+            className="gap-1.5"
+          >
+            {isTakingDesign ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <UserRound className="h-4 w-4" />
+            )}
+            {isTakingDesign ? "Tomando..." : "Tomar pedido"}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Está a nombre del área, no de una persona. Tomalo para que quede a
+            tu nombre.
+          </p>
+        </div>
       )}
 
       {/* Acciones contextuales por rol + estado */}

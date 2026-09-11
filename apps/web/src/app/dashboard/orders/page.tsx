@@ -145,7 +145,7 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  *  - roles operativos (dtf/bordado/diseno/laser/taller/impresiones) ven sólo
  *    los pedidos en su(s) etapa(s) (misma lógica que tenía "Estatus de Pedidos").
  * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
- * cambio de estado, hoja de autorización) es la misma pantalla para todos.
+ * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();

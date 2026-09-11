@@ -20,7 +20,6 @@ import {
   getAssignedUserName,
   getOrderClientName,
   getOrderProductName,
-  getUserName,
 } from "@/lib/format";
 import { FileText, UserRound } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -30,6 +29,7 @@ import type { UpdateOrderPayload } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
+import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 
@@ -155,9 +155,9 @@ const OrderDetailPage = () => {
             <p>
               <b>Cliente:</b> {getOrderClientName(order)}
             </p>
-            <p>
-              <b>Creado por:</b> {getUserName(order.user)}
-            </p>
+            {/* Quién lo creó y, si lo tomó otra recepcionista, quién lo
+                atiende hoy (más el botón para tomarlo). */}
+            <OrderAttendance order={order} />
             <p>
               <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
             </p>
@@ -204,34 +204,38 @@ const OrderDetailPage = () => {
               </Button>
             )}
 
-            {order.authorizationFile && (
+            {/* Lo que mandó el CLIENTE al dar de alta el pedido (logo,
+                referencias) para que Diseño pueda trabajar. No confundir con la
+                hoja de autorización, que es el montaje de Diseño y vive en
+                "Proceso de diseño". */}
+            {order.clientResourceFile && (
               <div className="space-y-2 pt-2">
-                <Label>Hoja de Autorización</Label>
-                {order.authorizationFile.mimeType.startsWith("image/") ? (
+                <Label>Archivos del cliente</Label>
+                {order.clientResourceFile.mimeType.startsWith("image/") ? (
                   <PreviewImage
-                    src={order.authorizationFile.dataUrl}
-                    alt={order.authorizationFile.filename}
+                    src={order.clientResourceFile.dataUrl}
+                    alt={order.clientResourceFile.filename}
                     loading="lazy"
                     className="max-h-64 max-w-full rounded-md border object-contain"
                   />
                 ) : (
                   <Button variant="outline" size="sm" asChild>
                     <a
-                      href={order.authorizationFile.dataUrl}
+                      href={order.clientResourceFile.dataUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <FileText className="mr-2 h-4 w-4" />
-                      Ver hoja de autorización (PDF)
+                      Ver archivo del cliente (PDF)
                     </a>
                   </Button>
                 )}
-                {/* Recepción la baja para mandársela al cliente por fuera del
-                    sistema: abrirla en una pestaña no alcanza. */}
+                {/* Diseño lo baja para trabajar el montaje con el material
+                    original: abrirlo en una pestaña no alcanza. */}
                 <DownloadFileButton
-                  href={order.authorizationFile.dataUrl}
-                  filename={order.authorizationFile.filename}
-                  label="Descargar hoja de autorización"
+                  href={order.clientResourceFile.dataUrl}
+                  filename={order.clientResourceFile.filename}
+                  label="Descargar archivo del cliente"
                 />
               </div>
             )}
