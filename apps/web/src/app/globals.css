@@ -217,13 +217,22 @@
     overflow-x: hidden;
     /*
      * Detalles que separan una web de una app instalada en el teléfono: sin
-     * flash gris al tocar, sin rubber-band que descubre el chrome del
-     * navegador, y sin que el texto se reescale al girar el dispositivo.
+     * flash gris al tocar, sin que el texto se reescale al girar el
+     * dispositivo, y sin que un scroll que llega al final "chainee" al
+     * pull-to-refresh del navegador (rubber-band que descubre su chrome).
+     *
+     * `contain`, no `none`: `none` bloquea también el propio scroll en
+     * algunos Chrome de escritorio cuando `html` Y `body` declaran overflow
+     * explícito a la vez (como acá, por el overflow-x de arriba) — dejaba
+     * la app entera sin scroll vertical con mouse/trackpad. `contain` evita
+     * el chaining al navegador sin ese efecto secundario, y es el mismo
+     * valor que ya usan los scrolleables locales (`overscroll-contain` en
+     * `dialog.tsx`/`CreateOrderDialog.tsx`).
      */
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: contain;
   }
   body {
     @apply bg-background text-foreground;
