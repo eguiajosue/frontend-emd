@@ -217,13 +217,23 @@
     overflow-x: hidden;
     /*
      * Detalles que separan una web de una app instalada en el teléfono: sin
-     * flash gris al tocar, sin rubber-band que descubre el chrome del
-     * navegador, y sin que el texto se reescale al girar el dispositivo.
+     * flash gris al tocar, y sin que el texto se reescale al girar el
+     * dispositivo.
      */
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overscroll-behavior-y: none;
+    /*
+     * `auto` (el valor inicial), NO `none` ni `contain`: confirmado en vivo
+     * con el dueño, toggleando la propiedad en DevTools sobre el sitio
+     * publicado — `none` y `contain` cortan la rueda del mouse y
+     * Home/End/PageUp/PageDown en TODA la app en desktop; solo `auto`
+     * scrollea. El motivo original de `none` (evitar el rubber-band que
+     * descubre el chrome del navegador al instalar la app en el teléfono,
+     * PR #15) se pierde con este cambio — es un costo cosmético en mobile,
+     * aceptado a cambio de que el desktop scrollee.
+     */
+    overscroll-behavior-y: auto;
   }
   body {
     @apply bg-background text-foreground;
