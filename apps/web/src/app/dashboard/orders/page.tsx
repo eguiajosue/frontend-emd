@@ -145,7 +145,7 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  *  - roles operativos (dtf/bordado/diseno/laser/taller/impresiones) ven sólo
  *    los pedidos en su(s) etapa(s) (misma lógica que tenía "Estatus de Pedidos").
  * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
- * cambio de estado, hoja de autorización) es la misma pantalla para todos.
+ * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();
@@ -539,8 +539,9 @@ const OrdersPage = () => {
 
   // Tableros de la vista cuadrícula. Diseño y producción son DOS circuitos con
   // etapas distintas, así que son dos tableros con sus propias columnas fijas.
-  // Un pedido "autorizado" aparece en los dos: cierra el trabajo de Diseño y
-  // abre el del área que lo produce.
+  // Un pedido "autorizado" queda archivado para Diseño (sale de su tablero) y
+  // arranca el trabajo del área que lo produce. Archivar es sólo eso: el pedido
+  // se sigue viendo en esta misma pantalla en vista Lista y en la búsqueda.
   const { designBoard, productionBoard } = useMemo(() => {
     const { design, production } = splitDesignAndProduction(visibleOrders);
     return {
@@ -584,8 +585,8 @@ const OrdersPage = () => {
   // Si un pedido en diseño llegó igual (ej. rol mixto mal configurado), el
   // tablero se muestra antes que esconder trabajo. El de producción, en cambio,
   // se muestra sólo a quien produce: desde que un pedido queda "autorizado"
-  // aparece también en producción, y a un diseñador puro eso le agregaría un
-  // tablero entero que no es suyo.
+  // pasa a producción, y a un diseñador puro eso le agregaría un tablero entero
+  // que no es suyo.
   const showDesignBoard = worksInDesign || designBoard.orders.length > 0;
   const showProductionBoard = worksInProduction;
   const showBothBoards = showDesignBoard && showProductionBoard;

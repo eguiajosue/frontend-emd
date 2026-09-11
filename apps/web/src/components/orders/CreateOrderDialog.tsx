@@ -47,7 +47,7 @@ import { cn } from "@/lib/utils";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import type {
-  AuthorizationFileInput,
+  UploadedFileInput,
   Client,
   CreateOrderPayload,
   Order,
@@ -188,8 +188,8 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [authorizationFile, setAuthorizationFile] = useState<AuthorizationFileInput | null>(null);
-  const [authorizationFilePreview, setAuthorizationFilePreview] = useState<string | null>(null);
+  const [clientResourceFile, setClientResourceFile] = useState<UploadedFileInput | null>(null);
+  const [clientResourceFilePreview, setClientResourceFilePreview] = useState<string | null>(null);
   const [newClientOpen, setNewClientOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
@@ -216,9 +216,9 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setRows([{}]);
     setErrors({});
     setSubmitError(null);
-    if (authorizationFilePreview) URL.revokeObjectURL(authorizationFilePreview);
-    setAuthorizationFile(null);
-    setAuthorizationFilePreview(null);
+    if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
+    setClientResourceFile(null);
+    setClientResourceFilePreview(null);
   };
 
   const handleClose = () => {
@@ -227,7 +227,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     onClose();
   };
 
-  const handleAuthorizationFileChange = async (
+  const handleClientResourceFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
@@ -235,20 +235,20 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
     const normalized = await normalizeImageFile(file);
     if (!normalized || !isAllowedUploadMime(normalized.type)) {
-      toast.error("La hoja de autorización debe ser PNG, JPG o PDF.");
+      toast.error("Los archivos del cliente deben ser PNG, JPG o PDF.");
       e.target.value = "";
       return;
     }
     if (normalized.size > UPLOAD_FILE_MAX_BYTES) {
-      toast.error("La hoja de autorización no puede pesar más de 5MB.");
+      toast.error("Cada archivo del cliente puede pesar hasta 5MB.");
       e.target.value = "";
       return;
     }
 
     try {
       const parsedFile = await readFileAsUploadInput(normalized);
-      setAuthorizationFile(parsedFile);
-      setAuthorizationFilePreview(
+      setClientResourceFile(parsedFile);
+      setClientResourceFilePreview(
         normalized.type.startsWith("image/") ? URL.createObjectURL(normalized) : null
       );
     } catch {
@@ -258,10 +258,10 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     }
   };
 
-  const removeAuthorizationFile = () => {
-    if (authorizationFilePreview) URL.revokeObjectURL(authorizationFilePreview);
-    setAuthorizationFile(null);
-    setAuthorizationFilePreview(null);
+  const removeClientResourceFile = () => {
+    if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
+    setClientResourceFile(null);
+    setClientResourceFilePreview(null);
   };
 
   const addRow = () => setRows((prev) => [...prev, {}]);
@@ -487,7 +487,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         description: parsed.data.description,
         deliveryDate: combineDateAndTime(parsed.data.deliveryDate, deliveryTime),
         orderProducts: parsed.data.orderProducts,
-        authorizationFile: authorizationFile ?? undefined,
+        clientResourceFile: clientResourceFile ?? undefined,
       });
       toast.success(orderCreatedMessage());
       resetForm();
@@ -1046,32 +1046,37 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-sm font-medium">Hoja de autorización (opcional)</p>
+                      <p className="text-sm font-medium">Archivos del cliente (opcional)</p>
+                      <p className="text-xs text-muted-foreground">
+                        Los recursos que mandó el cliente para poder hacer el
+                        diseño (logo, referencias). No es la hoja de
+                        autorización: esa la arma Diseño más adelante.
+                      </p>
                       <div className="flex flex-wrap items-center gap-2">
                         <input
                           ref={fileInputRef}
                           type="file"
                           accept="image/png,image/jpeg,application/pdf"
-                          onChange={handleAuthorizationFileChange}
+                          onChange={handleClientResourceFileChange}
                           className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
                         />
-                        <CameraCaptureButton onChange={handleAuthorizationFileChange} />
+                        <CameraCaptureButton onChange={handleClientResourceFileChange} />
                       </div>
                       <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
 
-                      {authorizationFile && (
+                      {clientResourceFile && (
                         <div className="flex items-center gap-3 rounded-lg border p-2">
-                          {authorizationFilePreview ? (
+                          {clientResourceFilePreview ? (
                             <PreviewImage
-                              src={authorizationFilePreview}
-                              alt={authorizationFile.filename}
+                              src={clientResourceFilePreview}
+                              alt={clientResourceFile.filename}
                               className="h-14 w-14 rounded object-cover"
                             />
                           ) : (
                             <FileText className="h-8 w-8 text-muted-foreground" />
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{authorizationFile.filename}</p>
+                            <p className="truncate text-sm font-medium">{clientResourceFile.filename}</p>
                             <p className="flex items-center gap-1 text-xs text-muted-foreground">
                               <Paperclip className="h-3 w-3" /> Listo para enviar
                             </p>
@@ -1080,7 +1085,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={removeAuthorizationFile}
+                            onClick={removeClientResourceFile}
                             aria-label="Quitar archivo"
                           >
                             <X className="h-4 w-4" />

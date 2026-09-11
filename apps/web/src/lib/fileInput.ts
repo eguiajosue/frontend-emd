@@ -1,8 +1,9 @@
 /**
  * Lectura de un `File` del navegador a `{ data, filename, mimeType }` (base64
  * sin el prefijo `data:...;base64,`), con las mismas reglas (tipo/tamaño) que
- * usa la hoja de autorización (`CreateOrderDialog`) — reutilizado acá por el
- * flujo de diseño (montaje / adjunto de feedback), mismo límite del backend.
+ * usan los archivos del cliente del alta (`CreateOrderDialog`) — reutilizado
+ * acá por el flujo de diseño (montaje / adjunto de feedback), mismo límite del
+ * backend.
  */
 
 export const UPLOAD_FILE_MAX_BYTES = 5 * 1024 * 1024; // 5MB

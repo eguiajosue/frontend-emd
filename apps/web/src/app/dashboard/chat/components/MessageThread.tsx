@@ -50,7 +50,7 @@ import type {
   Order,
 } from "@/types";
 
-// Mismo criterio que la hoja de autorización de pedidos
+// Mismo criterio que los archivos del cliente de un pedido
 // (`CreateOrderDialog`), adaptado a un límite algo más generoso porque acá
 // también se admiten audios y documentos, no sólo imágenes/PDF chicos.
 const CHAT_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB

@@ -23,6 +23,7 @@ import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { OrderHandoff } from "@/components/orders/OrderHandoff";
+import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import {
   combineDateAndTime,
   formatDateTime,
@@ -30,7 +31,6 @@ import {
   getAssignedUserName,
   getOrderClientName,
   getOrderProductName,
-  getUserName,
 } from "@/lib/format";
 import {
   useOrderHistory,
@@ -62,6 +62,7 @@ import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { DownloadFileButton } from "@/components/ui/download-file-button";
 
 // Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
@@ -273,9 +274,9 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     <p>
                       <b>Cliente:</b> {getOrderClientName(order)}
                     </p>
-                    <p>
-                      <b>Creado por:</b> {getUserName(order.user)}
-                    </p>
+                    {/* Quién lo creó y, si lo tomó otra recepcionista, quién
+                        lo atiende hoy (más el botón para tomarlo). */}
+                    <OrderAttendance order={order} />
                     <p>
                       <b>Fecha de creación:</b> {formatDateTime(order.creationDate)}
                     </p>
@@ -430,20 +431,24 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     </div>
                   )}
 
-                  {order.authorizationFile && (
+                  {/* Lo que mandó el CLIENTE al dar de alta el pedido (logo,
+                      referencias) para que Diseño pueda trabajar. No confundir
+                      con la hoja de autorización, que es el montaje de Diseño
+                      y vive en "Proceso de diseño". */}
+                  {order.clientResourceFile && (
                     <div>
-                      <h4 className="mb-2 font-semibold">Hoja de Autorización</h4>
-                      {order.authorizationFile.mimeType.startsWith("image/") ? (
+                      <h4 className="mb-2 font-semibold">Archivos del cliente</h4>
+                      {order.clientResourceFile.mimeType.startsWith("image/") ? (
                         <button
                           type="button"
                           className="group relative inline-block overflow-hidden rounded-md border"
                           onClick={() =>
-                            setLightboxSrc(order.authorizationFile!.dataUrl)
+                            setLightboxSrc(order.clientResourceFile!.dataUrl)
                           }
                         >
                           <PreviewImage
-                            src={order.authorizationFile.dataUrl}
-                            alt={order.authorizationFile.filename}
+                            src={order.clientResourceFile.dataUrl}
+                            alt={order.clientResourceFile.filename}
                             loading="lazy"
                             className="max-h-64 max-w-full object-contain"
                           />
@@ -454,15 +459,24 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       ) : (
                         <Button variant="outline" size="sm" asChild>
                           <a
-                            href={order.authorizationFile.dataUrl}
+                            href={order.clientResourceFile.dataUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                           >
                             <FileText className="mr-2 h-4 w-4" />
-                            Ver hoja de autorización (PDF)
+                            Ver archivo del cliente (PDF)
                           </a>
                         </Button>
                       )}
+                      {/* Diseño lo baja para trabajar el montaje con el
+                          material original: abrirlo en una pestaña no alcanza. */}
+                      <div className="mt-2">
+                        <DownloadFileButton
+                          href={order.clientResourceFile.dataUrl}
+                          filename={order.clientResourceFile.filename}
+                          label="Descargar archivo del cliente"
+                        />
+                      </div>
                     </div>
                   )}
 
@@ -607,7 +621,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
       {lightboxSrc && (
         <ImageLightbox
           src={lightboxSrc}
-          alt="Hoja de autorización"
+          alt="Archivo del cliente"
           onClose={() => setLightboxSrc(null)}
         />
       )}

@@ -99,8 +99,13 @@ export interface PerformanceSummary {
   areas: AreaPerformance[];
 }
 
-/** Metadata + contenido de la hoja de autorización, tal como la devuelve GET /orders/:id. */
-export interface AuthorizationFile {
+/**
+ * Metadata + contenido de un archivo ya guardado, tal como lo devuelve el
+ * backend embebido en el JSON (ej. `Order.clientResourceFile` en
+ * `GET /orders/:id`). Nombre neutro a propósito: lo usan tanto los recursos
+ * que manda el cliente al dar de alta el pedido como las rondas de diseño.
+ */
+export interface UploadedFileContent {
   filename: string;
   mimeType: string;
   /** `data:<mime>;base64,<data>`, lista para usar en <img src> o como href. */
@@ -108,7 +113,7 @@ export interface AuthorizationFile {
 }
 
 /** Payload de subida: base64 SIN el prefijo `data:...;base64,`. */
-export interface AuthorizationFileInput {
+export interface UploadedFileInput {
   data: string;
   filename: string;
   mimeType: "image/png" | "image/jpeg" | "application/pdf";
@@ -136,7 +141,17 @@ export interface OrderAreaTask {
 
 export interface Order extends BaseEntity {
   clientId?: number | null;
+  /** Quien CREÓ el pedido (la recepcionista del alta). No cambia nunca. */
   userId?: number;
+  /**
+   * Recepcionista que está ATENDIENDO el pedido hoy. `null` mientras nadie lo
+   * haya tomado, en cuyo caso el responsable efectivo sigue siendo `userId`.
+   *
+   * Existe porque las notificaciones del circuito van a una persona concreta:
+   * si la que lo creó está de franco, otra lo toma con
+   * `POST /orders/:id/take-reception` y pasa a recibirlas ella.
+   */
+  attendedByUserId?: number | null;
   /** Usuario al que se le asignó el pedido (distinto de `user`, quien lo creó). */
   assignedUserId?: number | null;
   statusId: number;
@@ -168,15 +183,32 @@ export interface Order extends BaseEntity {
   /** Nombre de cliente escrito a mano (alternativa a `client` cuando no hay `clientId`). */
   clientNameOverride?: string | null;
   user?: User | null;
+  /** Versión embebida de `attendedByUserId`; `null` si nadie lo tomó todavía. */
+  attendedBy?: AssignedUser | null;
   assignedUser?: AssignedUser | null;
   status?: Status | null;
   orderProducts?: OrderProduct[];
-  /** Presente en el listado (GET /orders); el archivo completo NO viaja ahí. */
-  hasAuthorizationFile?: boolean;
+  /**
+   * Recursos que mandó el CLIENTE al dar de alta el pedido (logo, referencias)
+   * para que Diseño pueda trabajar. Opcional, y NO es la hoja de autorización
+   * —esa es el montaje que sube Diseño en cada ronda—.
+   *
+   * Presente en el listado (GET /orders); el archivo completo NO viaja ahí.
+   */
+  hasClientResourceFile?: boolean;
   /** Presente sólo en el detalle (GET /orders/:id). */
-  authorizationFile?: AuthorizationFile | null;
+  clientResourceFile?: UploadedFileContent | null;
   /** ISO timestamp de cuándo el pedido pasó a "entregado", o `null` si nunca llegó a ese estado. */
   deliveredAt: string | null;
+  /**
+   * ISO timestamp de cuándo el pedido quedó archivado (lo sella el backend al
+   * autorizarse el montaje), o `null` si sigue activo.
+   *
+   * Archivado significa sólo que sale del tablero ACTIVO de Diseño: el pedido
+   * se sigue viendo en la vista Lista, la búsqueda y el historial, y su trabajo
+   * de producción sigue corriendo normalmente.
+   */
+  archivedAt?: string | null;
 }
 
 export interface OrderHistory extends BaseEntity {
@@ -255,7 +287,8 @@ export interface CreateOrderPayload {
   description: string;
   deliveryDate?: string;
   orderProducts?: Array<{ productId?: number; customName?: string; quantity: number }>;
-  authorizationFile?: AuthorizationFileInput;
+  /** Recursos que manda el cliente (logo, referencias) para que Diseño trabaje. */
+  clientResourceFile?: UploadedFileInput;
 }
 
 export interface UpdateOrderPayload {
@@ -266,15 +299,36 @@ export interface UpdateOrderPayload {
   area?: string;
   /** Área de producción destino; editable por recepcion/admin/superuser y por rol `diseno`. */
   productionArea?: string | null;
-  authorizationFile?: AuthorizationFileInput;
+  /** Recursos que manda el cliente (logo, referencias) para que Diseño trabaje. */
+  clientResourceFile?: UploadedFileInput;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Flujo de diseño (Order.requiresDesign)                                     */
 /* -------------------------------------------------------------------------- */
 
-/** Payload de subida de archivo de una revisión de diseño (mismo shape que `AuthorizationFileInput`). */
-export type DesignRevisionFileInput = AuthorizationFileInput;
+/** Payload de subida de archivo de una revisión de diseño (mismo shape que `UploadedFileInput`). */
+export type DesignRevisionFileInput = UploadedFileInput;
+
+/**
+ * Metadata de UN archivo de una ronda de diseño. Una hoja de autorización
+ * puede ser varias imágenes o un PDF, así que tanto el montaje como el
+ * feedback son listas. El contenido no viaja acá: se pide aparte con
+ * `GET /orders/:id/design-revisions/:revisionId/files/:fileId`.
+ */
+export interface DesignRevisionFile {
+  id: number;
+  filename: string;
+  mimeType: string;
+}
+
+/** Respuesta de `GET /orders/:id/design-revisions/:revisionId/files/:fileId`. */
+export interface DesignRevisionFileContent {
+  filename: string;
+  mimeType: string;
+  /** `data:<mime>;base64,<data>`, lista para usar en <img src> o como href. */
+  dataUrl: string;
+}
 
 /**
  * Una ronda del flujo de diseño (`GET /orders/:id/design-revisions`).
@@ -285,14 +339,23 @@ export interface DesignRevision extends BaseEntity {
   orderId: number;
   /** Número de ronda, arranca en 1. */
   round: number;
+  /** Legacy: apunta al PRIMER archivo de `montageFiles`. */
   montageFileName?: string | null;
+  /** Legacy: apunta al PRIMER archivo de `montageFiles`. */
   montageFileMime?: string | null;
+  /** Legacy: `true` si `montageFiles` tiene al menos un archivo. */
   hasMontageFile: boolean;
+  /** Todos los archivos del montaje de esta ronda (1..10). */
+  montageFiles?: DesignRevisionFile[];
   sentAt?: string | null;
   sentByUserId?: number | null;
   feedbackText?: string | null;
+  /** Legacy: apunta al PRIMER archivo de `feedbackFiles`. */
   feedbackFileName?: string | null;
+  /** Legacy: `true` si `feedbackFiles` tiene al menos un archivo. */
   hasFeedbackFile: boolean;
+  /** Todos los adjuntos del feedback de esta ronda (0..10). */
+  feedbackFiles?: DesignRevisionFile[];
   feedbackAt?: string | null;
   feedbackByUserId?: number | null;
   approved: boolean;
@@ -392,7 +455,7 @@ export interface ChatOrderRef {
 
 /**
  * Payload de subida de un adjunto de chat (foto, documento o audio): base64
- * SIN el prefijo `data:...;base64,`, igual que `AuthorizationFileInput`.
+ * SIN el prefijo `data:...;base64,`, igual que `UploadedFileInput`.
  */
 export interface ChatAttachmentInput {
   data: string;
