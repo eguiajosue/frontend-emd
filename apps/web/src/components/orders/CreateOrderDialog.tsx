@@ -40,12 +40,30 @@ import {
   UPLOAD_FILE_MAX_BYTES,
 } from "@/lib/fileInput";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AREA_OPTIONS, PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/api";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type {
   UploadedFileInput,
   Client,
@@ -69,7 +87,7 @@ const orderSchema = z
     description: z.string().min(1, "La descripción es requerida"),
     deliveryDate: z.string().optional().or(z.literal("")),
     assignedUserId: z.number().optional(),
-    orderProducts: z.array(orderProductSchema).optional(),
+    orderProducts: z.array(orderProductSchema).min(1, "Agregá al menos un producto"),
   })
   .superRefine((data, ctx) => {
     if (!data.clientId && !data.clientNameOverride?.trim()) {
@@ -106,10 +124,75 @@ const FIELD_LABELS: Record<string, string> = {
   area: "Área",
   description: "Descripción",
   assignedUserId: "Asignación",
+  orderProducts: "Productos",
 };
 
 /** Rol del área de Diseño; los pedidos con montaje arrancan siempre acá. */
 const DESIGN_ROLE = "diseno";
+
+/**
+ * Memoria local (por navegador, no por servidor) para reducir repetición en
+ * jornadas de muchos pedidos seguidos: último cliente usado (para el chip
+ * "Recientes") y últimos valores de área/diseño (como default sugerido, no
+ * autocompletado silencioso — siempre editable antes de enviar).
+ */
+const RECENT_CLIENTS_KEY = "emd:recentClientIds";
+const LAST_DEFAULTS_KEY = "emd:lastOrderDefaults";
+const MAX_RECENT_CLIENTS = 6;
+
+interface LastOrderDefaults {
+  requiresDesign: boolean;
+  area?: string;
+}
+
+function readRecentClientIds(): number[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_CLIENTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((id) => typeof id === "number") : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecentClientId(id: number) {
+  if (typeof window === "undefined") return;
+  try {
+    const next = [id, ...readRecentClientIds().filter((existing) => existing !== id)].slice(
+      0,
+      MAX_RECENT_CLIENTS
+    );
+    window.localStorage.setItem(RECENT_CLIENTS_KEY, JSON.stringify(next));
+  } catch {
+    // localStorage puede fallar (modo privado, cuota) — no es crítico, se ignora.
+  }
+}
+
+function readLastOrderDefaults(): LastOrderDefaults | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_DEFAULTS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    return {
+      requiresDesign: Boolean(parsed.requiresDesign),
+      area: typeof parsed.area === "string" ? parsed.area : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeLastOrderDefaults(defaults: LastOrderDefaults) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_DEFAULTS_KEY, JSON.stringify(defaults));
+  } catch {
+    // Ídem: no crítico si falla.
+  }
+}
 
 interface OrderProductRow {
   customName?: string;
@@ -121,6 +204,14 @@ interface CreateOrderDialogProps {
   onClose: () => void;
   /** Se llama con el pedido recién creado (ej. para abrir su detalle). */
   onCreated?: (order: Order) => void;
+  /** Precarga el cliente (ver "Crear otro pedido para este cliente" en el toast de éxito). */
+  initialClientId?: number;
+  initialClientNameOverride?: string;
+  /**
+   * Se llama al tocar "Crear otro pedido para {cliente}" en el toast de
+   * éxito — el padre decide cómo reabrir el diálogo (ver `orders/page.tsx`).
+   */
+  onCreateAnother?: (clientId: number | undefined, clientNameOverride: string) => void;
 }
 
 function clientLabel(c: Client): string {
@@ -150,6 +241,7 @@ const FIELD_STEP: Record<string, number> = {
   area: 1,
   assignedUserId: 1,
   description: 1,
+  orderProducts: 2,
 };
 
 /**
@@ -161,7 +253,14 @@ const FIELD_STEP: Record<string, number> = {
  * pasos como lista de progreso. La lógica de negocio (validaciones, payload)
  * es la misma que antes — sólo cambió cómo se presenta.
  */
-export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialogProps) {
+export function CreateOrderDialog({
+  open,
+  onClose,
+  onCreated,
+  initialClientId,
+  initialClientNameOverride,
+  onCreateAnother,
+}: CreateOrderDialogProps) {
   const { session } = usePermissions();
   const { formButtonMotion } = useMotionPreset();
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
@@ -185,28 +284,46 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [rows, setRows] = useState<OrderProductRow[]>([{}]);
+  /** Fila con nombre pero sin cantidad (o viceversa): error puntual por fila, en vez de descartarla en silencio. */
+  const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [clientResourceFile, setClientResourceFile] = useState<UploadedFileInput | null>(null);
   const [clientResourceFilePreview, setClientResourceFilePreview] = useState<string | null>(null);
   const [newClientOpen, setNewClientOpen] = useState(false);
+  const [recentClientIds, setRecentClientIds] = useState<number[]>([]);
+  /** Confirmación antes de cerrar y perder datos ya cargados (Escape, click afuera, "Cancelar"). */
+  const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const contentScrollRef = useRef<HTMLDivElement>(null);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // Arranca siempre en el paso 1 cada vez que se abre.
+  // Arranca siempre en el paso 1 cada vez que se abre — salvo que venga con
+  // un cliente precargado ("Crear otro pedido para {cliente}" desde el toast
+  // de éxito), en cuyo caso ese paso ya está resuelto y se salta directo a
+  // Detalles.
   useEffect(() => {
-    if (open) setStep(0);
+    if (!open) return;
+    setRecentClientIds(readRecentClientIds());
+    if (initialClientId !== undefined || initialClientNameOverride) {
+      setClientId(initialClientId);
+      setClientNameOverride(initialClientNameOverride ?? "");
+      setStep(1);
+    } else {
+      setStep(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const resetForm = () => {
     setStep(0);
     setClientId(undefined);
     setClientNameOverride("");
-    setRequiresDesign(true);
-    setArea(undefined);
+    const lastDefaults = readLastOrderDefaults();
+    setRequiresDesign(lastDefaults?.requiresDesign ?? true);
+    setArea(lastDefaults?.area);
     setExtraAreas([]);
     setShowExtraAreas(false);
     setAssignedUserId(undefined);
@@ -214,6 +331,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setDeliveryDate("");
     setDeliveryTime("");
     setRows([{}]);
+    setRowErrors({});
     setErrors({});
     setSubmitError(null);
     if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
@@ -221,10 +339,33 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setClientResourceFilePreview(null);
   };
 
-  const handleClose = () => {
-    if (submitting) return;
+  /** `true` si hay algo cargado que se perdería al cerrar sin confirmar. */
+  const hasUnsavedData = () =>
+    Boolean(
+      clientId ||
+        clientNameOverride.trim() ||
+        description.trim() ||
+        area ||
+        assignedUserId ||
+        deliveryDate ||
+        extraAreas.length > 0 ||
+        rows.some((r) => r.customName?.trim() || r.quantity) ||
+        clientResourceFile
+    );
+
+  const discardAndClose = () => {
     resetForm();
     onClose();
+  };
+
+  /** Cierra el diálogo — pide confirmar primero si hay datos cargados (Escape, click afuera, X, Cancelar). */
+  const handleClose = () => {
+    if (submitting) return;
+    if (hasUnsavedData()) {
+      setConfirmDiscardOpen(true);
+      return;
+    }
+    discardAndClose();
   };
 
   const handleClientResourceFileChange = async (
@@ -265,8 +406,18 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   };
 
   const addRow = () => setRows((prev) => [...prev, {}]);
-  const removeRow = (index: number) =>
+  const removeRow = (index: number) => {
     setRows((prev) => prev.filter((_, i) => i !== index));
+    setRowErrors((prev) => {
+      const next: Record<number, string> = {};
+      Object.entries(prev).forEach(([i, msg]) => {
+        const n = Number(i);
+        if (n < index) next[n] = msg;
+        else if (n > index) next[n - 1] = msg;
+      });
+      return next;
+    });
+  };
   const updateRow = <K extends keyof OrderProductRow>(
     index: number,
     field: K,
@@ -275,6 +426,68 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
     setRows((prev) =>
       prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
     );
+    setRowErrors((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
+  /**
+   * Elige el producto de una fila desde el combobox (preset o texto libre):
+   * si ya hay otra fila con el mismo nombre, fusiona ahí en vez de dejar dos
+   * líneas separadas del mismo producto (ver auditoría de power users).
+   */
+  const setRowProductName = (index: number, name: string) => {
+    setRows((prev) => {
+      const dupIndex = prev.findIndex(
+        (r, i) => i !== index && r.customName?.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (dupIndex < 0) {
+        return prev.map((row, i) => (i === index ? { ...row, customName: name } : row));
+      }
+      const next = [...prev];
+      next[dupIndex] = {
+        ...next[dupIndex],
+        quantity: (next[dupIndex].quantity ?? 0) + (prev[index].quantity ?? 1),
+      };
+      if (next.length > 1) {
+        next.splice(index, 1);
+      } else {
+        next[index] = {};
+      }
+      return next;
+    });
+    setRowErrors((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
+  /**
+   * Filas con nombre pero sin cantidad (o viceversa) — antes se descartaban
+   * en silencio al enviar; ahora bloquean el avance con un error puntual.
+   * Filas totalmente vacías (la de arranque, o una agregada y no tocada) se
+   * ignoran: no son un error, son espacio sin usar.
+   */
+  const getProductRowIssues = () => {
+    const nextRowErrors: Record<number, string> = {};
+    let completeCount = 0;
+    rows.forEach((row, i) => {
+      const hasName = Boolean(row.customName?.trim());
+      const hasQty = row.quantity !== undefined && row.quantity > 0;
+      if (hasName && hasQty) {
+        completeCount++;
+      } else if (hasName && !hasQty) {
+        nextRowErrors[i] = "Falta la cantidad";
+      } else if (!hasName && hasQty) {
+        nextRowErrors[i] = "Falta el nombre del producto";
+      }
+    });
+    return { rowErrors: nextRowErrors, hasAtLeastOne: completeCount > 0 };
   };
 
   /**
@@ -303,6 +516,15 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
       return [...prev, { customName: name, quantity: 1 }];
     });
   };
+
+  /** Últimos clientes usados (ver `pushRecentClientId`), resueltos contra la lista real. */
+  const recentClients = useMemo(
+    () =>
+      recentClientIds
+        .map((id) => clients.find((c) => c.id === id))
+        .filter((c): c is Client => Boolean(c)),
+    [recentClientIds, clients]
+  );
 
   // Todas las áreas de producción del pedido: la principal más las extra. Con
   // montaje la principal puede estar sin definir todavía y quedar sólo las
@@ -414,6 +636,33 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
   /** Valida sólo los campos del paso actual; si pasan, avanza. */
   const goNext = () => {
+    // Paso "Productos": validación propia por fila (no por schema global, así
+    // se puede avisar "falta la cantidad" en la fila exacta en vez de
+    // descartarla en silencio al enviar — ver auditoría UX).
+    if (STEPS[step].key === "products") {
+      const { rowErrors: nextRowErrors, hasAtLeastOne } = getProductRowIssues();
+      if (Object.keys(nextRowErrors).length > 0 || !hasAtLeastOne) {
+        setRowErrors(nextRowErrors);
+        setErrors((prev) => ({
+          ...prev,
+          orderProducts: hasAtLeastOne
+            ? "Hay productos incompletos"
+            : "Agregá al menos un producto",
+        }));
+        requestAnimationFrame(() => errorSummaryRef.current?.focus());
+        return;
+      }
+      setRowErrors({});
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.orderProducts;
+        return next;
+      });
+      contentScrollRef.current?.scrollTo({ top: 0 });
+      setStep((s) => Math.min(s + 1, STEPS.length - 1));
+      return;
+    }
+
     const fields = STEPS[step].fields;
     if (fields.length > 0) {
       const parsed = orderSchema.safeParse(currentFormData());
@@ -449,6 +698,18 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
   };
 
   const handleSubmit = async () => {
+    const { rowErrors: nextRowErrors, hasAtLeastOne } = getProductRowIssues();
+    if (Object.keys(nextRowErrors).length > 0 || !hasAtLeastOne) {
+      setRowErrors(nextRowErrors);
+      setErrors((prev) => ({
+        ...prev,
+        orderProducts: hasAtLeastOne ? "Hay productos incompletos" : "Agregá al menos un producto",
+      }));
+      setStep(FIELD_STEP.orderProducts);
+      requestAnimationFrame(() => errorSummaryRef.current?.focus());
+      return;
+    }
+
     const parsed = orderSchema.safeParse(currentFormData());
 
     if (!parsed.success) {
@@ -489,19 +750,58 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         orderProducts: parsed.data.orderProducts,
         clientResourceFile: clientResourceFile ?? undefined,
       });
-      toast.success(orderCreatedMessage());
+
+      // Guardado ANTES de resetForm()/onClose(), que borran clientId — se
+      // usan para el chip "Recientes" del próximo pedido y la acción "Crear
+      // otro pedido para {cliente}" del toast.
+      const submittedClientId = parsed.data.clientId;
+      const submittedClientLabel = selectedClientLabel || parsed.data.clientNameOverride || "";
+      if (submittedClientId) pushRecentClientId(submittedClientId);
+      writeLastOrderDefaults({ requiresDesign: parsed.data.requiresDesign, area: parsed.data.area });
+
+      toast.success(orderCreatedMessage(), {
+        action: onCreateAnother
+          ? {
+              label: submittedClientLabel
+                ? `Crear otro para ${submittedClientLabel}`
+                : "Crear otro pedido",
+              onClick: () => onCreateAnother(submittedClientId, submittedClientLabel),
+            }
+          : undefined,
+      });
       resetForm();
       onClose();
       onCreated?.(order);
     } catch (error) {
       // El toast de error ya lo dispara el feedback global (ver
-      // src/app/providers.tsx); acá sólo sumamos el resumen accesible.
-      setSubmitError(
-        error instanceof Error ? error.message : "No se pudo crear el pedido."
-      );
+      // src/app/providers.tsx); acá sólo sumamos el resumen accesible —
+      // mismo mensaje que ese toast (no uno crudo distinto), vía el mismo
+      // helper `getErrorMessage`.
+      setSubmitError(getErrorMessage(error, "No se pudo crear el pedido."));
       requestAnimationFrame(() => errorSummaryRef.current?.focus());
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLastStep) {
+      void handleSubmit();
+    } else {
+      goNext();
+    }
+  };
+
+  /** Ctrl/Cmd+Enter avanza o crea el pedido desde cualquier campo, no sólo desde Revisar. */
+  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (isLastStep) {
+        void handleSubmit();
+      } else {
+        goNext();
+      }
     }
   };
 
@@ -556,11 +856,21 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <DialogPrimitive.Content
-            onOpenAutoFocus={(e) => e.preventDefault()}
+            onOpenAutoFocus={(e) => {
+              // Sin esto el foco por defecto de Radix iría al primer elemento
+              // tabbable en orden de DOM — la "X" de cerrar — en vez del
+              // primer campo real del wizard.
+              e.preventDefault();
+              requestAnimationFrame(() => fieldRefs.current.clientId?.focus());
+            }}
             className={cn(
               "elevation-2 bg-popover fixed z-50 flex flex-col shadow-lg outline-none duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-              // Móvil: wizard a pantalla completa.
-              "inset-0 h-full w-full data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+              // Móvil: wizard a pantalla completa. `100dvh`, no `h-full`
+              // (=100vh): con `fixed` + `h-full`, el teclado en pantalla no
+              // reduce la altura del contenedor y el footer con
+              // Atrás/Siguiente puede quedar tapado (mismo bug ya resuelto en
+              // el chat, ver dashboard/chat/page.tsx).
+              "inset-0 h-[100dvh] w-full data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
               // Escritorio: panel lateral de altura completa, desliza desde la derecha.
               "sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:w-full sm:max-w-3xl sm:border-l sm:border-border sm:data-[state=closed]:slide-out-to-right sm:data-[state=open]:slide-in-from-right"
             )}
@@ -570,16 +880,37 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
               Formulario de creación de pedido en pasos: cliente, detalles, productos y revisión.
             </DialogPrimitive.Description>
 
+            {/*
+              `display: contents` (className "contents"): un `<form>` no
+              rompe el layout flex del Content (header/body/footer) porque
+              queda "invisible" para el flujo, pero habilita Enter para
+              avanzar de paso / crear el pedido (excepto en el Textarea de
+              descripción, donde Enter escribe un salto de línea como
+              siempre) y Ctrl/Cmd+Enter para lo mismo desde cualquier campo.
+            */}
+            <form
+              className="contents"
+              onSubmit={handleFormSubmit}
+              onKeyDown={handleFormKeyDown}
+            >
             {/* Cabecera: título + progreso + cerrar. Fija arriba. */}
             <div className="shrink-0 border-b border-border px-4 pb-3 pt-[calc(0.875rem+env(safe-area-inset-top))] sm:px-8 sm:pb-4 sm:pt-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold leading-tight sm:text-lg">Nuevo Pedido</p>
-                  <p className="text-xs text-muted-foreground sm:hidden" aria-live="polite">
+                  <p className="text-base font-semibold leading-tight sm:text-lg">Nuevo pedido</p>
+                  {/*
+                    `sm:sr-only`, no `sm:hidden`: en escritorio la lista de
+                    pasos ya lo muestra visualmente, pero el anuncio en vivo
+                    para lectores de pantalla ("cambió el paso") tiene que
+                    seguir en el árbol de accesibilidad — `hidden` lo sacaba
+                    también de ahí, así que sólo móvil se enteraba del cambio.
+                  */}
+                  <p className="text-xs text-muted-foreground sm:sr-only" aria-live="polite">
                     Paso {step + 1} de {STEPS.length} · {STEPS[step].label}
                   </p>
                 </div>
                 <DialogPrimitive.Close
+                  type="button"
                   aria-label="Cerrar"
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
                 >
@@ -602,7 +933,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
             <div className="flex min-h-0 flex-1 sm:flex-row">
               {/* Lista de pasos, sólo escritorio — indicador de progreso, no clicable. */}
-              <div className="hidden w-56 shrink-0 border-r border-border p-6 sm:block">
+              <div className="hidden w-64 shrink-0 border-r border-border p-6 sm:block">
                 <ol className="space-y-1">
                   {STEPS.map((s, i) => {
                     const StepIcon = s.icon;
@@ -649,7 +980,47 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                         A quién se le factura y entrega este pedido.
                       </p>
                     </div>
-                    <FormField label="Cliente" icon={UserRound} required error={errors.clientId}>
+                    {recentClients.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Recientes — tocar para elegir
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {recentClients.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              aria-pressed={clientId === c.id}
+                              onClick={() => {
+                                setClientId(c.id);
+                                setClientNameOverride("");
+                                setErrors((prev) => {
+                                  const rest = { ...prev };
+                                  delete rest.clientId;
+                                  return rest;
+                                });
+                              }}
+                              className={cn(
+                                "flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
+                                clientId === c.id
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-input text-muted-foreground hover:border-primary hover:text-primary"
+                              )}
+                            >
+                              <UserRound className="h-3 w-3" />
+                              {clientLabel(c)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <FormField
+                      label="Cliente"
+                      htmlFor="order-client"
+                      icon={UserRound}
+                      required
+                      error={errors.clientId}
+                    >
                       <div
                         ref={(el) => {
                           fieldRefs.current.clientId = el;
@@ -658,6 +1029,10 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                         className="flex flex-col gap-2 outline-none sm:flex-row"
                       >
                         <CreatableCombobox
+                          id="order-client"
+                          required
+                          invalid={Boolean(errors.clientId)}
+                          describedBy={errors.clientId ? "order-client-error" : undefined}
                           className="flex-1"
                           items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
                           selectedId={clientId ?? null}
@@ -730,6 +1105,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <FormField
                         label={requiresDesign ? "Área de producción (opcional)" : "Área destino"}
+                        htmlFor="order-area"
                         icon={Building2}
                         required={!requiresDesign}
                         error={errors.area}
@@ -739,31 +1115,57 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                             : undefined
                         }
                       >
-                        <select
-                          ref={(el) => {
-                            fieldRefs.current.area = el;
-                          }}
-                          className="flex h-11 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none sm:h-9"
+                        <Select
                           value={area ?? ""}
-                          onChange={(e) => setArea(e.target.value || undefined)}
-                          onBlur={() => validateFieldOnBlur("area")}
+                          onValueChange={(v) => {
+                            setArea(v || undefined);
+                            setErrors((prev) => {
+                              const rest = { ...prev };
+                              delete rest.area;
+                              return rest;
+                            });
+                          }}
                         >
-                          <option value="">
-                            {requiresDesign ? "Sin definir todavía..." : "Selecciona un área..."}
-                          </option>
-                          {(requiresDesign ? PRODUCTION_AREA_OPTIONS : AREA_OPTIONS).map((a) => (
-                            <option key={a.value} value={a.value}>
-                              {a.label}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger
+                            id="order-area"
+                            ref={(el) => {
+                              fieldRefs.current.area = el;
+                            }}
+                            aria-required={!requiresDesign}
+                            aria-invalid={Boolean(errors.area)}
+                            aria-describedby={errors.area ? "order-area-error" : undefined}
+                            onBlur={() => validateFieldOnBlur("area")}
+                            className="h-11 sm:h-9"
+                          >
+                            <SelectValue
+                              placeholder={
+                                requiresDesign ? "Sin definir todavía..." : "Selecciona un área..."
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(requiresDesign ? PRODUCTION_AREA_OPTIONS : AREA_OPTIONS).map((a) => (
+                              <SelectItem key={a.value} value={a.value}>
+                                {a.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormField>
 
                       <FormField
                         label={requiresDesign ? "Asignar a diseñador" : "Asignar a"}
+                        htmlFor="order-assigned"
                         icon={Users2}
                         required={requiresDesign}
-                        error={errors.assignedUserId}
+                        error={
+                          errors.assignedUserId ??
+                          (assignmentArea && usersInAssignmentArea.length === 0
+                            ? `No hay usuarios con el rol ${
+                                requiresDesign ? "Diseño" : getAreaLabel(assignmentArea)
+                              }. Dar de alta uno para poder asignar el pedido.`
+                            : undefined)
+                        }
                         hint={
                           requiresDesign
                             ? "El pedido arranca en Diseño. Se puede dejar en \"Cualquier diseñador\" para que lo tome quien esté libre."
@@ -772,55 +1174,68 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                             : "Elegir primero el área destino."
                         }
                       >
-                        <select
-                          ref={(el) => {
-                            fieldRefs.current.assignedUserId = el;
-                          }}
-                          className="flex h-11 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none sm:h-9"
-                          value={assignedUserId ?? ""}
+                        <Select
+                          value={assignedUserId !== undefined ? String(assignedUserId) : ""}
                           disabled={!assignmentArea}
-                          onChange={(e) =>
-                            setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)
-                          }
-                          onBlur={() => validateFieldOnBlur("assignedUserId")}
+                          onValueChange={(v) => {
+                            setAssignedUserId(
+                              v && v !== "__none__" ? Number(v) : undefined
+                            );
+                            setErrors((prev) => {
+                              const rest = { ...prev };
+                              delete rest.assignedUserId;
+                              return rest;
+                            });
+                          }}
                         >
-                          {/* Sin montaje la asignación sigue siendo opcional. */}
-                          {!requiresDesign && <option value="">Sin asignar</option>}
-                          {requiresDesign && !sharedAccountForArea && (
-                            <option value="">Elegir diseñador...</option>
-                          )}
-                          {sharedAccountForArea && (
-                            <option value={sharedAccountForArea.id}>
-                              {requiresDesign
-                                ? "Cualquier diseñador (área Diseño)"
-                                : `Área: ${
-                                    [sharedAccountForArea.firstName, sharedAccountForArea.lastName]
-                                      .filter(Boolean)
-                                      .join(" ") || sharedAccountForArea.username
-                                  }`}
-                            </option>
-                          )}
-                          {individualsInArea.map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
-                            </option>
-                          ))}
-                          {/* Fallback: área sin usuarios con ese rol cargados. */}
-                          {assignmentArea &&
-                            usersInAssignmentArea.length === 0 &&
-                            assignableUsers.map((u) => (
-                              <option key={u.id} value={u.id}>
+                          <SelectTrigger
+                            id="order-assigned"
+                            ref={(el) => {
+                              fieldRefs.current.assignedUserId = el;
+                            }}
+                            aria-required={requiresDesign}
+                            aria-invalid={Boolean(errors.assignedUserId)}
+                            aria-describedby={
+                              errors.assignedUserId ? "order-assigned-error" : undefined
+                            }
+                            onBlur={() => validateFieldOnBlur("assignedUserId")}
+                            className="h-11 sm:h-9"
+                          >
+                            <SelectValue
+                              placeholder={!requiresDesign ? "Sin asignar" : "Elegir diseñador..."}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {/* Sin montaje la asignación sigue siendo opcional. */}
+                            {!requiresDesign && (
+                              <SelectItem value="__none__">Sin asignar</SelectItem>
+                            )}
+                            {sharedAccountForArea && (
+                              <SelectItem value={String(sharedAccountForArea.id)}>
+                                {requiresDesign
+                                  ? "Cualquier diseñador (área Diseño)"
+                                  : `Área: ${
+                                      [sharedAccountForArea.firstName, sharedAccountForArea.lastName]
+                                        .filter(Boolean)
+                                        .join(" ") || sharedAccountForArea.username
+                                    }`}
+                              </SelectItem>
+                            )}
+                            {individualsInArea.map((u) => (
+                              <SelectItem key={u.id} value={String(u.id)}>
                                 {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
-                              </option>
+                              </SelectItem>
                             ))}
-                        </select>
-                        {assignmentArea && usersInAssignmentArea.length === 0 && (
-                          <p className="mt-1 text-xs text-destructive">
-                            No hay usuarios con el rol{" "}
-                            {requiresDesign ? "Diseño" : getAreaLabel(assignmentArea)}. Dar de alta
-                            uno para poder asignar el pedido.
-                          </p>
-                        )}
+                            {/* Fallback: área sin usuarios con ese rol cargados. */}
+                            {assignmentArea &&
+                              usersInAssignmentArea.length === 0 &&
+                              assignableUsers.map((u) => (
+                                <SelectItem key={u.id} value={String(u.id)}>
+                                  {[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </FormField>
                     </div>
 
@@ -858,7 +1273,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                                     )
                                   }
                                   className={cn(
-                                    "min-h-9 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97]",
+                                    "min-h-11 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
                                     checked
                                       ? "border-primary bg-primary text-primary-foreground shadow-soft"
                                       : "border-input text-muted-foreground hover:border-primary hover:text-primary"
@@ -878,29 +1293,45 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       </div>
                     )}
 
-                    <FormField label="Descripción" icon={FileText} required error={errors.description}>
+                    <FormField
+                      label="Descripción"
+                      htmlFor="order-description"
+                      icon={FileText}
+                      required
+                      error={errors.description}
+                    >
                       <Textarea
+                        id="order-description"
                         ref={(el) => {
                           fieldRefs.current.description = el;
                         }}
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         onBlur={() => validateFieldOnBlur("description")}
+                        aria-required
+                        aria-invalid={Boolean(errors.description)}
+                        aria-describedby={errors.description ? "order-description-error" : undefined}
                         className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                       />
                     </FormField>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <FormField label="Fecha de Entrega" icon={CalendarClock}>
+                      <FormField label="Fecha de Entrega" htmlFor="order-delivery-date" icon={CalendarClock}>
                         <Input
+                          id="order-delivery-date"
                           type="date"
                           value={deliveryDate}
                           onChange={(e) => setDeliveryDate(e.target.value)}
                           className="h-11 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
                         />
                       </FormField>
-                      <FormField label="Hora de Entrega (opcional)" icon={Clock}>
+                      <FormField
+                        label="Hora de Entrega (opcional)"
+                        htmlFor="order-delivery-time"
+                        icon={Clock}
+                      >
                         <Input
+                          id="order-delivery-time"
                           type="time"
                           value={deliveryTime}
                           onChange={(e) => setDeliveryTime(e.target.value)}
@@ -937,7 +1368,7 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                                 type="button"
                                 onClick={() => addPresetProduct(preset.name)}
                                 className={cn(
-                                  "flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97]",
+                                  "flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
                                   row
                                     ? "border-primary bg-primary/10 text-primary"
                                     : "border-input text-muted-foreground hover:border-primary hover:text-primary"
@@ -959,38 +1390,49 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
 
                     <div className="space-y-2">
                       {rows.map((row, index) => (
-                        <div key={index} className="flex flex-wrap items-center gap-2">
-                          <CreatableCombobox
-                            className="min-w-[10rem] flex-1"
-                            items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
-                            selectedId={null}
-                            customValue={row.customName}
-                            placeholder="Buscar o escribir producto..."
-                            createLabel={(value) => `Usar "${value}" como producto nuevo`}
-                            emptyLabel="No hay productos frecuentes aún. Escribir uno para usarlo."
-                            onSelectItem={(item) => updateRow(index, "customName", item.label)}
-                            onUseCustom={(text) => updateRow(index, "customName", text)}
-                          />
-                          <Input
-                            type="number"
-                            min={1}
-                            className="h-11 w-24 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
-                            placeholder="Cant."
-                            value={row.quantity ?? ""}
-                            onChange={(e) =>
-                              updateRow(index, "quantity", Number(e.target.value))
-                            }
-                          />
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeRow(index)}
-                            disabled={rows.length === 1}
-                            aria-label="Quitar producto"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                        <div key={index} className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <CreatableCombobox
+                              className="min-w-[10rem] flex-1"
+                              invalid={Boolean(rowErrors[index])}
+                              items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
+                              selectedId={null}
+                              customValue={row.customName}
+                              placeholder="Buscar o escribir producto..."
+                              createLabel={(value) => `Usar "${value}" como producto nuevo`}
+                              emptyLabel="No hay productos frecuentes aún. Escribir uno para usarlo."
+                              onSelectItem={(item) => setRowProductName(index, item.label)}
+                              onUseCustom={(text) => setRowProductName(index, text)}
+                            />
+                            <Input
+                              type="number"
+                              inputMode="numeric"
+                              min={1}
+                              aria-invalid={Boolean(rowErrors[index])}
+                              className="h-11 w-24 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                              placeholder="Cant."
+                              value={row.quantity ?? ""}
+                              onChange={(e) =>
+                                updateRow(index, "quantity", Number(e.target.value))
+                              }
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeRow(index)}
+                              disabled={rows.length === 1}
+                              aria-label="Quitar producto"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                          {rowErrors[index] && (
+                            <p role="alert" className="flex items-center gap-1 text-xs font-medium text-destructive">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              {rowErrors[index]}
+                            </p>
+                          )}
                         </div>
                       ))}
                       <Button type="button" variant="outline" size="sm" onClick={addRow} className="gap-1.5">
@@ -1045,24 +1487,23 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">Archivos del cliente (opcional)</p>
-                      <p className="text-xs text-muted-foreground">
-                        Los recursos que mandó el cliente para poder hacer el
-                        diseño (logo, referencias). No es la hoja de
-                        autorización: esa la arma Diseño más adelante.
-                      </p>
+                    <FormField
+                      label="Archivos del cliente (opcional)"
+                      htmlFor="order-client-resource-file"
+                      icon={Paperclip}
+                      hint="Los recursos que mandó el cliente para poder hacer el diseño (logo, referencias). No es la hoja de autorización: esa la arma Diseño más adelante. PNG, JPG o PDF, máximo 5MB."
+                    >
                       <div className="flex flex-wrap items-center gap-2">
                         <input
+                          id="order-client-resource-file"
                           ref={fileInputRef}
                           type="file"
                           accept="image/png,image/jpeg,application/pdf"
                           onChange={handleClientResourceFileChange}
-                          className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                          className="block flex-1 min-w-[12rem] rounded-lg border border-input text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
                         />
                         <CameraCaptureButton onChange={handleClientResourceFileChange} />
                       </div>
-                      <p className="text-xs text-muted-foreground">PNG, JPG o PDF. Máximo 5MB.</p>
 
                       {clientResourceFile && (
                         <div className="flex items-center gap-3 rounded-lg border p-2">
@@ -1092,44 +1533,79 @@ export function CreateOrderDialog({ open, onClose, onCreated }: CreateOrderDialo
                           </Button>
                         </div>
                       )}
-                    </div>
+                    </FormField>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Navegación: fija abajo. */}
+            {/* Navegación: fija abajo. Los botones son `type="submit"`: el
+                `<form>` de arriba decide avanzar o crear según `isLastStep`
+                (ver `handleFormSubmit`), lo que además habilita Enter/Ctrl+Enter. */}
             <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-between sm:px-8 sm:py-4">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={goBack}
                 disabled={submitting}
-                className="w-full sm:w-auto"
+                className="h-11 w-full sm:h-9 sm:w-auto"
               >
                 {isFirstStep ? "Cancelar" : "Atrás"}
               </Button>
               {isLastStep ? (
                 <motion.div className="w-full sm:w-auto" {...(submitting ? {} : formButtonMotion)}>
-                  <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="h-11 w-full sm:h-9 sm:w-auto"
+                  >
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                     {submitting ? "Guardando..." : "Crear Pedido"}
                   </Button>
                 </motion.div>
               ) : (
-                <Button type="button" onClick={goNext} className="w-full sm:w-auto">
+                <Button type="submit" className="h-11 w-full sm:h-9 sm:w-auto">
                   Siguiente
                 </Button>
               )}
             </div>
+            </form>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
+      {/* Confirmar antes de descartar un pedido con datos cargados (Escape, click afuera, X, Cancelar). */}
+      <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Descartar pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hay datos cargados que todavía no se guardaron. Si cerrás ahora se pierden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Seguir editando</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setConfirmDiscardOpen(false);
+                discardAndClose();
+              }}
+            >
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <CreateClientDialog
         open={newClientOpen}
         onClose={() => setNewClientOpen(false)}
-        onCreated={(client) => setClientId(client.id)}
+        initialFirstName={clientNameOverride}
+        onCreated={(client) => {
+          setClientId(client.id);
+          setClientNameOverride("");
+        }}
       />
     </>
   );

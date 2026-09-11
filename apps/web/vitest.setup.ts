@@ -39,3 +39,16 @@ if (isBrowserLike && !window.ResizeObserver) {
 if (isBrowserLike && !window.Element.prototype.scrollIntoView) {
   window.Element.prototype.scrollIntoView = vi.fn();
 }
+
+// Ni scrollTo, que el wizard de pedidos usa para volver arriba al cambiar de paso.
+if (isBrowserLike && !window.Element.prototype.scrollTo) {
+  window.Element.prototype.scrollTo = vi.fn();
+}
+
+// Ni la API de Pointer Capture, que Radix Select toca en su manejo interno
+// de pointerdown/pointerup (ver @radix-ui/react-select).
+if (isBrowserLike && !window.Element.prototype.hasPointerCapture) {
+  window.Element.prototype.hasPointerCapture = () => false;
+  window.Element.prototype.setPointerCapture = () => {};
+  window.Element.prototype.releasePointerCapture = () => {};
+}
