@@ -1,43 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useSidebar } from "@/components/ui/sidebar";
+import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS } from "@/lib/navMenu";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
-
-/**
- * Orden de prioridad para elegir los 4 tabs principales: se recorre esta
- * lista y se toman los primeros 4 ítems que el rol actual puede ver (mismo
- * criterio de rol que ya filtra `app-sidebar.tsx`, vía `useVisibleNavItems`,
- * así que nunca puede mostrar algo que el rail no mostraría). Cualquier otro
- * ítem del menú completo queda detrás del tab "Más".
- */
-const TAB_PRIORITY_URLS = [
-  "/dashboard/admin",
-  "/dashboard/orders",
-  "/dashboard/chat",
-  "/dashboard/notificaciones",
-  "/dashboard/admin/rendimiento",
-  "/dashboard/historial",
-  "/dashboard/clientes",
-  "/dashboard/usuarios",
-  "/dashboard/ayuda",
-];
-
-const MAX_PRIMARY_TABS = 4;
+import { MobileMoreSheet } from "./MobileMoreSheet";
 
 /**
  * Barra de tabs flotante para móvil (referencia B). No es un segundo menú:
  * es un atajo a los 4 destinos más usados del rol actual, más un tab "Más"
- * que abre el mismo Sheet de `app-sidebar.tsx` con el menú completo, config,
- * tema y logout — esa sigue siendo la única superficie con esa lista.
+ * que abre `MobileMoreSheet`, un bottom sheet propio (no el `Sidebar`
+ * primitive, inerte en móvil) con el resto del menú, config, tema, reporte
+ * de error y logout.
  */
 export function MobileTabBar() {
   const pathname = usePathname();
-  const { setOpenMobile } = useSidebar();
   const visibleItems = useVisibleNavItems();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const primaryTabs = TAB_PRIORITY_URLS.map((url) =>
     visibleItems.find((item) => item.url === url)
@@ -97,7 +79,7 @@ export function MobileTabBar() {
         })}
         <button
           type="button"
-          onClick={() => setOpenMobile(true)}
+          onClick={() => setMoreOpen(true)}
           aria-label="Más opciones"
           title="Más"
           className="relative flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-2xl text-muted-foreground"
@@ -106,6 +88,7 @@ export function MobileTabBar() {
           <span aria-hidden className="h-1 w-1 rounded-full opacity-0" />
         </button>
       </div>
+      <MobileMoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </nav>
   );
 }
