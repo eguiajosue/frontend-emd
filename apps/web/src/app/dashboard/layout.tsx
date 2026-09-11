@@ -36,21 +36,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <MobileTabBar />
-        {/*
-         * `overflow-y-visible` explícito, no implícito: sin él, declarar sólo
-         * `overflow-x: hidden` hace que `overflow-y` compute a `auto` (regla
-         * CSS: si un eje no-visible tiene par en `visible`, el par pasa a
-         * `auto`). Como <main> es un bloque que crece con su contenido, su
-         * scrollHeight siempre iguala a su clientHeight — nunca tiene overflow
-         * propio — así que Chrome lo toma igual como "el scrollable más
-         * cercano" para la rueda del mouse y Home/End/PageUp/PageDown, no
-         * encuentra rango para mover, y ahí se corta: nunca llega a <html>,
-         * que es quien de verdad tiene el contenido de sobra para scrollear.
-         * El scroll programático (`scrollBy`) no pasa por esta cadena de
-         * ancestros y por eso siempre funcionó, mientras que la rueda y las
-         * teclas de paginado quedaban muertas en toda la app.
-         */}
-        <main className="relative w-full min-w-0 overflow-x-hidden overflow-y-visible">
+        <main className="relative w-full min-w-0 overflow-x-hidden">
           {/*
            * En móvil es la barra superior de la app: queda fija, despeja el notch
            * y el contenido pasa por debajo. En escritorio vuelve a ser la fila
