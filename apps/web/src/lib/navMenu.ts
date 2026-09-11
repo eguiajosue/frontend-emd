@@ -181,6 +181,28 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
 }
 
 /**
+ * Orden de prioridad para elegir los tabs principales de la barra móvil: se
+ * recorre esta lista y se toman los primeros `MAX_PRIMARY_TABS` ítems que el
+ * rol actual puede ver. Vive acá (no en `MobileTabBar.tsx`) para que
+ * `MobileMoreSheet.tsx` pueda derivar el resto de la lista ("Más") a partir
+ * de la misma fuente y ambas superficies nunca diverjan sobre qué ítem es
+ * "principal" y cuál queda detrás de "Más".
+ */
+export const TAB_PRIORITY_URLS = [
+  "/dashboard/admin",
+  "/dashboard/orders",
+  "/dashboard/chat",
+  "/dashboard/notificaciones",
+  "/dashboard/admin/rendimiento",
+  "/dashboard/historial",
+  "/dashboard/clientes",
+  "/dashboard/usuarios",
+  "/dashboard/ayuda",
+];
+
+export const MAX_PRIMARY_TABS = 4;
+
+/**
  * El menú operativo ya viene pre-filtrado (sin `roles`); el menú completo se
  * filtra por rol, con "admin" viendo todo.
  */

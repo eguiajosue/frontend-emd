@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileTabBar } from "./MobileTabBar";
 
 // Estado mutable leído por los mocks de abajo — `vi.mock` se hoistea sobre
@@ -8,11 +9,14 @@ import { MobileTabBar } from "./MobileTabBar";
 const mocks = vi.hoisted(() => ({
   roles: ["admin"] as string[],
   pathname: "/dashboard/orders",
-  setOpenMobile: vi.fn(),
 }));
 
 vi.mock("next-auth/react", () => ({
-  useSession: () => ({ data: { user: { roles: mocks.roles } } }),
+  useSession: () => ({
+    data: {
+      user: { roles: mocks.roles, first_name: "Ana", last_name: "Gómez", username: "ana" },
+    },
+  }),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -27,19 +31,38 @@ vi.mock("@/hooks/useNotifications", () => ({
   useUnreadNotificationsCount: () => ({ count: 0 }),
 }));
 
-vi.mock("@/components/ui/sidebar", () => ({
-  useSidebar: () => ({ setOpenMobile: mocks.setOpenMobile }),
+vi.mock("@/hooks/useInstallPrompt", () => ({
+  useInstallPrompt: () => ({ canInstall: false, promptInstall: vi.fn() }),
 }));
 
-describe("MobileTabBar", () => {
-  beforeEach(() => {
-    mocks.setOpenMobile.mockClear();
-  });
+vi.mock("@/components/BugReportDialog", () => ({
+  BugReportDialog: () => null,
+}));
 
+vi.mock("@/components/ThemeToggle", () => ({
+  ThemeToggle: () => null,
+}));
+
+/**
+ * `MobileMoreSheet` (montado dentro de `MobileTabBar`) reutiliza
+ * `ConfiguracionLink`/`InstallAppButton` de `app-sidebar.tsx`, que llaman a
+ * `useSidebar()` de verdad — de ahí el `SidebarProvider` real acá en vez de
+ * mockear `@/components/ui/sidebar` como antes (ese mock desapareció junto
+ * con `setOpenMobile`, que `MobileTabBar` ya no usa).
+ */
+function renderBar() {
+  return render(
+    <SidebarProvider>
+      <MobileTabBar />
+    </SidebarProvider>
+  );
+}
+
+describe("MobileTabBar", () => {
   it("admin/superuser: Panel General, Pedidos, Chat interno, Notificaciones + Más", () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/orders";
-    render(<MobileTabBar />);
+    renderBar();
 
     expect(screen.getByRole("link", { name: "Panel General" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
@@ -54,7 +77,7 @@ describe("MobileTabBar", () => {
   it("recepción: Pedidos, Chat interno, Notificaciones, Historial + Más", () => {
     mocks.roles = ["recepcion"];
     mocks.pathname = "/dashboard/orders";
-    render(<MobileTabBar />);
+    renderBar();
 
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
@@ -67,7 +90,7 @@ describe("MobileTabBar", () => {
   it("rol operativo (taller): Tareas asignadas, Chat interno, Notificaciones, Ayuda + Más", () => {
     mocks.roles = ["taller"];
     mocks.pathname = "/dashboard/orders";
-    render(<MobileTabBar />);
+    renderBar();
 
     expect(screen.getByRole("link", { name: "Tareas asignadas" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
@@ -80,7 +103,7 @@ describe("MobileTabBar", () => {
   it("resalta el tab activo por match exacto de ruta", () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/admin";
-    render(<MobileTabBar />);
+    renderBar();
 
     expect(screen.getByRole("link", { name: "Panel General" })).toHaveAttribute(
       "aria-current",
@@ -92,7 +115,7 @@ describe("MobileTabBar", () => {
   it("no confunde /dashboard/admin con /dashboard/admin/rendimiento (sin match por prefijo)", () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/admin/rendimiento";
-    render(<MobileTabBar />);
+    renderBar();
 
     // "Rendimiento" ni siquiera es uno de los 4 tabs principales para este
     // rol, así que si algo quedara marcado activo sería un falso positivo
@@ -102,12 +125,20 @@ describe("MobileTabBar", () => {
     );
   });
 
-  it('el tab "Más" abre el Sheet completo del menú', () => {
+  it('el tab "Más" abre el bottom sheet (no el Sidebar primitive)', () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/orders";
-    render(<MobileTabBar />);
+    renderBar();
+
+    // Antes de abrir, el contenido del sheet no está montado (Radix sólo lo
+    // monta cuando `open` es true).
+    expect(screen.queryByText("Ana Gómez")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Más opciones" }));
-    expect(mocks.setOpenMobile).toHaveBeenCalledWith(true);
+
+    // La tarjeta de identidad de `MobileMoreSheet` confirma que se abrió el
+    // bottom sheet propio, no el drawer lateral del `Sidebar` primitive.
+    expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
   });
 });

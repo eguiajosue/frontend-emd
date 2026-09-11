@@ -44,7 +44,9 @@ function getTimeBasedGreeting(): string {
   return "Buenas noches";
 }
 
-function ConfiguracionLink({ pathname }: { pathname: string }) {
+/** Exportado también para `MobileMoreSheet.tsx`, que reutiliza este botón tal
+ *  cual en vez de duplicar su JSX/lógica de "colapsado". */
+export function ConfiguracionLink({ pathname }: { pathname: string }) {
   const active = pathname === "/dashboard/configuracion";
   const { state, isMobile } = useSidebar();
   const collapsed = !isMobile && state === "collapsed";
@@ -72,7 +74,7 @@ function ConfiguracionLink({ pathname }: { pathname: string }) {
  * saber si es instalable de antemano, así que el botón directamente no
  * existe hasta ese momento en vez de mostrarse deshabilitado.
  */
-function InstallAppButton() {
+export function InstallAppButton() {
   const { canInstall, promptInstall } = useInstallPrompt();
   const { state, isMobile } = useSidebar();
   const collapsed = !isMobile && state === "collapsed";
@@ -126,6 +128,14 @@ export function AppSidebar() {
   // colapsada, las etiquetas de texto desaparecían aunque hubiera espacio
   // de sobra para mostrarlas.
   const collapsed = !isMobile && state === "collapsed";
+
+  // En móvil el rail/drawer deja de existir por completo (pedido explícito:
+  // "en la versión de móvil ocupo que no exista el sidebar") — la barra
+  // flotante (`MobileTabBar`) más el bottom sheet de "Más"
+  // (`MobileMoreSheet`) son la única navegación móvil. Todos los hooks de
+  // arriba se llaman siempre (regla de hooks); sólo el JSX del rail/Sheet se
+  // omite acá.
+  if (isMobile) return null;
 
   return (
     <Sidebar collapsible="icon">

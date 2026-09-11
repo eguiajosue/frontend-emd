@@ -84,4 +84,14 @@ describe("AppSidebar", () => {
       screen.getByRole("button", { name: /Colapsar menú|Expandir menú/ })
     ).toBeInTheDocument();
   });
+
+  it("no renderiza nada en móvil (el rail/drawer deja de existir; la navegación móvil vive en MobileTabBar/MobileMoreSheet)", () => {
+    useIsMobileMock.mockReturnValue(true);
+    const { container } = renderSidebar();
+    // El wrapper de `SidebarProvider` siempre se monta (contexto); lo que se
+    // verifica es que `AppSidebar` no le agrega nada adentro.
+    const providerWrapper = container.querySelector(".group\\/sidebar-wrapper");
+    expect(providerWrapper).toBeEmptyDOMElement();
+    expect(screen.queryByText("EMD Bordados")).not.toBeInTheDocument();
+  });
 });

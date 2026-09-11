@@ -43,7 +43,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
            * suelta de siempre.
            */}
           <div className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-6 sm:pb-0 sm:pt-6 sm:backdrop-blur-none">
-            <SidebarTrigger />
+            {/* En móvil ya no hay nada que este botón pueda abrir: el rail
+                no se monta (ver `AppSidebar`) y "Más" vive en su propio
+                bottom sheet, así que se oculta y sólo queda operativo en
+                escritorio, donde sigue colapsando/expandiendo el rail. */}
+            <SidebarTrigger className="hidden md:flex" />
             <NotificationBell />
           </div>
           <AnimatePresence mode="wait">
