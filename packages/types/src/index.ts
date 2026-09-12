@@ -511,11 +511,19 @@ export interface ChatConversation {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Categoría de un evento: define su color en el calendario y si lleva
+ * seguimiento de estado. Una junta, por ejemplo, es sólo informativa — no
+ * tiene "pendiente"/"terminado" (ver `CATEGORY_META` en el frontend web).
+ */
+export type CalendarEventCategory = "instalacion" | "visita" | "entrega" | "junta" | "otro";
+
+/**
  * Evento del calendario de equipo de Recepción: instalaciones, juntas,
  * visitas a clientes — reemplaza la lista que hoy se coordina a mano por
  * WhatsApp. Compartido: cualquier recepcion/admin/superuser lo ve y edita,
  * no sólo quien lo creó. Reusa `AreaTaskStatus` para el mismo ciclo
- * pendiente → en_proceso → terminado ("❌ / 🟠 / ✅").
+ * pendiente → en_proceso → terminado ("❌ / 🟠 / ✅") en las categorías que
+ * lo necesitan.
  */
 export interface CalendarEvent extends BaseEntity {
   title: string;
@@ -524,6 +532,7 @@ export interface CalendarEvent extends BaseEntity {
   /** Cliente real vinculado, si se eligió de la lista en vez de texto libre. */
   clientId?: number | null;
   client?: Client | null;
+  category: CalendarEventCategory;
   eventDate: string;
   /** `false` = evento "todo el día" (la hora de `eventDate` se ignora). */
   hasTime: boolean;
@@ -539,6 +548,7 @@ export interface CreateCalendarEventPayload {
   title: string;
   clientName?: string;
   clientId?: number;
+  category?: CalendarEventCategory;
   eventDate: string;
   hasTime?: boolean;
   reminderMinutesBefore?: number;

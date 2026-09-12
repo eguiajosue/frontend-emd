@@ -20,6 +20,7 @@ import {
   groupItemsByDay,
   toCalendarItems,
 } from "./calendarMerge";
+import { CATEGORY_META } from "./eventCategories";
 import type { CalendarEvent, Order } from "@/types";
 
 interface UpcomingEventsSheetProps {
@@ -98,6 +99,13 @@ export function UpcomingEventsSheet({
                           className="flex w-full items-start gap-2 rounded-lg border p-2.5 text-left text-sm transition-colors hover:bg-muted"
                         >
                           <div className="min-w-0 flex-1">
+                            {item.kind === "event" && (
+                              <span
+                                className={`mb-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${CATEGORY_META[item.event.category].pillClasses}`}
+                              >
+                                {CATEGORY_META[item.event.category].label}
+                              </span>
+                            )}
                             {client && (
                               <p className="truncate text-xs font-semibold text-muted-foreground">
                                 {client}
@@ -111,11 +119,13 @@ export function UpcomingEventsSheet({
                             )}
                           </div>
                           {item.kind === "event" ? (
-                            <span
-                              className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${EVENT_STATUS_BADGE_CLASS[item.event.status]}`}
-                            >
-                              {EVENT_STATUS_LABEL[item.event.status]}
-                            </span>
+                            CATEGORY_META[item.event.category].tracksStatus && (
+                              <span
+                                className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${EVENT_STATUS_BADGE_CLASS[item.event.status]}`}
+                              >
+                                {EVENT_STATUS_LABEL[item.event.status]}
+                              </span>
+                            )
                           ) : (
                             <span className="flex shrink-0 items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                               <Package className="h-3 w-3" />

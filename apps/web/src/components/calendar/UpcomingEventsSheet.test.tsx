@@ -15,6 +15,7 @@ const upcomingEvent: CalendarEvent = {
   title: "Visita a planta",
   clientName: "MEDLINE",
   clientId: null,
+  category: "visita",
   eventDate: inTwoDays.toISOString(),
   hasTime: true,
   status: "pendiente",

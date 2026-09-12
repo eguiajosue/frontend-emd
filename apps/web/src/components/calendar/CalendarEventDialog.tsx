@@ -25,8 +25,9 @@ import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { useEntityList } from "@/hooks/useEntity";
 import { useCalendarEventMutations } from "@/hooks/useCalendarEvents";
 import { getErrorMessage } from "@/lib/api";
-import type { CalendarEvent, Client } from "@/types";
-import { CalendarClock, Loader2, Type, UserRound } from "lucide-react";
+import { CATEGORY_OPTIONS } from "./eventCategories";
+import type { CalendarEvent, CalendarEventCategory, Client } from "@/types";
+import { CalendarClock, Loader2, Tag, Type, UserRound } from "lucide-react";
 
 function clientLabel(client: Client): string {
   return [client.first_name, client.last_name].filter(Boolean).join(" ");
@@ -84,6 +85,7 @@ export function CalendarEventDialog({
   const isEditing = Boolean(event);
 
   const [title, setTitle] = useState("");
+  const [category, setCategory] = useState<CalendarEventCategory>("otro");
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [clientNameOverride, setClientNameOverride] = useState("");
   const [date, setDate] = useState("");
@@ -107,6 +109,7 @@ export function CalendarEventDialog({
     if (event) {
       const eventDate = new Date(event.eventDate);
       setTitle(event.title);
+      setCategory(event.category);
       setClientId(event.clientId ?? undefined);
       setClientNameOverride(event.clientId ? "" : event.clientName ?? "");
       setDate(eventDate.toISOString().slice(0, 10));
@@ -124,6 +127,7 @@ export function CalendarEventDialog({
       }
     } else {
       setTitle("");
+      setCategory("otro");
       setClientId(undefined);
       setClientNameOverride("");
       setDate(defaultDate ?? "");
@@ -160,6 +164,7 @@ export function CalendarEventDialog({
 
     const payload = {
       title: title.trim(),
+      category,
       clientId,
       clientName: clientId ? undefined : clientNameOverride || undefined,
       eventDate: eventDate.toISOString(),
@@ -203,6 +208,24 @@ export function CalendarEventDialog({
               aria-invalid={Boolean(titleError)}
               className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
             />
+          </FormField>
+
+          <FormField label="Categoría" htmlFor="ce-category" icon={Tag}>
+            <Select value={category} onValueChange={(v) => setCategory(v as CalendarEventCategory)}>
+              <SelectTrigger id="ce-category" className="h-11 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <span className="flex items-center gap-2">
+                      <span className={`h-2 w-2 rounded-full ${option.swatchClass}`} />
+                      {option.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
 
           <FormField label="Cliente (opcional)" htmlFor="ce-client" icon={UserRound}>

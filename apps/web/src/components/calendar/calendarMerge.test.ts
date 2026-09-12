@@ -13,6 +13,7 @@ const event: CalendarEvent = {
   title: "Instalar torniquetes",
   clientName: "MEDLINE",
   clientId: null,
+  category: "instalacion",
   eventDate: "2026-09-15T10:00:00.000Z",
   hasTime: true,
   status: "pendiente",

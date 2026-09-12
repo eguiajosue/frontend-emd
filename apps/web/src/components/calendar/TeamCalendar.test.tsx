@@ -32,6 +32,7 @@ const baseEvent: CalendarEvent = {
   title: "Instalar torniquetes",
   clientName: "MEDLINE",
   clientId: null,
+  category: "instalacion",
   eventDate: day15.toISOString(),
   hasTime: true,
   status: "pendiente",
@@ -76,10 +77,10 @@ async function openDay15Popover() {
 }
 
 describe("TeamCalendar", () => {
-  it("un día con actividad se pinta con el rosa de marca (fijo, no el acento del usuario)", () => {
+  it("un día con actividad se pinta con el rosa tenue de marca (fijo, no el acento del usuario)", () => {
     renderCalendar({ events: [baseEvent] });
     const cell = screen.getByText("15").closest("div");
-    expect(cell).toHaveClass("bg-brand-500");
+    expect(cell).toHaveClass("bg-brand-50");
   });
 
   it("las bolitas de estado usan rojo/naranja/verde según pendiente/en_proceso/terminado", () => {
@@ -100,7 +101,9 @@ describe("TeamCalendar", () => {
     renderCalendar({ events: [baseEvent] });
     await openDay15Popover();
 
-    expect(screen.getByText("Instalar torniquetes")).toBeInTheDocument();
+    // El título aparece dos veces (la píldora de vista previa en la celda del
+    // mes y la fila del popover): se apunta al <p> del popover, no cualquiera.
+    expect(screen.getByText("Instalar torniquetes", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByText("MEDLINE")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pendiente/i })).toBeInTheDocument();
   });
@@ -109,9 +112,9 @@ describe("TeamCalendar", () => {
     renderCalendar({ events: [baseEvent], orders: [baseOrder] });
     await openDay15Popover();
 
-    expect(screen.getByText("Instalar torniquetes")).toBeInTheDocument();
+    expect(screen.getByText("Instalar torniquetes", { selector: "p" })).toBeInTheDocument();
     expect(screen.getByText(/Pedido #42/)).toBeInTheDocument();
-    expect(screen.getByText("Armar pendones")).toBeInTheDocument();
+    expect(screen.getByText("Armar pendones", { selector: "p" })).toBeInTheDocument();
   });
 
   it("clickear un pedido en el popover llama a onSelectOrder con su id", async () => {
@@ -136,6 +139,14 @@ describe("TeamCalendar", () => {
     await openDay15Popover();
 
     expect(screen.getByRole("button", { name: /Terminado/i })).toBeDisabled();
+  });
+
+  it("una junta (categoría sin seguimiento) no muestra franja ni botón de estado", async () => {
+    renderCalendar({ events: [{ ...baseEvent, category: "junta" }] });
+    await openDay15Popover();
+
+    expect(screen.getByText("Junta / Reunión")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pendiente/i })).not.toBeInTheDocument();
   });
 
   it("pide confirmación antes de borrar y llama a remove al confirmar", async () => {
