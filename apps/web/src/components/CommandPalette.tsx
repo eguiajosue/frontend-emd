@@ -16,6 +16,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { getOrderClientName } from "@/lib/format";
 import {
+  CalendarDays,
   History,
   Package,
   Plus,
@@ -80,6 +81,7 @@ export function CommandPalette() {
   const showUsuarios = isAdmin || roles.includes("superuser");
   const showClientes = isAdmin || roles.includes("recepcion");
   const showHistorial = isAdmin || roles.includes("recepcion");
+  const showCalendario = isAdmin || roles.includes("recepcion");
 
   return (
     <AnimatePresence>
@@ -125,6 +127,12 @@ export function CommandPalette() {
                       <CommandItem onSelect={() => go("/dashboard/clientes")}>
                         <Users2 className="mr-2 h-4 w-4" />
                         Ir a Clientes
+                      </CommandItem>
+                    )}
+                    {showCalendario && (
+                      <CommandItem onSelect={() => go("/dashboard/calendario")}>
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        Ir a Calendario
                       </CommandItem>
                     )}
                     {showUsuarios && (

@@ -24,6 +24,8 @@ export const ENDPOINTS = {
   // siembran con ids que cambian entre entornos, así que el tablero los
   // resuelve por nombre desde acá en vez de hardcodearlos.
   statuses: "status",
+  // Calendario de equipo de Recepción (instalaciones, juntas, visitas).
+  calendarEvents: "calendar-events",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;
