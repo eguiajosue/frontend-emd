@@ -533,6 +533,8 @@ export interface CalendarEvent extends BaseEntity {
   clientId?: number | null;
   client?: Client | null;
   category: CalendarEventCategory;
+  /** Área de producción involucrada (taller/dtf/bordado/diseno/laser/impresiones), opcional. */
+  area?: string | null;
   eventDate: string;
   /** `false` = evento "todo el día" (la hora de `eventDate` se ignora). */
   hasTime: boolean;
@@ -549,6 +551,7 @@ export interface CreateCalendarEventPayload {
   clientName?: string;
   clientId?: number;
   category?: CalendarEventCategory;
+  area?: string;
   eventDate: string;
   hasTime?: boolean;
   reminderMinutesBefore?: number;
@@ -571,6 +574,9 @@ export interface CalendarTask extends BaseEntity {
   description?: string | null;
   completed: boolean;
   completedAt?: string | null;
+  /** Pedido relacionado, opcional (ej. "confirmar medidas" de un pedido puntual). */
+  orderId?: number | null;
+  order?: { id: number; description: string } | null;
   createdById: number;
   createdAt: string;
   createdBy?: AssignedUser | null;
@@ -579,6 +585,7 @@ export interface CalendarTask extends BaseEntity {
 export interface CreateCalendarTaskPayload {
   title: string;
   description?: string;
+  orderId?: number;
 }
 
 export type UpdateCalendarTaskPayload = Partial<CreateCalendarTaskPayload>;

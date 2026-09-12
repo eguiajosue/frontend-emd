@@ -2,13 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CalendarTaskDialog } from "./CalendarTaskDialog";
-import type { CalendarTask } from "@/types";
+import type { CalendarTask, Order } from "@/types";
 
 const createMock = vi.fn();
 const updateMock = vi.fn();
 
 vi.mock("@/hooks/useCalendarTasks", () => ({
   useCalendarTaskMutations: () => ({ create: createMock, update: updateMock }),
+}));
+
+const activeOrder: Order = {
+  id: 42,
+  description: "50 camisas bordadas",
+  statusId: 1,
+  creationDate: "2026-09-01T00:00:00.000Z",
+} as Order;
+
+vi.mock("@/hooks/useOrders", () => ({
+  useOrders: () => ({ data: [activeOrder] }),
 }));
 
 beforeEach(() => {
@@ -36,7 +47,19 @@ describe("CalendarTaskDialog", () => {
     expect(createMock).toHaveBeenCalledWith({
       title: "Confirmar medidas",
       description: undefined,
+      orderId: undefined,
     });
+  });
+
+  it("permite vincular la tarea a un pedido activo", async () => {
+    render(<CalendarTaskDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Confirmar medidas");
+    await userEvent.click(screen.getByLabelText(/^Pedido/i));
+    await userEvent.click(await screen.findByRole("option", { name: /#42/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Crear tarea/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ orderId: 42 }));
   });
 
   it("manda la descripción cuando se completa", async () => {

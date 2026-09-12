@@ -26,8 +26,9 @@ import { useEntityList } from "@/hooks/useEntity";
 import { useCalendarEventMutations } from "@/hooks/useCalendarEvents";
 import { getErrorMessage } from "@/lib/api";
 import { CATEGORY_OPTIONS } from "./eventCategories";
+import { AREA_OPTIONS, AREA_ICONS } from "@/lib/areas";
 import type { CalendarEvent, CalendarEventCategory, Client } from "@/types";
-import { CalendarClock, Loader2, Tag, Type, UserRound } from "lucide-react";
+import { CalendarClock, Loader2, MapPin, Tag, Type, UserRound } from "lucide-react";
 
 function clientLabel(client: Client): string {
   return [client.first_name, client.last_name].filter(Boolean).join(" ");
@@ -86,6 +87,7 @@ export function CalendarEventDialog({
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<CalendarEventCategory>("otro");
+  const [area, setArea] = useState<string | undefined>(undefined);
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [clientNameOverride, setClientNameOverride] = useState("");
   const [date, setDate] = useState("");
@@ -110,6 +112,7 @@ export function CalendarEventDialog({
       const eventDate = new Date(event.eventDate);
       setTitle(event.title);
       setCategory(event.category);
+      setArea(event.area ?? undefined);
       setClientId(event.clientId ?? undefined);
       setClientNameOverride(event.clientId ? "" : event.clientName ?? "");
       setDate(eventDate.toISOString().slice(0, 10));
@@ -128,6 +131,7 @@ export function CalendarEventDialog({
     } else {
       setTitle("");
       setCategory("otro");
+      setArea(undefined);
       setClientId(undefined);
       setClientNameOverride("");
       setDate(defaultDate ?? "");
@@ -165,6 +169,7 @@ export function CalendarEventDialog({
     const payload = {
       title: title.trim(),
       category,
+      area,
       clientId,
       clientName: clientId ? undefined : clientNameOverride || undefined,
       eventDate: eventDate.toISOString(),
@@ -224,6 +229,31 @@ export function CalendarEventDialog({
                     </span>
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          <FormField label="Área (opcional)" htmlFor="ce-area" icon={MapPin}>
+            <Select
+              value={area ?? "ninguna"}
+              onValueChange={(v) => setArea(v === "ninguna" ? undefined : v)}
+            >
+              <SelectTrigger id="ce-area" className="h-11 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ninguna">Sin área</SelectItem>
+                {AREA_OPTIONS.map((option) => {
+                  const Icon = AREA_ICONS[option.value];
+                  return (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className="flex items-center gap-2">
+                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </FormField>

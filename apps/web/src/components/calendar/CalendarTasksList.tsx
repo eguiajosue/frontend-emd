@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { ListChecks, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -91,6 +91,12 @@ export function CalendarTasksList() {
         </p>
         {task.description && (
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
+        )}
+        {task.orderId && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <Package className="h-2.5 w-2.5" aria-hidden />
+            Pedido #{task.orderId}
+          </span>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
