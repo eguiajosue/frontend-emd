@@ -61,71 +61,68 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-dvh grid grid-cols-1 md:grid-cols-2">
-      <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 text-white relative overflow-hidden">
-        <GradientBlobs variant="login" />
-        <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="text-center px-8 py-6 relative"
-        >
-          <h1 className="font-heading text-6xl lg:text-8xl font-semibold bg-gradient-to-r from-white via-brand-200 to-brand-400 bg-clip-text text-transparent">
-            EMD Bordados
-          </h1>
-          <p className="text-lg mt-4 font-medium text-neutral-200">
-            De la idea al bordado: cada pedido, taller y entrega en un solo lugar
-          </p>
-          <p className="text-sm mt-2 opacity-60">Versión 1.0.0</p>
-        </motion.div>
-      </div>
-
-      <div className="relative flex items-center justify-center overflow-hidden bg-neutral-950 p-6 sm:p-8 md:bg-background">
-        <GradientBlobs variant="subtle" className="md:hidden" />
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
-          className="w-full max-w-md space-y-8"
-        >
-          <div className="space-y-2 text-center md:hidden">
-            <h1 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white">EMD Bordados</h1>
+    <div className="min-h-dvh flex items-center justify-center bg-background p-4 sm:p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="grid w-full max-w-4xl grid-cols-1 overflow-hidden rounded-2xl bg-card shadow-soft-md md:grid-cols-2"
+      >
+        {/* Panel de marca: sólo escritorio, igual que antes. Sin asset de
+            ilustración con licencia disponible, reutiliza los blobs + campo
+            de partículas ya existentes en vez de una imagen inventada. */}
+        <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 p-8 text-white md:m-3 md:flex md:rounded-xl">
+          <GradientBlobs variant="login" />
+          <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
+          <div className="relative text-center">
+            <h1 className="font-heading text-4xl font-semibold leading-tight text-white lg:text-5xl">
+              EMD <span className="text-brand-300">Bordados</span>
+            </h1>
+            <p className="mt-4 text-base font-medium text-neutral-200">
+              De la idea al bordado: cada pedido, taller y entrega en un solo lugar
+            </p>
           </div>
-          <div className="space-y-2 text-center">
-            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-white md:text-foreground">Bienvenido de vuelta</h2>
-            <p className="text-neutral-300 md:text-muted-foreground mt-2">Ingresar usuario y contraseña para entrar al taller</p>
+        </div>
+
+        {/* Panel de formulario */}
+        <div className="flex flex-col justify-center p-6 sm:p-10">
+          <div className="mb-8 flex items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
+              E
+            </div>
+            <span className="font-heading text-base font-semibold tracking-tight text-foreground">
+              EMD Bordados
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="font-heading text-3xl font-semibold leading-tight tracking-tight text-foreground">
+              Bienvenido de vuelta
+            </h2>
+            <p className="text-muted-foreground">
+              Ingresar usuario y contraseña para entrar al taller
+            </p>
           </div>
 
           {sessionMessage && (
-            <div className="rounded-lg border border-brand-500/40 bg-brand-500/10 text-brand-300 md:text-brand-700 text-sm px-4 py-3 text-center">
+            <div className="mt-6 rounded-lg border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center text-sm text-brand-700 dark:text-brand-300">
               {sessionMessage}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            <FormField
-              label={<span className="text-neutral-200 md:text-foreground">Nombre de Usuario</span>}
-              htmlFor="username"
-              icon={User}
-              error={usernameError}
-            >
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5" noValidate>
+            <FormField label="Nombre de Usuario" htmlFor="username" icon={User} error={usernameError}>
               <Input
                 id="username"
                 placeholder="Ingrese su nombre de usuario"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-                className="w-full px-4 py-3 h-11 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                className="h-12 w-full rounded-xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
               />
             </FormField>
 
-            <FormField
-              label={<span className="text-neutral-200 md:text-foreground">Contraseña</span>}
-              htmlFor="password"
-              icon={Lock}
-              error={passwordError}
-            >
+            <FormField label="Contraseña" htmlFor="password" icon={Lock} error={passwordError}>
               <Input
                 id="password"
                 type="password"
@@ -133,7 +130,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                className="w-full px-4 py-3 h-11 rounded-lg border-2 border-neutral-700 md:border-input bg-transparent focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                className="h-12 w-full rounded-xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
               />
             </FormField>
 
@@ -141,7 +138,7 @@ const LoginForm = () => {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-red-400 md:text-destructive text-sm space-y-1"
+                className="space-y-1 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
               >
                 <ul>
                   {errors.map((error, index) => (
@@ -155,7 +152,7 @@ const LoginForm = () => {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-sm text-muted-foreground md:text-neutral-300 text-center"
+                className="text-center text-sm text-muted-foreground"
               >
                 El servidor estaba inactivo y está despertando, puede tardar
                 unos segundos más...
@@ -166,7 +163,7 @@ const LoginForm = () => {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full h-11 py-3 bg-primary hover:bg-brand-700 text-primary-foreground rounded-lg transition-colors"
+                className="h-12 w-full rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-brand-700"
               >
                 {submitting ? (
                   <>
@@ -179,20 +176,18 @@ const LoginForm = () => {
             </motion.div>
           </form>
 
-          <div>
-            <p className="text-neutral-300 md:text-muted-foreground text-center">
-              ¿No tienes una cuenta?{' '}
-              <span className="text-brand-400 md:text-primary font-medium">
-                Consulta con un administrador para dar la alta de su usuario
-              </span>
-            </p>
-          </div>
+          <p className="mt-6 text-center text-muted-foreground">
+            ¿No tienes una cuenta?{' '}
+            <span className="font-medium text-primary">
+              Consulta con un administrador para dar la alta de su usuario
+            </span>
+          </p>
 
-          <p className="text-neutral-500 md:text-muted-foreground/70 text-center text-xs">
+          <p className="mt-6 text-center text-xs text-muted-foreground/70">
             v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_COMMIT}
           </p>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   )
 }
