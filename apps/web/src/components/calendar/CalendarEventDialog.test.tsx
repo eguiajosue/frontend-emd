@@ -52,6 +52,28 @@ describe("CalendarEventDialog", () => {
     expect(new Date(payload.eventDate).toISOString().slice(11, 16)).toBe("15:00");
   });
 
+  it('por defecto manda la categoría "otro" si no se cambia', async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Cosa sin categorizar");
+    await userEvent.type(screen.getByLabelText(/^Fecha/), "2026-09-20");
+    await userEvent.click(screen.getByRole("button", { name: /Crear evento/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ category: "otro" }));
+  });
+
+  it("permite elegir la categoría del evento (ej. Junta / Reunión)", async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Reunión de proveedores");
+    await userEvent.type(screen.getByLabelText(/^Fecha/), "2026-09-20");
+    await userEvent.click(screen.getByLabelText(/Categoría/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Junta \/ Reunión/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Crear evento/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ category: "junta" }));
+  });
+
   it('con "Todo el día" activado, no manda hora y hasTime queda false', async () => {
     render(<CalendarEventDialog open onClose={() => {}} />);
 
@@ -92,6 +114,7 @@ describe("CalendarEventDialog", () => {
       title: "Entregar sello",
       clientName: "NLDC",
       clientId: null,
+      category: "entrega",
       eventDate: "2026-09-20T11:00:00.000Z",
       hasTime: true,
       status: "pendiente",

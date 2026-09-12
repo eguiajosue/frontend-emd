@@ -9,18 +9,28 @@ import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
 import esLocale from "@fullcalendar/core/locales/es";
 import { Package } from "lucide-react";
 import { toCalendarItems, type CalendarItem } from "./calendarMerge";
-import type { CalendarEvent, Order } from "@/types";
+import { CATEGORY_META } from "./eventCategories";
+import type { CalendarEvent, CalendarEventCategory, Order } from "@/types";
 import "./fullcalendar-theme.css";
 
-/** Color de la bolita/evento por estado — mismo semáforo que la vista Mes. */
-const EVENT_HEX_BY_STATUS: Record<CalendarEvent["status"], string> = {
+/** Franja ("cuticle") de estado — mismo semáforo que la vista Mes. */
+const STATUS_HEX: Record<CalendarEvent["status"], string> = {
   pendiente: "#ef4444",
   en_proceso: "#f97316",
   terminado: "#10b981",
 };
 
+/** Color sólido del bloque de evento por categoría (mismo tono que `CATEGORY_META`, en hex para FullCalendar). */
+const CATEGORY_HEX: Record<CalendarEventCategory, string> = {
+  instalacion: "#f97316",
+  visita: "#3b82f6",
+  entrega: "#14b8a6",
+  junta: "#a855f7",
+  otro: "#6b7280",
+};
+
 /**
- * Color de marca para los pedidos (distinto de los 3 estados de evento).
+ * Color de marca para los pedidos (distinto de las categorías de evento).
  * Referencia viva a `--brand-500` (no un hex fijo aparte) para no
  * desincronizarse si ese token cambia.
  */
@@ -37,10 +47,10 @@ interface TimeGridCalendarProps {
 
 /**
  * Vistas Día/Semana del calendario de equipo: grilla horaria completa
- * (FullCalendar) en vez de la grilla de bolitas de la vista Mes, para poder
+ * (FullCalendar) en vez de la lista de píldoras de la vista Mes, para poder
  * ver a qué hora exacta cae cada evento/pedido cuando el día está cargado.
- * Sólo cubre día/semana — el mes sigue siendo `TeamCalendar`, cuyo sistema de
- * bolitas es demasiado a medida para retematizar sobre esta librería.
+ * Sólo cubre día/semana — el mes sigue siendo `TeamCalendar`, cuyo layout es
+ * demasiado a medida para retematizar sobre esta librería.
  */
 export function TimeGridCalendar({
   view,
@@ -59,7 +69,7 @@ export function TimeGridCalendar({
         title: item.kind === "event" ? item.event.title : item.order.description,
         start: item.date,
         allDay: !item.hasTime,
-        color: item.kind === "event" ? EVENT_HEX_BY_STATUS[item.event.status] : ORDER_COLOR,
+        color: item.kind === "event" ? CATEGORY_HEX[item.event.category] : ORDER_COLOR,
         classNames: item.kind === "order" ? ["fc-order-event"] : [],
         extendedProps: { item } satisfies { item: CalendarItem },
       })),
@@ -81,11 +91,20 @@ export function TimeGridCalendar({
 
   const renderEventContent = (arg: EventContentArg) => {
     const item = arg.event.extendedProps.item as CalendarItem;
+    const showCuticle = item.kind === "event" && CATEGORY_META[item.event.category].tracksStatus;
     return (
-      <div className="flex items-center gap-1 overflow-hidden">
-        {item.kind === "order" && <Package className="h-3 w-3 shrink-0" />}
-        {arg.timeText && <span className="shrink-0 font-medium">{arg.timeText}</span>}
-        <span className="truncate">{arg.event.title}</span>
+      <div className="flex items-stretch gap-1 overflow-hidden">
+        {showCuticle && (
+          <span
+            className="w-1 shrink-0 rounded-full"
+            style={{ backgroundColor: STATUS_HEX[(item as Extract<CalendarItem, { kind: "event" }>).event.status] }}
+          />
+        )}
+        <div className="flex min-w-0 items-center gap-1">
+          {item.kind === "order" && <Package className="h-3 w-3 shrink-0" />}
+          {arg.timeText && <span className="shrink-0 font-medium">{arg.timeText}</span>}
+          <span className="truncate">{arg.event.title}</span>
+        </div>
       </div>
     );
   };
