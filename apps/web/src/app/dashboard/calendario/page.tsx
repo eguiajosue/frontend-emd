@@ -8,10 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ErrorState } from "@/components/feedback/states";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useOrders } from "@/hooks/useOrders";
 import { TeamCalendar } from "@/components/calendar/TeamCalendar";
 import { TimeGridCalendar } from "@/components/calendar/TimeGridCalendar";
+import { MobileMonthList } from "@/components/calendar/mobile/MobileMonthList";
+import { MobileDayWeekView } from "@/components/calendar/mobile/MobileDayWeekView";
 import { UpcomingEventsSheet } from "@/components/calendar/UpcomingEventsSheet";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -26,8 +29,11 @@ type CalendarView = "mes" | "semana" | "dia";
  * cualquier evento. Mezcla, además, los pedidos con fecha de entrega (sólo
  * lectura acá — se editan desde "Pedidos").
  */
+type MobileView = "mes" | "diaSemana";
+
 export default function CalendarioPage() {
   const { canManageOperations, isSessionLoading } = usePermissions();
+  const isMobile = useIsMobile();
   const { data: events, isPending, isError, refetch } = useCalendarEvents({
     enabled: canManageOperations,
   });
@@ -35,6 +41,8 @@ export default function CalendarioPage() {
     enabled: canManageOperations,
   });
   const [view, setView] = useState<CalendarView>("mes");
+  const [mobileView, setMobileView] = useState<MobileView>("mes");
+  const [mobileSelectedDate, setMobileSelectedDate] = useState(() => new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>();
@@ -63,6 +71,11 @@ export default function CalendarioPage() {
     setDefaultDate(undefined);
     setDefaultTime(undefined);
     setDialogOpen(true);
+  };
+
+  const openMobileDay = (date: Date) => {
+    setMobileSelectedDate(date);
+    setMobileView("diaSemana");
   };
 
   if (!isSessionLoading && !canManageOperations) {
@@ -101,44 +114,66 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)}>
-        <TabsList>
-          <TabsTrigger value="dia">Día</TabsTrigger>
-          <TabsTrigger value="semana">Semana</TabsTrigger>
-          <TabsTrigger value="mes">Mes</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {isError ? (
-        <ErrorState onRetry={() => refetch()} />
-      ) : loading ? (
-        <Skeleton className="h-[32rem] w-full" />
-      ) : view === "mes" ? (
-        <TeamCalendar
-          events={events}
-          orders={ordersWithDelivery}
-          onAddForDay={openCreate}
-          onEdit={openEdit}
-          onSelectOrder={setOpenOrderId}
-        />
-      ) : (
-        <div className="rounded-xl border bg-card p-2 shadow-soft sm:p-4">
-          <TimeGridCalendar
-            view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
+      {isMobile ? (
+        isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : loading ? (
+          <Skeleton className="h-[32rem] w-full" />
+        ) : mobileView === "mes" ? (
+          <MobileMonthList events={events} orders={ordersWithDelivery} onSelectDay={openMobileDay} />
+        ) : (
+          <MobileDayWeekView
             events={events}
             orders={ordersWithDelivery}
+            initialDate={mobileSelectedDate}
+            onBack={() => setMobileView("mes")}
             onAddAt={openCreateAt}
             onEdit={openEdit}
             onSelectOrder={setOpenOrderId}
           />
-        </div>
-      )}
+        )
+      ) : (
+        <>
+          <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)}>
+            <TabsList>
+              <TabsTrigger value="dia">Día</TabsTrigger>
+              <TabsTrigger value="semana">Semana</TabsTrigger>
+              <TabsTrigger value="mes">Mes</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <CalendarClock className="h-3.5 w-3.5 shrink-0" />
-        Los pedidos se marcan con <span className="font-medium">un ícono de paquete</span> — se
-        editan desde &quot;Pedidos&quot;, acá sólo se consultan.
-      </p>
+          {isError ? (
+            <ErrorState onRetry={() => refetch()} />
+          ) : loading ? (
+            <Skeleton className="h-[32rem] w-full" />
+          ) : view === "mes" ? (
+            <TeamCalendar
+              events={events}
+              orders={ordersWithDelivery}
+              onAddForDay={openCreate}
+              onEdit={openEdit}
+              onSelectOrder={setOpenOrderId}
+            />
+          ) : (
+            <div className="rounded-xl border bg-card p-2 shadow-soft sm:p-4">
+              <TimeGridCalendar
+                view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
+                events={events}
+                orders={ordersWithDelivery}
+                onAddAt={openCreateAt}
+                onEdit={openEdit}
+                onSelectOrder={setOpenOrderId}
+              />
+            </div>
+          )}
+
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+            Los pedidos se marcan con <span className="font-medium">un ícono de paquete</span> — se
+            editan desde &quot;Pedidos&quot;, acá sólo se consultan.
+          </p>
+        </>
+      )}
 
       <CalendarEventDialog
         open={dialogOpen}

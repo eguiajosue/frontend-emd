@@ -270,7 +270,7 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
  * una junta, por ejemplo, no la lleva. Un pedido usa su propio ícono de
  * paquete en vez del sistema de categorías.
  */
-function CalendarPill({ item }: { item: CalendarItem }) {
+export function CalendarPill({ item }: { item: CalendarItem }) {
   if (item.kind === "order") {
     return (
       <div className="flex items-center gap-1 truncate rounded border border-dashed border-current px-1 py-0.5 text-[10px] font-medium text-muted-foreground">

@@ -34,6 +34,23 @@ if (isBrowserLike && !window.ResizeObserver) {
   };
 }
 
+// Tampoco IntersectionObserver, que el scroll infinito del calendario mobile
+// usa para detectar cuándo cargar más meses (ver MobileMonthList).
+if (isBrowserLike && !window.IntersectionObserver) {
+  window.IntersectionObserver = class {
+    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+    root = null;
+    rootMargin = "";
+    thresholds: number[] = [];
+  } as unknown as typeof IntersectionObserver;
+}
+
 // Tampoco implementa scrollIntoView, que MessageThread usa para bajar al
 // último mensaje tras cada render.
 if (isBrowserLike && !window.Element.prototype.scrollIntoView) {
