@@ -7,6 +7,7 @@ import {
   History,
   Bell,
   MessagesSquare,
+  CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 import { ordersScreenTitle } from "./orderScreen";
@@ -135,6 +136,20 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
       ],
     },
     {
+      groupLabel: "Calendario",
+      items: [
+        {
+          // Calendario de equipo de Recepción: instalaciones, juntas, visitas
+          // a clientes. Reemplaza la lista que se coordinaba a mano por
+          // WhatsApp; compartido entre recepcion/admin/superuser.
+          title: "Calendario",
+          url: "/dashboard/calendario",
+          icon: CalendarDays,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+      ],
+    },
+    {
       groupLabel: "Usuarios",
       items: [
         {
@@ -196,6 +211,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/admin/rendimiento",
   "/dashboard/historial",
   "/dashboard/clientes",
+  "/dashboard/calendario",
   "/dashboard/usuarios",
   "/dashboard/ayuda",
 ];

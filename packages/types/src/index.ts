@@ -505,3 +505,43 @@ export interface ChatConversation {
   /** true cuando el usuario participa sólo para monitoreo (admin/superuser). */
   isMonitor: boolean;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Calendario de equipo de Recepción (GET/POST /calendar-events)              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Evento del calendario de equipo de Recepción: instalaciones, juntas,
+ * visitas a clientes — reemplaza la lista que hoy se coordina a mano por
+ * WhatsApp. Compartido: cualquier recepcion/admin/superuser lo ve y edita,
+ * no sólo quien lo creó. Reusa `AreaTaskStatus` para el mismo ciclo
+ * pendiente → en_proceso → terminado ("❌ / 🟠 / ✅").
+ */
+export interface CalendarEvent extends BaseEntity {
+  title: string;
+  /** Cliente/empresa escrito a mano, igual que hoy en WhatsApp ("MEDLINE"). */
+  clientName?: string | null;
+  /** Cliente real vinculado, si se eligió de la lista en vez de texto libre. */
+  clientId?: number | null;
+  client?: Client | null;
+  eventDate: string;
+  /** `false` = evento "todo el día" (la hora de `eventDate` se ignora). */
+  hasTime: boolean;
+  status: AreaTaskStatus;
+  /** Anticipación (en minutos) del recordatorio push pedido al crear el evento. */
+  reminderMinutesBefore?: number | null;
+  createdById: number;
+  createdAt: string;
+  createdBy?: AssignedUser | null;
+}
+
+export interface CreateCalendarEventPayload {
+  title: string;
+  clientName?: string;
+  clientId?: number;
+  eventDate: string;
+  hasTime?: boolean;
+  reminderMinutesBefore?: number;
+}
+
+export type UpdateCalendarEventPayload = Partial<CreateCalendarEventPayload>;
