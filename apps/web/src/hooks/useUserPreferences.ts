@@ -31,6 +31,8 @@ export interface UserPreferences {
    * preferencia personal de cada uno (ver WORKFLOW.md §4 en el backend).
    */
   areaViewMode?: "unified" | "split" | null;
+  /** Formato de hora en toda la app: 24h o 12h con AM/PM. */
+  timeFormatPreference?: "24h" | "12h" | null;
   /**
    * Notificaciones (Fase 4). Modo silencio general: si está activo, el
    * backend no persiste ni pushea notificaciones (salvo menciones directas,

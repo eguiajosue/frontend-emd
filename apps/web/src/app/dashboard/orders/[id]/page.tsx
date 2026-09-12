@@ -32,11 +32,13 @@ import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 
 const OrderDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const orderId = Number(params?.id);
+  const { timeFormat } = useTimeFormat();
 
   const { roles, isAdmin, canManageOperations } = usePermissions();
   const {
@@ -159,7 +161,7 @@ const OrderDetailPage = () => {
                 atiende hoy (más el botón para tomarlo). */}
             <OrderAttendance order={order} />
             <p>
-              <b>Fecha de Creación:</b> {formatDateTime(order.creationDate)}
+              <b>Fecha de Creación:</b> {formatDateTime(order.creationDate, undefined, timeFormat)}
             </p>
             <p className="flex items-center gap-2">
               <b>Estado actual:</b>{" "}
@@ -278,7 +280,7 @@ const OrderDetailPage = () => {
                         </span>
                         <br />
                         <span className="text-muted-foreground">
-                          {formatDateTime(h.changeDate)}
+                          {formatDateTime(h.changeDate, undefined, timeFormat)}
                         </span>
                       </li>
                     ))}

@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { chatInitials } from "@/hooks/useChat";
 import { useChatTyping } from "@/hooks/useChatTyping";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { ChatConversation } from "@/types";
 
 interface ConversationListProps {
@@ -21,13 +22,6 @@ interface ConversationListProps {
   className?: string;
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 interface ConversationRowProps {
   conversation: ChatConversation;
   active: boolean;
@@ -37,6 +31,7 @@ interface ConversationRowProps {
 function ConversationRow({ conversation, active, onSelect }: ConversationRowProps) {
   const typingUserIds = useChatTyping(conversation.id);
   const isTyping = typingUserIds.length > 0;
+  const { formatTime } = useTimeFormat();
 
   return (
     <li>
@@ -108,7 +103,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
             </span>
             {conversation.lastMessageAt ? (
               <span className="shrink-0 text-[11px] text-muted-foreground/80">
-                {formatTime(conversation.lastMessageAt)}
+                {formatTime(new Date(conversation.lastMessageAt))}
               </span>
             ) : null}
           </span>

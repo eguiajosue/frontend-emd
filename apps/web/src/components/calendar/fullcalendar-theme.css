@@ -93,6 +93,21 @@
   border-radius: 0.5rem;
 }
 
+/*
+ * `MobileDayWeekView` dibuja su PROPIA columna de horas, fija y fuera del
+ * `overflow-x-auto` (ver ese componente) — la nativa de FullCalendar queda
+ * escondida con `slotLabelContent`/`allDayText` (props declarativas, no
+ * mutación de DOM). Se intentaron `position: sticky` y `transform` vía JS
+ * sobre la celda nativa de FullCalendar para "congelarla" en su lugar: en
+ * Chromium (confirmado en headless Y headful, real, no artefacto del
+ * sandbox), CUALQUIER cambio de posición aplicado a esa celda DESPUÉS del
+ * montaje (sticky nativo o `transform` por JS, da igual el mecanismo) hace
+ * que deje de pintar su texto — la geometría queda correcta pero el
+ * glyph desaparece. Sólo pinta bien si su posición nunca cambia tras el
+ * primer render, así que la columna real vive aparte, quieta, y nunca se
+ * la reposiciona.
+ */
+
 /* El evento "pedido" lleva además el ícono de paquete (ver TimeGridCalendar);
    el borde punteado es el segundo refuerzo visual de esa misma distinción,
    mismo criterio que las bolitas blancas de la vista Mes. */

@@ -16,7 +16,7 @@ import { format, formatDistance, isSameDay, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { getAreaLabel } from "@/lib/areas";
 import { statusLabel } from "@/lib/orderStatus";
-import { getAssignedUserName } from "@/lib/format";
+import { getAssignedUserName, type TimeFormatPreference } from "@/lib/format";
 import type { AssignedUser, OrderAuditLogEntry } from "@/types";
 
 /** Una línea del historial, ya redactada. */
@@ -208,10 +208,11 @@ export function auditRelativeTime(value: string, now: Date = new Date()): string
 }
 
 /** Fecha y hora completas, para el tooltip de precisión. */
-export function auditAbsoluteTime(value: string): string {
+export function auditAbsoluteTime(value: string, timeFormat: TimeFormatPreference = "24h"): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Fecha desconocida";
-  return format(date, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
+  const timePattern = timeFormat === "24h" ? "HH:mm" : "h:mm a";
+  return format(date, `d 'de' MMMM 'de' yyyy, ${timePattern}`, { locale: es });
 }
 
 /** Acciones que no son un diff de campos y tienen su propia frase. */
@@ -264,12 +265,13 @@ function describeEntry(
  */
 export function buildAuditLines(
   entry: OrderAuditLogEntry,
-  now: Date = new Date()
+  now: Date = new Date(),
+  timeFormat: TimeFormatPreference = "24h"
 ): AuditLogLine[] {
   const name = auditActorName(entry.user);
   const initials = auditActorInitials(entry.user);
   const relative = auditRelativeTime(entry.createdAt, now);
-  const absolute = auditAbsoluteTime(entry.createdAt);
+  const absolute = auditAbsoluteTime(entry.createdAt, timeFormat);
   const changes = asRecord(entry.changes);
   const phrase = ACTION_PHRASES[entry.action];
 

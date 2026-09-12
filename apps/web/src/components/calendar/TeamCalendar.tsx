@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useMotionPreset } from "@/lib/motion";
 import { useCalendarEventMutations, useUpdateCalendarEventStatus } from "@/hooks/useCalendarEvents";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
@@ -271,6 +272,8 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
  * paquete en vez del sistema de categorías.
  */
 export function CalendarPill({ item }: { item: CalendarItem }) {
+  const { formatTime } = useTimeFormat();
+
   if (item.kind === "order") {
     return (
       <div className="flex items-center gap-1 truncate rounded border border-dashed border-current px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -287,7 +290,7 @@ export function CalendarPill({ item }: { item: CalendarItem }) {
         <span className={cn("w-1 shrink-0", EVENT_STATUS_DOT_CLASS[item.event.status])} />
       )}
       <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-[10px] font-medium">
-        {item.hasTime && <span className="font-semibold">{format(item.date, "HH:mm")} </span>}
+        {item.hasTime && <span className="font-semibold">{formatTime(item.date)} </span>}
         {calendarItemTitle(item)}
       </span>
     </div>
@@ -309,6 +312,7 @@ function EventRow({
   const client = calendarItemClientLabel(item);
   const next = nextEventStatus(event.status);
   const meta = CATEGORY_META[event.category];
+  const { formatTime } = useTimeFormat();
 
   return (
     <div className="rounded-lg border p-2.5 text-sm">
@@ -325,7 +329,7 @@ function EventRow({
           {client && <p className="truncate text-xs font-semibold text-muted-foreground">{client}</p>}
           <p className="truncate font-medium">{calendarItemTitle(item)}</p>
           {event.hasTime && (
-            <p className="text-xs text-muted-foreground">{format(item.date, "HH:mm")}</p>
+            <p className="text-xs text-muted-foreground">{formatTime(item.date)}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -377,6 +381,7 @@ function OrderRow({
 }) {
   const order = item.order;
   const client = calendarItemClientLabel(item);
+  const { formatTime } = useTimeFormat();
 
   return (
     <button
@@ -389,7 +394,7 @@ function OrderRow({
         Pedido #{order.id} · {client}
       </div>
       <p className="truncate font-medium">{calendarItemTitle(item)}</p>
-      {item.hasTime && <p className="text-xs text-muted-foreground">{format(item.date, "HH:mm")}</p>}
+      {item.hasTime && <p className="text-xs text-muted-foreground">{formatTime(item.date)}</p>}
     </button>
   );
 }

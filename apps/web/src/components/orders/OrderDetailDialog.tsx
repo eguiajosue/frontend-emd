@@ -60,6 +60,7 @@ import {
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { Order, UpdateOrderPayload, User } from "@/types";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
@@ -83,6 +84,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     enabled: open,
   });
   const { roles, isAdmin, canManageOperations } = usePermissions();
+  const { timeFormat } = useTimeFormat();
   // Historial de estados e "Historial de cambios" (audit log) son sólo para
   // quien gestiona pedidos (admin/superuser/recepcion) — los roles operativos
   // no los necesitan ni deben pedir esos endpoints.
@@ -103,8 +105,8 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   } = useOrderAuditLog(open ? orderId : null, { enabled: canSeeHistory });
   // Una oración en español por campo cambiado (ver `@/lib/orderAuditLog`).
   const auditLines = useMemo(
-    () => auditEntries.flatMap((entry) => buildAuditLines(entry)),
-    [auditEntries]
+    () => auditEntries.flatMap((entry) => buildAuditLines(entry, new Date(), timeFormat)),
+    [auditEntries, timeFormat]
   );
   const [newNote, setNewNote] = useState("");
   const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
@@ -278,7 +280,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                         lo atiende hoy (más el botón para tomarlo). */}
                     <OrderAttendance order={order} />
                     <p>
-                      <b>Fecha de creación:</b> {formatDateTime(order.creationDate)}
+                      <b>Fecha de creación:</b> {formatDateTime(order.creationDate, undefined, timeFormat)}
                     </p>
                     <p className="flex items-center gap-1">
                       <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
@@ -389,7 +391,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
 
                   {!canEdit && (
                     <p>
-                      <b>Fecha de entrega:</b> {formatDeliveryDate(order.deliveryDate)}
+                      <b>Fecha de entrega:</b> {formatDeliveryDate(order.deliveryDate, timeFormat)}
                     </p>
                   )}
 
@@ -496,7 +498,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                                 <StatusBadge statusId={h.newStatusId} />
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {formatDateTime(h.changeDate)}
+                                {formatDateTime(h.changeDate, undefined, timeFormat)}
                               </span>
                             </li>
                           ))}
@@ -529,7 +531,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                                 <p className="whitespace-pre-wrap">{note.text}</p>
                                 <p className="mt-1 text-xs text-muted-foreground">
                                   {getAssignedUserName(note.user) ?? "Usuario"} ·{" "}
-                                  {formatDateTime(note.createdAt)}
+                                  {formatDateTime(note.createdAt, undefined, timeFormat)}
                                 </p>
                               </li>
                             ))}

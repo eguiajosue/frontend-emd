@@ -7,6 +7,7 @@ import { getStatusDotClasses } from "@/lib/statusColors";
 import { getOrderClientName, formatDeliveryDate } from "@/lib/format";
 import { staggerContainerVariants } from "@/lib/motion";
 import { useMotionPreset } from "@/lib/motion";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { PackageCheck } from "lucide-react";
 import type { Order } from "@/types";
 
@@ -19,6 +20,7 @@ interface UpcomingDeliveriesProps {
 /** Próximas entregas: siguientes pedidos ordenados por fecha de entrega más cercana (hoy en adelante). */
 export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: UpcomingDeliveriesProps) {
   const { staggerItemVariants } = useMotionPreset();
+  const { timeFormat } = useTimeFormat();
   const now = Date.now();
 
   const upcoming = orders
@@ -63,7 +65,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="text-xs font-medium text-muted-foreground">
-                    {formatDeliveryDate(order.deliveryDate)}
+                    {formatDeliveryDate(order.deliveryDate, timeFormat)}
                   </span>
                   <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                 </div>

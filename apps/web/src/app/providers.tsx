@@ -17,6 +17,8 @@ import { ApiError, getErrorMessage, isSessionExpiredError } from "@/lib/api";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAccentColor } from "@/hooks/useAccentColor";
 import { useDensity, type Density } from "@/hooks/useDensity";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
+import type { TimeFormatPreference } from "@/lib/format";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { registerOnlineDrainFallback } from "@/lib/backgroundSync";
 
@@ -131,6 +133,7 @@ function PreferencesSync() {
   const { setTheme } = useTheme();
   const { setAccent } = useAccentColor();
   const { setDensity } = useDensity();
+  const { setTimeFormat } = useTimeFormat();
   const { preferences } = useUserPreferences();
   const appliedForUser = useRef<string | null>(null);
 
@@ -143,6 +146,9 @@ function PreferencesSync() {
     if (preferences.themePreference) setTheme(preferences.themePreference);
     if (preferences.accentColor) setAccent(preferences.accentColor);
     if (preferences.density) setDensity(preferences.density as Density);
+    if (preferences.timeFormatPreference) {
+      setTimeFormat(preferences.timeFormatPreference as TimeFormatPreference);
+    }
     if (preferences.languagePreference) {
       try {
         localStorage.setItem(LANGUAGE_STORAGE_KEY, preferences.languagePreference);
@@ -150,7 +156,7 @@ function PreferencesSync() {
         // Sin acceso a localStorage: no rompe la app, sólo no cachea localmente.
       }
     }
-  }, [status, session, preferences, setTheme, setAccent, setDensity]);
+  }, [status, session, preferences, setTheme, setAccent, setDensity, setTimeFormat]);
 
   return null;
 }

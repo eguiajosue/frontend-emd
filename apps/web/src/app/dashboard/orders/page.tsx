@@ -37,6 +37,7 @@ import {
 } from "@/lib/kanbanColumns";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { KanbanBoard } from "@/components/orders/KanbanBoard";
 import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
@@ -149,6 +150,7 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  */
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading } = usePermissions();
+  const { timeFormat } = useTimeFormat();
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
@@ -348,7 +350,7 @@ const OrdersPage = () => {
       Estado: (statusMap[order.statusId] || "desconocido").toUpperCase(),
       "Asignado a": getAssignedUserName(order.assignedUser) ?? "Sin asignar",
       "Fecha de Creación": formatDate(order.creationDate),
-      "Fecha de Entrega": formatDeliveryDate(order.deliveryDate),
+      "Fecha de Entrega": formatDeliveryDate(order.deliveryDate, timeFormat),
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -497,7 +499,7 @@ const OrdersPage = () => {
       {
         id: "deliveryDate",
         header: "Fecha de Entrega",
-        cell: ({ row }) => formatDeliveryDate(row.original.deliveryDate),
+        cell: ({ row }) => formatDeliveryDate(row.original.deliveryDate, timeFormat),
       },
       {
         id: "changeStatus",
@@ -527,7 +529,7 @@ const OrdersPage = () => {
         ),
       },
     ],
-    [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll]
+    [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll, timeFormat]
   );
 
   // Áreas de producción del usuario: definen cuál tarea de área manda al

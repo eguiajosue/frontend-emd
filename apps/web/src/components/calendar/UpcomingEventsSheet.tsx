@@ -21,6 +21,7 @@ import {
   toCalendarItems,
 } from "./calendarMerge";
 import { CATEGORY_META } from "./eventCategories";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { CalendarEvent, Order } from "@/types";
 
 interface UpcomingEventsSheetProps {
@@ -52,6 +53,8 @@ export function UpcomingEventsSheet({
   onEdit,
   onSelectOrder,
 }: UpcomingEventsSheetProps) {
+  const { formatTime } = useTimeFormat();
+
   const groupedDays = useMemo(() => {
     const todayStart = startOfDay(new Date());
     const items = toCalendarItems(events, orders).filter((item) => item.date >= todayStart);
@@ -114,7 +117,7 @@ export function UpcomingEventsSheet({
                             <p className="truncate font-medium">{calendarItemTitle(item)}</p>
                             {item.hasTime && (
                               <p className="text-xs text-muted-foreground">
-                                {format(item.date, "HH:mm")}
+                                {formatTime(item.date)}
                               </p>
                             )}
                           </div>
