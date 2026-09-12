@@ -400,6 +400,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                     <OrderStatusButtons
                       currentStatusId={statusId ?? order.statusId}
                       canChange={canChangeStatus}
+                      allowedStatusIds={canEdit ? undefined : myStageIds}
                       isChanging={isChangingStatus}
                       onChange={handleStatusChange}
                     />

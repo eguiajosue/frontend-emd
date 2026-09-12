@@ -49,9 +49,15 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
   const canChange =
     !isInDesignLimbo && (canManageOperations || myStageIds.includes(order.statusId));
   const next = getNextStatusOption(order.statusId);
+  // No alcanza con poder tocar el estado ACTUAL: el próximo paso también
+  // tiene que ser uno que este rol pueda fijar (ej. producción llega a
+  // "terminado", que sí es suyo, pero el siguiente es "entregado", que es de
+  // Recepción — sin este chequeo se ofrecía "Marcar entregado" a producción,
+  // aunque el backend lo rechazaba con 403).
+  const canMoveToNext = canManageOperations || (!!next && myStageIds.includes(next.value));
   const isChanging = isMoving;
 
-  if (!canChange || !next || isDeliveredStatus(order.statusId)) {
+  if (!canChange || !next || !canMoveToNext || isDeliveredStatus(order.statusId)) {
     return <span className="text-xs text-muted-foreground">—</span>;
   }
 

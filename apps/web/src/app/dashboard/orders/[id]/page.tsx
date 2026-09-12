@@ -252,6 +252,7 @@ const OrderDetailPage = () => {
             <OrderStatusButtons
               currentStatusId={order.statusId}
               canChange={canChangeStatus}
+              allowedStatusIds={canEdit ? undefined : myStageIds}
               isChanging={isChangingStatus}
               onChange={handleStatusChange}
             />
