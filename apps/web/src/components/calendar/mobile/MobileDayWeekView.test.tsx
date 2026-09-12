@@ -5,11 +5,9 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { MobileDayWeekView } from "./MobileDayWeekView";
 
-// FullCalendar necesita mediciones de layout reales (ancho de columnas,
-// `dayMinWidth`) que jsdom no puede dar ("No ScrollGrid implementation"
-// al forzar el scroll horizontal) — se stubea acá para poder testear la
-// tira de días y el botón de volver sin depender de la librería, mismo
-// criterio que ya se usa para no testear `TimeGridCalendar` directo.
+// Se stubea FullCalendar para poder testear la tira de días y el botón de
+// volver sin depender de la librería (ni de mediciones de layout reales),
+// mismo criterio que ya se usa para no testear `TimeGridCalendar` directo.
 vi.mock("@fullcalendar/react", () => ({
   default: () => <div data-testid="fullcalendar-stub" />,
 }));
