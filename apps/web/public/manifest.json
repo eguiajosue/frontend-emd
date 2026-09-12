@@ -1,7 +1,7 @@
 {
-  "name": "EMD Bordados",
+  "name": "EMD HUB",
   "short_name": "EMD",
-  "description": "Sistema de gestión de pedidos de EMD Bordados",
+  "description": "Sistema de gestión de pedidos de EMD HUB: imprenta, bordado y marketing",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

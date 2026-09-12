@@ -26,6 +26,8 @@ export const ENDPOINTS = {
   statuses: "status",
   // Calendario de equipo de Recepción (instalaciones, juntas, visitas).
   calendarEvents: "calendar-events",
+  // Tareas pendientes del calendario de equipo, sin fecha todavía definida.
+  calendarTasks: "calendar-tasks",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

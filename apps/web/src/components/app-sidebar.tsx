@@ -156,7 +156,7 @@ export function AppSidebar() {
                     E
                   </div>
                   <span className="font-heading text-sm font-semibold tracking-tight">
-                    EMD Bordados
+                    EMD HUB
                   </span>
                 </div>
               )}

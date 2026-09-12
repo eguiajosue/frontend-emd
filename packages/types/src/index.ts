@@ -555,3 +555,30 @@ export interface CreateCalendarEventPayload {
 }
 
 export type UpdateCalendarEventPayload = Partial<CreateCalendarEventPayload>;
+
+/* -------------------------------------------------------------------------- */
+/* Tareas pendientes del calendario de equipo (GET/POST /calendar-tasks)      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Tarea pendiente del calendario de equipo: actividad sin fecha todavía
+ * definida (ej. "Confirmar medidas con cliente"), separada de
+ * `CalendarEvent`. Mismo equipo/visibilidad que el calendario, sin
+ * asignación a una persona en particular.
+ */
+export interface CalendarTask extends BaseEntity {
+  title: string;
+  description?: string | null;
+  completed: boolean;
+  completedAt?: string | null;
+  createdById: number;
+  createdAt: string;
+  createdBy?: AssignedUser | null;
+}
+
+export interface CreateCalendarTaskPayload {
+  title: string;
+  description?: string;
+}
+
+export type UpdateCalendarTaskPayload = Partial<CreateCalendarTaskPayload>;

@@ -58,9 +58,9 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: /Clientes/i })).toBeInTheDocument();
   });
 
-  it("en el panel expandido de escritorio muestra la fila de marca EMD Bordados", () => {
+  it("en el panel expandido de escritorio muestra la fila de marca EMD HUB", () => {
     renderSidebar(true);
-    expect(screen.getByText("EMD Bordados")).toBeInTheDocument();
+    expect(screen.getByText("EMD HUB")).toBeInTheDocument();
   });
 
   it("en el rail colapsado, el ítem activo lleva la barra de acento en el borde izquierdo", () => {
@@ -92,6 +92,6 @@ describe("AppSidebar", () => {
     // verifica es que `AppSidebar` no le agrega nada adentro.
     const providerWrapper = container.querySelector(".group\\/sidebar-wrapper");
     expect(providerWrapper).toBeEmptyDOMElement();
-    expect(screen.queryByText("EMD Bordados")).not.toBeInTheDocument();
+    expect(screen.queryByText("EMD HUB")).not.toBeInTheDocument();
   });
 });

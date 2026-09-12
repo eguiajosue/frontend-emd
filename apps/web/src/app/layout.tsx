@@ -32,8 +32,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "EMD Bordados",
-  description: "Sistema de gestión de pedidos de EMD Bordados",
+  title: "EMD HUB",
+  description: "Sistema de gestión de pedidos de EMD HUB: imprenta, bordado y marketing",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon.svg",

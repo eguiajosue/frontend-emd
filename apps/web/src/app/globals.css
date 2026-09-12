@@ -64,6 +64,35 @@
     --sidebar-border: 330 15% 82%;
     --sidebar-ring: 330 81% 46%;
   }
+
+  /*
+   * Superficies que deben quedar SIEMPRE en modo claro sin importar el tema
+   * global (ej. login): redeclara el mismo bloque de tokens semánticos que
+   * :root, para que las variables no se hereden del ancestro .dark. Mantener
+   * en sync con :root si esos valores cambian.
+   */
+  .theme-force-light {
+    color-scheme: light;
+    --background: 330 20% 98%;
+    --foreground: 330 15% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 330 15% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 330 15% 12%;
+    --primary: 330 81% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 330 40% 96%;
+    --secondary-foreground: 330 60% 24%;
+    --muted: 330 20% 95.5%;
+    --muted-foreground: 330 8% 42%;
+    --accent: 189 85% 94%;
+    --accent-foreground: 189 85% 18%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 330 20% 90%;
+    --input: 330 20% 90%;
+    --ring: 330 81% 46%;
+  }
   .dark {
     /* Gris oscuro con tinte de marca sutil, nunca negro puro. Texto suavizado,
        nunca blanco puro (ver protocolo minimalista §3-4). */
