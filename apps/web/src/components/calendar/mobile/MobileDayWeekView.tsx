@@ -35,9 +35,18 @@ interface MobileDayWeekViewProps {
 /**
  * Vista Día+Semana combinada de mobile: una tira de 7 días (para saltar
  * directo a cualquiera de la semana) arriba de la misma grilla horaria de
- * FullCalendar que usa escritorio, con columnas angostas (`dayMinWidth`) que
- * fuerzan scroll horizontal — así entran ~2 días por pantalla, como en la
- * referencia, sin necesitar una vista custom de FullCalendar.
+ * FullCalendar que usa escritorio, con columnas angostas que fuerzan scroll
+ * horizontal — así entran ~2 días por pantalla, como en la referencia, sin
+ * necesitar una vista custom de FullCalendar.
+ *
+ * El ancho angosto NO usa la opción `dayMinWidth` de FullCalendar: esa
+ * activa internamente su layout de scroll horizontal "premium"
+ * (`renderHScrollLayout`), que requiere el plugin de pago
+ * `@fullcalendar/scrollgrid` — sin él, tira `Error: No ScrollGrid
+ * implementation` (así se rompía esta pantalla en producción). En su lugar,
+ * se envuelve el calendario en un contenedor angosto (7 columnas al ancho
+ * mínimo) dentro de un `overflow-x-auto` normal: mismo resultado visual,
+ * sin plugin de pago.
  *
  * Tocar un día de la tira no cambia la semana cargada: sólo desplaza el
  * scroll horizontal hasta esa columna (`data-date`, atributo que FullCalendar
@@ -151,24 +160,25 @@ export function MobileDayWeekView({
         </Button>
       </div>
 
-      <div ref={containerRef} className="rounded-xl border bg-card p-1 shadow-soft">
-        <FullCalendar
-          ref={fcRef}
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="timeGridWeek"
-          initialDate={initialDate}
-          locale={esLocale}
-          headerToolbar={false}
-          dayMinWidth={DAY_MIN_WIDTH}
-          height="auto"
-          nowIndicator
-          scrollTime="08:00:00"
-          slotDuration="00:30:00"
-          events={fcEvents}
-          eventClick={handleEventClick}
-          dateClick={handleDateClick}
-          eventContent={renderFcEventContent}
-        />
+      <div ref={containerRef} className="overflow-x-auto rounded-xl border bg-card p-1 shadow-soft">
+        <div style={{ minWidth: `${7 * DAY_MIN_WIDTH}px` }}>
+          <FullCalendar
+            ref={fcRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            initialDate={initialDate}
+            locale={esLocale}
+            headerToolbar={false}
+            height="auto"
+            nowIndicator
+            scrollTime="08:00:00"
+            slotDuration="00:30:00"
+            events={fcEvents}
+            eventClick={handleEventClick}
+            dateClick={handleDateClick}
+            eventContent={renderFcEventContent}
+          />
+        </div>
       </div>
     </div>
   );
