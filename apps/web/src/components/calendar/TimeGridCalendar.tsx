@@ -5,7 +5,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin, { type DateClickArg } from "@fullcalendar/interaction";
 import esLocale from "@fullcalendar/core/locales/es";
-import { makeFcEventClickHandler, renderFcEventContent, useFcEvents } from "./fullcalendarShared";
+import { fcTimeFormatOptions, makeFcEventClickHandler, renderFcEventContent, useFcEvents } from "./fullcalendarShared";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { CalendarEvent, Order } from "@/types";
 import "./fullcalendar-theme.css";
 
@@ -37,6 +38,8 @@ export function TimeGridCalendar({
 }: TimeGridCalendarProps) {
   const fcEvents = useFcEvents(events, orders);
   const handleEventClick = makeFcEventClickHandler(onEdit, onSelectOrder);
+  const { timeFormat } = useTimeFormat();
+  const timeFormatOptions = fcTimeFormatOptions(timeFormat);
 
   const handleDateClick = (info: DateClickArg) => {
     onAddAt(info.dateStr);
@@ -53,6 +56,8 @@ export function TimeGridCalendar({
       nowIndicator
       scrollTime="08:00:00"
       slotDuration="00:30:00"
+      slotLabelFormat={timeFormatOptions}
+      eventTimeFormat={timeFormatOptions}
       events={fcEvents}
       eventClick={handleEventClick}
       dateClick={handleDateClick}

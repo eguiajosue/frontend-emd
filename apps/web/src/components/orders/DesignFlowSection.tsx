@@ -39,6 +39,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { formatDateTime } from "@/lib/format";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { cn } from "@/lib/utils";
 import { downloadFromUrl } from "@/lib/download";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
@@ -337,6 +338,7 @@ function RevisionTimelineItem({
   onZoom: (src: string) => void;
 }) {
   const { staggerItemVariants } = useMotionPreset();
+  const { timeFormat } = useTimeFormat();
   // Una hoja de autorización puede ser VARIAS imágenes o un PDF: el backend
   // manda todos en `montageFiles`/`feedbackFiles`. Los campos legacy
   // (`hasMontageFile` y compañía) apuntan al primero y se siguen usando de
@@ -375,7 +377,7 @@ function RevisionTimelineItem({
         </span>
       </div>
       {revision.sentAt && (
-        <p className="text-xs text-muted-foreground">Montaje enviado {formatDateTime(revision.sentAt)}</p>
+        <p className="text-xs text-muted-foreground">Montaje enviado {formatDateTime(revision.sentAt, undefined, timeFormat)}</p>
       )}
 
       {montageFiles.length > 0 && (
@@ -436,7 +438,7 @@ function RevisionTimelineItem({
         <div className="rounded-lg border bg-muted/30 p-2.5 text-sm">
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Feedback del cliente
-            {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt)}` : ""}
+            {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt, undefined, timeFormat)}` : ""}
           </p>
           <p className="whitespace-pre-wrap">{revision.feedbackText}</p>
           {feedbackFiles.length > 0 && (
@@ -470,7 +472,7 @@ function RevisionTimelineItem({
       {revision.approved && (
         <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Aprobada{revision.approvedAt ? ` · ${formatDateTime(revision.approvedAt)}` : ""}
+          Aprobada{revision.approvedAt ? ` · ${formatDateTime(revision.approvedAt, undefined, timeFormat)}` : ""}
         </p>
       )}
     </motion.li>

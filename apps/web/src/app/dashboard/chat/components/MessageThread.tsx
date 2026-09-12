@@ -37,6 +37,7 @@ import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useChatTyping } from "@/hooks/useChatTyping";
 import { ChatSocketContext } from "@/hooks/useSocket";
 import { useMotionPreset } from "@/lib/motion";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -90,13 +91,6 @@ interface MessageThreadProps {
   /** Volver a la lista de conversaciones (sólo visible en mobile: en escritorio la lista ya está a la vista). */
   onBack?: () => void;
   className?: string;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function formatDay(iso: string): string {
@@ -315,6 +309,7 @@ export function MessageThread({
 }: MessageThreadProps) {
   const [draft, setDraft] = useState("");
   const [showMembers, setShowMembers] = useState(false);
+  const { formatTime } = useTimeFormat();
   const [attachedOrder, setAttachedOrder] = useState<Order | null>(null);
   const [attachedFile, setAttachedFile] = useState<ChatAttachmentInput | null>(null);
   const [attachedFilePreview, setAttachedFilePreview] = useState<string | null>(null);
@@ -594,7 +589,7 @@ export function MessageThread({
                 mine ? "text-primary-foreground/70" : "text-muted-foreground"
               )}
             >
-              {formatTime(message.createdAt)}
+              {formatTime(new Date(message.createdAt))}
               {mine ? (
                 <MessageCheck
                   state={computeCheckState(message, members, currentUserId)}

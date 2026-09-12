@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { chatInitials } from "@/hooks/useChat";
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
 import { getAreaLabel, getAreaIcon } from "@/lib/areas";
@@ -35,6 +36,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const isCritical = !delivered && progress !== null && progress >= 95;
   const { staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
   const areaTags = orderAreaTags(order);
+  const { timeFormat } = useTimeFormat();
 
   return (
     <motion.div variants={staggerItemVariants}>
@@ -76,7 +78,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               vistazo, sin repetir el nombre completo en cada tarjeta. */}
           <div className="flex items-center justify-between gap-2">
             <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              Entrega: {formatDeliveryDate(order.deliveryDate)}
+              Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}
             </span>
             {assignedName && (
               <Avatar className="h-7 w-7 border" title={`Asignado a ${assignedName}`}>

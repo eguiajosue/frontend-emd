@@ -22,6 +22,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { statusMap } from "@/lib/orderStatus";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getClientName, getUserName } from "@/lib/format";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp, LayoutDashboard } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -70,6 +71,7 @@ const AvgTimeBarChart = dynamic(() => import("@/components/charts/AvgTimeBarChar
 
 const AdminDashboardPage = () => {
   const { roles, isAdmin, isSessionLoading, session } = usePermissions();
+  const { timeFormat } = useTimeFormat();
   const {
     data: orders,
     isPending: loadingOrders,
@@ -340,7 +342,7 @@ const AdminDashboardPage = () => {
       id: "deliveryDate",
       header: "Fecha de Entrega",
       cell: ({ row }) =>
-        formatDeliveryDate(row.original.order.deliveryDate),
+        formatDeliveryDate(row.original.order.deliveryDate, timeFormat),
     },
     {
       id: "timeInStatus",

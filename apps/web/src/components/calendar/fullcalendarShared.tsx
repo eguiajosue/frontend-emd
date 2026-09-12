@@ -3,7 +3,19 @@ import type { EventClickArg, EventContentArg } from "@fullcalendar/core";
 import { Package } from "lucide-react";
 import { toCalendarItems, type CalendarItem } from "./calendarMerge";
 import { CATEGORY_META } from "./eventCategories";
+import type { TimeFormatPreference } from "@/lib/format";
 import type { CalendarEvent, CalendarEventCategory, Order } from "@/types";
+
+/**
+ * Formato de hora (eje horario + hora de eventos) para pasarle a
+ * `<FullCalendar slotLabelFormat={...} eventTimeFormat={...}>`, respetando la
+ * preferencia 24h/12h del usuario en vez del default de la librería.
+ */
+export function fcTimeFormatOptions(timeFormat: TimeFormatPreference) {
+  return timeFormat === "24h"
+    ? { hour: "2-digit" as const, minute: "2-digit" as const, hour12: false, meridiem: false as const }
+    : { hour: "numeric" as const, minute: "2-digit" as const, hour12: true, meridiem: "short" as const };
+}
 
 /**
  * Plumbing de FullCalendar compartido entre la vista Día/Semana de escritorio

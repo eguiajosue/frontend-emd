@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
 import { useDensity } from "@/hooks/useDensity";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSoundPreference } from "@/hooks/useSoundPreference";
 import { useAuthToken } from "@/hooks/useEntity";
@@ -269,6 +270,50 @@ function DensitySection() {
           <span className="text-sm font-medium">Usar vista compacta</span>
           <Switch checked={mounted && density === "compact"} onCheckedChange={handleToggle} />
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const TIME_FORMAT_OPTIONS: { id: "24h" | "12h"; label: string; example: string }[] = [
+  { id: "24h", label: "24 horas", example: "14:30" },
+  { id: "12h", label: "AM/PM", example: "2:30 p. m." },
+];
+
+function TimeFormatSection() {
+  const { timeFormat, setTimeFormat, mounted } = useTimeFormat();
+  const { updatePreferences } = useUserPreferences();
+
+  const handleSelect = (id: "24h" | "12h") => {
+    setTimeFormat(id);
+    updatePreferences({ timeFormatPreference: id });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Formato de hora</CardTitle>
+        <CardDescription>
+          Cómo se muestran las horas en toda la app (calendario, pedidos, chat).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap gap-2">
+        {TIME_FORMAT_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => handleSelect(opt.id)}
+            className={cn(
+              "flex min-w-[7rem] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+              mounted && timeFormat === opt.id
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-input hover:bg-muted"
+            )}
+          >
+            {opt.label}
+            <span className="text-xs font-normal text-muted-foreground">{opt.example}</span>
+          </button>
+        ))}
       </CardContent>
     </Card>
   );
@@ -643,6 +688,7 @@ export default function ConfiguracionPage() {
       <div className="grid gap-6 lg:max-w-2xl">
         <AppearanceSection />
         <DensitySection />
+        <TimeFormatSection />
         <SoundSection />
         <NotificationsSection />
         <LanguageSection />

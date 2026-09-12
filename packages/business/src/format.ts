@@ -12,6 +12,29 @@ export const LONG_DATE_FORMAT: Intl.DateTimeFormatOptions = {
   minute: "2-digit",
 };
 
+/** Preferencia de formato de hora del usuario (Configuración > Formato de hora). */
+export type TimeFormatPreference = "24h" | "12h";
+
+/** Hora de un `Date`, respetando el formato elegido (24h o 12h con AM/PM). */
+export function formatTimeOfDay(date: Date, timeFormat: TimeFormatPreference = "24h"): string {
+  return date.toLocaleTimeString(DATE_LOCALE, {
+    hour: timeFormat === "24h" ? "2-digit" : "numeric",
+    minute: "2-digit",
+    hour12: timeFormat === "12h",
+  });
+}
+
+/**
+ * Etiqueta corta de una hora entera (0-23) para el eje de un calendario, ej.
+ * "14" en 24h o "2p" en 12h.
+ */
+export function formatHourLabel(hour: number, timeFormat: TimeFormatPreference): string {
+  if (timeFormat === "24h") return String(hour);
+  const period = hour < 12 ? "a" : "p";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}${period}`;
+}
+
 /** Fecha corta; devuelve "-" si el valor falta o es inválido. */
 export function formatDate(value?: string | null): string {
   if (!value) return "-";
@@ -23,12 +46,13 @@ export function formatDate(value?: string | null): string {
 /** Fecha larga con hora; devuelve "-" si el valor falta o es inválido. */
 export function formatDateTime(
   value?: string | null,
-  options: Intl.DateTimeFormatOptions = LONG_DATE_FORMAT
+  options: Intl.DateTimeFormatOptions = LONG_DATE_FORMAT,
+  timeFormat: TimeFormatPreference = "24h"
 ): string {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString(DATE_LOCALE, options);
+  return date.toLocaleDateString(DATE_LOCALE, { ...options, hour12: timeFormat === "12h" });
 }
 
 /**
@@ -36,16 +60,13 @@ export function formatDateTime(
  * (00:00, el valor por defecto cuando no se especificó hora), y fecha + hora
  * cuando se cargó una hora distinta de medianoche.
  */
-export function formatDeliveryDate(value?: string | null): string {
+export function formatDeliveryDate(value?: string | null, timeFormat: TimeFormatPreference = "24h"): string {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
   const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
   if (!hasTime) return date.toLocaleDateString(DATE_LOCALE);
-  return `${date.toLocaleDateString(DATE_LOCALE)} ${date.toLocaleTimeString(DATE_LOCALE, {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
+  return `${date.toLocaleDateString(DATE_LOCALE)} ${formatTimeOfDay(date, timeFormat)}`;
 }
 
 /**

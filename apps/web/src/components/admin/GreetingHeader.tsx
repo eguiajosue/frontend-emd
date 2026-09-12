@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTimeFormat } from "@/hooks/useTimeFormat";
 
 interface GreetingHeaderProps {
   firstName?: string | null;
@@ -10,6 +11,7 @@ interface GreetingHeaderProps {
 /** Encabezado con saludo + reloj/fecha en vivo (se actualiza cada minuto). */
 export function GreetingHeader({ firstName }: GreetingHeaderProps) {
   const [now, setNow] = useState<Date | null>(null);
+  const { formatTime } = useTimeFormat();
 
   useEffect(() => {
     setNow(new Date());
@@ -17,9 +19,7 @@ export function GreetingHeader({ firstName }: GreetingHeaderProps) {
     return () => clearInterval(interval);
   }, []);
 
-  const timeLabel = now
-    ? now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
-    : "--:--";
+  const timeLabel = now ? formatTime(now) : "--:--";
   const dateLabel = now
     ? now.toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })
     : "";
