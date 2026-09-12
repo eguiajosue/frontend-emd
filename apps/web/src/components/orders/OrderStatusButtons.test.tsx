@@ -70,4 +70,39 @@ describe("OrderStatusButtons", () => {
     await userEvent.click(screen.getByRole("button", { name: "terminado" }));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("con allowedStatusIds, los estados fuera de la lista quedan deshabilitados aunque canChange sea true", async () => {
+    // Caso real: producción puede cambiar el estado (está en su etapa), pero
+    // "entregado"/"cancelado" son de Recepción — el botón no debe ofrecerse
+    // como si fuera a funcionar.
+    const onChange = vi.fn();
+    render(
+      <OrderStatusButtons
+        currentStatusId={4}
+        canChange
+        allowedStatusIds={[1, 3, 4]}
+        onChange={onChange}
+      />,
+    );
+    const entregado = screen.getByRole("button", { name: "entregado" });
+    expect(entregado).toBeDisabled();
+    expect(entregado).toHaveAttribute(
+      "title",
+      "Tu rol no puede mover el pedido a este estado",
+    );
+    await userEvent.click(entregado);
+    expect(onChange).not.toHaveBeenCalled();
+
+    const enProceso = screen.getByRole("button", { name: "en proceso" });
+    expect(enProceso).not.toBeDisabled();
+    await userEvent.click(enProceso);
+    expect(onChange).toHaveBeenCalledWith(3);
+  });
+
+  it("sin allowedStatusIds, se permiten todos los estados (comportamiento por defecto)", () => {
+    render(
+      <OrderStatusButtons currentStatusId={1} canChange onChange={() => {}} />,
+    );
+    expect(screen.getByRole("button", { name: "entregado" })).not.toBeDisabled();
+  });
 });

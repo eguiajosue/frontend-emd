@@ -9,6 +9,16 @@ interface OrderStatusButtonsProps {
   currentStatusId: number;
   /** Si el usuario logueado puede cambiar el estado de este pedido. */
   canChange: boolean;
+  /**
+   * A qué estados puede moverlo (ver `roleTaskMapping.ts`). Sin especificar,
+   * se permiten todos — así el chequeo por estado es opt-in y no rompe otros
+   * usos del componente. Recepción/admin no lo pasan (ven todo habilitado);
+   * los roles de producción sí, para que "Entregado"/"Cancelado" queden
+   * deshabilitados aunque `canChange` sea true (esos estados son de
+   * Recepción, el backend ya los rechaza con 403 — esto sólo evita mostrar
+   * un botón que va a fallar).
+   */
+  allowedStatusIds?: number[];
   /** Mientras hay una mutación de cambio de estado en curso. */
   isChanging?: boolean;
   onChange: (statusId: number) => void;
@@ -27,6 +37,7 @@ interface OrderStatusButtonsProps {
 export function OrderStatusButtons({
   currentStatusId,
   canChange,
+  allowedStatusIds,
   isChanging = false,
   onChange,
   className,
@@ -35,7 +46,8 @@ export function OrderStatusButtons({
     <div className={cn("flex flex-wrap gap-2", className)}>
       {statusOptions.map((opt) => {
         const isCurrent = opt.value === currentStatusId;
-        const disabled = !canChange || isCurrent || isChanging;
+        const notAllowedForRole = !!allowedStatusIds && !allowedStatusIds.includes(opt.value);
+        const disabled = !canChange || notAllowedForRole || isCurrent || isChanging;
         return (
           <button
             key={opt.value}
@@ -46,7 +58,9 @@ export function OrderStatusButtons({
             title={
               !canChange
                 ? "Sin permiso para cambiar el estado de este pedido"
-                : opt.label
+                : notAllowedForRole
+                  ? "Tu rol no puede mover el pedido a este estado"
+                  : opt.label
             }
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-all",
@@ -54,8 +68,8 @@ export function OrderStatusButtons({
               isCurrent
                 ? "ring-2 ring-offset-2 ring-offset-background ring-current"
                 : "opacity-60 hover:opacity-100",
-              !canChange && "cursor-not-allowed opacity-40 hover:opacity-40",
-              canChange && !isCurrent && "cursor-pointer",
+              (!canChange || notAllowedForRole) && "cursor-not-allowed opacity-40 hover:opacity-40",
+              canChange && !notAllowedForRole && !isCurrent && "cursor-pointer",
               isChanging && "cursor-wait"
             )}
           >
