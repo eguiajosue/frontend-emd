@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { format } from "date-fns";
 import { TeamCalendar } from "./TeamCalendar";
-import type { CalendarEvent } from "@/types";
+import type { CalendarEvent, Order } from "@/types";
 
 const updateStatusMock = vi.fn();
 const removeMock = vi.fn();
@@ -40,6 +40,35 @@ const baseEvent: CalendarEvent = {
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
+const baseOrder: Order = {
+  id: 42,
+  clientId: null,
+  clientNameOverride: "Hudson",
+  statusId: 1,
+  description: "Armar pendones",
+  creationDate: "2026-01-01T00:00:00.000Z",
+  deliveryDate: new Date(now.getFullYear(), now.getMonth(), 15, 16, 0).toISOString(),
+  deliveredAt: null,
+};
+
+function renderCalendar(props: {
+  events?: CalendarEvent[];
+  orders?: Order[];
+  onAddForDay?: (dateKey: string) => void;
+  onEdit?: (event: CalendarEvent) => void;
+  onSelectOrder?: (orderId: number) => void;
+}) {
+  return render(
+    <TeamCalendar
+      events={props.events ?? []}
+      orders={props.orders ?? []}
+      onAddForDay={props.onAddForDay ?? (() => {})}
+      onEdit={props.onEdit ?? (() => {})}
+      onSelectOrder={props.onSelectOrder ?? (() => {})}
+    />
+  );
+}
+
 async function openDay15Popover() {
   const cell = screen.getByText("15").closest("button");
   if (!cell) throw new Error("No se encontró la celda del día 15");
@@ -47,8 +76,28 @@ async function openDay15Popover() {
 }
 
 describe("TeamCalendar", () => {
+  it("un día con actividad se pinta con el rosa de marca (fijo, no el acento del usuario)", () => {
+    renderCalendar({ events: [baseEvent] });
+    const cell = screen.getByText("15").closest("div");
+    expect(cell).toHaveClass("bg-brand-500");
+  });
+
+  it("las bolitas de estado usan rojo/naranja/verde según pendiente/en_proceso/terminado", () => {
+    renderCalendar({
+      events: [
+        { ...baseEvent, id: 1, status: "pendiente" },
+        { ...baseEvent, id: 2, status: "en_proceso" },
+        { ...baseEvent, id: 3, status: "terminado" },
+      ],
+    });
+    const cell = screen.getByText("15").closest("button") as HTMLElement;
+    expect(cell.querySelector(".bg-red-500")).not.toBeNull();
+    expect(cell.querySelector(".bg-orange-500")).not.toBeNull();
+    expect(cell.querySelector(".bg-emerald-500")).not.toBeNull();
+  });
+
   it("muestra los eventos del día al hacer click en la celda", async () => {
-    render(<TeamCalendar events={[baseEvent]} onAddForDay={() => {}} onEdit={() => {}} />);
+    renderCalendar({ events: [baseEvent] });
     await openDay15Popover();
 
     expect(screen.getByText("Instalar torniquetes")).toBeInTheDocument();
@@ -56,8 +105,26 @@ describe("TeamCalendar", () => {
     expect(screen.getByRole("button", { name: /Pendiente/i })).toBeInTheDocument();
   });
 
+  it("mezcla un pedido con entrega ese día, distinguido con el ícono de paquete", async () => {
+    renderCalendar({ events: [baseEvent], orders: [baseOrder] });
+    await openDay15Popover();
+
+    expect(screen.getByText("Instalar torniquetes")).toBeInTheDocument();
+    expect(screen.getByText(/Pedido #42/)).toBeInTheDocument();
+    expect(screen.getByText("Armar pendones")).toBeInTheDocument();
+  });
+
+  it("clickear un pedido en el popover llama a onSelectOrder con su id", async () => {
+    const onSelectOrder = vi.fn();
+    renderCalendar({ orders: [baseOrder], onSelectOrder });
+    await openDay15Popover();
+
+    await userEvent.click(screen.getByText(/Pedido #42/).closest("button")!);
+    expect(onSelectOrder).toHaveBeenCalledWith(42);
+  });
+
   it("al hacer click en el estado, lo avanza un paso", async () => {
-    render(<TeamCalendar events={[baseEvent]} onAddForDay={() => {}} onEdit={() => {}} />);
+    renderCalendar({ events: [baseEvent] });
     await openDay15Popover();
 
     await userEvent.click(screen.getByRole("button", { name: /Pendiente/i }));
@@ -65,20 +132,14 @@ describe("TeamCalendar", () => {
   });
 
   it("un evento terminado no se puede seguir avanzando", async () => {
-    render(
-      <TeamCalendar
-        events={[{ ...baseEvent, status: "terminado" }]}
-        onAddForDay={() => {}}
-        onEdit={() => {}}
-      />
-    );
+    renderCalendar({ events: [{ ...baseEvent, status: "terminado" }] });
     await openDay15Popover();
 
     expect(screen.getByRole("button", { name: /Terminado/i })).toBeDisabled();
   });
 
   it("pide confirmación antes de borrar y llama a remove al confirmar", async () => {
-    render(<TeamCalendar events={[baseEvent]} onAddForDay={() => {}} onEdit={() => {}} />);
+    renderCalendar({ events: [baseEvent] });
     await openDay15Popover();
 
     await userEvent.click(screen.getByRole("button", { name: "Eliminar Instalar torniquetes" }));
@@ -90,7 +151,7 @@ describe("TeamCalendar", () => {
 
   it("el botón de editar llama a onEdit con el evento", async () => {
     const onEdit = vi.fn();
-    render(<TeamCalendar events={[baseEvent]} onAddForDay={() => {}} onEdit={onEdit} />);
+    renderCalendar({ events: [baseEvent], onEdit });
     await openDay15Popover();
 
     await userEvent.click(screen.getByRole("button", { name: "Editar Instalar torniquetes" }));
@@ -99,7 +160,7 @@ describe("TeamCalendar", () => {
 
   it('"+" del popover llama a onAddForDay con la fecha del día', async () => {
     const onAddForDay = vi.fn();
-    render(<TeamCalendar events={[baseEvent]} onAddForDay={onAddForDay} onEdit={() => {}} />);
+    renderCalendar({ events: [baseEvent], onAddForDay });
     await openDay15Popover();
 
     await userEvent.click(screen.getByRole("button", { name: "Agregar evento este día" }));

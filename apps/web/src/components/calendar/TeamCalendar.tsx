@@ -16,16 +16,7 @@ import {
 import { es } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import {
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Circle,
-  Pencil,
-  Play,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -43,79 +34,54 @@ import { useMotionPreset } from "@/lib/motion";
 import { useCalendarEventMutations, useUpdateCalendarEventStatus } from "@/hooks/useCalendarEvents";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { AreaTaskStatus, CalendarEvent } from "@/types";
+import {
+  calendarItemClientLabel,
+  calendarItemTitle,
+  EVENT_STATUS_BADGE_CLASS,
+  EVENT_STATUS_LABEL,
+  groupItemsByDay,
+  nextEventStatus,
+  toCalendarItems,
+  type CalendarItem,
+} from "./calendarMerge";
+import type { CalendarEvent, Order } from "@/types";
 
 const WEEKDAY_LABELS = ["D", "L", "M", "M", "J", "V", "S"];
 
-const STATUS_META: Record<AreaTaskStatus, { label: string; classes: string; icon: typeof Circle }> = {
-  pendiente: {
-    label: "Pendiente",
-    classes:
-      "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
-    icon: Circle,
-  },
-  en_proceso: {
-    label: "En proceso",
-    classes:
-      "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300",
-    icon: Play,
-  },
-  terminado: {
-    label: "Terminado",
-    classes:
-      "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
-    icon: CheckCircle2,
-  },
-};
-
-/** Siguiente paso del ciclo corto pendiente → en proceso → terminado (mismo criterio que las tareas de área). */
-function nextStatus(status: AreaTaskStatus): AreaTaskStatus | null {
-  if (status === "pendiente") return "en_proceso";
-  if (status === "en_proceso") return "terminado";
-  return null;
-}
-
-function eventClientLabel(event: CalendarEvent): string | null {
-  if (event.client) {
-    return [event.client.first_name, event.client.last_name].filter(Boolean).join(" ");
-  }
-  return event.clientName ?? null;
-}
+/** Máximo de bolitas visibles por día antes de resumir el resto en "+N". */
+const MAX_VISIBLE_DOTS = 5;
 
 interface TeamCalendarProps {
   events: CalendarEvent[];
+  orders: Order[];
   onAddForDay: (dateKey: string) => void;
   onEdit: (event: CalendarEvent) => void;
+  onSelectOrder: (orderId: number) => void;
 }
 
 /**
- * Calendario de equipo de Recepción: mismo componente de grilla mensual que
- * `DeliveryCalendar`, pero con eventos propios (no pedidos) que se pueden
- * crear/editar/borrar y cuyo estado se cicla con un click, igual que las
- * tareas de área de un pedido.
+ * Calendario de equipo de Recepción, vista Mes: grilla mensual con eventos
+ * propios (editables) y pedidos con fecha de entrega (sólo lectura, se
+ * editan desde "Pedidos") mezclados en el mismo día.
+ *
+ * Un día con actividad se pinta rosa/magenta de marca (`bg-brand-*`, fijo —
+ * no seguimos `--primary`, que el usuario puede recolorear en Apariencia)
+ * para que salte a la vista sin depender del acento elegido. Dentro, un
+ * sistema de bolitas resume el estado: rojo/naranja/verde por evento
+ * (pendiente/en_proceso/terminado) y una bolita blanca por pedido —, cada
+ * una con un aro blanco fino para distinguirse del fondo rosa.
  */
-export function TeamCalendar({ events, onAddForDay, onEdit }: TeamCalendarProps) {
+export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrder }: TeamCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
   const { staggerItemVariants } = useMotionPreset();
   const { updateStatus } = useUpdateCalendarEventStatus();
   const { remove } = useCalendarEventMutations();
 
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarEvent[]>();
-    events.forEach((event) => {
-      const date = new Date(event.eventDate);
-      if (Number.isNaN(date.getTime())) return;
-      const key = format(date, "yyyy-MM-dd");
-      const list = map.get(key) ?? [];
-      list.push(event);
-      map.set(key, list);
-    });
-    map.forEach((list) =>
-      list.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
-    );
-    return map;
-  }, [events]);
+  const itemsByDay = useMemo(
+    () => groupItemsByDay(toCalendarItems(events, orders)),
+    [events, orders]
+  );
 
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
@@ -124,7 +90,7 @@ export function TeamCalendar({ events, onAddForDay, onEdit }: TeamCalendarProps)
   }, [currentMonth]);
 
   const handleAdvance = async (event: CalendarEvent) => {
-    const next = nextStatus(event.status);
+    const next = nextEventStatus(event.status);
     if (!next) return;
     await updateStatus(event.id, next);
   };
@@ -184,27 +150,48 @@ export function TeamCalendar({ events, onAddForDay, onEdit }: TeamCalendarProps)
         >
           {days.map((day) => {
             const key = format(day, "yyyy-MM-dd");
-            const dayEvents = eventsByDay.get(key) ?? [];
+            const dayItems = itemsByDay.get(key) ?? [];
             const inMonth = isSameMonth(day, currentMonth);
             const today = isToday(day);
-            const pendingCount = dayEvents.filter((e) => e.status !== "terminado").length;
+            const hasItems = dayItems.length > 0;
+            const visibleDots = dayItems.slice(0, MAX_VISIBLE_DOTS);
+            const overflow = dayItems.length - visibleDots.length;
 
             const cell = (
               <div
                 className={cn(
-                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg text-sm transition-colors",
+                  "flex aspect-square w-full flex-col items-center gap-1 rounded-lg pt-1 text-sm transition-colors",
                   inMonth ? "text-foreground" : "text-muted-foreground/40",
-                  dayEvents.length > 0 &&
-                    (pendingCount > 0
-                      ? "cursor-pointer bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
-                      : "cursor-pointer bg-emerald-600 text-white font-semibold hover:bg-emerald-600/90"),
-                  dayEvents.length === 0 && today && "border border-primary/60 font-semibold",
-                  dayEvents.length === 0 && !today && "hover:bg-muted"
+                  hasItems &&
+                    "cursor-pointer bg-brand-500 text-white font-semibold hover:bg-brand-500/90 dark:bg-brand-600 dark:hover:bg-brand-600/90",
+                  !hasItems && today && "border border-primary/60 font-semibold",
+                  !hasItems && !today && "hover:bg-muted"
                 )}
               >
                 <span>{format(day, "d")}</span>
-                {dayEvents.length > 0 && (
-                  <span className="text-[9px] leading-none opacity-90">{dayEvents.length}</span>
+                {hasItems && (
+                  <div className="flex flex-wrap items-center justify-center gap-0.5 px-1">
+                    {visibleDots.map((item) => (
+                      <span
+                        key={item.id}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full ring-1 ring-white",
+                          item.kind === "event"
+                            ? {
+                                pendiente: "bg-red-500",
+                                en_proceso: "bg-orange-500",
+                                terminado: "bg-emerald-500",
+                              }[item.event.status]
+                            : "bg-white"
+                        )}
+                      />
+                    ))}
+                    {overflow > 0 && (
+                      <span className="text-[8px] font-semibold leading-none opacity-90">
+                        +{overflow}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             );
@@ -232,71 +219,23 @@ export function TeamCalendar({ events, onAddForDay, onEdit }: TeamCalendarProps)
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                    {dayEvents.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">Sin eventos este día.</p>
+                    {dayItems.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Sin actividad este día.</p>
                     ) : (
                       <div className="space-y-2">
-                        {dayEvents.map((event) => {
-                          const meta = STATUS_META[event.status];
-                          const StatusIcon = meta.icon;
-                          const client = eventClientLabel(event);
-                          return (
-                            <div key={event.id} className="rounded-lg border p-2.5 text-sm">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  {client && (
-                                    <p className="truncate text-xs font-semibold text-muted-foreground">
-                                      {client}
-                                    </p>
-                                  )}
-                                  <p className="truncate font-medium">{event.title}</p>
-                                  {event.hasTime && (
-                                    <p className="text-xs text-muted-foreground">
-                                      {format(new Date(event.eventDate), "HH:mm")}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex shrink-0 items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => onEdit(event)}
-                                    className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    aria-label={`Editar ${event.title}`}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setEventToDelete(event)}
-                                    className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                    aria-label={`Eliminar ${event.title}`}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleAdvance(event)}
-                                disabled={event.status === "terminado"}
-                                className={cn(
-                                  "mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
-                                  meta.classes,
-                                  event.status !== "terminado" && "cursor-pointer hover:opacity-80",
-                                  event.status === "terminado" && "cursor-default"
-                                )}
-                                title={
-                                  event.status === "terminado"
-                                    ? "Terminado"
-                                    : `Marcar como ${STATUS_META[nextStatus(event.status)!].label.toLowerCase()}`
-                                }
-                              >
-                                <StatusIcon className="h-3 w-3" />
-                                {meta.label}
-                              </button>
-                            </div>
-                          );
-                        })}
+                        {dayItems.map((item) =>
+                          item.kind === "event" ? (
+                            <EventRow
+                              key={item.id}
+                              item={item}
+                              onEdit={onEdit}
+                              onAdvance={handleAdvance}
+                              onDelete={setEventToDelete}
+                            />
+                          ) : (
+                            <OrderRow key={item.id} item={item} onSelectOrder={onSelectOrder} />
+                          )
+                        )}
                       </div>
                     )}
                   </PopoverContent>
@@ -323,5 +262,101 @@ export function TeamCalendar({ events, onAddForDay, onEdit }: TeamCalendarProps)
         </AlertDialogContent>
       </AlertDialog>
     </Card>
+  );
+}
+
+function EventRow({
+  item,
+  onEdit,
+  onAdvance,
+  onDelete,
+}: {
+  item: Extract<CalendarItem, { kind: "event" }>;
+  onEdit: (event: CalendarEvent) => void;
+  onAdvance: (event: CalendarEvent) => void;
+  onDelete: (event: CalendarEvent) => void;
+}) {
+  const event = item.event;
+  const client = calendarItemClientLabel(item);
+  const next = nextEventStatus(event.status);
+
+  return (
+    <div className="rounded-lg border p-2.5 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          {client && <p className="truncate text-xs font-semibold text-muted-foreground">{client}</p>}
+          <p className="truncate font-medium">{calendarItemTitle(item)}</p>
+          {event.hasTime && (
+            <p className="text-xs text-muted-foreground">{format(item.date, "HH:mm")}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit(event)}
+            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label={`Editar ${event.title}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(event)}
+            className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            aria-label={`Eliminar ${event.title}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onAdvance(event)}
+        disabled={!next}
+        className={cn(
+          "mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
+          EVENT_STATUS_BADGE_CLASS[event.status],
+          next && "cursor-pointer hover:opacity-80",
+          !next && "cursor-default"
+        )}
+        title={next ? `Marcar como ${EVENT_STATUS_LABEL[next].toLowerCase()}` : "Terminado"}
+      >
+        <span
+          className={cn(
+            "h-2 w-2 rounded-full",
+            { pendiente: "bg-red-500", en_proceso: "bg-orange-500", terminado: "bg-emerald-500" }[
+              event.status
+            ]
+          )}
+        />
+        {EVENT_STATUS_LABEL[event.status]}
+      </button>
+    </div>
+  );
+}
+
+function OrderRow({
+  item,
+  onSelectOrder,
+}: {
+  item: Extract<CalendarItem, { kind: "order" }>;
+  onSelectOrder: (orderId: number) => void;
+}) {
+  const order = item.order;
+  const client = calendarItemClientLabel(item);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectOrder(order.id)}
+      className="flex w-full flex-col gap-1 rounded-lg border border-dashed p-2.5 text-left text-sm transition-colors hover:bg-muted"
+    >
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+        <Package className="h-3 w-3" />
+        Pedido #{order.id} · {client}
+      </div>
+      <p className="truncate font-medium">{calendarItemTitle(item)}</p>
+      {item.hasTime && <p className="text-xs text-muted-foreground">{format(item.date, "HH:mm")}</p>}
+    </button>
   );
 }
