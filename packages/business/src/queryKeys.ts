@@ -28,6 +28,13 @@ export const ENDPOINTS = {
   calendarEvents: "calendar-events",
   // Tareas pendientes del calendario de equipo, sin fecha todavía definida.
   calendarTasks: "calendar-tasks",
+  // Catálogo de materiales/insumos de la empresa.
+  materials: "materials",
+  // Catálogo de proveedores de materiales/insumos.
+  suppliers: "suppliers",
+  // Catálogos que crecen solos (ver MaterialCategoryService/MaterialUnitService.ensureExists).
+  materialCategories: "material-categories",
+  materialUnits: "material-units",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

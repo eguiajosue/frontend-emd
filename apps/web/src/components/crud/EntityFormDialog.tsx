@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { FormField } from "@/components/ui/form-field";
+import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { useMotionPreset } from "@/lib/motion";
 import { toast } from "sonner";
 
@@ -28,10 +29,27 @@ export interface SelectOption {
 export interface FieldConfig {
   name: string;
   label: string;
-  type?: "text" | "number" | "email" | "textarea" | "select" | "date" | "multiselect" | "switch";
+  type?:
+    | "text"
+    | "number"
+    | "email"
+    | "textarea"
+    | "select"
+    | "date"
+    | "multiselect"
+    | "switch"
+    | "combobox";
   options?: SelectOption[];
+  /**
+   * Tipo del VALOR guardado en un `type: "select"` — "number" (default) para
+   * ids de catálogo (ej. proveedor), "string" para enums de texto (ej.
+   * ubicación "nacional"/"local"/"internacional").
+   */
+  valueType?: "string" | "number";
   helpText?: string;
   icon?: LucideIcon;
+  /** Placeholder del combobox creatable (`type: "combobox"`). */
+  placeholder?: string;
   /** Muestra el campo condicionalmente según el resto de los valores del formulario. */
   showIf?: (values: EntityValues) => boolean;
 }
@@ -172,15 +190,29 @@ export function EntityFormDialog({
                       </p>
                     )}
                   </div>
+                ) : field.type === "combobox" ? (
+                  <CreatableCombobox
+                    id={field.name}
+                    items={(field.options ?? []).map((opt) => ({
+                      id: String(opt.value),
+                      label: opt.label,
+                    }))}
+                    customValue={values[field.name] ?? ""}
+                    placeholder={field.placeholder}
+                    onSelectItem={(item) => handleChange(field.name, item.label)}
+                    onUseCustom={(text) => handleChange(field.name, text)}
+                    invalid={Boolean(error)}
+                  />
                 ) : field.type === "select" ? (
                   <select
                     className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
                     value={values[field.name] ?? ""}
                     onBlur={() => markTouched(field.name)}
                     onChange={(e) => {
+                      const raw = e.target.value;
                       handleChange(
                         field.name,
-                        e.target.value === "" ? undefined : Number(e.target.value)
+                        raw === "" ? undefined : field.valueType === "string" ? raw : Number(raw)
                       );
                     }}
                   >

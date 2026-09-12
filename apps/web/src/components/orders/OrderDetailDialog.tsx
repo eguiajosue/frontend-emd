@@ -22,6 +22,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
+import { OrderMaterialsSection } from "@/components/orders/OrderMaterialsSection";
 import { OrderHandoff } from "@/components/orders/OrderHandoff";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import {
@@ -420,6 +421,8 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       mientras está en diseño define el destino, después muestra
                       el avance de cada una. */}
                   <AreaTasksSection order={order} />
+
+                  <OrderMaterialsSection order={order} />
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>
