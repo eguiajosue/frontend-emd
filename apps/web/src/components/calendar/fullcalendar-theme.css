@@ -1,0 +1,101 @@
+/**
+ * Retematiza FullCalendar (día/semana) con los tokens de la app en vez de su
+ * paleta azul por defecto. Sólo variables/selectores oficiales de FullCalendar
+ * v6 (https://fullcalendar.io/docs/css-customization) — nunca overrides
+ * frágiles de clases internas.
+ */
+.fc {
+  --fc-border-color: hsl(var(--border));
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-list-event-hover-bg-color: hsl(var(--muted));
+  --fc-highlight-color: hsl(var(--brand-100));
+  --fc-today-bg-color: hsl(var(--brand-50));
+  --fc-now-indicator-color: hsl(var(--brand-500));
+  --fc-small-font-size: 0.75rem;
+  font-family: inherit;
+  color: hsl(var(--foreground));
+}
+
+.dark .fc {
+  --fc-highlight-color: hsl(var(--brand-900) / 0.4);
+  --fc-today-bg-color: hsl(var(--brand-950) / 0.5);
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.fc .fc-button {
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--secondary-foreground));
+  box-shadow: none;
+  text-transform: capitalize;
+  padding: 0.3rem 0.7rem;
+}
+
+.fc .fc-button:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.fc .fc-button:focus,
+.fc .fc-button-primary:not(:disabled).fc-button-active:focus {
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.5);
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.fc .fc-timegrid-slot-label,
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: hsl(var(--muted-foreground));
+  text-decoration: none;
+}
+
+.fc .fc-day-today .fc-col-header-cell-cushion,
+.fc .fc-day-today .fc-daygrid-day-number {
+  color: hsl(var(--brand-600));
+  font-weight: 700;
+}
+
+.dark .fc .fc-day-today .fc-col-header-cell-cushion,
+.dark .fc .fc-day-today .fc-daygrid-day-number {
+  color: hsl(var(--brand-400));
+}
+
+.fc .fc-event {
+  border-radius: 0.375rem;
+  border-width: 0;
+  padding: 1px 4px;
+  font-size: 0.75rem;
+}
+
+.fc .fc-timegrid-now-indicator-line {
+  border-color: hsl(var(--brand-500));
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  border-color: hsl(var(--brand-500));
+  color: hsl(var(--brand-500));
+}
+
+.fc .fc-scrollgrid {
+  border-radius: 0.5rem;
+}
+
+/* El evento "pedido" lleva además el ícono de paquete (ver TimeGridCalendar);
+   el borde punteado es el segundo refuerzo visual de esa misma distinción,
+   mismo criterio que las bolitas blancas de la vista Mes. */
+.fc-event.fc-order-event {
+  border: 1px dashed hsl(var(--brand-700)) !important;
+}

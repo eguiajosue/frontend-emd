@@ -61,6 +61,8 @@ interface CalendarEventDialogProps {
   event?: CalendarEvent | null;
   /** Precarga la fecha al crear desde un día puntual del calendario (yyyy-MM-dd). */
   defaultDate?: string;
+  /** Precarga la hora al crear desde un click en la grilla de Día/Semana (HH:mm). */
+  defaultTime?: string;
 }
 
 /**
@@ -75,6 +77,7 @@ export function CalendarEventDialog({
   onSaved,
   event,
   defaultDate,
+  defaultTime,
 }: CalendarEventDialogProps) {
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
   const { create, update } = useCalendarEventMutations();
@@ -124,14 +127,14 @@ export function CalendarEventDialog({
       setClientId(undefined);
       setClientNameOverride("");
       setDate(defaultDate ?? "");
-      setTime("");
+      setTime(defaultTime ?? "");
       setAllDay(false);
       setReminderEnabled(false);
       setReminderValue("1");
       setReminderUnit("dias");
     }
     setTitleError(undefined);
-  }, [open, event, defaultDate]);
+  }, [open, event, defaultDate, defaultTime]);
 
   const handleClose = () => {
     if (submitting) return;
