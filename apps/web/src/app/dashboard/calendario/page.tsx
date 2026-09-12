@@ -22,6 +22,7 @@ import { MobileDayWeekView } from "@/components/calendar/mobile/MobileDayWeekVie
 import { UpcomingEventsSheet } from "@/components/calendar/UpcomingEventsSheet";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { CategoryFilterBar } from "@/components/calendar/CategoryFilterBar";
+import { AreaFilterBar } from "@/components/calendar/AreaFilterBar";
 import { CalendarTasksList } from "@/components/calendar/CalendarTasksList";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import type { CalendarEvent } from "@/types";
@@ -47,8 +48,14 @@ export default function CalendarioPage() {
     enabled: canManageOperations,
   });
   const { data: tasks } = useCalendarTasks({ enabled: canManageOperations });
-  const { categoryFilter, setCategoryFilter, tasksPanelOpen, setTasksPanelOpen } =
-    useCalendarPrefs();
+  const {
+    categoryFilter,
+    setCategoryFilter,
+    areaFilter,
+    setAreaFilter,
+    tasksPanelOpen,
+    setTasksPanelOpen,
+  } = useCalendarPrefs();
   const [view, setView] = useState<CalendarView>("mes");
   const [mobileView, setMobileView] = useState<MobileView>("mes");
   const [mobileSelectedDate, setMobileSelectedDate] = useState(() => new Date());
@@ -63,8 +70,12 @@ export default function CalendarioPage() {
   const ordersWithDelivery = orders.filter((o) => Boolean(o.deliveryDate));
   const filteredEvents = useMemo(
     () =>
-      categoryFilter === "todos" ? events : events.filter((e) => e.category === categoryFilter),
-    [events, categoryFilter]
+      events.filter(
+        (e) =>
+          (categoryFilter === "todos" || e.category === categoryFilter) &&
+          (areaFilter === "todas" || e.area === areaFilter)
+      ),
+    [events, categoryFilter, areaFilter]
   );
   const pendingTasksCount = tasks.filter((t) => !t.completed).length;
 
@@ -147,7 +158,10 @@ export default function CalendarioPage() {
 
       {isMobile ? (
         <>
-          <CategoryFilterBar value={categoryFilter} onChange={setCategoryFilter} compact />
+          <div className="grid grid-cols-2 gap-2">
+            <CategoryFilterBar value={categoryFilter} onChange={setCategoryFilter} compact />
+            <AreaFilterBar value={areaFilter} onChange={setAreaFilter} compact />
+          </div>
 
           {isError ? (
             <ErrorState onRetry={() => refetch()} />
@@ -182,7 +196,10 @@ export default function CalendarioPage() {
                   <TabsTrigger value="mes">Mes</TabsTrigger>
                 </TabsList>
               </Tabs>
-              <CategoryFilterBar value={categoryFilter} onChange={setCategoryFilter} />
+              <div className="flex flex-wrap items-center gap-2">
+                <CategoryFilterBar value={categoryFilter} onChange={setCategoryFilter} />
+                <AreaFilterBar value={areaFilter} onChange={setAreaFilter} />
+              </div>
             </div>
 
             {isError ? (

@@ -15,6 +15,13 @@ vi.mock("@/hooks/useCalendarTasks", () => ({
   useUpdateCalendarTaskComplete: () => ({ setCompleted: setCompletedMock }),
 }));
 
+// El diálogo de alta/edición que renderiza esta lista pide pedidos activos
+// para el selector "Pedido (opcional)" — mockeado para no pegarle a
+// useSession real fuera de un SessionProvider.
+vi.mock("@/hooks/useOrders", () => ({
+  useOrders: () => ({ data: [] }),
+}));
+
 const pendingTask: CalendarTask = {
   id: 1,
   title: "Confirmar medidas",

@@ -15,7 +15,9 @@ import { orderAreaTags } from "@/lib/orderAreas";
 import { cn } from "@/lib/utils";
 import { useMotionPreset } from "@/lib/motion";
 import { isDeliveredStatus } from "@/lib/orderStatus";
-import { Paperclip, ArrowUpRight, CheckCircle2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useCalendarTasks } from "@/hooks/useCalendarTasks";
+import { Paperclip, ArrowUpRight, CheckCircle2, ListChecks } from "lucide-react";
 import type { Order } from "@/types";
 
 interface OrderCardProps {
@@ -37,6 +39,20 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const { staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
   const areaTags = orderAreaTags(order);
   const { timeFormat } = useTimeFormat();
+
+  // Tareas pendientes por marcar de este pedido: tareas de producción por
+  // área (ya vienen en `order.areaTasks`) + tareas del calendario de equipo
+  // vinculadas a este pedido (`/calendar-tasks`, gateado por permiso — sólo
+  // recepcion/admin/superuser pueden verlas, así que en un tablero de área
+  // esta cuenta simplemente da 0 sin disparar ningún pedido).
+  const { canManageOperations } = usePermissions();
+  const { data: calendarTasks } = useCalendarTasks({ enabled: canManageOperations });
+  const pendingAreaTasksCount =
+    order.areaTasks?.filter((t) => t.status !== "terminado").length ?? 0;
+  const pendingLinkedTasksCount = calendarTasks.filter(
+    (t) => t.orderId === order.id && !t.completed
+  ).length;
+  const pendingTasksCount = pendingAreaTasksCount + pendingLinkedTasksCount;
 
   return (
     <motion.div variants={staggerItemVariants}>
@@ -128,6 +144,15 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
                 >
                   <Paperclip className="h-3 w-3" aria-hidden />
                   Adjunto
+                </span>
+              )}
+              {pendingTasksCount > 0 && (
+                <span
+                  className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                  title={`${pendingTasksCount} tarea${pendingTasksCount === 1 ? "" : "s"} pendiente${pendingTasksCount === 1 ? "" : "s"} por marcar`}
+                >
+                  <ListChecks className="h-3 w-3" aria-hidden />
+                  {pendingTasksCount}
                 </span>
               )}
             </div>

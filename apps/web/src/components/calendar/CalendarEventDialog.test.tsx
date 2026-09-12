@@ -62,6 +62,28 @@ describe("CalendarEventDialog", () => {
     expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ category: "otro" }));
   });
 
+  it("por defecto no manda área si no se elige una", async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Cosa sin área");
+    await userEvent.type(screen.getByLabelText(/^Fecha/), "2026-09-20");
+    await userEvent.click(screen.getByRole("button", { name: /Crear evento/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ area: undefined }));
+  });
+
+  it("permite elegir el área de producción del evento", async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Instalar anuncio");
+    await userEvent.type(screen.getByLabelText(/^Fecha/), "2026-09-20");
+    await userEvent.click(screen.getByLabelText(/^Área/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Bordado/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Crear evento/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ area: "bordado" }));
+  });
+
   it("permite elegir la categoría del evento (ej. Junta / Reunión)", async () => {
     render(<CalendarEventDialog open onClose={() => {}} />);
 
