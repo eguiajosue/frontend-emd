@@ -420,7 +420,7 @@ const AyudaPage = () => {
                 <AccordionTrigger>¿Hace falta más ayuda?</AccordionTrigger>
                 <AccordionContent>
                   Si algo no funciona como se espera o hace falta un permiso que
-                  no está habilitado, contactar a un administrador de EMD Bordados.
+                  no está habilitado, contactar a un administrador de EMD HUB.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

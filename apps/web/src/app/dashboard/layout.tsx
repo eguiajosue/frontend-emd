@@ -14,7 +14,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { useEffect } from "react";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
-const BASE_TITLE = "EMD Bordados";
+const BASE_TITLE = "EMD HUB";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   // Keeps the real-time notifications socket alive across every dashboard page.
@@ -23,7 +23,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { routeTransition } = useMotionPreset();
   const { count } = useUnreadNotificationsCount();
 
-  // Refleja el conteo de no leídas en el título de la pestaña, ej. "(3) EMD Bordados".
+  // Refleja el conteo de no leídas en el título de la pestaña, ej. "(3) EMD HUB".
   useEffect(() => {
     document.title = count > 0 ? `(${count > 99 ? "99+" : count}) ${BASE_TITLE}` : BASE_TITLE;
     return () => {

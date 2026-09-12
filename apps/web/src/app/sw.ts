@@ -69,7 +69,7 @@ self.addEventListener("push", (event) => {
     return;
   }
 
-  const title = payload.title || "EMD Bordados";
+  const title = payload.title || "EMD HUB";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: payload.body,

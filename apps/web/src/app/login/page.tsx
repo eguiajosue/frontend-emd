@@ -1,5 +1,6 @@
 "use client"
 
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
@@ -61,51 +62,73 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-background p-4 sm:p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: "easeOut" }}
-        className="grid w-full max-w-4xl grid-cols-1 overflow-hidden rounded-2xl bg-card shadow-soft-md md:grid-cols-2"
-      >
-        {/* Panel de marca: sólo escritorio, igual que antes. Sin asset de
-            ilustración con licencia disponible, reutiliza los blobs + campo
-            de partículas ya existentes en vez de una imagen inventada. */}
-        <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 p-8 text-white md:m-3 md:flex md:rounded-xl">
-          <GradientBlobs variant="login" />
-          <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
-          <div className="relative text-center">
-            <h1 className="font-heading text-4xl font-semibold leading-tight text-white lg:text-5xl">
-              EMD <span className="text-brand-300">Bordados</span>
-            </h1>
-            <p className="mt-4 text-base font-medium text-neutral-200">
-              De la idea al bordado: cada pedido, taller y entrega en un solo lugar
-            </p>
-          </div>
-        </div>
+    // El login queda fijo en claro (theme-force-light) más allá del tema
+    // elegido en Configuración: es la puerta de entrada de la marca, no una
+    // pantalla operativa donde el modo oscuro aporte.
+    <div className="theme-force-light grid min-h-dvh w-full grid-cols-1 bg-background md:grid-cols-2">
+      {/* Panel de marca: ocupa toda la altura de la pantalla, sólo escritorio.
+          Sin asset de ilustración con licencia disponible, reutiliza los
+          blobs + campo de partículas ya existentes en vez de una imagen
+          inventada. Curva pronunciada + margen para que se lea como un
+          bloque flotando dentro del full-bleed, igual que la referencia. */}
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 p-10 text-white md:m-4 md:flex md:flex-col md:justify-center md:rounded-[2.5rem] lg:p-14">
+        <GradientBlobs variant="login" />
+        <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
 
-        {/* Panel de formulario */}
-        <div className="flex flex-col justify-center p-6 sm:p-10">
-          <div className="mb-8 flex items-center gap-2">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
-              E
-            </div>
-            <span className="font-heading text-base font-semibold tracking-tight text-foreground">
-              EMD Bordados
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="relative"
+        >
+          <h1 className="font-heading text-6xl font-bold leading-[0.95] tracking-tight text-white lg:text-7xl">
+            EMD
+            <br />
+            <span className="text-brand-300">HUB</span>
+          </h1>
+          <p className="mt-6 max-w-sm text-lg font-medium leading-snug text-neutral-200">
+            Imprenta, bordado y marketing: todo tu equipo creativo en un solo lugar.
+          </p>
+          <p className="mt-3 max-w-sm text-sm font-medium text-neutral-400">
+            De la idea a la entrega, sin perder ningún pedido en el camino.
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Panel de formulario: sin card propia, vive directo sobre el fondo
+          claro de la página — igual que la referencia. */}
+      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 md:px-16 lg:px-24">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
+          className="mx-auto w-full max-w-sm"
+        >
+          <div className="mb-10 flex items-center gap-3">
+            <Image
+              src="/icons/icon.svg"
+              alt="EMD"
+              width={44}
+              height={44}
+              className="shrink-0 shadow-soft"
+              priority
+            />
+            <span className="font-heading text-xl font-bold tracking-tight text-foreground">
+              EMD HUB
             </span>
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-heading text-3xl font-semibold leading-tight tracking-tight text-foreground">
+            <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight text-foreground">
               Bienvenido de vuelta
             </h2>
             <p className="text-muted-foreground">
-              Ingresar usuario y contraseña para entrar al taller
+              Ingresar usuario y contraseña para entrar al panel de EMD HUB
             </p>
           </div>
 
           {sessionMessage && (
-            <div className="mt-6 rounded-lg border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center text-sm text-brand-700 dark:text-brand-300">
+            <div className="mt-6 rounded-2xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center text-sm text-brand-700">
               {sessionMessage}
             </div>
           )}
@@ -118,7 +141,7 @@ const LoginForm = () => {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-                className="h-12 w-full rounded-xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
+                className="h-12 w-full rounded-2xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
               />
             </FormField>
 
@@ -130,7 +153,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                className="h-12 w-full rounded-xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
+                className="h-12 w-full rounded-2xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
               />
             </FormField>
 
@@ -138,7 +161,7 @@ const LoginForm = () => {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-1 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="space-y-1 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
               >
                 <ul>
                   {errors.map((error, index) => (
@@ -163,7 +186,7 @@ const LoginForm = () => {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="h-12 w-full rounded-xl bg-primary text-primary-foreground transition-colors hover:bg-brand-700"
+                className="h-12 w-full rounded-full bg-primary text-primary-foreground transition-colors hover:bg-brand-700"
               >
                 {submitting ? (
                   <>
@@ -186,8 +209,8 @@ const LoginForm = () => {
           <p className="mt-6 text-center text-xs text-muted-foreground/70">
             v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_COMMIT}
           </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   )
 }
