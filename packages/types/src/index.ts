@@ -170,6 +170,12 @@ export interface Order extends BaseEntity {
    */
   areaTasks?: OrderAreaTask[];
   /**
+   * Hoja de materiales del pedido (opcional, la carga Recepción). En el
+   * listado (GET /orders) sólo trae id/quantity/description; el detalle
+   * completo con material/proveedor sale de GET /orders/:id/materials.
+   */
+  materialItems?: OrderMaterialItem[];
+  /**
    * Área de producción DESTINO (a dónde va cuando termine diseño, o directo
    * si no requiere diseño). Puede definirse al crear o quedar `null` hasta que
    * Recepción o Diseño la elijan más adelante.
@@ -589,3 +595,105 @@ export interface CreateCalendarTaskPayload {
 }
 
 export type UpdateCalendarTaskPayload = Partial<CreateCalendarTaskPayload>;
+
+/* -------------------------------------------------------------------------- */
+/* Catálogo de Materiales y Proveedores                                       */
+/* -------------------------------------------------------------------------- */
+
+/** Categoría de material (ej. "Lámina/Panel"): catálogo que crece solo. */
+export type MaterialCategory = NamedEntity;
+
+/** Unidad de medida de un material (ej. "Hoja", "Metro"): catálogo que crece solo. */
+export type MaterialUnit = NamedEntity;
+
+/** Alcance de un proveedor. */
+export type SupplierLocation = "nacional" | "local" | "internacional";
+
+/** Proveedor de materiales/insumos. */
+export interface Supplier extends BaseEntity {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  location: SupplierLocation;
+  createdAt?: string;
+}
+
+export interface CreateSupplierPayload {
+  name: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  location: SupplierLocation;
+}
+
+export type UpdateSupplierPayload = Partial<CreateSupplierPayload>;
+
+/**
+ * Material/insumo del catálogo (PVC, acrílico, MDF, perfiles metálicos,
+ * tornillería, consumibles de DTF/Bordado, etc.). `areas` es un subconjunto
+ * de las 6 áreas de producción: un material puede usarse en varias a la vez.
+ */
+export interface Material extends BaseEntity {
+  name: string;
+  categoryId?: number | null;
+  unitId?: number | null;
+  /** Grosor/calibre/tamaño en texto libre (ej. "6mm", "3/16 x 1 1/4"). */
+  measure?: string | null;
+  color?: string | null;
+  brand?: string | null;
+  /** Proveedor preferido, opcional — la hoja de un pedido puede usar otro. */
+  supplierId?: number | null;
+  areas: string[];
+  createdAt?: string;
+  category?: MaterialCategory | null;
+  unit?: MaterialUnit | null;
+  supplier?: Supplier | null;
+}
+
+export interface CreateMaterialPayload {
+  name: string;
+  /** Nombre de la categoría (no id): se crea sola si es nueva. */
+  category?: string;
+  /** Nombre de la unidad (no id): se crea sola si es nueva. */
+  unit?: string;
+  measure?: string;
+  color?: string;
+  brand?: string;
+  supplierId?: number;
+  areas?: string[];
+}
+
+export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
+
+/* -------------------------------------------------------------------------- */
+/* Hoja de materiales de un pedido (GET/POST /orders/:id/materials)           */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Línea de la hoja de materiales de un pedido: qué material, cuánto, de qué
+ * proveedor. `description` se autogenera desde el Material elegido pero es
+ * editable. `material`/`supplier`/`createdBy` sólo vienen completos al pedir
+ * GET /orders/:id/materials (en el listado de pedidos sólo id/quantity/description).
+ */
+export interface OrderMaterialItem extends BaseEntity {
+  orderId: number;
+  materialId: number;
+  quantity: number;
+  description: string;
+  supplierId?: number | null;
+  createdById?: number;
+  createdAt?: string;
+  material?: { id: number; name: string } | null;
+  supplier?: Supplier | null;
+  createdBy?: AssignedUser | null;
+}
+
+export interface CreateOrderMaterialItemPayload {
+  materialId: number;
+  quantity: number;
+  description: string;
+  supplierId?: number;
+}
+
+export type UpdateOrderMaterialItemPayload = Partial<CreateOrderMaterialItemPayload>;

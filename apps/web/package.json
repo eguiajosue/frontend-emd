@@ -54,6 +54,8 @@
     "framer-motion": "^13.2.0",
     "idb": "^8.0.3",
     "jose": "^6.2.12",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.454.0",
     "next": "^15.5.9",
     "next-auth": "^4.24.10",

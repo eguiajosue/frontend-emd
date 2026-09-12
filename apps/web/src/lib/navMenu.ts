@@ -8,6 +8,7 @@ import {
   Bell,
   MessagesSquare,
   CalendarDays,
+  Boxes,
   type LucideIcon,
 } from "lucide-react";
 import { ordersScreenTitle } from "./orderScreen";
@@ -136,6 +137,19 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
       ],
     },
     {
+      groupLabel: "Materiales",
+      items: [
+        {
+          // Catálogo de materiales/insumos + proveedores (tabs adentro),
+          // usado por Recepción para armar la hoja de materiales de un pedido.
+          title: "Materiales",
+          url: "/dashboard/materiales",
+          icon: Boxes,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+      ],
+    },
+    {
       groupLabel: "Calendario",
       items: [
         {
@@ -211,6 +225,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/admin/rendimiento",
   "/dashboard/historial",
   "/dashboard/clientes",
+  "/dashboard/materiales",
   "/dashboard/calendario",
   "/dashboard/usuarios",
   "/dashboard/ayuda",
