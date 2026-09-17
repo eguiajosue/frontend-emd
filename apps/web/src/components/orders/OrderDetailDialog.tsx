@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ interface OrderDetailDialogProps {
  */
 export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) {
   const open = orderId !== null;
-  const { data: order, isPending } = useOrder(orderId ?? undefined, {
+  const { data: order, isPending, isError, refetch } = useOrder(orderId ?? undefined, {
     enabled: open,
   });
   const { roles, isAdmin, canManageOperations } = usePermissions();
@@ -221,7 +222,21 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
         <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl lg:max-w-5xl p-0">
           <AnimatePresence mode="wait">
-            {isPending || !order ? (
+            {isError ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-6"
+              >
+                <ErrorState
+                  title="No se pudo cargar el detalle del pedido."
+                  description="Revisá tu conexión e intentá nuevamente."
+                  onRetry={() => refetch()}
+                />
+              </motion.div>
+            ) : isPending || !order ? (
               <motion.div
                 key="loading"
                 initial={{ opacity: 0 }}
@@ -243,7 +258,12 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
               >
                 {/* Sticky: el número de pedido, cliente y estado quedan a la
                     vista aunque el usuario desplace el resto del detalle. */}
-                <DialogHeader className="sticky top-0 z-10 border-b bg-background/95 px-6 pt-6 pb-3 backdrop-blur-sm">
+                {/* Sólo `sticky` + fondo: el borde/padding de mobile vs. desktop
+                    ya los resuelve `DialogHeader` (hoja fija en mobile,
+                    encabezado simple en desktop) — no se pisan esas reglas acá,
+                    sólo se agrega que en desktop tampoco se desplace con el
+                    scroll. */}
+                <DialogHeader className="sticky top-0 z-10 bg-popover/95 backdrop-blur-sm">
                   <DialogTitle className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex flex-wrap items-center gap-2">
                       Pedido #{order.id}{" "}
@@ -593,7 +613,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                   {/* Panel lateral: resumen de sólo lectura (cliente, fechas,
                       responsable, entrega) — separado de la edición, que vive
                       en la columna principal. */}
-                  <aside className="space-y-4 lg:sticky lg:top-[4.5rem] lg:order-2">
+                  {/* En mobile va primero (orientación rápida: cliente, fecha,
+                      entrega) antes del resto del detalle; en desktop pasa
+                      al panel lateral derecho. */}
+                  <aside className="order-first space-y-4 lg:sticky lg:top-[4.5rem] lg:order-2">
                     <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
                       <div className="grid gap-1">
                         <p>

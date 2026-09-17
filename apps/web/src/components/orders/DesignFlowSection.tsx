@@ -21,6 +21,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
@@ -74,9 +80,17 @@ interface DesignFlowSectionProps {
   order: Order;
 }
 
+/** Mismo criterio que dentro de `RevisionTimelineItem`, reusado para el título del acordeón. */
+function revisionStateLabel(revision: import("@/types").DesignRevision): string {
+  if (revision.approved) return "Aprobada";
+  if (revision.feedbackText) return "Con cambios";
+  return "Enviada";
+}
+
 export function DesignFlowSection({ order }: DesignFlowSectionProps) {
   const { roles, isAdmin } = usePermissions();
   const { data: session } = useSession();
+  const { timeFormat } = useTimeFormat();
   const { takeDesign, isTakingDesign } = useTakeOrderDesign();
   const {
     revisions,
@@ -174,26 +188,61 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           className="mt-0 p-6"
         />
       ) : (
-        <motion.ol
+        <motion.div
           className="space-y-3"
           variants={staggerContainerVariants}
           initial="hidden"
           animate="show"
         >
-          <AnimatePresence initial={false}>
-            {revisions.map((revision, index) => (
+          {/* Rondas anteriores: colapsadas, para no repetir información vieja
+              ni ocupar espacio con montajes ya resueltos. */}
+          {revisions.length > 1 && (
+            <Accordion type="multiple" className="space-y-2">
+              {revisions.slice(0, -1).map((revision) => (
+                <AccordionItem
+                  key={revision.id}
+                  value={String(revision.id)}
+                  className="rounded-xl border border-border bg-background/60 px-3"
+                >
+                  <AccordionTrigger className="py-2.5 text-sm font-semibold hover:no-underline">
+                    <span className="flex flex-1 flex-wrap items-center justify-between gap-2 pr-2">
+                      <span>Ronda {revision.round}</span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {revisionStateLabel(revision)}
+                        {revision.sentAt
+                          ? ` · ${formatDateTime(revision.sentAt, undefined, timeFormat)}`
+                          : ""}
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-3">
+                    <RevisionTimelineItem
+                      orderId={order.id}
+                      revision={revision}
+                      isCurrentRound={false}
+                      onZoom={setLightboxSrc}
+                      hideHeader
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+
+          {/* Ronda vigente: siempre abierta — es la que necesita acción o
+              muestra el resultado más reciente. */}
+          <ol>
+            <AnimatePresence initial={false}>
               <RevisionTimelineItem
-                key={revision.id}
+                key={revisions[revisions.length - 1].id}
                 orderId={order.id}
-                revision={revision}
-                // Sólo la ronda vigente (la última) trae sus imágenes sola:
-                // las viejas se bajan al verse o al pedirlas.
-                isCurrentRound={index === revisions.length - 1}
+                revision={revisions[revisions.length - 1]}
+                isCurrentRound
                 onZoom={setLightboxSrc}
               />
-            ))}
-          </AnimatePresence>
-        </motion.ol>
+            </AnimatePresence>
+          </ol>
+        </motion.div>
       )}
 
       {canTakeDesign && (
@@ -330,12 +379,15 @@ function RevisionTimelineItem({
   revision,
   isCurrentRound,
   onZoom,
+  hideHeader = false,
 }: {
   orderId: number;
   revision: import("@/types").DesignRevision;
   /** La ronda vigente precarga sus imágenes; las anteriores, bajo demanda. */
   isCurrentRound: boolean;
   onZoom: (src: string) => void;
+  /** Dentro de un acordeón el título ya lo muestra el trigger: no repetirlo. */
+  hideHeader?: boolean;
 }) {
   const { staggerItemVariants } = useMotionPreset();
   const { timeFormat } = useTimeFormat();
@@ -363,19 +415,25 @@ function RevisionTimelineItem({
     : { label: "Enviada", classes: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" };
 
   const legacyMontageName = revision.montageFileName ?? `montaje-ronda-${revision.round}`;
+  const Wrapper = hideHeader ? motion.div : motion.li;
 
   return (
-    <motion.li
+    <Wrapper
       variants={staggerItemVariants}
       exit={{ opacity: 0 }}
-      className="relative space-y-2 rounded-xl border border-border bg-background/60 p-3"
+      className={cn(
+        "relative space-y-2",
+        !hideHeader && "rounded-xl border border-border bg-background/60 p-3"
+      )}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-sm font-semibold">Ronda {revision.round}</span>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${state.classes}`}>
-          {state.label}
-        </span>
-      </div>
+      {!hideHeader && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-semibold">Ronda {revision.round}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${state.classes}`}>
+            {state.label}
+          </span>
+        </div>
+      )}
       {revision.sentAt && (
         <p className="text-xs text-muted-foreground">Montaje enviado {formatDateTime(revision.sentAt, undefined, timeFormat)}</p>
       )}
@@ -475,7 +533,7 @@ function RevisionTimelineItem({
           Aprobada{revision.approvedAt ? ` · ${formatDateTime(revision.approvedAt, undefined, timeFormat)}` : ""}
         </p>
       )}
-    </motion.li>
+    </Wrapper>
   );
 }
 
