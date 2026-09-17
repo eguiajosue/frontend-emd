@@ -12,7 +12,6 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { getErrorMessage } from "@/lib/api";
 import { LOCATION_BADGE_CLASSES, LOCATION_LABELS } from "@/lib/suppliers";
-import { AVAILABILITY_BADGE_CLASSES, AVAILABILITY_LABELS } from "@/lib/materialAvailability";
 import { downloadMaterialsSheetPdf } from "@/lib/materialsSheetPdf";
 import { cn } from "@/lib/utils";
 import type { Order, OrderMaterialItem } from "@/types";
@@ -124,17 +123,6 @@ export function OrderMaterialsSection({ order }: OrderMaterialsSectionProps) {
                     )}
                   </span>
                 </span>
-
-                {item.availability && (
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      AVAILABILITY_BADGE_CLASSES[item.availability]
-                    )}
-                  >
-                    {AVAILABILITY_LABELS[item.availability]}
-                  </span>
-                )}
 
                 {item.supplier && (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">

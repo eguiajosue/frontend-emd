@@ -83,7 +83,6 @@ describe("OrderMaterialDialog", () => {
       quantity: 1,
       description: "PVC 6mm Blanco",
       supplierId: 10,
-      availability: "disponible",
     });
   });
 
@@ -112,22 +111,7 @@ describe("OrderMaterialDialog", () => {
         quantity: 3,
         description: "Acrílico 3mm transparente",
         supplierId: 11,
-        availability: "disponible",
       },
     });
-  });
-
-  it("manda la disponibilidad elegida", async () => {
-    render(<OrderMaterialDialog open onClose={() => {}} orderId={1} />);
-
-    await userEvent.click(screen.getByLabelText(/^Material/i));
-    await userEvent.click(await screen.findByRole("option", { name: /PVC/i }));
-    await userEvent.click(screen.getByLabelText(/^Disponibilidad/i));
-    await userEvent.click(await screen.findByRole("option", { name: "Agotado" }));
-    await userEvent.click(screen.getByRole("button", { name: /^Agregar$/i }));
-
-    expect(createMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ availability: "agotado" })
-    );
   });
 });

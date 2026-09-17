@@ -83,7 +83,7 @@ describe("OrderMaterialsSection", () => {
     expect(screen.getByText("Nacional")).toBeInTheDocument();
   });
 
-  it("muestra la unidad del material y la disponibilidad de la línea", () => {
+  it("muestra la unidad del material", () => {
     items = [
       {
         id: 1,
@@ -91,14 +91,12 @@ describe("OrderMaterialsSection", () => {
         materialId: 1,
         quantity: 4,
         description: "Hoja de PVC de 6mm",
-        availability: "agotado",
         material: { id: 1, name: "PVC", unit: { name: "Hoja" } },
       },
     ];
     render(<OrderMaterialsSection order={order} />);
 
     expect(screen.getByText("(Hoja)")).toBeInTheDocument();
-    expect(screen.getByText("Agotado")).toBeInTheDocument();
   });
 
   it("oculta agregar/editar/quitar cuando el usuario no puede administrar operaciones", () => {
