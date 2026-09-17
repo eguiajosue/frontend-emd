@@ -32,6 +32,8 @@ export interface OrdersFilters {
   area?: string;
   /** `null` = filtro explícito "Sin asignar"; `undefined` = sin filtro. */
   assignedUserId?: number | null;
+  /** Sólo pedidos creados por el usuario de la sesión (`order.userId`). Pensado para Recepción. */
+  createdByMe: boolean;
 }
 
 export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
@@ -41,6 +43,7 @@ export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   onlyOverdue: false,
   area: undefined,
   assignedUserId: undefined,
+  createdByMe: false,
 };
 
 function clientLabel(c: Client): string {
@@ -85,6 +88,9 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
   const isMobile = useIsMobile();
   const { isAdmin, roles } = usePermissions();
   const isManager = isAdmin || roles.includes("recepcion");
+  // "Mis pedidos" es sólo para quien puede REALIZAR (crear) pedidos como
+  // Recepción — para un rol operativo no tiene sentido (no crea pedidos).
+  const canFilterByCreatedByMe = roles.includes("recepcion");
   // Quien trabaja más de un área necesita poder mirar una sola: es lo que daba
   // el modo "Por área" de la pantalla "Mi trabajo", que se fusionó con esta.
   // Sólo ofrece SUS áreas — filtrar por una ajena no mostraría nada, porque el
@@ -101,7 +107,8 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
     !!filters.dateRange?.from ||
     filters.onlyOverdue ||
     !!filters.area ||
-    filters.assignedUserId !== undefined;
+    filters.assignedUserId !== undefined ||
+    filters.createdByMe;
 
   const toggleStatus = (id: number) => {
     const next = filters.statusIds.includes(id)
@@ -183,6 +190,13 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
       key: "overdue",
       label: "Sólo caducados",
       clear: () => onChange({ ...filters, onlyOverdue: false }),
+    });
+  }
+  if (filters.createdByMe) {
+    activeChips.push({
+      key: "createdByMe",
+      label: "Mis pedidos",
+      clear: () => onChange({ ...filters, createdByMe: false }),
     });
   }
 
@@ -336,7 +350,27 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
             </Popover>
           </div>
 
-          <div className="flex items-center justify-between border-t pt-3">
+          {canFilterByCreatedByMe && (
+            <div className="flex items-center justify-between border-t pt-3">
+              <Label htmlFor="created-by-me" className="text-sm font-normal">
+                Sólo mis pedidos
+              </Label>
+              <Switch
+                id="created-by-me"
+                checked={filters.createdByMe}
+                onCheckedChange={(checked) =>
+                  onChange({ ...filters, createdByMe: checked })
+                }
+              />
+            </div>
+          )}
+
+          <div
+            className={cn(
+              "flex items-center justify-between pt-3",
+              canFilterByCreatedByMe ? "" : "border-t"
+            )}
+          >
             <Label htmlFor="only-overdue" className="text-sm font-normal">
               Ver sólo caducados
             </Label>

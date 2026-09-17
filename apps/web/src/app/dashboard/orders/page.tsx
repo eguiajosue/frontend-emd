@@ -88,6 +88,7 @@ function filtersFromUrl(): OrdersFilters {
   const onlyOverdue = params.get("onlyOverdue");
   const area = params.get("area");
   const assignedUserId = params.get("assignedUserId");
+  const createdByMe = params.get("createdByMe");
   return {
     clientId: clientId ? Number(clientId) : undefined,
     statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
@@ -99,6 +100,7 @@ function filtersFromUrl(): OrdersFilters {
     area: area || undefined,
     assignedUserId:
       assignedUserId === null ? undefined : assignedUserId === "unassigned" ? null : Number(assignedUserId),
+    createdByMe: createdByMe === "1",
   };
 }
 
@@ -113,6 +115,7 @@ function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
   if (filters.assignedUserId !== undefined) {
     params.set("assignedUserId", filters.assignedUserId === null ? "unassigned" : String(filters.assignedUserId));
   }
+  if (filters.createdByMe) params.set("createdByMe", "1");
   return params;
 }
 
@@ -148,7 +151,8 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
 const OrdersPage = () => {
-  const { roles, canManageOperations, isSessionLoading } = usePermissions();
+  const { roles, canManageOperations, isSessionLoading, session } = usePermissions();
+  const currentUserId = session?.user?.id ? Number(session.user.id) : undefined;
   const { timeFormat } = useTimeFormat();
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
@@ -332,9 +336,12 @@ const OrdersPage = () => {
           return false;
         }
       }
+      if (filters.createdByMe && order.userId !== currentUserId) {
+        return false;
+      }
       return true;
     });
-  }, [orders, filters, retentionMs]);
+  }, [orders, filters, retentionMs, currentUserId]);
 
   const handleExport = async () => {
     if (visibleOrders.length === 0) {
