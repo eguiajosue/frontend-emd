@@ -59,7 +59,7 @@ export function OrderMaterialsSection({ order }: OrderMaterialsSectionProps) {
   };
 
   const handleDownloadPdf = () => {
-    downloadMaterialsSheetPdf(order, items);
+    void downloadMaterialsSheetPdf(order, items);
   };
 
   // Igual que AreaTasksSection: si el backend todavía no expone el endpoint,

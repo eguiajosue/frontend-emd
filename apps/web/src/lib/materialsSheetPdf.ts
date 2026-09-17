@@ -1,5 +1,3 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import { formatDate } from "@/lib/format";
 import { LOCATION_LABELS } from "@/lib/suppliers";
 import type { Order, OrderMaterialItem } from "@/types";
@@ -20,8 +18,20 @@ function clientName(order: Order): string {
  * client-side (mismo enfoque que ya usa el export a Excel de Pedidos): los
  * datos ya están cargados en memoria, así que no hace falta ida y vuelta al
  * backend.
+ *
+ * `jspdf`/`jspdf-autotable` se cargan de forma dinámica (solo cuando se
+ * descarga el PDF) para no meter esta librería pesada en el bundle inicial
+ * de la pantalla de pedidos, que la mayoría de las visitas no usa.
  */
-export function downloadMaterialsSheetPdf(order: Order, items: OrderMaterialItem[]): void {
+export async function downloadMaterialsSheetPdf(
+  order: Order,
+  items: OrderMaterialItem[],
+): Promise<void> {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+
   const doc = new jsPDF();
 
   doc.setFontSize(16);
