@@ -40,6 +40,7 @@ vi.mock("@/hooks/useEntity", () => ({
   useEntityList: (entity: string) => ({
     data: entity === "materials" ? materials : suppliers,
   }),
+  CATALOG_STALE_TIME: 5 * 60_000,
 }));
 
 beforeEach(() => {

@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudPage } from "@/components/crud/CrudPage";
 import { SimpleNamedEntityPage } from "@/components/crud/SimpleNamedEntityPage";
 import type { FieldConfig, EntityValues } from "@/components/crud/EntityFormDialog";
-import { useEntityList } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
 import { getUserColumns } from "@/app/dashboard/users/components/columns";
@@ -82,7 +82,7 @@ function initialTabFromUrl(): "usuarios" | "roles" {
  */
 const UsuariosPage = () => {
   const { canManageUsers, isAdmin } = usePermissions();
-  const { data: roles } = useEntityList<Role>("roles");
+  const { data: roles } = useEntityList<Role>("roles", { staleTime: CATALOG_STALE_TIME });
   const [tab, setTab] = useState<"usuarios" | "roles">(initialTabFromUrl);
 
   // Quien crea/edita usuarios sin ser admin/superuser no debe poder siquiera

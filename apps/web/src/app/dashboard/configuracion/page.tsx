@@ -36,7 +36,7 @@ import { useAuthToken } from "@/hooks/useEntity";
 import { playSuccessSound } from "@/lib/sound";
 import { ACCENT_OPTIONS, isHexColor } from "@/lib/accent";
 import { DEFAULT_LANGUAGE, LANGUAGE_OPTIONS, LANGUAGE_STORAGE_KEY } from "@/lib/language";
-import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useAppSettings, useUpdateAppSettings } from "@/hooks/useSettings";
 import { getErrorMessage } from "@/lib/api";
 import {
@@ -541,7 +541,9 @@ function NotificationsSection() {
 }
 
 function AreaVisibilitySection() {
-  const { data: rows, isPending, isError } = useEntityList<AreaVisibility>("areaVisibility");
+  const { data: rows, isPending, isError } = useEntityList<AreaVisibility>("areaVisibility", {
+    staleTime: CATALOG_STALE_TIME,
+  });
   const { update } = useEntityMutations<AreaVisibility, { generalViewEnabled: boolean }>(
     "areaVisibility"
   );

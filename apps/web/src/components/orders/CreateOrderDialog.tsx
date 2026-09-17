@@ -28,7 +28,7 @@ import {
   Clock,
   X,
 } from "lucide-react";
-import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
@@ -266,6 +266,7 @@ export function CreateOrderDialog({
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
   const { data: productPresets } = useEntityList<OrderProductPreset>("orderProductPresets", {
     enabled: open,
+    staleTime: CATALOG_STALE_TIME,
   });
   const { data: users } = useEntityList<User>("users", { enabled: open });
   const { create } = useEntityMutations<Order, CreateOrderPayload>("orders");

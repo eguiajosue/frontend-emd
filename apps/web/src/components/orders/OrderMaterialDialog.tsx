@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOrderMaterials } from "@/hooks/useOrderMaterials";
-import { useEntityList } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { getErrorMessage } from "@/lib/api";
 import { LOCATION_LABELS } from "@/lib/suppliers";
 import type { Material, OrderMaterialItem, Supplier } from "@/types";
@@ -50,7 +50,10 @@ function describeMaterial(material: Material): string {
 export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMaterialDialogProps) {
   const { create, update } = useOrderMaterials(orderId);
   const { data: materials } = useEntityList<Material>("materials", { enabled: open });
-  const { data: suppliers } = useEntityList<Supplier>("suppliers", { enabled: open });
+  const { data: suppliers } = useEntityList<Supplier>("suppliers", {
+    enabled: open,
+    staleTime: CATALOG_STALE_TIME,
+  });
   const isEditing = Boolean(item);
 
   const [materialId, setMaterialId] = useState<number | undefined>(undefined);

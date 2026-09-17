@@ -7,7 +7,7 @@ import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudPage } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
-import { useEntityList } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AREA_OPTIONS } from "@/lib/areas";
 import type { Material, MaterialCategory, MaterialUnit, Supplier } from "@/types";
@@ -56,9 +56,15 @@ export default function MaterialesPage() {
   const { canManageOperations } = usePermissions();
   const [tab, setTab] = useState<"materiales" | "proveedores">(initialTabFromUrl);
 
-  const { data: categories } = useEntityList<MaterialCategory>("materialCategories");
-  const { data: units } = useEntityList<MaterialUnit>("materialUnits");
-  const { data: suppliers } = useEntityList<Supplier>("suppliers");
+  const { data: categories } = useEntityList<MaterialCategory>("materialCategories", {
+    staleTime: CATALOG_STALE_TIME,
+  });
+  const { data: units } = useEntityList<MaterialUnit>("materialUnits", {
+    staleTime: CATALOG_STALE_TIME,
+  });
+  const { data: suppliers } = useEntityList<Supplier>("suppliers", {
+    staleTime: CATALOG_STALE_TIME,
+  });
 
   const materialFields: FieldConfig[] = useMemo(
     () => [

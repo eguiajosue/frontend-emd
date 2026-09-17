@@ -38,11 +38,26 @@ export function useAuthToken(): string | undefined {
   return session?.user?.token;
 }
 
+/**
+ * `staleTime` sugerido para catálogos de bajo cambio (categorías/unidades de
+ * materiales, presets de producto, roles, estados, proveedores, áreas): datos
+ * que casi no cambian y no necesitan refetchear cada vez que se vuelve a
+ * montar la pantalla que los usa (el `staleTime` global es de 30s).
+ */
+export const CATALOG_STALE_TIME = 5 * 60_000;
+
 export interface EntityListOptions {
   /** Permite desactivar la query (ej. una pantalla que sólo la usa si sos admin). */
   enabled?: boolean;
   /** Query params opcionales (paginación/filtros del backend). */
   params?: Record<string, string | number | boolean | undefined>;
+  /**
+   * Override puntual del `staleTime` global (30s, ver `providers.tsx`). Pensado
+   * para catálogos de bajo cambio (categorías/unidades de materiales, presets
+   * de producto, roles, estados, áreas) que no necesitan refetchear en cada
+   * mount — no lo uses para pedidos ni nada que deba sentirse "en vivo".
+   */
+  staleTime?: number;
 }
 
 /** Listado de una entidad. Devuelve siempre un array (nunca `undefined`). */
@@ -51,11 +66,12 @@ export function useEntityList<T>(
   options: EntityListOptions = {}
 ): UseQueryResult<T[]> & { data: T[] } {
   const token = useAuthToken();
-  const { enabled = true, params } = options;
+  const { enabled = true, params, staleTime } = options;
 
   const query = useQuery<T[]>({
     queryKey: queryKeys.list(entity, params),
     enabled: Boolean(token) && enabled,
+    ...(staleTime !== undefined ? { staleTime } : {}),
     queryFn: async () => {
       const payload = await request<T[] | Paginated<T>>(ENDPOINTS[entity], {
         token,
