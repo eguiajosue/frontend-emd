@@ -279,6 +279,55 @@ export function useTakeOrderReception() {
 }
 
 /**
+ * Orden de prioridad de compra (`PATCH /orders/materials-priority`), elegido
+ * arrastrando pedidos en "Hoja de Materiales". Actualiza la cache de forma
+ * optimista (se siente instantáneo al soltar) y revierte si el backend
+ * rechaza el request.
+ */
+export function useReorderMaterialsPriority() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  const listKey = queryKeys.list("orders");
+
+  const mutation = useMutation({
+    mutationFn: (orderIds: number[]) =>
+      request<{ updated: number }>(`${ENDPOINTS.orders}/materials-priority`, {
+        method: "PATCH",
+        token,
+        body: { orderIds },
+      }),
+    onMutate: async (orderIds: number[]) => {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previous = queryClient.getQueryData<Order[]>(listKey);
+      if (previous) {
+        const priorityById = new Map(orderIds.map((id, index) => [id, index]));
+        queryClient.setQueryData<Order[]>(
+          listKey,
+          previous.map((order) =>
+            priorityById.has(order.id)
+              ? { ...order, materialsPriority: priorityById.get(order.id) }
+              : order
+          )
+        );
+      }
+      return { previous };
+    },
+    onError: (error, _orderIds, context) => {
+      if (context?.previous) queryClient.setQueryData(listKey, context.previous);
+      toast.error(getErrorMessage(error, "No se pudo guardar el orden de prioridad."));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    },
+  });
+
+  return {
+    reorder: (orderIds: number[]) => mutation.mutateAsync(orderIds),
+    isReordering: mutation.isPending,
+  };
+}
+
+/**
  * "Tomar pedido" desde Diseño (`POST /orders/:id/take-design`).
  *
  * Cuando Recepción elige "Cualquier diseñador" el pedido queda a nombre de la

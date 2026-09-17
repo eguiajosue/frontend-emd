@@ -5,9 +5,12 @@ import HojaMaterialesPage from "./page";
 import type { Order } from "@/types";
 
 let orders: Order[] = [];
+const reorderMock = vi.fn();
+let canManageOperations = true;
 
 vi.mock("@/hooks/useOrders", () => ({
   useOrders: () => ({ data: orders, isPending: false, isError: false, refetch: vi.fn() }),
+  useReorderMaterialsPriority: () => ({ reorder: reorderMock, isReordering: false }),
 }));
 
 vi.mock("@/hooks/useOrderMaterials", () => ({
@@ -21,7 +24,7 @@ vi.mock("@/hooks/useOrderMaterials", () => ({
 }));
 
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ canManageOperations: true }),
+  usePermissions: () => ({ canManageOperations }),
 }));
 
 vi.mock("@/hooks/useEntity", () => ({
@@ -40,6 +43,8 @@ function buildOrder(id: number, statusId: number, overrides: Partial<Order> = {}
 }
 
 beforeEach(() => {
+  reorderMock.mockReset();
+  canManageOperations = true;
   orders = [
     buildOrder(1, 1, { clientNameOverride: "Cliente Uno" }),
     buildOrder(2, 5, { clientNameOverride: "Entregado" }), // 5 = entregado
@@ -72,7 +77,7 @@ describe("HojaMaterialesPage", () => {
   it("al hacer click en un pedido, se despliega su checklist de materiales", async () => {
     render(<HojaMaterialesPage />);
 
-    await userEvent.click(screen.getByRole("button", { name: /Pedido #1/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Pedido #1/i }));
 
     expect(screen.getByText("Todavía no se cargó ningún material.")).toBeInTheDocument();
   });
@@ -82,5 +87,41 @@ describe("HojaMaterialesPage", () => {
     render(<HojaMaterialesPage />);
 
     expect(screen.getByText("No hay pedidos activos en este momento.")).toBeInTheDocument();
+  });
+
+  it("ordena por materialsPriority (los sin prioridad van al final, por id)", () => {
+    orders = [
+      buildOrder(10, 1, { materialsPriority: 1 }),
+      buildOrder(20, 1, { materialsPriority: null }),
+      buildOrder(30, 1, { materialsPriority: 0 }),
+    ];
+    render(<HojaMaterialesPage />);
+
+    const names = screen.getAllByText(/^Pedido #\d+$/).map((el) => el.textContent);
+    expect(names).toEqual(["Pedido #30", "Pedido #10", "Pedido #20"]);
+  });
+
+  it("muestra el asa de arrastre cuando se puede administrar y no hay búsqueda", () => {
+    orders = [buildOrder(1, 1), buildOrder(2, 1)];
+    render(<HojaMaterialesPage />);
+
+    expect(screen.getAllByLabelText(/Arrastrar para cambiar la prioridad/i)).toHaveLength(2);
+  });
+
+  it("oculta el asa de arrastre mientras hay una búsqueda activa", async () => {
+    orders = [buildOrder(1, 1, { clientNameOverride: "Cliente Uno" }), buildOrder(2, 1)];
+    render(<HojaMaterialesPage />);
+
+    await userEvent.type(screen.getByPlaceholderText(/Buscar por pedido o cliente/i), "Uno");
+
+    expect(screen.queryByLabelText(/Arrastrar para cambiar la prioridad/i)).not.toBeInTheDocument();
+  });
+
+  it("oculta el asa de arrastre si el usuario no puede administrar operaciones", () => {
+    canManageOperations = false;
+    orders = [buildOrder(1, 1), buildOrder(2, 1)];
+    render(<HojaMaterialesPage />);
+
+    expect(screen.queryByLabelText(/Arrastrar para cambiar la prioridad/i)).not.toBeInTheDocument();
   });
 });
