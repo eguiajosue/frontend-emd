@@ -23,7 +23,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
-import { OrderMaterialsSection } from "@/components/orders/OrderMaterialsSection";
+import Link from "next/link";
 import { OrderHandoff } from "@/components/orders/OrderHandoff";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import {
@@ -60,7 +60,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
-import { FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
+import { ClipboardList, FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
 import { buildAuditLines } from "@/lib/orderAuditLog";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { Order, UpdateOrderPayload, User } from "@/types";
@@ -410,7 +410,16 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       el avance de cada una. */}
                   <AreaTasksSection order={order} />
 
-                  <OrderMaterialsSection order={order} />
+                  {/* La hoja de materiales se gestiona en su propia pantalla
+                      (lista de pedidos → checklist de compra), no acá — se
+                      requiere cargar al menos un material antes de poder
+                      autorizar el diseño (ver "Proceso de diseño"). */}
+                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                    <Link href={`/dashboard/hoja-materiales?order=${order.id}`}>
+                      <ClipboardList className="h-4 w-4" />
+                      Ver hoja de materiales
+                    </Link>
+                  </Button>
 
                   {order.orderProducts && order.orderProducts.length > 0 && (
                     <div>

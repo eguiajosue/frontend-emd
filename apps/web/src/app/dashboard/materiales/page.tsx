@@ -45,7 +45,7 @@ const supplierSchema = z.object({
 /**
  * Catálogo de Materiales/insumos + Proveedores (pestañas, mismo patrón que
  * "Clientes"/"Empresas"): da de alta lo que después se usa para armar la
- * hoja de materiales de un pedido (ver OrderMaterialsSection).
+ * hoja de materiales de un pedido (ver /dashboard/hoja-materiales).
  */
 function initialTabFromUrl(): "materiales" | "proveedores" {
   if (typeof window === "undefined") return "materiales";
