@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList } from "@/hooks/useEntity";
@@ -128,6 +129,7 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
     removeArea,
   } = useAreaTasks(orderId);
   const [areaToAdd, setAreaToAdd] = useState<string>("");
+  const [removingTask, setRemovingTask] = useState<OrderAreaTask | null>(null);
 
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const isManager = roles.some((r) => MANAGER_ROLES.includes(r));
@@ -224,10 +226,12 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
     }
   };
 
-  const handleRemove = async (task: OrderAreaTask) => {
+  const handleRemove = async () => {
+    if (!removingTask) return;
     try {
-      await removeArea.mutateAsync(task.id);
-      toast.success(`${getAreaLabel(task.area)} quitada del pedido`);
+      await removeArea.mutateAsync(removingTask.id);
+      toast.success(`${getAreaLabel(removingTask.area)} quitada del pedido`);
+      setRemovingTask(null);
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -393,7 +397,7 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
                         className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
                         title={`Quitar ${getAreaLabel(task.area)} del pedido`}
                         disabled={removeArea.isPending}
-                        onClick={() => handleRemove(task)}
+                        onClick={() => setRemovingTask(task)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -437,6 +441,14 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
           </Button>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={Boolean(removingTask)}
+        onOpenChange={(open) => !open && setRemovingTask(null)}
+        onConfirm={handleRemove}
+        title={removingTask ? `¿Quitar ${getAreaLabel(removingTask.area)} del pedido?` : ""}
+        description="El avance registrado para esta área se pierde y no se puede deshacer."
+      />
     </section>
   );
 }

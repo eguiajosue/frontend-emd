@@ -1,5 +1,7 @@
 "use client";
 
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { useDeliveryProgress, getProgressLevel, PROGRESS_LEVEL_COLORS } from "@/lib/deliveryProgress";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +36,16 @@ export function DeliveryProgressBar({
   const clamped = Math.min(Math.max(progress, 0), 100);
   const level = getProgressLevel(progress);
   const color = PROGRESS_LEVEL_COLORS[level];
+  const deliveryIsToday =
+    !!deliveryDate && new Date(deliveryDate).toDateString() === new Date().toDateString();
+  // Un porcentaje como "Vencido (200%)" no dice nada: cuánto tiempo pasó
+  // vencido importa, no el número crudo. Se reemplaza por texto legible.
   const label =
-    progress > 100
-      ? `Vencido (${Math.round(progress)}%)`
-      : `${Math.round(progress)}% del plazo transcurrido`;
+    progress > 100 && deliveryDate
+      ? `Vencido ${formatDistanceToNow(new Date(deliveryDate), { addSuffix: true, locale: es })}`
+      : deliveryIsToday
+        ? "Vence hoy"
+        : `${Math.round(progress)}% del plazo transcurrido`;
 
   const showLabel = labelMode === "always" || level === "danger" || level === "critical";
 
