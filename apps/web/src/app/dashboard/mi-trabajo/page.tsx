@@ -1,7 +1,4 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 
 /**
  * "Mi trabajo" se fusionó con la pantalla de Pedidos.
@@ -11,15 +8,13 @@ import { useRouter } from "next/navigation";
  * se llama "Pedidos" para quien administra y "Tareas asignadas" para quien
  * ejecuta (ver `ordersScreenTitle`). Esta ruta queda sólo para no romper links
  * guardados y redirige a la nueva.
+ *
+ * Redirect en el servidor (como clients/companies/roles/users) en vez de un
+ * useEffect + router.replace del lado del cliente: evita enviar JS y montar
+ * un componente sólo para redirigir.
  */
 const MiTrabajoRedirect = () => {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/dashboard/orders");
-  }, [router]);
-
-  return null;
+  redirect("/dashboard/orders");
 };
 
 export default MiTrabajoRedirect;
