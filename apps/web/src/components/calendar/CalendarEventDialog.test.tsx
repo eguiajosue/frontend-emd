@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CalendarEventDialog } from "./CalendarEventDialog";
-import type { CalendarEvent } from "@/types";
+import type { CalendarEvent, Order } from "@/types";
 
 const createMock = vi.fn();
 const updateMock = vi.fn();
@@ -15,11 +15,33 @@ vi.mock("@/hooks/useCalendarEvents", () => ({
   useCalendarEventMutations: () => ({ create: createMock, update: updateMock }),
 }));
 
+const orders: Order[] = [
+  { id: 42, description: "Letrero luminoso", creationDate: "2026-09-01T00:00:00.000Z" } as Order,
+];
+
+vi.mock("@/hooks/useOrders", () => ({
+  useOrders: () => ({ data: orders }),
+}));
+
+const materialItems: unknown[] = [];
+const updateMaterialItemMock = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@/hooks/useOrderMaterials", () => ({
+  useOrderMaterials: () => ({
+    items: materialItems,
+    isLoading: false,
+    isError: false,
+    update: { mutateAsync: updateMaterialItemMock, isPending: false },
+  }),
+}));
+
 beforeEach(() => {
   createMock.mockReset();
   createMock.mockResolvedValue({ id: 1 });
   updateMock.mockReset();
   updateMock.mockResolvedValue({ id: 1 });
+  materialItems.length = 0;
+  updateMaterialItemMock.mockClear();
 });
 
 describe("CalendarEventDialog", () => {
@@ -152,5 +174,54 @@ describe("CalendarEventDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: /Guardar cambios/i }));
 
     expect(updateMock).toHaveBeenCalledWith(7, expect.objectContaining({ title: "Entregar sello" }));
+  });
+
+  it("permite vincular un pedido y lo manda en el payload", async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Instalar anuncio");
+    await userEvent.type(screen.getByLabelText(/^Fecha/), "2026-09-20");
+    await userEvent.click(screen.getByLabelText(/Pedido vinculado/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Letrero luminoso/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Crear evento/i }));
+
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ orderId: 42 }));
+  });
+
+  it('con categoría "Compra de materiales" y un pedido elegido, muestra el checklist de la hoja', async () => {
+    materialItems.push({
+      id: 1,
+      orderId: 42,
+      materialId: 1,
+      quantity: 2,
+      description: "PVC 6mm",
+      price: 150,
+      purchased: false,
+    });
+
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.click(screen.getByLabelText(/Categoría/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Compra de materiales/i }));
+    await userEvent.click(screen.getByLabelText(/Pedido vinculado/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Letrero luminoso/i }));
+
+    expect(screen.getByText(/PVC 6mm/)).toBeInTheDocument();
+    expect(screen.getByText("$0.00")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox"));
+    expect(updateMaterialItemMock).toHaveBeenCalledWith({
+      itemId: 1,
+      payload: { purchased: true },
+    });
+  });
+
+  it("sin categoría de compras, no muestra el checklist aunque haya un pedido elegido", async () => {
+    render(<CalendarEventDialog open onClose={() => {}} />);
+
+    await userEvent.click(screen.getByLabelText(/Pedido vinculado/i));
+    await userEvent.click(await screen.findByRole("option", { name: /Letrero luminoso/i }));
+
+    expect(screen.queryByText("Materiales a comprar")).not.toBeInTheDocument();
   });
 });

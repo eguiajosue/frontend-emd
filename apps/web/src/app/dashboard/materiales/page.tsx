@@ -29,6 +29,7 @@ const materialSchema = z.object({
   brand: z.string().optional().or(z.literal("")),
   supplierId: z.number().optional(),
   areas: z.array(z.string()).optional(),
+  suggestedPrice: z.number().min(0, "El precio no puede ser negativo").optional(),
 });
 
 const supplierSchema = z.object({
@@ -97,6 +98,12 @@ export default function MaterialesPage() {
         label: "Áreas donde se usa",
         type: "multiselect",
         options: AREA_OPTIONS.map((a) => ({ value: a.value, label: a.label })),
+      },
+      {
+        name: "suggestedPrice",
+        label: "Precio sugerido (MXN)",
+        type: "number",
+        helpText: "Se copia a cada línea de la hoja de materiales al agregarla.",
       },
     ],
     [categories, units, suppliers]
@@ -191,6 +198,7 @@ export default function MaterialesPage() {
                     brand: editing.brand ?? "",
                     supplierId: editing.supplierId ?? undefined,
                     areas: editing.areas ?? [],
+                    suggestedPrice: editing.suggestedPrice ?? undefined,
                   }
                 : {}
             }

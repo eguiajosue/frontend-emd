@@ -43,6 +43,13 @@ export const CATEGORY_META: Record<CalendarEventCategory, CategoryMeta> = {
     swatchClass: "bg-purple-400",
     tracksStatus: false,
   },
+  compras: {
+    label: "Compra de materiales",
+    pillClasses:
+      "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+    swatchClass: "bg-amber-400",
+    tracksStatus: true,
+  },
   otro: {
     label: "Otro",
     pillClasses: "bg-muted text-muted-foreground",

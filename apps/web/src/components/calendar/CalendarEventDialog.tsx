@@ -24,11 +24,13 @@ import {
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { useEntityList } from "@/hooks/useEntity";
 import { useCalendarEventMutations } from "@/hooks/useCalendarEvents";
+import { useOrders } from "@/hooks/useOrders";
 import { getErrorMessage } from "@/lib/api";
 import { CATEGORY_OPTIONS } from "./eventCategories";
+import { MaterialsPurchaseChecklist } from "./MaterialsPurchaseChecklist";
 import { AREA_OPTIONS, AREA_ICONS } from "@/lib/areas";
 import type { CalendarEvent, CalendarEventCategory, Client } from "@/types";
-import { CalendarClock, Loader2, MapPin, Tag, Type, UserRound } from "lucide-react";
+import { CalendarClock, Loader2, MapPin, Package, Tag, Type, UserRound } from "lucide-react";
 
 function clientLabel(client: Client): string {
   return [client.first_name, client.last_name].filter(Boolean).join(" ");
@@ -82,6 +84,7 @@ export function CalendarEventDialog({
   defaultTime,
 }: CalendarEventDialogProps) {
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
+  const { data: orders } = useOrders({ enabled: open });
   const { create, update } = useCalendarEventMutations();
   const isEditing = Boolean(event);
 
@@ -90,6 +93,7 @@ export function CalendarEventDialog({
   const [area, setArea] = useState<string | undefined>(undefined);
   const [clientId, setClientId] = useState<number | undefined>(undefined);
   const [clientNameOverride, setClientNameOverride] = useState("");
+  const [orderId, setOrderId] = useState<number | undefined>(undefined);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [allDay, setAllDay] = useState(false);
@@ -115,6 +119,7 @@ export function CalendarEventDialog({
       setArea(event.area ?? undefined);
       setClientId(event.clientId ?? undefined);
       setClientNameOverride(event.clientId ? "" : event.clientName ?? "");
+      setOrderId(event.orderId ?? undefined);
       setDate(eventDate.toISOString().slice(0, 10));
       setTime(event.hasTime ? eventDate.toISOString().slice(11, 16) : "");
       setAllDay(!event.hasTime);
@@ -134,6 +139,7 @@ export function CalendarEventDialog({
       setArea(undefined);
       setClientId(undefined);
       setClientNameOverride("");
+      setOrderId(undefined);
       setDate(defaultDate ?? "");
       setTime(defaultTime ?? "");
       setAllDay(false);
@@ -172,6 +178,7 @@ export function CalendarEventDialog({
       area,
       clientId,
       clientName: clientId ? undefined : clientNameOverride || undefined,
+      orderId,
       eventDate: eventDate.toISOString(),
       hasTime: !allDay,
       reminderMinutesBefore,
@@ -277,6 +284,34 @@ export function CalendarEventDialog({
               }}
             />
           </FormField>
+
+          <FormField label="Pedido vinculado (opcional)" htmlFor="ce-order" icon={Package}>
+            <Select
+              value={orderId ? String(orderId) : "ninguno"}
+              onValueChange={(v) => setOrderId(v === "ninguno" ? undefined : Number(v))}
+            >
+              <SelectTrigger id="ce-order" className="h-11 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ninguno">Sin pedido</SelectItem>
+                {orders
+                  .filter((o) => !o.archivedAt)
+                  .sort((a, b) => b.creationDate.localeCompare(a.creationDate))
+                  .map((order) => (
+                    <SelectItem key={order.id} value={String(order.id)}>
+                      <span className="truncate">
+                        #{order.id} · {order.description}
+                      </span>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+
+          {category === "compras" && orderId && (
+            <MaterialsPurchaseChecklist orderId={orderId} />
+          )}
 
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div>

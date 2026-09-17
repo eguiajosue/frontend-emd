@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { RowActions } from "@/components/crud/RowActions";
 import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
 import { getAreaLabel } from "@/lib/areas";
+import { formatCurrencyMXN } from "@/lib/format";
 import type { Material } from "@/types";
 
 export const getMaterialColumns = ({
@@ -25,6 +26,12 @@ export const getMaterialColumns = ({
   { accessorKey: "measure", header: "Medida" },
   { accessorKey: "color", header: "Color" },
   { accessorKey: "brand", header: "Marca" },
+  {
+    id: "suggestedPrice",
+    header: "Precio sugerido",
+    cell: ({ row }) =>
+      row.original.suggestedPrice != null ? formatCurrencyMXN(row.original.suggestedPrice) : "—",
+  },
   {
     id: "supplier",
     header: "Proveedor",

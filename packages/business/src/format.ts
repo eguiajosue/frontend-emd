@@ -43,6 +43,14 @@ export function formatDate(value?: string | null): string {
   return date.toLocaleDateString(DATE_LOCALE);
 }
 
+/** Monto en pesos mexicanos ($1,234.00). `null`/`undefined` se tratan como $0.00. */
+export function formatCurrencyMXN(value?: number | null): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  }).format(value ?? 0);
+}
+
 /** Fecha larga con hora; devuelve "-" si el valor falta o es inválido. */
 export function formatDateTime(
   value?: string | null,
