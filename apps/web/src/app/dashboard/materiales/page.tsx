@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Boxes, Truck } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CrudPage } from "@/components/crud/CrudPage";
+import { CrudPage, type CrudFilterConfig } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -102,6 +102,36 @@ export default function MaterialesPage() {
     [categories, units, suppliers]
   );
 
+  const materialFilters: CrudFilterConfig<Material>[] = useMemo(
+    () => [
+      {
+        key: "category",
+        label: "Categoría",
+        allLabel: "Todas las categorías",
+        options: categories.map((c) => ({ value: c.name, label: c.name })),
+        matches: (item, value) => item.category?.name === value,
+      },
+      {
+        key: "area",
+        label: "Área",
+        allLabel: "Todas las áreas",
+        options: AREA_OPTIONS.map((a) => ({ value: a.value, label: a.label })),
+        matches: (item, value) => item.areas.includes(value),
+      },
+    ],
+    [categories]
+  );
+
+  const supplierFilters: CrudFilterConfig<Supplier>[] = [
+    {
+      key: "location",
+      label: "Ubicación",
+      allLabel: "Todas las ubicaciones",
+      options: SUPPLIER_LOCATION_OPTIONS,
+      matches: (item, value) => item.location === value,
+    },
+  ];
+
   const supplierFields: FieldConfig[] = [
     { name: "name", label: "Nombre" },
     { name: "email", label: "Email", type: "email" },
@@ -142,6 +172,8 @@ export default function MaterialesPage() {
             fields={materialFields}
             schema={materialSchema}
             columns={getMaterialColumns}
+            search={{ placeholder: "Buscar material..." }}
+            filters={materialFilters}
             emptyMessage="Todavía no cargaste ningún material"
             emptyDescription="El catálogo de materiales se usa para armar la hoja de materiales de un pedido."
             emptyIcon={Boxes}
@@ -174,6 +206,8 @@ export default function MaterialesPage() {
             fields={supplierFields}
             schema={supplierSchema}
             columns={getSupplierColumns}
+            search={{ placeholder: "Buscar proveedor..." }}
+            filters={supplierFilters}
             emptyMessage="Ningún proveedor registrado por ahora"
             emptyDescription="Los proveedores se eligen al armar la hoja de materiales de un pedido."
             emptyIcon={Truck}
