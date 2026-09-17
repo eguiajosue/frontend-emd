@@ -111,7 +111,11 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
         // `materialId`, así que no se manda en la edición.
         await update.mutateAsync({
           itemId: item!.id,
-          payload: { quantity: resolvedQuantity, description: resolvedDescription, supplierId },
+          payload: {
+            quantity: resolvedQuantity,
+            description: resolvedDescription,
+            supplierId,
+          },
         });
         toast.success("Línea actualizada");
       } else {

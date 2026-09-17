@@ -7,7 +7,7 @@ import { History, Users, Building2 } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { CrudPage, type CrudColumnsArgs } from "@/components/crud/CrudPage";
+import { CrudPage, type CrudColumnsArgs, type CrudFilterConfig } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -86,6 +86,19 @@ const ClientesPage = () => {
     []
   );
 
+  const clientFilters: CrudFilterConfig<Client>[] = useMemo(
+    () => [
+      {
+        key: "companyId",
+        label: "Empresa",
+        allLabel: "Todas las empresas",
+        options: companies.map((c) => ({ value: String(c.id), label: c.name })),
+        matches: (item, value) => String(item.companyId ?? "") === value,
+      },
+    ],
+    [companies]
+  );
+
   const clientFields: FieldConfig[] = useMemo(
     () => [
       { name: "first_name", label: "Nombre" },
@@ -129,6 +142,8 @@ const ClientesPage = () => {
             fields={clientFields}
             schema={clientSchema}
             columns={clientColumnsWithOrders}
+            search={{ placeholder: "Buscar cliente..." }}
+            filters={clientFilters}
             emptyMessage="Todavía no cargaste ningún cliente"
             emptyDescription="Al cargar el primero, su historial de pedidos aparece acá mismo."
             emptyIcon={Users}
@@ -159,6 +174,7 @@ const ClientesPage = () => {
             fields={companyFields}
             schema={companySchema}
             columns={getCompanyColumns}
+            search={{ placeholder: "Buscar empresa..." }}
             emptyMessage="Ninguna empresa registrada por ahora"
             emptyDescription="Agrupar a los clientes corporativos creando la primera empresa."
             emptyIcon={Building2}

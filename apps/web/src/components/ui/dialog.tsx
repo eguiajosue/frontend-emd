@@ -21,7 +21,11 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Sin backdrop-blur: animar opacidad sobre un elemento con
+      // backdrop-filter obliga al navegador a recalcular el blur en cada
+      // frame de la transición sobre toda la pantalla — se sentía trabada
+      // la apertura de cualquier modal. El dim (bg-black/50) solo es barato.
+      "fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}

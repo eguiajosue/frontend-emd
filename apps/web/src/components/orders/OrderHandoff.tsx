@@ -83,14 +83,21 @@ export function HandoffStrip({
       </div>
 
       {!handoff.cancelled && (
-        <div className="space-y-0.5 border-t pt-3 text-sm">
+        <div className="space-y-1.5 border-t pt-3 text-sm">
           <p>
             <span className="text-muted-foreground">Ahora en </span>
             <span className="font-medium">{handoff.current.label}</span>
             <span className="text-muted-foreground"> · </span>
             <span className="font-medium">{handoff.holderLabel}</span>
           </p>
-          <p className="text-xs text-muted-foreground">{handoff.nextStep}</p>
+          {/* La única acción que importa ahora mismo, destacada — el resto
+              del detalle explica el cómo, pero esto dice el qué. */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Siguiente acción
+            </p>
+            <p className="text-sm font-medium">{handoff.nextStep}</p>
+          </div>
         </div>
       )}
 

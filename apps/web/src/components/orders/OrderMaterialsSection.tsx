@@ -118,6 +118,9 @@ export function OrderMaterialsSection({ order }: OrderMaterialsSectionProps) {
                   <Boxes className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="truncate text-sm">
                     <span className="font-semibold">{item.quantity}×</span> {item.description}
+                    {item.material?.unit && (
+                      <span className="text-muted-foreground"> ({item.material.unit.name})</span>
+                    )}
                   </span>
                 </span>
 

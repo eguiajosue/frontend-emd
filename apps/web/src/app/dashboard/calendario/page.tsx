@@ -67,7 +67,6 @@ export default function CalendarioPage() {
   const [mobileTasksOpen, setMobileTasksOpen] = useState(false);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
 
-  const ordersWithDelivery = orders.filter((o) => Boolean(o.deliveryDate));
   const filteredEvents = useMemo(
     () =>
       events.filter(
@@ -76,6 +75,17 @@ export default function CalendarioPage() {
           (areaFilter === "todas" || e.area === areaFilter)
       ),
     [events, categoryFilter, areaFilter]
+  );
+  // El filtro de área sólo se aplicaba a `events`: los pedidos (siempre
+  // pintados como píldora gris con ícono de paquete, ver `CalendarPill`, sin
+  // participar del sistema de colores por categoría) se mostraban igual sin
+  // importar qué área estuviera elegida en `AreaFilterBar`.
+  const ordersWithDelivery = useMemo(
+    () =>
+      orders
+        .filter((o) => Boolean(o.deliveryDate))
+        .filter((o) => areaFilter === "todas" || o.area === areaFilter),
+    [orders, areaFilter]
   );
   const pendingTasksCount = tasks.filter((t) => !t.completed).length;
 

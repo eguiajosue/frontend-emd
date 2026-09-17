@@ -521,7 +521,14 @@ export interface ChatConversation {
  * seguimiento de estado. Una junta, por ejemplo, es sólo informativa — no
  * tiene "pendiente"/"terminado" (ver `CATEGORY_META` en el frontend web).
  */
-export type CalendarEventCategory = "instalacion" | "visita" | "entrega" | "junta" | "otro";
+export type CalendarEventCategory =
+  | "instalacion"
+  | "visita"
+  | "entrega"
+  | "junta"
+  /** Evento auto-generado "Compra de materiales", una semana antes de la entrega/instalación de un pedido. */
+  | "compras"
+  | "otro";
 
 /**
  * Evento del calendario de equipo de Recepción: instalaciones, juntas,
@@ -538,6 +545,8 @@ export interface CalendarEvent extends BaseEntity {
   /** Cliente real vinculado, si se eligió de la lista en vez de texto libre. */
   clientId?: number | null;
   client?: Client | null;
+  /** Pedido vinculado, opcional. En categoría "compras" arma el checklist de su hoja de materiales. */
+  orderId?: number | null;
   category: CalendarEventCategory;
   /** Área de producción involucrada (taller/dtf/bordado/diseno/laser/impresiones), opcional. */
   area?: string | null;
@@ -556,6 +565,7 @@ export interface CreateCalendarEventPayload {
   title: string;
   clientName?: string;
   clientId?: number;
+  orderId?: number;
   category?: CalendarEventCategory;
   area?: string;
   eventDate: string;
@@ -645,6 +655,8 @@ export interface Material extends BaseEntity {
   /** Proveedor preferido, opcional — la hoja de un pedido puede usar otro. */
   supplierId?: number | null;
   areas: string[];
+  /** Precio de referencia, en pesos mexicanos. Se copia a cada línea de la hoja de materiales al agregarla. */
+  suggestedPrice?: number | null;
   createdAt?: string;
   category?: MaterialCategory | null;
   unit?: MaterialUnit | null;
@@ -662,6 +674,7 @@ export interface CreateMaterialPayload {
   brand?: string;
   supplierId?: number;
   areas?: string[];
+  suggestedPrice?: number;
 }
 
 export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
@@ -682,9 +695,13 @@ export interface OrderMaterialItem extends BaseEntity {
   quantity: number;
   description: string;
   supplierId?: number | null;
+  /** Copiado del precio sugerido del material al agregar la línea; se sincroniza hasta que el pedido se entrega. */
+  price?: number;
+  /** Checklist del evento "Compra de materiales": si ya se compró esta línea. */
+  purchased?: boolean;
   createdById?: number;
   createdAt?: string;
-  material?: { id: number; name: string } | null;
+  material?: { id: number; name: string; unit?: { name: string } | null } | null;
   supplier?: Supplier | null;
   createdBy?: AssignedUser | null;
 }
@@ -696,4 +713,6 @@ export interface CreateOrderMaterialItemPayload {
   supplierId?: number;
 }
 
-export type UpdateOrderMaterialItemPayload = Partial<CreateOrderMaterialItemPayload>;
+export type UpdateOrderMaterialItemPayload = Partial<CreateOrderMaterialItemPayload> & {
+  purchased?: boolean;
+};

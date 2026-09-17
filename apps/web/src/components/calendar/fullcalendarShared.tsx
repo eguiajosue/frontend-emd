@@ -38,6 +38,7 @@ export const CATEGORY_HEX: Record<CalendarEventCategory, string> = {
   visita: "#3b82f6",
   entrega: "#14b8a6",
   junta: "#a855f7",
+  compras: "#fbbf24",
   otro: "#6b7280",
 };
 

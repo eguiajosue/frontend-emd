@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ interface OrderDetailDialogProps {
  */
 export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) {
   const open = orderId !== null;
-  const { data: order, isPending } = useOrder(orderId ?? undefined, {
+  const { data: order, isPending, isError, refetch } = useOrder(orderId ?? undefined, {
     enabled: open,
   });
   const { roles, isAdmin, canManageOperations } = usePermissions();
@@ -219,15 +220,29 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl lg:max-w-5xl p-0">
           <AnimatePresence mode="wait">
-            {isPending || !order ? (
+            {isError ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="p-6"
+              >
+                <ErrorState
+                  title="No se pudo cargar el detalle del pedido."
+                  description="Revisá tu conexión e intentá nuevamente."
+                  onRetry={() => refetch()}
+                />
+              </motion.div>
+            ) : isPending || !order ? (
               <motion.div
                 key="loading"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="space-y-3 py-4"
+                className="space-y-3 p-6"
               >
                 <Skeleton className="h-6 w-40" />
                 <Skeleton className="h-24 w-full" />
@@ -241,9 +256,16 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ type: "spring", stiffness: 320, damping: 30 }}
               >
-                <DialogHeader>
-                  <DialogTitle className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2">
+                {/* Sticky: el número de pedido, cliente y estado quedan a la
+                    vista aunque el usuario desplace el resto del detalle. */}
+                {/* Sólo `sticky` + fondo: el borde/padding de mobile vs. desktop
+                    ya los resuelve `DialogHeader` (hoja fija en mobile,
+                    encabezado simple en desktop) — no se pisan esas reglas acá,
+                    sólo se agrega que en desktop tampoco se desplace con el
+                    scroll. */}
+                <DialogHeader className="sticky top-0 z-10 bg-popover/95 backdrop-blur-sm">
+                  <DialogTitle className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
                       Pedido #{order.id}{" "}
                       <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                     </span>
@@ -266,49 +288,21 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       </Button>
                     )}
                   </DialogTitle>
+                  <p className="text-sm font-medium text-foreground">
+                    {getOrderClientName(order)}
+                  </p>
                 </DialogHeader>
 
-                <div className="mt-4 space-y-4 text-sm">
-                  {/* Primero de quién es el trabajo, después los datos: es lo
-                      que cualquiera viene a averiguar al abrir un pedido. */}
-                  <OrderHandoff order={order} />
+                <div className="grid gap-4 p-6 text-sm lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
+                  {/* Columna principal: flujo, edición, estado y todo lo
+                      operativo. En escritorio va junto a un panel lateral con
+                      el resumen de sólo lectura del pedido. */}
+                  <div className="min-w-0 space-y-4 lg:order-1">
+                    {/* Primero de quién es el trabajo, después los datos: es lo
+                        que cualquiera viene a averiguar al abrir un pedido. */}
+                    <OrderHandoff order={order} />
 
-                  <div className="grid gap-1">
-                    <p>
-                      <b>Cliente:</b> {getOrderClientName(order)}
-                    </p>
-                    {/* Quién lo creó y, si lo tomó otra recepcionista, quién
-                        lo atiende hoy (más el botón para tomarlo). */}
-                    <OrderAttendance order={order} />
-                    <p>
-                      <b>Fecha de creación:</b> {formatDateTime(order.creationDate, undefined, timeFormat)}
-                    </p>
-                    <p className="flex items-center gap-1">
-                      <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                      <b>Asignado a:</b>{" "}
-                      {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
-                    </p>
-                    {!canEdit && (() => {
-                      const AreaIcon = getAreaIcon(order.area);
-                      return (
-                        <p className="flex items-center gap-1">
-                          {AreaIcon && (
-                            <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                          <b>Área:</b> {getAreaLabel(order.area)}
-                        </p>
-                      );
-                    })()}
-                  </div>
-
-                  {!isDeliveredStatus(order.statusId) && (
-                    <DeliveryProgressBar
-                      creationDate={order.creationDate}
-                      deliveryDate={order.deliveryDate}
-                    />
-                  )}
-
-                  {canEdit ? (
+                    {canEdit ? (
                     <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4">
                       <FormField label="Descripción">
                         <Textarea
@@ -387,12 +381,6 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                   ) : (
                     <p>
                       <b>Descripción:</b> {order.description}
-                    </p>
-                  )}
-
-                  {!canEdit && (
-                    <p>
-                      <b>Fecha de entrega:</b> {formatDeliveryDate(order.deliveryDate, timeFormat)}
                     </p>
                   )}
 
@@ -491,7 +479,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       <h4 className="mb-2 font-semibold">Historial de Estados</h4>
                       {histories.length === 0 ? (
                         <p className="text-muted-foreground">
-                          Recién creado, todavía sin cambios de estado.
+                          {/* No confundir con "Historial de cambios" (más abajo): éste
+                              es sólo de cambios de ESTADO, puede estar vacío aunque ya
+                              hubo otra actividad (notas, materiales, asignaciones). */}
+                          Sin cambios de estado todavía.
                         </p>
                       ) : (
                         <ul className="space-y-2">
@@ -617,6 +608,59 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                       </AccordionItem>
                     </Accordion>
                   )}
+                  </div>
+
+                  {/* Panel lateral: resumen de sólo lectura (cliente, fechas,
+                      responsable, entrega) — separado de la edición, que vive
+                      en la columna principal. */}
+                  {/* En mobile va primero (orientación rápida: cliente, fecha,
+                      entrega) antes del resto del detalle; en desktop pasa
+                      al panel lateral derecho. */}
+                  <aside className="order-first space-y-4 lg:sticky lg:top-[4.5rem] lg:order-2">
+                    <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+                      <div className="grid gap-1">
+                        <p>
+                          <b>Cliente:</b> {getOrderClientName(order)}
+                        </p>
+                        {/* Quién lo creó y, si lo tomó otra recepcionista, quién
+                            lo atiende hoy (más el botón para tomarlo). */}
+                        <OrderAttendance order={order} />
+                        <p>
+                          <b>Fecha de creación:</b>{" "}
+                          {formatDateTime(order.creationDate, undefined, timeFormat)}
+                        </p>
+                        <p className="flex items-center gap-1">
+                          <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
+                          <b>Asignado a:</b>{" "}
+                          {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
+                        </p>
+                        {(() => {
+                          const AreaIcon = getAreaIcon(order.area);
+                          return (
+                            <p className="flex items-center gap-1">
+                              {AreaIcon && (
+                                <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                              <b>{order.requiresDesign ? "Etapa actual:" : "Área:"}</b>{" "}
+                              {getAreaLabel(order.area)}
+                            </p>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="space-y-1 border-t pt-3">
+                        <p>
+                          <b>Entrega:</b> {formatDeliveryDate(order.deliveryDate, timeFormat)}
+                        </p>
+                        {!isDeliveredStatus(order.statusId) && (
+                          <DeliveryProgressBar
+                            creationDate={order.creationDate}
+                            deliveryDate={order.deliveryDate}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </aside>
                 </div>
               </motion.div>
             )}

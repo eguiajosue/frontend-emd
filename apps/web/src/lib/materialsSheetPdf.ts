@@ -46,7 +46,7 @@ export async function downloadMaterialsSheetPdf(
     startY: 44,
     head: [["Cantidad", "Descripción", "Proveedor", "Ubicación"]],
     body: items.map((item) => [
-      String(item.quantity),
+      item.material?.unit ? `${item.quantity} ${item.material.unit.name}` : String(item.quantity),
       item.description,
       item.supplier?.name ?? "—",
       item.supplier ? LOCATION_LABELS[item.supplier.location] : "—",

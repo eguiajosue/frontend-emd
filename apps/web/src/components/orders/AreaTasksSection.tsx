@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
+import { differenceInMinutes, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList } from "@/hooks/useEntity";
@@ -88,6 +89,19 @@ function assignedLabel(task: OrderAreaTask): string {
  * `null` cuando todavía no empezó: ahí el dato útil es que no arrancó, y eso ya
  * lo dice el chip de estado.
  */
+/** "3h 20m" / "45m" — cuánto tardó el área entre que la tomó y la terminó. */
+function taskDuration(task: OrderAreaTask): string | null {
+  if (task.status !== "terminado" || !task.startedAt || !task.completedAt) return null;
+  const start = new Date(task.startedAt);
+  const end = new Date(task.completedAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const minutes = differenceInMinutes(end, start);
+  if (minutes < 1) return null;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours > 0 ? `${hours}h ${rest}m` : `${rest}m`;
+}
+
 function taskTiming(task: OrderAreaTask): string | null {
   const stamp =
     task.status === "terminado"
@@ -99,7 +113,8 @@ function taskTiming(task: OrderAreaTask): string | null {
   const date = new Date(stamp);
   if (Number.isNaN(date.getTime())) return null;
   const verb = task.status === "terminado" ? "Terminó" : "Empezó";
-  return `${verb} ${formatDistanceToNow(date, { addSuffix: true, locale: es })}`;
+  const duration = taskDuration(task);
+  return `${verb} ${formatDistanceToNow(date, { addSuffix: true, locale: es })}${duration ? ` · tardó ${duration}` : ""}`;
 }
 
 interface AreaTasksSectionProps {
@@ -128,6 +143,7 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
     removeArea,
   } = useAreaTasks(orderId);
   const [areaToAdd, setAreaToAdd] = useState<string>("");
+  const [removingTask, setRemovingTask] = useState<OrderAreaTask | null>(null);
 
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const isManager = roles.some((r) => MANAGER_ROLES.includes(r));
@@ -224,10 +240,12 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
     }
   };
 
-  const handleRemove = async (task: OrderAreaTask) => {
+  const handleRemove = async () => {
+    if (!removingTask) return;
     try {
-      await removeArea.mutateAsync(task.id);
-      toast.success(`${getAreaLabel(task.area)} quitada del pedido`);
+      await removeArea.mutateAsync(removingTask.id);
+      toast.success(`${getAreaLabel(removingTask.area)} quitada del pedido`);
+      setRemovingTask(null);
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -393,7 +411,7 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
                         className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
                         title={`Quitar ${getAreaLabel(task.area)} del pedido`}
                         disabled={removeArea.isPending}
-                        onClick={() => handleRemove(task)}
+                        onClick={() => setRemovingTask(task)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -437,6 +455,14 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
           </Button>
         </div>
       )}
+
+      <ConfirmDeleteDialog
+        open={Boolean(removingTask)}
+        onOpenChange={(open) => !open && setRemovingTask(null)}
+        onConfirm={handleRemove}
+        title={removingTask ? `¿Quitar ${getAreaLabel(removingTask.area)} del pedido?` : ""}
+        description="El avance registrado para esta área se pierde y no se puede deshacer."
+      />
     </section>
   );
 }

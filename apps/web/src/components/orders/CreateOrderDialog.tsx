@@ -855,7 +855,9 @@ export function CreateOrderDialog({
     <>
       <DialogPrimitive.Root open={open} onOpenChange={(next) => !next && handleClose()}>
         <DialogPrimitive.Portal>
-          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          {/* Sin backdrop-blur, mismo motivo que en ui/dialog.tsx: animar
+              opacidad de un elemento con blur trababa la apertura. */}
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
           <DialogPrimitive.Content
             onOpenAutoFocus={(e) => {
               // Sin esto el foco por defecto de Radix iría al primer elemento
