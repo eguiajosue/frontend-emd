@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -27,7 +28,6 @@ import { useCalendarEventMutations } from "@/hooks/useCalendarEvents";
 import { useOrders } from "@/hooks/useOrders";
 import { getErrorMessage } from "@/lib/api";
 import { CATEGORY_OPTIONS } from "./eventCategories";
-import { MaterialsPurchaseChecklist } from "./MaterialsPurchaseChecklist";
 import { AREA_OPTIONS, AREA_ICONS } from "@/lib/areas";
 import type { CalendarEvent, CalendarEventCategory, Client } from "@/types";
 import { CalendarClock, Loader2, MapPin, Package, Tag, Type, UserRound } from "lucide-react";
@@ -310,7 +310,16 @@ export function CalendarEventDialog({
           </FormField>
 
           {category === "compras" && orderId && (
-            <MaterialsPurchaseChecklist orderId={orderId} />
+            <p className="text-xs text-muted-foreground">
+              El checklist de compra de este pedido está en{" "}
+              <Link
+                href={`/dashboard/hoja-materiales?order=${orderId}`}
+                className="font-medium underline underline-offset-2"
+              >
+                Hoja de Materiales
+              </Link>
+              .
+            </p>
           )}
 
           <div className="flex items-center justify-between rounded-lg border p-3">

@@ -23,25 +23,11 @@ vi.mock("@/hooks/useOrders", () => ({
   useOrders: () => ({ data: orders }),
 }));
 
-const materialItems: unknown[] = [];
-const updateMaterialItemMock = vi.fn().mockResolvedValue(undefined);
-
-vi.mock("@/hooks/useOrderMaterials", () => ({
-  useOrderMaterials: () => ({
-    items: materialItems,
-    isLoading: false,
-    isError: false,
-    update: { mutateAsync: updateMaterialItemMock, isPending: false },
-  }),
-}));
-
 beforeEach(() => {
   createMock.mockReset();
   createMock.mockResolvedValue({ id: 1 });
   updateMock.mockReset();
   updateMock.mockResolvedValue({ id: 1 });
-  materialItems.length = 0;
-  updateMaterialItemMock.mockClear();
 });
 
 describe("CalendarEventDialog", () => {
@@ -188,17 +174,7 @@ describe("CalendarEventDialog", () => {
     expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ orderId: 42 }));
   });
 
-  it('con categoría "Compra de materiales" y un pedido elegido, muestra el checklist de la hoja', async () => {
-    materialItems.push({
-      id: 1,
-      orderId: 42,
-      materialId: 1,
-      quantity: 2,
-      description: "PVC 6mm",
-      price: 150,
-      purchased: false,
-    });
-
+  it('con categoría "Compra de materiales" y un pedido elegido, enlaza a la Hoja de Materiales', async () => {
     render(<CalendarEventDialog open onClose={() => {}} />);
 
     await userEvent.click(screen.getByLabelText(/Categoría/i));
@@ -206,22 +182,18 @@ describe("CalendarEventDialog", () => {
     await userEvent.click(screen.getByLabelText(/Pedido vinculado/i));
     await userEvent.click(await screen.findByRole("option", { name: /Letrero luminoso/i }));
 
-    expect(screen.getByText(/PVC 6mm/)).toBeInTheDocument();
-    expect(screen.getByText("$0.00")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("checkbox"));
-    expect(updateMaterialItemMock).toHaveBeenCalledWith({
-      itemId: 1,
-      payload: { purchased: true },
-    });
+    expect(screen.getByRole("link", { name: /Hoja de Materiales/i })).toHaveAttribute(
+      "href",
+      "/dashboard/hoja-materiales?order=42"
+    );
   });
 
-  it("sin categoría de compras, no muestra el checklist aunque haya un pedido elegido", async () => {
+  it("sin categoría de compras, no muestra el enlace a la hoja aunque haya un pedido elegido", async () => {
     render(<CalendarEventDialog open onClose={() => {}} />);
 
     await userEvent.click(screen.getByLabelText(/Pedido vinculado/i));
     await userEvent.click(await screen.findByRole("option", { name: /Letrero luminoso/i }));
 
-    expect(screen.queryByText("Materiales a comprar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Hoja de Materiales/i })).not.toBeInTheDocument();
   });
 });
