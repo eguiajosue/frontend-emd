@@ -58,8 +58,14 @@ export function OrderMaterialsSection({ order }: OrderMaterialsSectionProps) {
     }
   };
 
-  const handleDownloadPdf = () => {
-    void downloadMaterialsSheetPdf(order, items);
+  const handleDownloadPdf = async () => {
+    try {
+      await downloadMaterialsSheetPdf(order, items);
+    } catch {
+      // Import dinámico de jspdf: puede fallar por red (chunk viejo tras un
+      // deploy, conexión inestable). Antes era un import estático.
+      toast.error("No se pudo generar el PDF. Probá de nuevo.");
+    }
   };
 
   // Igual que AreaTasksSection: si el backend todavía no expone el endpoint,

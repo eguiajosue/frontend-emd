@@ -352,16 +352,22 @@ const OrdersPage = () => {
       "Fecha de Entrega": formatDeliveryDate(order.deliveryDate, timeFormat),
     }));
 
-    // `xlsx` se carga de forma dinámica (solo al exportar) para no meter esta
-    // librería pesada en el bundle inicial de la pantalla de pedidos.
-    const XLSX = await import("xlsx");
+    try {
+      // `xlsx` se carga de forma dinámica (solo al exportar) para no meter
+      // esta librería pesada en el bundle inicial de la pantalla de pedidos.
+      const XLSX = await import("xlsx");
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
 
-    const today = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+    } catch {
+      // Import dinámico: puede fallar por red (chunk viejo tras un deploy,
+      // conexión inestable). Antes era un import estático, siempre disponible.
+      toast.error("No se pudo generar el Excel. Probá de nuevo.");
+    }
   };
 
   /**
