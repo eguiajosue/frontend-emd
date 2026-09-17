@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import Title from "@/components/Title";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ import {
 import { usePermissions } from "@/hooks/usePermissions";
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
-import { useEntityList, useAuthToken } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
 import {
   statusMap,
@@ -157,10 +156,10 @@ const OrdersPage = () => {
   // Precargado acá (igual que clients/users) para que los chips "Frecuentes"
   // del paso Productos del wizard no arranquen fríos la primera vez que se
   // abre en la sesión.
-  useEntityList<OrderProductPreset>("orderProductPresets");
+  useEntityList<OrderProductPreset>("orderProductPresets", { staleTime: CATALOG_STALE_TIME });
   // Catálogo de estados: el tablero de Diseño resuelve sus columnas por nombre
   // contra esto, porque sus ids los siembra el backend y cambian por entorno.
-  const { data: statuses } = useEntityList<Status>("statuses");
+  const { data: statuses } = useEntityList<Status>("statuses", { staleTime: CATALOG_STALE_TIME });
   const { deliveredRetentionHours } = useAppSettings();
   const token = useAuthToken();
 
@@ -337,7 +336,7 @@ const OrdersPage = () => {
     });
   }, [orders, filters, retentionMs]);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (visibleOrders.length === 0) {
       toast.info("No hay pedidos para exportar");
       return;
@@ -353,12 +352,22 @@ const OrdersPage = () => {
       "Fecha de Entrega": formatDeliveryDate(order.deliveryDate, timeFormat),
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
+    try {
+      // `xlsx` se carga de forma dinámica (solo al exportar) para no meter
+      // esta librería pesada en el bundle inicial de la pantalla de pedidos.
+      const XLSX = await import("xlsx");
 
-    const today = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
+
+      const today = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+    } catch {
+      // Import dinámico: puede fallar por red (chunk viejo tras un deploy,
+      // conexión inestable). Antes era un import estático, siempre disponible.
+      toast.error("No se pudo generar el Excel. Probá de nuevo.");
+    }
   };
 
   /**
@@ -659,7 +668,7 @@ const OrdersPage = () => {
                   disabled={loading || visibleOrders.length === 0}
                   onClick={() => {
                     setExportOpen(false);
-                    handleExport();
+                    void handleExport();
                   }}
                   className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
                 >

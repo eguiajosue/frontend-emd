@@ -8,6 +8,7 @@ const createMock = vi.fn();
 vi.mock("@/hooks/useEntity", () => ({
   useEntityList: () => ({ data: [] }),
   useEntityMutations: () => ({ create: createMock }),
+  CATALOG_STALE_TIME: 5 * 60_000,
 }));
 
 vi.mock("@/hooks/usePermissions", () => ({

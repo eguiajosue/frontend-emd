@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -21,14 +22,20 @@ interface UpcomingDeliveriesProps {
 export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: UpcomingDeliveriesProps) {
   const { staggerItemVariants } = useMotionPreset();
   const { timeFormat } = useTimeFormat();
-  const now = Date.now();
 
-  const upcoming = orders
-    .filter((o) => o.deliveryDate && new Date(o.deliveryDate).getTime() >= now - 86_400_000)
-    .sort(
-      (a, b) => new Date(a.deliveryDate as string).getTime() - new Date(b.deliveryDate as string).getTime()
-    )
-    .slice(0, limit);
+  // `orders` se invalida seguido (cualquier evento de pedido del socket, ver
+  // useSocket), lo que dispara un re-render de este panel en el dashboard con
+  // frecuencia; sin memo, cada uno repetía el filter+sort+slice sobre TODOS
+  // los pedidos aunque `orders`/`limit` no hubieran cambiado.
+  const upcoming = useMemo(() => {
+    const now = Date.now();
+    return orders
+      .filter((o) => o.deliveryDate && new Date(o.deliveryDate).getTime() >= now - 86_400_000)
+      .sort(
+        (a, b) => new Date(a.deliveryDate as string).getTime() - new Date(b.deliveryDate as string).getTime()
+      )
+      .slice(0, limit);
+  }, [orders, limit]);
 
   return (
     <Card>

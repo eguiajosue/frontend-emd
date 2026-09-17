@@ -25,6 +25,7 @@ vi.mock("@/hooks/usePermissions", () => ({
 
 vi.mock("@/hooks/useEntity", () => ({
   useEntityList: () => ({ data: [] }),
+  CATALOG_STALE_TIME: 5 * 60_000,
 }));
 
 const downloadMock = vi.fn();

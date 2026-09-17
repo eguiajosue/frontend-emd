@@ -11,7 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
-import { useAuthToken } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useAuthToken } from "@/hooks/useEntity";
 import type { AppSettings } from "@/types";
 
 /** Valor por defecto (coincide con el default del backend) mientras carga o si falla. */
@@ -23,6 +23,9 @@ export function useAppSettings() {
   const query = useQuery<AppSettings>({
     queryKey: queryKeys.all("settings"),
     enabled: Boolean(token),
+    // Config global de baja frecuencia de cambio (igual que los catálogos);
+    // la mutación ya invalida la query, así que un cambio se ve al toque.
+    staleTime: CATALOG_STALE_TIME,
     queryFn: () => request<AppSettings>(ENDPOINTS.settings, { token }),
   });
 

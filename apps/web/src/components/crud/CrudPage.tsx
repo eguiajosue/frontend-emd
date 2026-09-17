@@ -15,9 +15,21 @@ import {
   type FieldConfig,
 } from "@/components/crud/EntityFormDialog";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
-import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import type { EntityKey } from "@/lib/queryKeys";
 import type { BaseEntity } from "@/types";
+
+/**
+ * Entidades de bajo cambio que pasan por esta pantalla genérica (roles en
+ * Usuarios, proveedores en Materiales): mismo criterio que `CATALOG_STALE_TIME`
+ * (ver `hooks/useEntity`), pero aplicado acá porque `CrudPage` no expone hoy
+ * un `staleTime` por prop y cada pantalla que la usa pasa sólo `entity`. Las
+ * mutaciones ya invalidan la query key en `onSuccess`, así que un alta/edición
+ * se sigue viendo al toque; esto sólo evita refetches de background en cada
+ * mount de la pestaña. `clients`/`companies`/`users`/`materials` no entran acá:
+ * cambian más seguido y deben seguir con el staleTime global de 30s.
+ */
+const CATALOG_ENTITIES = new Set<EntityKey>(["roles", "suppliers"]);
 
 /**
  * Pantalla CRUD genérica: listado + alta + edición + baja.
@@ -76,7 +88,9 @@ export function CrudPage<T extends BaseEntity>({
   dialogTitle,
   hideTitle,
 }: CrudPageProps<T>) {
-  const { data, isPending, isError, refetch } = useEntityList<T>(entity);
+  const { data, isPending, isError, refetch } = useEntityList<T>(entity, {
+    staleTime: CATALOG_ENTITIES.has(entity) ? CATALOG_STALE_TIME : undefined,
+  });
   const { create, update, remove } = useEntityMutations<T, EntityValues>(entity);
 
   const [dialogOpen, setDialogOpen] = useState(false);
