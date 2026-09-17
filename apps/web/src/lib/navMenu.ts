@@ -9,6 +9,7 @@ import {
   MessagesSquare,
   CalendarDays,
   Boxes,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import { ordersScreenTitle } from "./orderScreen";
@@ -145,6 +146,16 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
           title: "Materiales",
           url: "/dashboard/materiales",
           icon: Boxes,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+        {
+          // Hoja de materiales por pedido: lista de pedidos, cada uno se
+          // despliega en un checklist de compra (cantidad/material/precio),
+          // con el total de lo ya comprado. Reemplaza a la sección que antes
+          // vivía adentro del detalle de cada pedido.
+          title: "Hoja de Materiales",
+          url: "/dashboard/hoja-materiales",
+          icon: ClipboardList,
           roles: ["admin", "recepcion", "superuser"],
         },
       ],
