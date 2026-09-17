@@ -72,3 +72,22 @@ describe("AreaTasksSection - quitar área pide confirmación", () => {
     expect(removeMutateAsync).toHaveBeenCalledWith(1);
   });
 });
+
+describe("AreaTasksSection - duración de una tarea terminada", () => {
+  it("muestra cuánto tardó el área entre que la tomó y la terminó", () => {
+    tasks = [
+      {
+        id: 1,
+        orderId: 7,
+        area: "impresiones",
+        status: "terminado",
+        assignedUserId: null,
+        startedAt: "2026-09-01T10:00:00.000Z",
+        completedAt: "2026-09-01T13:20:00.000Z",
+      } as OrderAreaTask,
+    ];
+    render(<AreaTasksSection order={order} />);
+
+    expect(screen.getByText(/tardó 3h 20m/)).toBeInTheDocument();
+  });
+});

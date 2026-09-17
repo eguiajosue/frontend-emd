@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { formatDistanceToNow } from "date-fns";
+import { differenceInMinutes, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import {
@@ -89,6 +89,19 @@ function assignedLabel(task: OrderAreaTask): string {
  * `null` cuando todavía no empezó: ahí el dato útil es que no arrancó, y eso ya
  * lo dice el chip de estado.
  */
+/** "3h 20m" / "45m" — cuánto tardó el área entre que la tomó y la terminó. */
+function taskDuration(task: OrderAreaTask): string | null {
+  if (task.status !== "terminado" || !task.startedAt || !task.completedAt) return null;
+  const start = new Date(task.startedAt);
+  const end = new Date(task.completedAt);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  const minutes = differenceInMinutes(end, start);
+  if (minutes < 1) return null;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours > 0 ? `${hours}h ${rest}m` : `${rest}m`;
+}
+
 function taskTiming(task: OrderAreaTask): string | null {
   const stamp =
     task.status === "terminado"
@@ -100,7 +113,8 @@ function taskTiming(task: OrderAreaTask): string | null {
   const date = new Date(stamp);
   if (Number.isNaN(date.getTime())) return null;
   const verb = task.status === "terminado" ? "Terminó" : "Empezó";
-  return `${verb} ${formatDistanceToNow(date, { addSuffix: true, locale: es })}`;
+  const duration = taskDuration(task);
+  return `${verb} ${formatDistanceToNow(date, { addSuffix: true, locale: es })}${duration ? ` · tardó ${duration}` : ""}`;
 }
 
 interface AreaTasksSectionProps {
