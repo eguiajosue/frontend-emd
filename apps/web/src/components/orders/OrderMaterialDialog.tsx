@@ -25,7 +25,8 @@ import { useOrderMaterials } from "@/hooks/useOrderMaterials";
 import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { getErrorMessage } from "@/lib/api";
 import { LOCATION_LABELS } from "@/lib/suppliers";
-import type { Material, OrderMaterialItem, Supplier } from "@/types";
+import { AVAILABILITY_OPTIONS } from "@/lib/materialAvailability";
+import type { Material, MaterialAvailability, OrderMaterialItem, Supplier } from "@/types";
 
 interface OrderMaterialDialogProps {
   open: boolean;
@@ -60,6 +61,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
   const [quantity, setQuantity] = useState<string>("1");
   const [description, setDescription] = useState("");
   const [supplierId, setSupplierId] = useState<number | undefined>(undefined);
+  const [availability, setAvailability] = useState<MaterialAvailability>("disponible");
   const [descriptionTouched, setDescriptionTouched] = useState(false);
   const [materialError, setMaterialError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +72,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
     setQuantity(item ? String(item.quantity) : "1");
     setDescription(item?.description ?? "");
     setSupplierId(item?.supplierId ?? undefined);
+    setAvailability(item?.availability ?? "disponible");
     setDescriptionTouched(Boolean(item));
     setMaterialError(undefined);
   }, [open, item]);
@@ -111,7 +114,12 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
         // `materialId`, así que no se manda en la edición.
         await update.mutateAsync({
           itemId: item!.id,
-          payload: { quantity: resolvedQuantity, description: resolvedDescription, supplierId },
+          payload: {
+            quantity: resolvedQuantity,
+            description: resolvedDescription,
+            supplierId,
+            availability,
+          },
         });
         toast.success("Línea actualizada");
       } else {
@@ -120,6 +128,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
           quantity: resolvedQuantity,
           description: resolvedDescription,
           supplierId,
+          availability,
         });
         toast.success("Material agregado a la hoja");
       }
@@ -212,6 +221,24 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
                 Ubicación: <span className="font-medium">{LOCATION_LABELS[selectedSupplier.location]}</span>
               </p>
             )}
+          </FormField>
+
+          <FormField label="Disponibilidad" htmlFor="om-availability" icon={Boxes}>
+            <Select
+              value={availability}
+              onValueChange={(v) => setAvailability(v as MaterialAvailability)}
+            >
+              <SelectTrigger id="om-availability" className="h-11 sm:h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {AVAILABILITY_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
         </div>
         <DialogFooter>

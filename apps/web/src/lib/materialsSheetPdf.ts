@@ -1,5 +1,6 @@
 import { formatDate } from "@/lib/format";
 import { LOCATION_LABELS } from "@/lib/suppliers";
+import { AVAILABILITY_LABELS } from "@/lib/materialAvailability";
 import type { Order, OrderMaterialItem } from "@/types";
 
 /**
@@ -44,12 +45,13 @@ export async function downloadMaterialsSheetPdf(
 
   autoTable(doc, {
     startY: 44,
-    head: [["Cantidad", "Descripción", "Proveedor", "Ubicación"]],
+    head: [["Cantidad", "Descripción", "Proveedor", "Ubicación", "Disponibilidad"]],
     body: items.map((item) => [
-      String(item.quantity),
+      item.material?.unit ? `${item.quantity} ${item.material.unit.name}` : String(item.quantity),
       item.description,
       item.supplier?.name ?? "—",
       item.supplier ? LOCATION_LABELS[item.supplier.location] : "—",
+      item.availability ? AVAILABILITY_LABELS[item.availability] : "—",
     ]),
     styles: { fontSize: 10 },
     headStyles: { fillColor: [51, 51, 51] },

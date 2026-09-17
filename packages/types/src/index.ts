@@ -676,15 +676,24 @@ export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
  * editable. `material`/`supplier`/`createdBy` sólo vienen completos al pedir
  * GET /orders/:id/materials (en el listado de pedidos sólo id/quantity/description).
  */
+/** Disponibilidad de abastecimiento de UNA línea del pedido (no del catálogo). */
+export type MaterialAvailability =
+  | "disponible"
+  | "parcial"
+  | "por_comprar"
+  | "agotado"
+  | "no_requerido";
+
 export interface OrderMaterialItem extends BaseEntity {
   orderId: number;
   materialId: number;
   quantity: number;
   description: string;
   supplierId?: number | null;
+  availability?: MaterialAvailability;
   createdById?: number;
   createdAt?: string;
-  material?: { id: number; name: string } | null;
+  material?: { id: number; name: string; unit?: { name: string } | null } | null;
   supplier?: Supplier | null;
   createdBy?: AssignedUser | null;
 }
@@ -694,6 +703,7 @@ export interface CreateOrderMaterialItemPayload {
   quantity: number;
   description: string;
   supplierId?: number;
+  availability?: MaterialAvailability;
 }
 
 export type UpdateOrderMaterialItemPayload = Partial<CreateOrderMaterialItemPayload>;
