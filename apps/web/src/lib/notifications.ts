@@ -14,7 +14,6 @@ export type NotificationType =
   | "design_approved"
   | "area_task_created"
   | "area_task_completed"
-  | "chat_message"
   | (string & {});
 
 /**
@@ -113,11 +112,6 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     label: "Área terminada",
     className:
       "border-transparent bg-lime-100 text-lime-900 dark:bg-lime-500/20 dark:text-lime-200",
-  },
-  chat_message: {
-    label: "Chat",
-    className:
-      "border-transparent bg-cyan-100 text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-200",
   },
 };
 
