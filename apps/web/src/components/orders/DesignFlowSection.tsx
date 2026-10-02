@@ -78,6 +78,11 @@ const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
 interface DesignFlowSectionProps {
   order: Order;
+  /**
+   * Dentro del detalle rediseñado: sin recuadro ni título propios (los pone
+   * la sección que lo contiene) y con el vacío en una línea.
+   */
+  embedded?: boolean;
 }
 
 /** Mismo criterio que dentro de `RevisionTimelineItem`, reusado para el título del acordeón. */
@@ -87,7 +92,7 @@ function revisionStateLabel(revision: import("@/types").DesignRevision): string 
   return "Enviada";
 }
 
-export function DesignFlowSection({ order }: DesignFlowSectionProps) {
+export function DesignFlowSection({ order, embedded = false }: DesignFlowSectionProps) {
   const { roles, isAdmin } = usePermissions();
   const { data: session } = useSession();
   const { timeFormat } = useTimeFormat();
@@ -157,11 +162,13 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
     order.assignedUserId !== currentUserId;
 
   return (
-    <div className="space-y-4 rounded-2xl border border-border bg-muted/10 p-4">
-      <div className="flex items-center gap-2">
-        <Palette className="h-4 w-4 text-primary" />
-        <h4 className="font-semibold">Proceso de diseño</h4>
-      </div>
+    <div className={embedded ? "space-y-4" : "space-y-4 rounded-2xl border border-border bg-muted/10 p-4"}>
+      {!embedded && (
+        <div className="flex items-center gap-2">
+          <Palette className="h-4 w-4 text-primary" />
+          <h4 className="font-semibold">Proceso de diseño</h4>
+        </div>
+      )}
 
       {/* Timeline de rondas */}
       {isLoading ? (
@@ -176,6 +183,12 @@ export function DesignFlowSection({ order }: DesignFlowSectionProps) {
           description="El servidor no tiene desplegado este endpoint todavía. Intentar nuevamente más tarde."
           className="mt-0 p-6"
         />
+      ) : revisions.length === 0 && embedded ? (
+        <p className="text-sm text-muted-foreground">
+          {canDesign
+            ? "Todavía no hay montaje: subí el primero para que Recepción lo mande al cliente."
+            : "Diseño todavía no subió el primer montaje."}
+        </p>
       ) : revisions.length === 0 ? (
         <EmptyState
           icon={Palette}

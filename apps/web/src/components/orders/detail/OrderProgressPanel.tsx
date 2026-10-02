@@ -1,0 +1,211 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { ArrowRight, ChevronDown, CloudOff, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
+import { HandoffStages } from "@/components/orders/OrderHandoff";
+import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { usePendingSync } from "@/hooks/usePendingSync";
+import { useMoveOrderStatus, usePassOrderToDesign } from "@/hooks/useOrders";
+import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { buildOrderHandoff } from "@/lib/orderHandoff";
+import {
+  getOrderNextAction,
+  type OrderDetailPermissions,
+  type OrderDetailViewer,
+} from "@/lib/orderDetail";
+import { isCancelledStatus, statusOptions } from "@/lib/orderStatus";
+import { cn } from "@/lib/utils";
+import type { Order } from "@/types";
+
+const CANCELLED_STATUS_ID = statusOptions.find((o) => o.label === "cancelado")?.value ?? 10;
+
+export type OrderDetailSectionTarget = "design" | "areas";
+
+/**
+ * "Dónde está y qué sigue": la cadena de etapas, quién tiene el pedido y UN
+ * botón con lo que este usuario puede hacer ahora. Reemplaza a la tira de
+ * pase + los cinco botones de estado + los campos "Área/Etapa actual", que
+ * decían lo mismo de cuatro maneras y a veces se contradecían.
+ *
+ * El estado formal (pendiente, en proceso…) se ve una sola vez, en el botón
+ * "Estado ▾" de quien gestiona; cancelar va aparte y pide confirmación.
+ */
+export function OrderProgressPanel({
+  order,
+  permissions,
+  viewer,
+  onGoToSection,
+}: {
+  order: Order;
+  permissions: OrderDetailPermissions;
+  viewer: OrderDetailViewer;
+  onGoToSection: (section: OrderDetailSectionTarget) => void;
+}) {
+  // Misma queryKey que "Producción" (AreaTasksSection): React Query dedupe.
+  const { tasks } = useAreaTasks(order.id);
+  const pendingSync = usePendingSync(order.id);
+  const handoff = buildOrderHandoff(order, tasks);
+  const action = getOrderNextAction(order, handoff, permissions, viewer, tasks.length);
+
+  const moveActor = useMemo(
+    () => ({
+      areas: viewer.roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      isManager: viewer.canManageOperations,
+    }),
+    [viewer.roles, viewer.canManageOperations]
+  );
+  const { move, isMoving } = useMoveOrderStatus(moveActor);
+  const { passToDesign, isPassingToDesign } = usePassOrderToDesign();
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const busy = isMoving || isPassingToDesign;
+
+  const cancelled = isCancelledStatus(order.statusId);
+  const current = handoff.current;
+  // "Recepción · Recepción" no informa nada: el responsable sólo se nombra
+  // cuando no es la etapa misma.
+  const holderRaw =
+    handoff.holderLabel && handoff.holderLabel.toLowerCase() !== current.label.toLowerCase()
+      ? handoff.holderLabel
+      : null;
+  const holder = holderRaw === "sin asignar" ? "sin responsable" : holderRaw;
+
+  const canUseStatusMenu = permissions.canEdit && permissions.canChangeStatus;
+  const menuOptions = statusOptions.filter(
+    (o) =>
+      o.value !== order.statusId &&
+      o.value !== CANCELLED_STATUS_ID &&
+      (!permissions.allowedStatusIds || permissions.allowedStatusIds.includes(o.value))
+  );
+
+  const runAction = () => {
+    if (!action) return;
+    if (action.kind === "to-design") void passToDesign(order);
+    else if (action.kind === "status") void move(order, action.statusId);
+    else onGoToSection(action.section);
+  };
+
+  return (
+    <section
+      aria-label="Dónde está el pedido"
+      className={cn(
+        "space-y-4 rounded-xl p-4",
+        cancelled ? "bg-destructive/10" : "bg-muted/50"
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <HandoffStages stages={handoff.stages} />
+        {pendingSync && (
+          <span
+            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-amber-500/50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+            title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
+          >
+            <CloudOff className="h-3 w-3 shrink-0" aria-hidden />
+            Pendiente de sincronizar
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 space-y-1">
+          {cancelled ? (
+            <p className="font-medium text-destructive">{handoff.nextStep}</p>
+          ) : (
+            <>
+              <p className="text-base">
+                Ahora en <span className="font-semibold">{current.label}</span>
+                {holder && <span className="text-muted-foreground"> · {holder}</span>}
+              </p>
+              {/* Con botón, el botón ya dice qué sigue; sin botón, se dice a
+                  quién se espera. */}
+              {!action && (
+                <p className="text-sm text-muted-foreground">Sigue: {handoff.nextStep}</p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {canUseStatusMenu ? (
+            <Popover open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-background"
+                  disabled={busy}
+                  aria-label="Cambiar estado"
+                >
+                  <span className="text-muted-foreground">Estado</span>
+                  <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-60 p-1.5">
+                <p className="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">Mover a…</p>
+                {menuOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className="flex w-full items-center rounded-md px-2.5 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => {
+                      setStatusMenuOpen(false);
+                      void move(order, option.value);
+                    }}
+                  >
+                    <StatusBadge statusId={option.value} />
+                  </button>
+                ))}
+                {!cancelled && (
+                  <>
+                    <div className="my-1 h-px bg-border" role="separator" />
+                    <button
+                      type="button"
+                      className="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => {
+                        setStatusMenuOpen(false);
+                        setConfirmCancelOpen(true);
+                      }}
+                    >
+                      Cancelar pedido…
+                    </button>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+          )}
+
+          {action && (
+            <Button type="button" size="sm" className="gap-1.5" onClick={runAction} disabled={busy}>
+              {busy && action.kind !== "section" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : null}
+              {action.label}
+              {action.kind !== "status" && <ArrowRight className="h-4 w-4" aria-hidden />}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDeleteDialog
+        open={confirmCancelOpen}
+        onOpenChange={setConfirmCancelOpen}
+        onConfirm={() => {
+          setConfirmCancelOpen(false);
+          void move(order, CANCELLED_STATUS_ID);
+        }}
+        title={`¿Cancelar el pedido #${order.id}?`}
+        description="Sale del tablero y deja de avisar a las áreas. Se puede volver a activar cambiando el estado."
+        confirmLabel="Cancelar pedido"
+        cancelLabel="Volver"
+      />
+    </section>
+  );
+}

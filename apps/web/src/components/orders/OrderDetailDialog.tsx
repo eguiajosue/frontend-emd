@@ -1,74 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-import { toast } from "sonner";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/states";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/ui/form-field";
-import { useMotionPreset } from "@/lib/motion";
-import { OrderStatusButtons } from "@/components/orders/OrderStatusButtons";
-import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
-import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
-import Link from "next/link";
-import { OrderHandoff } from "@/components/orders/OrderHandoff";
-import { OrderAttendance } from "@/components/orders/OrderAttendance";
-import {
-  combineDateAndTime,
-  formatDateTime,
-  formatDeliveryDate,
-  getAssignedUserName,
-  getOrderClientName,
-  getOrderProductName,
-} from "@/lib/format";
-import {
-  useOrderHistory,
-  useOrder,
-  useMoveOrderStatus,
-  useDeleteOrder,
-  useOrderNotes,
-  useOrderAuditLog,
-} from "@/hooks/useOrders";
-import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
-import { usePermissions } from "@/hooks/usePermissions";
-import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { isDeliveredStatus, isDesignFlowStatusName } from "@/lib/orderStatus";
-import {
-  AREA_OPTIONS,
-  PRODUCTION_AREA_OPTIONS,
-  getAreaLabel,
-  getAreaIcon,
-} from "@/lib/areas";
-import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
-import { ClipboardList, FileText, Loader2, Trash2, UserRound, ZoomIn } from "lucide-react";
-import { buildAuditLines } from "@/lib/orderAuditLog";
-import { useTimeFormat } from "@/hooks/useTimeFormat";
-import type { Order, UpdateOrderPayload, User } from "@/types";
-import { PreviewImage } from "@/components/ui/preview-image";
-import { DownloadFileButton } from "@/components/ui/download-file-button";
-
-// Lightbox pesado (framer-motion img) sólo se carga si el usuario amplía la imagen.
-const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
+import { EmptyState } from "@/components/ui/empty-state";
+import { OrderDetailHeader } from "@/components/orders/detail/OrderDetailHeader";
+import { OrderDetailBody, useOrderDetailAccess } from "@/components/orders/detail/OrderDetailBody";
+import { useOrder } from "@/hooks/useOrders";
+import { ApiError } from "@/lib/api";
 
 interface OrderDetailDialogProps {
   orderId: number | null;
@@ -76,625 +18,102 @@ interface OrderDetailDialogProps {
 }
 
 /**
- * Vista completa de un pedido en un modal animado (fade+scale vía Radix Dialog +
- * framer-motion en su contenido). Pide el detalle completo (GET /orders/:id) sólo
- * cuando se abre, así "Estatus de Pedidos" no dispara N requests de detalle de una.
+ * Detalle de un pedido en un modal. Pide el detalle completo (GET /orders/:id)
+ * sólo cuando se abre. El contenido (cabecera + cuerpo) es el mismo que usa la
+ * página `/dashboard/orders/[id]`.
  */
 export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) {
   const open = orderId !== null;
-  const { data: order, isPending, isError, refetch } = useOrder(orderId ?? undefined, {
+  const { data: order, isPending, isError, error, refetch } = useOrder(orderId ?? undefined, {
     enabled: open,
   });
-  const { roles, isAdmin, canManageOperations } = usePermissions();
-  const { timeFormat } = useTimeFormat();
-  // Historial de estados e "Historial de cambios" (audit log) son sólo para
-  // quien gestiona pedidos (admin/superuser/recepcion) — los roles operativos
-  // no los necesitan ni deben pedir esos endpoints.
-  const canSeeHistory = isAdmin || roles.includes("recepcion");
-  const { histories } = useOrderHistory(orderId ?? -1, { enabled: open && canSeeHistory });
-  const { data: users } = useEntityList<User>("users", { enabled: open });
-  const {
-    notes,
-    isLoading: isLoadingNotes,
-    isUnavailable: notesUnavailable,
-    addNote,
-    isAdding: isAddingNote,
-  } = useOrderNotes(open ? orderId : null);
-  const {
-    entries: auditEntries,
-    isLoading: isLoadingAudit,
-    isUnavailable: auditUnavailable,
-  } = useOrderAuditLog(open ? orderId : null, { enabled: canSeeHistory });
-  // Una oración en español por campo cambiado (ver `@/lib/orderAuditLog`).
-  const auditLines = useMemo(
-    () => auditEntries.flatMap((entry) => buildAuditLines(entry, new Date(), timeFormat)),
-    [auditEntries, timeFormat]
-  );
-  const [newNote, setNewNote] = useState("");
-  const { update, isMutating: isSavingDetails } = useEntityMutations<Order, UpdateOrderPayload>(
-    "orders"
-  );
-  // Áreas propias del usuario: deciden qué tarea de área mueve un cambio de
-  // estado (ver `areaTasksToMove`).
-  const moveActor = useMemo(
-    () => ({
-      areas: roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
-      isManager: canManageOperations,
-    }),
-    [roles, canManageOperations]
-  );
-  const { move: moveStatus, isMoving: isChangingStatus } =
-    useMoveOrderStatus(moveActor);
-  const { deleteOrder, isDeleting } = useDeleteOrder();
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  // Eliminar un pedido es una acción irreversible reservada a quien gestiona
-  // pedidos (recepción/admin/superuser) — mismo criterio que `canEdit`.
-  const canDelete = canManageOperations;
-  const { formButtonMotion } = useMotionPreset();
+  const { viewer, permissions } = useOrderDetailAccess(order);
+  const [editing, setEditing] = useState(false);
 
-  // recepcion/admin pueden editar los campos generales del pedido desde acá mismo;
-  // los roles operativos sólo pueden avanzar el estado (si el pedido está en su etapa).
-  const canEdit = canSeeHistory;
-  const myStageIds = statusIdsForRoles(roles);
-  // Mientras el pedido está "trabado" en un estado del flujo de diseño (en
-  // diseño / esperando autorización / cambios solicitados — todavía no
-  // autorizado), el selector manual de estado se deshabilita del todo: se
-  // avanza únicamente con las acciones de "Proceso de diseño" para no saltear
-  // el loop de autorización del cliente.
-  const isInDesignLimbo = !!order?.requiresDesign && isDesignFlowStatusName(order?.status?.name);
-  const canChangeStatus =
-    !isInDesignLimbo && (canEdit || (!!order && myStageIds.includes(order.statusId)));
+  // Cada pedido abre en modo lectura.
+  useEffect(() => setEditing(false), [orderId]);
 
-  const [description, setDescription] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryTime, setDeliveryTime] = useState("");
-  const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
-  const [area, setArea] = useState<string | undefined>(undefined);
-  const [statusId, setStatusId] = useState<number | undefined>(undefined);
-
-  useEffect(() => {
-    if (!order) return;
-    setDescription(order.description ?? "");
-    if (order.deliveryDate) {
-      const d = new Date(order.deliveryDate);
-      setDeliveryDate(order.deliveryDate.slice(0, 10));
-      const hasTime = !Number.isNaN(d.getTime()) && (d.getHours() !== 0 || d.getMinutes() !== 0);
-      setDeliveryTime(
-        hasTime
-          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-          : ""
-      );
-    } else {
-      setDeliveryDate("");
-      setDeliveryTime("");
-    }
-    setAssignedUserId(order.assignedUserId ?? undefined);
-    setArea(order.area ?? undefined);
-    setStatusId(order.statusId);
-  }, [order]);
-
-  const handleSaveDetails = async () => {
-    if (!order) return;
-    try {
-      await update(order.id, {
-        description,
-        deliveryDate: combineDateAndTime(deliveryDate, deliveryTime),
-        assignedUserId: assignedUserId ?? null,
-        area,
-      });
-      toast.success("Pedido actualizado correctamente");
-    } catch {
-      // El toast de error lo dispara el manejo global de mutaciones.
-    }
-  };
-
-  const handleStatusChange = async (nextStatusId: number) => {
-    if (!order || nextStatusId === order.statusId) return;
-    setStatusId(nextStatusId);
-    // `moveStatus`, no `changeStatus`: cuando el pedido tiene tareas de área,
-    // el tablero se ubica por ellas. Escribiendo sólo `Order.statusId` la
-    // etiqueta del detalle cambiaba y la tarjeta del kanban no se movía.
-    await moveStatus(order, nextStatusId);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!order) return;
-    const result = await deleteOrder(order.id);
-    setConfirmDeleteOpen(false);
-    if (result !== undefined) {
-      onClose();
-    }
-  };
-
-  const handleAddNote = async () => {
-    const text = newNote.trim();
-    if (!text) return;
-    const result = await addNote(text);
-    if (result !== undefined) {
-      setNewNote("");
-      toast.success("Nota agregada");
-    }
-  };
+  // 403/404 no son un problema de conexión: reintentar no lo arregla.
+  const forbidden =
+    isError && error instanceof ApiError && (error.status === 403 || error.status === 404);
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-        <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl lg:max-w-5xl p-0">
-          <AnimatePresence mode="wait">
-            {isError ? (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="p-6"
-              >
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="p-0 sm:max-h-[88vh] sm:max-w-2xl sm:overflow-y-auto sm:p-0 lg:max-w-3xl">
+        <AnimatePresence mode="wait">
+          {isError ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-6"
+            >
+              <DialogTitle className="sr-only">Pedido no disponible</DialogTitle>
+              {forbidden ? (
+                <EmptyState
+                  icon={Lock}
+                  title="No tenés acceso a este pedido"
+                  description="Puede que no esté asignado a tu área o que ya no exista."
+                />
+              ) : (
                 <ErrorState
                   title="No se pudo cargar el detalle del pedido."
                   description="Revisá tu conexión e intentá nuevamente."
                   onRetry={() => refetch()}
                 />
-              </motion.div>
-            ) : isPending || !order ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-3 p-6"
-              >
-                <Skeleton className="h-6 w-40" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={order.id}
-                initial={{ opacity: 0, scale: 0.97, y: 6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              >
-                {/* Sticky: el número de pedido, cliente y estado quedan a la
-                    vista aunque el usuario desplace el resto del detalle. */}
-                {/* Sólo `sticky` + fondo: el borde/padding de mobile vs. desktop
-                    ya los resuelve `DialogHeader` (hoja fija en mobile,
-                    encabezado simple en desktop) — no se pisan esas reglas acá,
-                    sólo se agrega que en desktop tampoco se desplace con el
-                    scroll. */}
-                <DialogHeader className="sticky top-0 z-10 bg-popover/95 backdrop-blur-sm">
-                  <DialogTitle className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="flex flex-wrap items-center gap-2">
-                      Pedido #{order.id}{" "}
-                      <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-                    </span>
-                    {canDelete && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        title="Eliminar pedido"
-                        aria-label="Eliminar pedido"
-                        onClick={() => setConfirmDeleteOpen(true)}
-                        disabled={isDeleting}
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </DialogTitle>
-                  <p className="text-sm font-medium text-foreground">
-                    {getOrderClientName(order)}
-                  </p>
-                </DialogHeader>
-
-                <div className="grid gap-4 p-6 text-sm lg:grid-cols-[1fr_280px] lg:items-start lg:gap-6">
-                  {/* Columna principal: flujo, edición, estado y todo lo
-                      operativo. En escritorio va junto a un panel lateral con
-                      el resumen de sólo lectura del pedido. */}
-                  <div className="min-w-0 space-y-4 lg:order-1">
-                    {/* Primero de quién es el trabajo, después los datos: es lo
-                        que cualquiera viene a averiguar al abrir un pedido. */}
-                    <OrderHandoff order={order} />
-
-                    {canEdit ? (
-                    <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-4">
-                      <FormField label="Descripción">
-                        <Textarea
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
-                        />
-                      </FormField>
-                      <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                        <FormField label="Fecha de entrega">
-                          <Input
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
-                          />
-                        </FormField>
-                        <FormField label="Hora de entrega (opcional)">
-                          <Input
-                            type="time"
-                            value={deliveryTime}
-                            onChange={(e) => setDeliveryTime(e.target.value)}
-                            disabled={!deliveryDate}
-                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
-                          />
-                        </FormField>
-                        <FormField label="Asignar a">
-                          <select
-                            className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
-                            value={assignedUserId ?? ""}
-                            onChange={(e) =>
-                              setAssignedUserId(
-                                e.target.value ? Number(e.target.value) : undefined
-                              )
-                            }
-                          >
-                            <option value="">Sin asignar</option>
-                            {users.map((u) => (
-                              <option key={u.id} value={u.id}>
-                                {u.isSharedAccount
-                                  ? `Área: ${[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}`
-                                  : [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}
-                              </option>
-                            ))}
-                          </select>
-                        </FormField>
-                        <FormField
-                          label={order.requiresDesign ? "Área actual" : "Área"}
-                          hint={
-                            order.requiresDesign
-                              ? "Dónde está el pedido ahora. El destino en producción se define en \"Proceso de diseño\", más abajo."
-                              : undefined
-                          }
-                        >
-                          <select
-                            className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
-                            value={area ?? ""}
-                            onChange={(e) => setArea(e.target.value || undefined)}
-                          >
-                            <option value="">Sin área</option>
-                            {AREA_OPTIONS.map((a) => (
-                              <option key={a.value} value={a.value}>
-                                {a.label}
-                              </option>
-                            ))}
-                          </select>
-                        </FormField>
-                      </div>
-                      <motion.div className="inline-block" {...(isSavingDetails ? {} : formButtonMotion)}>
-                        <Button size="sm" onClick={handleSaveDetails} disabled={isSavingDetails}>
-                          {isSavingDetails && <Loader2 className="h-4 w-4 animate-spin" />}
-                          {isSavingDetails ? "Guardando..." : "Guardar cambios"}
-                        </Button>
-                      </motion.div>
-                    </div>
-                  ) : (
-                    <p>
-                      <b>Descripción:</b> {order.description}
-                    </p>
-                  )}
-
-                  <div className="space-y-1">
-                    <Label>Estado</Label>
-                    <OrderStatusButtons
-                      currentStatusId={statusId ?? order.statusId}
-                      canChange={canChangeStatus}
-                      allowedStatusIds={canEdit ? undefined : myStageIds}
-                      isChanging={isChangingStatus}
-                      onChange={handleStatusChange}
-                    />
-                    {order.requiresDesign && (
-                      <p className="text-xs text-muted-foreground">
-                        Los estados del flujo de diseño (en diseño, esperando
-                        autorización, cambios solicitados, autorizado) se
-                        alcanzan sólo con las acciones de la sección
-                        &quot;Proceso de diseño&quot; de abajo, no a mano.
-                      </p>
-                    )}
-                  </div>
-
-                  <DesignFlowSection order={order} />
-
-                  {/* Único lugar donde se decide a qué áreas va el pedido:
-                      mientras está en diseño define el destino, después muestra
-                      el avance de cada una. */}
-                  <AreaTasksSection order={order} />
-
-                  {/* La hoja de materiales se gestiona en su propia pantalla
-                      (lista de pedidos → checklist de compra), no acá — se
-                      requiere cargar al menos un material antes de poder
-                      autorizar el diseño (ver "Proceso de diseño"). */}
-                  <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                    <Link href={`/dashboard/hoja-materiales?order=${order.id}`}>
-                      <ClipboardList className="h-4 w-4" />
-                      Ver hoja de materiales
-                    </Link>
-                  </Button>
-
-                  {order.orderProducts && order.orderProducts.length > 0 && (
-                    <div>
-                      <h4 className="mb-1 font-semibold">Productos</h4>
-                      <ul className="list-inside list-disc space-y-0.5 text-muted-foreground">
-                        {order.orderProducts.map((op, i) => (
-                          <li key={i}>
-                            {getOrderProductName(op)} × {op.quantity}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Lo que mandó el CLIENTE al dar de alta el pedido (logo,
-                      referencias) para que Diseño pueda trabajar. No confundir
-                      con la hoja de autorización, que es el montaje de Diseño
-                      y vive en "Proceso de diseño". */}
-                  {order.clientResourceFile && (
-                    <div>
-                      <h4 className="mb-2 font-semibold">Archivos del cliente</h4>
-                      {order.clientResourceFile.mimeType.startsWith("image/") ? (
-                        <button
-                          type="button"
-                          className="group relative inline-block overflow-hidden rounded-md border"
-                          onClick={() =>
-                            setLightboxSrc(order.clientResourceFile!.dataUrl)
-                          }
-                        >
-                          <PreviewImage
-                            src={order.clientResourceFile.dataUrl}
-                            alt={order.clientResourceFile.filename}
-                            loading="lazy"
-                            className="max-h-64 max-w-full object-contain"
-                          />
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-                            <ZoomIn className="h-6 w-6" />
-                          </span>
-                        </button>
-                      ) : (
-                        <Button variant="outline" size="sm" asChild>
-                          <a
-                            href={order.clientResourceFile.dataUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Ver archivo del cliente (PDF)
-                          </a>
-                        </Button>
-                      )}
-                      {/* Diseño lo baja para trabajar el montaje con el
-                          material original: abrirlo en una pestaña no alcanza. */}
-                      <div className="mt-2">
-                        <DownloadFileButton
-                          href={order.clientResourceFile.dataUrl}
-                          filename={order.clientResourceFile.filename}
-                          label="Descargar archivo del cliente"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {canSeeHistory && (
-                    <div>
-                      <h4 className="mb-2 font-semibold">Historial de Estados</h4>
-                      {histories.length === 0 ? (
-                        <p className="text-muted-foreground">
-                          {/* No confundir con "Historial de cambios" (más abajo): éste
-                              es sólo de cambios de ESTADO, puede estar vacío aunque ya
-                              hubo otra actividad (notas, materiales, asignaciones). */}
-                          Sin cambios de estado todavía.
-                        </p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {histories.map((h) => (
-                            <li key={h.id} className="border-l-2 pl-3">
-                              <span className="flex flex-wrap items-center gap-1 font-medium">
-                                <StatusBadge statusId={h.previousStatusId} /> →{" "}
-                                <StatusBadge statusId={h.newStatusId} />
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatDateTime(h.changeDate, undefined, timeFormat)}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
-
-                  <div>
-                    <h4 className="mb-2 font-semibold">Notas internas</h4>
-                    {isLoadingNotes ? (
-                      <div className="space-y-2">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                      </div>
-                    ) : notesUnavailable ? (
-                      <p className="text-muted-foreground">
-                        Las notas internas todavía no están disponibles.
-                      </p>
-                    ) : (
-                      <>
-                        {notes.length === 0 ? (
-                          <p className="mb-2 text-muted-foreground">
-                            Todavía no hay notas — dejá la primera para el equipo.
-                          </p>
-                        ) : (
-                          <ul className="mb-3 space-y-2">
-                            {notes.map((note) => (
-                              <li key={note.id} className="rounded-lg border bg-muted/20 p-2.5">
-                                <p className="whitespace-pre-wrap">{note.text}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {getAssignedUserName(note.user) ?? "Usuario"} ·{" "}
-                                  {formatDateTime(note.createdAt, undefined, timeFormat)}
-                                </p>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        <div className="space-y-2">
-                          <Textarea
-                            value={newNote}
-                            onChange={(e) => setNewNote(e.target.value)}
-                            placeholder="Agregar una nota interna..."
-                            rows={2}
-                            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
-                          />
-                          <motion.div
-                            className="inline-block"
-                            {...(isAddingNote ? {} : formButtonMotion)}
-                          >
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleAddNote}
-                              disabled={isAddingNote || !newNote.trim()}
-                            >
-                              {isAddingNote && <Loader2 className="h-4 w-4 animate-spin" />}
-                              {isAddingNote ? "Enviando..." : "Agregar nota"}
-                            </Button>
-                          </motion.div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {canSeeHistory && (
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="audit-log">
-                        <AccordionTrigger className="font-semibold">
-                          Historial de cambios
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          {isLoadingAudit ? (
-                            <div className="space-y-2">
-                              <Skeleton className="h-10 w-full" />
-                              <Skeleton className="h-10 w-full" />
-                            </div>
-                          ) : auditUnavailable ? (
-                            <p className="text-muted-foreground">
-                              El historial de cambios todavía no está disponible.
-                            </p>
-                          ) : auditLines.length === 0 ? (
-                            <p className="text-muted-foreground">
-                              Sin cambios registrados: el pedido está tal cual se creó.
-                            </p>
-                          ) : (
-                            <ul className="space-y-4">
-                              {auditLines.map((line) => (
-                                <li key={line.key} className="flex items-start gap-3">
-                                  <Avatar className="h-8 w-8 shrink-0">
-                                    <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
-                                      {line.actorInitials}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div className="min-w-0 space-y-0.5 leading-relaxed">
-                                    <p className="break-words">
-                                      <span className="font-medium">{line.actorName}</span>{" "}
-                                      {line.action}
-                                    </p>
-                                    <p
-                                      className="text-xs text-muted-foreground"
-                                      title={line.absoluteTime}
-                                    >
-                                      {line.relativeTime}
-                                    </p>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
-                  </div>
-
-                  {/* Panel lateral: resumen de sólo lectura (cliente, fechas,
-                      responsable, entrega) — separado de la edición, que vive
-                      en la columna principal. */}
-                  {/* En mobile va primero (orientación rápida: cliente, fecha,
-                      entrega) antes del resto del detalle; en desktop pasa
-                      al panel lateral derecho. */}
-                  <aside className="order-first space-y-4 lg:sticky lg:top-[4.5rem] lg:order-2">
-                    <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
-                      <div className="grid gap-1">
-                        <p>
-                          <b>Cliente:</b> {getOrderClientName(order)}
-                        </p>
-                        {/* Quién lo creó y, si lo tomó otra recepcionista, quién
-                            lo atiende hoy (más el botón para tomarlo). */}
-                        <OrderAttendance order={order} />
-                        <p>
-                          <b>Fecha de creación:</b>{" "}
-                          {formatDateTime(order.creationDate, undefined, timeFormat)}
-                        </p>
-                        <p className="flex items-center gap-1">
-                          <UserRound className="h-3.5 w-3.5 text-muted-foreground" />
-                          <b>Asignado a:</b>{" "}
-                          {getAssignedUserName(order.assignedUser) ?? "sin asignar"}
-                        </p>
-                        {(() => {
-                          const AreaIcon = getAreaIcon(order.area);
-                          return (
-                            <p className="flex items-center gap-1">
-                              {AreaIcon && (
-                                <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                              )}
-                              <b>{order.requiresDesign ? "Etapa actual:" : "Área:"}</b>{" "}
-                              {getAreaLabel(order.area)}
-                            </p>
-                          );
-                        })()}
-                      </div>
-
-                      <div className="space-y-1 border-t pt-3">
-                        <p>
-                          <b>Entrega:</b> {formatDeliveryDate(order.deliveryDate, timeFormat)}
-                        </p>
-                        {!isDeliveredStatus(order.statusId) && (
-                          <DeliveryProgressBar
-                            creationDate={order.creationDate}
-                            deliveryDate={order.deliveryDate}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </aside>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </DialogContent>
-      </Dialog>
-
-      {lightboxSrc && (
-        <ImageLightbox
-          src={lightboxSrc}
-          alt="Archivo del cliente"
-          onClose={() => setLightboxSrc(null)}
-        />
-      )}
-
-      {order && (
-        <ConfirmDeleteDialog
-          open={confirmDeleteOpen}
-          onOpenChange={setConfirmDeleteOpen}
-          onConfirm={handleConfirmDelete}
-          title={`¿Eliminar el pedido #${order.id}?`}
-          description="Esta acción no se puede deshacer. El pedido y su historial dejarán de estar disponibles."
-        />
-      )}
-    </>
+              )}
+            </motion.div>
+          ) : isPending || !order || !permissions ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-3 p-6"
+            >
+              <DialogTitle className="sr-only">Cargando pedido</DialogTitle>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </motion.div>
+          ) : (
+            <motion.div
+              key={order.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 30 }}
+            >
+              {/* Fija: quién es y cuánto falta quedan a la vista al bajar. */}
+              <DialogHeader className="elevation-2 sticky top-0 z-10 bg-popover sm:px-6 sm:pb-4 sm:pr-14 sm:pt-6 sm:shadow-[0_1px_0_hsl(var(--border))]">
+                <OrderDetailHeader
+                  order={order}
+                  permissions={permissions}
+                  onEdit={() => {
+                    setEditing(true);
+                    document
+                      .getElementById("order-section-details")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  onDeleted={onClose}
+                  showFullPageLink
+                  Title={DialogTitle}
+                />
+              </DialogHeader>
+              <div className="px-4 pb-6 pt-4 text-sm sm:px-6">
+                <OrderDetailBody
+                  order={order}
+                  viewer={viewer}
+                  permissions={permissions}
+                  editing={editing}
+                  onEditingChange={setEditing}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </DialogContent>
+    </Dialog>
   );
 }
-

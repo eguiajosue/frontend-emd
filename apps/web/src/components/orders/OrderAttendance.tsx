@@ -14,13 +14,14 @@
  * El destinatario efectivo de las notificaciones es `attendedByUserId ?? userId`
  * — la misma cuenta que hace el backend.
  *
- * Se usa tal cual en el diálogo de detalle y en `/dashboard/orders/[id]`, que
- * muestran la misma información.
+ * Se usa en la sección de datos del detalle (diálogo y `/dashboard/orders/[id]`),
+ * dentro de su `<dl>`.
  */
 
 import { useSession } from "next-auth/react";
 import { Handshake, Loader2, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DetailField } from "@/components/orders/detail/DetailSection";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTakeOrderReception } from "@/hooks/useOrders";
 import { getAssignedUserName, getUserName } from "@/lib/format";
@@ -67,18 +68,18 @@ export function OrderAttendance({ order }: { order: Order }) {
     canTakeReceptionRole(roles) && currentUserId !== null && !isMine;
 
   return (
-    <div className="grid gap-1">
-      <p>
-        <b>Creado por:</b> {getUserName(order.user)}
-      </p>
+    <>
+      <DetailField label="Creado por">{getUserName(order.user)}</DetailField>
       {showsAttendedBy && (
-        <p className="flex items-center gap-1">
-          <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
-          <b>Lo atiende:</b> {attendedByName}
-        </p>
+        <DetailField label="Lo atiende">
+          <span className="inline-flex items-center gap-1.5">
+            <Handshake className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            {attendedByName}
+          </span>
+        </DetailField>
       )}
       {canTake && (
-        <div className="pt-1">
+        <div className="space-y-1 sm:col-span-2">
           <Button
             type="button"
             size="sm"
@@ -92,14 +93,13 @@ export function OrderAttendance({ order }: { order: Order }) {
             ) : (
               <UserRound className="h-4 w-4" />
             )}
-            {isTakingReception ? "Tomando..." : "Atender este pedido"}
+            {isTakingReception ? "Tomando…" : "Atender este pedido"}
           </Button>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Pasás a recibir vos los avisos del circuito. Queda registrado quién
-            lo creó.
+          <p className="text-xs text-muted-foreground">
+            Pasás a recibir vos los avisos de este pedido.
           </p>
         </div>
       )}
-    </div>
+    </>
   );
 }

@@ -26,7 +26,7 @@ interface OrderQuickStatusChipProps {
  *
  * Sólo ofrece el "próximo" estado del flujo lineal (ver `getNextStatusOption`)
  * — para saltar a cualquier otro estado a mano sigue estando el detalle del
- * pedido (`OrderStatusButtons`). No se muestra nada si el usuario no puede
+ * pedido (menú "Estado" del detalle). No se muestra nada si el usuario no puede
  * cambiar el estado de este pedido, si ya está entregado, o si está en un
  * estado del flujo de diseño (esos sólo se avanzan desde "Proceso de diseño").
  */
