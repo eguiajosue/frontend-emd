@@ -9,16 +9,26 @@ import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
 export interface VisibleNavItem {
   title: string;
+  /** Sección del menú a la que pertenece (ej. "Operación"). */
+  group: string;
   url: string;
   icon: LucideIcon;
   unreadCount: number;
+}
+
+/** Grupos del menú (sin filtrar por rol) del usuario actual. */
+export function useNavGroups() {
+  const { data: session } = useSession();
+  const userRoles = session?.user?.roles || [];
+  return isOperationalOnly(userRoles) ? OPERATIONAL_MENU : buildMenuItems(userRoles);
 }
 
 /**
  * Lista plana y ya filtrada por rol de los ítems de navegación visibles para
  * el usuario actual, en el mismo orden que `app-sidebar.tsx` los agrupa.
  * Fuente única compartida entre el rail de escritorio (`app-sidebar.tsx`) y
- * la barra flotante móvil (`MobileTabBar.tsx`) para que nunca diverjan sobre
+ * la barra flotante móvil (`MobileTabBar.tsx`) y la paleta ⌘K (`CommandPalette.tsx`)
+ * para que nunca diverjan sobre
  * qué puede ver cada rol.
  */
 export function useVisibleNavItems(): VisibleNavItem[] {
@@ -40,7 +50,13 @@ export function useVisibleNavItems(): VisibleNavItem[] {
           : item.url === "/dashboard/notificaciones"
           ? notificationsUnread
           : 0;
-      items.push({ title: item.title, url: item.url, icon: item.icon, unreadCount });
+      items.push({
+        title: item.title,
+        group: group.groupLabel,
+        url: item.url,
+        icon: item.icon,
+        unreadCount,
+      });
     }
   }
   return items;

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS } from "@/lib/navMenu";
+import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
 import { MobileMoreSheet } from "./MobileMoreSheet";
 
@@ -16,6 +17,26 @@ import { MobileMoreSheet } from "./MobileMoreSheet";
  * primitive, inerte en móvil) con el resto del menú, config, tema, reporte
  * de error y logout.
  */
+/** Etiqueta de una palabra bajo el ícono: los títulos completos no entran. */
+const SHORT_LABELS: Record<string, string> = {
+  "/dashboard/admin": "Panel",
+  "/dashboard/chat": "Chat",
+  "/dashboard/notificaciones": "Avisos",
+  "/dashboard/admin/rendimiento": "Métricas",
+  "/dashboard/hoja-materiales": "Compras",
+  "/dashboard/historial": "Historial",
+  "/dashboard/clientes": "Clientes",
+  "/dashboard/materiales": "Materiales",
+  "/dashboard/calendario": "Agenda",
+  "/dashboard/usuarios": "Usuarios",
+  "/dashboard/ayuda": "Ayuda",
+};
+
+function shortLabel(item: VisibleNavItem): string {
+  if (item.url === "/dashboard/orders") return item.title === "Pedidos" ? "Pedidos" : "Tareas";
+  return SHORT_LABELS[item.url] ?? item.title;
+}
+
 export function MobileTabBar() {
   const pathname = usePathname();
   const visibleItems = useVisibleNavItems();
@@ -26,6 +47,11 @@ export function MobileTabBar() {
   )
     .filter((item): item is VisibleNavItem => Boolean(item))
     .slice(0, MAX_PRIMARY_TABS);
+  // Activo por prefijo: el detalle de un pedido sigue marcando "Pedidos".
+  const activeUrl = findActiveNavUrl(
+    visibleItems.map((item) => item.url),
+    pathname
+  );
 
   return (
     <nav
@@ -34,17 +60,14 @@ export function MobileTabBar() {
     >
       <div className="inline-flex items-center gap-1 rounded-full bg-card p-1.5 shadow-soft-md">
         {primaryTabs.map((item) => {
-          // /dashboard/admin y /dashboard/admin/rendimiento son rutas
-          // distintas: comparación exacta, nunca por prefijo.
-          const active = pathname === item.url;
+          const active = activeUrl === item.url;
           return (
-            <a
+            <Link
               key={item.url}
               href={item.url}
               aria-current={active ? "page" : undefined}
               aria-label={item.title}
-              title={item.title}
-              className="relative flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-2xl"
+              className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl"
             >
               {active && (
                 <motion.span
@@ -64,28 +87,28 @@ export function MobileTabBar() {
                   </span>
                 )}
               </span>
-              {/* Punto bajo el ícono activo: se reserva el espacio siempre
-                  (opacidad 0 en reposo) para que no salte el layout al
-                  cambiar de tab. */}
               <span
                 aria-hidden
                 className={cn(
-                  "h-1 w-1 rounded-full bg-primary transition-opacity",
-                  active ? "opacity-100" : "opacity-0"
+                  "text-[10px] font-medium leading-none",
+                  active ? "text-primary" : "text-muted-foreground"
                 )}
-              />
-            </a>
+              >
+                {shortLabel(item)}
+              </span>
+            </Link>
           );
         })}
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
           aria-label="Más opciones"
-          title="Más"
-          className="relative flex h-12 w-12 flex-col items-center justify-center gap-1 rounded-2xl text-muted-foreground"
+          className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl text-muted-foreground"
         >
           <Menu className="h-5 w-5" />
-          <span aria-hidden className="h-1 w-1 rounded-full opacity-0" />
+          <span aria-hidden className="text-[10px] font-medium leading-none">
+            Más
+          </span>
         </button>
       </div>
       <MobileMoreSheet open={moreOpen} onOpenChange={setMoreOpen} />

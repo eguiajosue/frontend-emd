@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { ColumnDef } from "@tanstack/react-table";
 import { History, Users, Building2 } from "lucide-react";
@@ -12,8 +12,8 @@ import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, Company } from "@/types";
-import { getClientColumns } from "@/app/dashboard/clients/components/columns";
-import { getCompanyColumns } from "@/app/dashboard/companies/components/columns";
+import { getClientColumns } from "./components/clientColumns";
+import { getCompanyColumns } from "./components/companyColumns";
 import { ClientOrdersDialog } from "@/components/clients/ClientOrdersDialog";
 
 const clientSchema = z.object({
@@ -56,6 +56,25 @@ const ClientesPage = () => {
   const { data: companies } = useEntityList<Company>("companies");
   const [tab, setTab] = useState<"clientes" | "empresas">(initialTabFromUrl);
   const [ordersClientId, setOrdersClientId] = useState<number | null>(null);
+  // `?new=1` (acción "Nuevo cliente" de la paleta ⌘K) abre el alta. Se
+  // limpia al cerrar el formulario y no al leerlo: la transición de ruta
+  // puede montar la pantalla dos veces y el segundo montaje ya no lo veía.
+  const [createOnMount, setCreateOnMount] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") !== "1") return;
+    setTab("clientes");
+    setCreateOnMount(true);
+  }, []);
+  const clearNewParam = () => {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has("new")) return;
+      url.searchParams.delete("new");
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      // Sin acceso a la URL: la pantalla funciona igual.
+    }
+  };
 
   // Reusa las columnas base de Clientes y le agrega una acción "Ver pedidos"
   // (historial de pedidos del cliente, GET /clients/:id/orders).
@@ -139,6 +158,8 @@ const ClientesPage = () => {
             title="Clientes"
             createLabel="Nuevo Cliente"
             canEdit={canManageOperations}
+            openCreateOnMount={createOnMount}
+            onFormClose={clearNewParam}
             fields={clientFields}
             schema={clientSchema}
             columns={clientColumnsWithOrders}

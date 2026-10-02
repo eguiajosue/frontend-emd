@@ -70,6 +70,21 @@ const nextConfig = {
     NEXT_PUBLIC_APP_VERSION: appVersion,
     NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
   },
+  /**
+   * Rutas viejas que se fusionaron en pantallas unificadas. Se redirigen acá
+   * (antes del render) para no romper favoritos ni links compartidos, sin
+   * mantener una página por cada una.
+   */
+  async redirects() {
+    return [
+      { source: "/dashboard/clients", destination: "/dashboard/clientes?tab=clientes", permanent: true },
+      { source: "/dashboard/companies", destination: "/dashboard/clientes?tab=empresas", permanent: true },
+      { source: "/dashboard/users", destination: "/dashboard/usuarios?tab=usuarios", permanent: true },
+      { source: "/dashboard/roles", destination: "/dashboard/usuarios?tab=roles", permanent: true },
+      { source: "/dashboard/mi-trabajo", destination: "/dashboard/orders", permanent: true },
+      { source: "/dashboard/estatus-pedidos", destination: "/dashboard/orders", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

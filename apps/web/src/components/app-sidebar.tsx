@@ -7,8 +7,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -33,7 +34,11 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { OPERATIONAL_MENU, buildMenuItems, isNavItemVisible } from "@/lib/navMenu";
+import { OPERATIONAL_MENU, buildMenuItems, findActiveNavUrl, isNavItemVisible } from "@/lib/navMenu";
+import { formatRoleList } from "@/lib/roles";
+import { SidebarOrderViews, useOrderViewCounts } from "./SidebarOrderViews";
+
+const ORDERS_URL = "/dashboard/orders";
 
 /** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
 function getTimeBasedGreeting(): string {
@@ -60,10 +65,10 @@ export function ConfiguracionLink({ pathname }: { pathname: string }) {
       )}
       asChild
     >
-      <a href="/dashboard/configuracion" title={collapsed ? "Configuración" : undefined}>
+      <Link href="/dashboard/configuracion" title={collapsed ? "Configuración" : undefined}>
         <Settings className="h-4 w-4 shrink-0" />
         {!collapsed && "Configuración"}
-      </a>
+      </Link>
     </Button>
   );
 }
@@ -120,8 +125,36 @@ export function AppSidebar() {
 
   // Definición de grupos/ítems compartida con `useVisibleNavItems` (barra
   // móvil): una sola fuente para "qué puede ver cada rol".
-  const visibleGroups = operationalOnly ? OPERATIONAL_MENU : buildMenuItems(userRoles);
+  // Grupos sin ningún ítem visible para el rol no se pintan: antes recepción
+  // veía encabezados ("Administración") sin nada debajo.
+  const visibleGroups = (operationalOnly ? OPERATIONAL_MENU : buildMenuItems(userRoles))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isNavItemVisible(item, userRoles, operationalOnly)),
+    }))
+    .filter((group) => group.items.length > 0);
+  const activeUrl = findActiveNavUrl(
+    visibleGroups.flatMap((group) => group.items.map((item) => item.url)),
+    pathname
+  );
+  const showsOrders = visibleGroups.some((group) => group.items.some((item) => item.url === ORDERS_URL));
+  // Rail colapsado: no hay lugar para los accesos guardados, así que los
+  // vencidos se avisan como badge sobre el ícono de Pedidos.
+  const { overdue } = useOrderViewCounts(showsOrders);
   const { state, isMobile, toggleSidebar } = useSidebar();
+  // Al entrar a una pantalla del fondo del menú (ej. Usuarios), su ítem
+  // activo se trae a la vista en vez de quedar oculto bajo el pie.
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  // Espera a que termine la transición de ancho del rail (200 ms): antes de
+  // eso el pie todavía no tiene su alto final y el cálculo queda corto.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      navScrollRef.current
+        ?.querySelector<HTMLElement>('[aria-current="page"]')
+        ?.scrollIntoView({ block: "nearest" });
+    }, 260);
+    return () => window.clearTimeout(id);
+  }, [activeUrl, state]);
   // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
   // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
   // (ver Sidebar en ui/sidebar.tsx): si se hereda la cookie de escritorio
@@ -139,7 +172,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent data-tour="sidebar-nav">
+      {/* Sólo la lista scrollea; el pie (configuración, cuenta, salir) queda
+          fijo. Colapsado, el primitivo trae `overflow-hidden` y en pantallas
+          bajas los últimos íconos (Rendimiento, Usuarios) quedaban debajo del
+          pie sin forma de alcanzarlos con la rueda. */}
+      <SidebarContent
+        ref={navScrollRef}
+        data-tour="sidebar-nav"
+        className="group-data-[collapsible=icon]:overflow-y-auto group-data-[collapsible=icon]:overflow-x-hidden group-data-[collapsible=icon]:[scrollbar-width:none] [scrollbar-width:thin]"
+      >
         <SidebarHeader className={cn("p-4 pb-5 md:pb-4", collapsed && "px-2")}>
           {collapsed ? (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
@@ -184,8 +225,8 @@ export function AppSidebar() {
                   <span className="truncate text-sm font-medium">
                     {session?.user?.first_name} {session?.user?.last_name}
                   </span>
-                  <span className="truncate text-xs capitalize text-muted-foreground">
-                    {userRoles.join(", ")}
+                  <span className="truncate text-xs text-muted-foreground">
+                    {formatRoleList(userRoles)}
                   </span>
                 </div>
               </div>
@@ -198,8 +239,7 @@ export function AppSidebar() {
               {group.groupLabel}
             </SidebarGroupLabel>
             <SidebarMenu className="gap-1.5 md:gap-1">
-              {group.items.map((item) =>
-                isNavItemVisible(item, userRoles, operationalOnly) ? (() => {
+              {group.items.map((item) => {
                   // Ítems con contador de pendientes: chat y notificaciones.
                   // Ambos resaltan el ícono y muestran el número, expandidos o
                   // en el rail colapsado.
@@ -209,13 +249,14 @@ export function AppSidebar() {
                       : item.url === "/dashboard/notificaciones"
                       ? notificationsUnread
                       : 0;
-                  const active = pathname === item.url;
+                  const active = activeUrl === item.url;
                   const highlighted = unread > 0 && !active;
                   return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <a
+                      <Link
                         href={item.url}
+                        aria-current={active ? "page" : undefined}
                         className={cn("relative", highlighted && "text-primary")}
                         data-tour={item.title === "Ayuda" ? "help-link" : undefined}
                       >
@@ -262,10 +303,23 @@ export function AppSidebar() {
                             {unread > 99 ? "99+" : unread}
                           </span>
                         ) : null}
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                     {/* Colapsado el badge va sobre el `li` (relative) y no dentro
                         del botón, que tiene `overflow-hidden` y lo recortaría. */}
+                    {!collapsed && item.url === ORDERS_URL && (
+                      <Suspense fallback={null}>
+                        <SidebarOrderViews />
+                      </Suspense>
+                    )}
+                    {collapsed && item.url === ORDERS_URL && overdue > 0 ? (
+                      <span
+                        className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar"
+                        title={`${overdue} vencido${overdue === 1 ? "" : "s"}`}
+                      >
+                        {overdue > 99 ? "99+" : overdue}
+                      </span>
+                    ) : null}
                     {collapsed && unread > 0 ? (
                       <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-sidebar">
                         {unread > 99 ? "99+" : unread}
@@ -284,13 +338,18 @@ export function AppSidebar() {
                     ) : null}
                   </SidebarMenuItem>
                   );
-                })() : null
-              )}
+              })}
             </SidebarMenu>
           </div>
         ))}
+        {/* Desvanecido al pie de la lista: avisa que hay más abajo. Al llegar
+            al final queda debajo del último ítem, sin taparlo. */}
+        <div
+          aria-hidden
+          className="pointer-events-none sticky bottom-0 -mt-2 h-6 shrink-0 bg-gradient-to-t from-sidebar to-transparent"
+        />
       </SidebarContent>
-      <div className={cn("mt-auto p-4", collapsed && "px-2")}>
+      <div className={cn("mt-auto shrink-0 p-4", collapsed && "px-2")}>
         {/* Chevron de colapsar/expandir el rail, sólo escritorio (en móvil el
             menú es el Sheet a ancho completo, no tiene estado colapsado). Es
             aditivo al `SidebarTrigger` de la barra superior — ambos controles
@@ -343,7 +402,7 @@ export function AppSidebar() {
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
               <div className="flex justify-between items-center w-full gap-2">
-                <span className="text-xs text-muted-foreground truncate">{userRoles.join(", ")}</span>
+                <span className="text-xs text-muted-foreground truncate">{formatRoleList(userRoles)}</span>
                 <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
               </div>
             </div>
@@ -352,14 +411,20 @@ export function AppSidebar() {
             <ThemeToggle />
           </span>
         </div>
+        {/* Salir no es una acción destructiva: un botón rojo permanente
+            competía con la navegación por la atención. */}
         <Button
-          variant="destructive"
-          className={cn(collapsed ? "mx-auto size-8 p-0" : "w-full")}
+          variant="ghost"
+          className={cn(
+            "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
+            collapsed ? "mx-auto size-8 p-0" : "w-full justify-start gap-2"
+          )}
           onClick={() => void logout()}
-          title={collapsed ? "Logout" : undefined}
+          title={collapsed ? "Cerrar sesión" : undefined}
+          aria-label="Cerrar sesión"
         >
-          <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
-          {!collapsed && "Logout"}
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && "Cerrar sesión"}
         </Button>
       </div>
     </Sidebar>

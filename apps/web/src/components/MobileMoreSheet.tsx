@@ -1,6 +1,7 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
@@ -12,7 +13,8 @@ import { BugReportDialog } from "./BugReportDialog";
 import { ConfiguracionLink, InstallAppButton } from "./app-sidebar";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
-import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS } from "@/lib/navMenu";
+import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
+import { formatRoleList } from "@/lib/roles";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 
 interface MobileMoreSheetProps {
@@ -44,6 +46,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
     ).slice(0, MAX_PRIMARY_TABS)
   );
   const remainingItems = visibleItems.filter((item) => !primaryUrls.has(item.url));
+  const activeUrl = findActiveNavUrl(visibleItems.map((item) => item.url), pathname);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -75,7 +78,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                 {session?.user?.first_name} {session?.user?.last_name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                <span className="capitalize">{userRoles.join(", ")}</span>
+                {formatRoleList(userRoles)}
                 {session?.user?.username ? ` · @${session.user.username}` : ""}
               </span>
             </div>
@@ -86,9 +89,9 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
           {remainingItems.length > 0 && (
             <nav aria-label="Más opciones de navegación" className="mb-3 flex flex-col gap-1">
               {remainingItems.map((item) => {
-                const active = pathname === item.url;
+                const active = activeUrl === item.url;
                 return (
-                  <a
+                  <Link
                     key={item.url}
                     href={item.url}
                     aria-current={active ? "page" : undefined}
@@ -107,7 +110,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                         {item.unreadCount > 99 ? "99+" : item.unreadCount}
                       </span>
                     )}
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
@@ -125,12 +128,12 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
           </div>
 
           <Button
-            variant="destructive"
-            className="mt-2 w-full"
+            variant="ghost"
+            className="mt-2 w-full justify-start gap-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={() => void logout()}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
           </Button>
         </div>
       </SheetContent>

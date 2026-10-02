@@ -74,7 +74,7 @@ describe("MobileTabBar", () => {
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });
 
-  it("recepción: Pedidos, Chat interno, Notificaciones, Historial + Más", () => {
+  it("recepción: Pedidos, Chat interno, Notificaciones, Hoja de Materiales + Más", () => {
     mocks.roles = ["recepcion"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
@@ -82,7 +82,7 @@ describe("MobileTabBar", () => {
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hoja de Materiales" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });
@@ -125,6 +125,13 @@ describe("MobileTabBar", () => {
     );
   });
 
+  it("el detalle de un pedido mantiene activo el tab Pedidos", () => {
+    mocks.roles = ["recepcion"];
+    mocks.pathname = "/dashboard/orders/42";
+    renderBar();
+    expect(screen.getByRole("link", { name: "Pedidos" })).toHaveAttribute("aria-current", "page");
+  });
+
   it('el tab "Más" abre el bottom sheet (no el Sidebar primitive)', () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/orders";
@@ -139,6 +146,6 @@ describe("MobileTabBar", () => {
     // La tarjeta de identidad de `MobileMoreSheet` confirma que se abrió el
     // bottom sheet propio, no el drawer lateral del `Sidebar` primitive.
     expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
   });
 });

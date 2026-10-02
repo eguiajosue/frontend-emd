@@ -215,6 +215,12 @@ export interface Order extends BaseEntity {
    * de producción sigue corriendo normalmente.
    */
   archivedAt?: string | null;
+  /**
+   * Orden de prioridad de compra elegido a mano (drag & drop) en la pantalla
+   * "Hoja de Materiales". `null`/`undefined` cuando todavía no se reordenó
+   * (ese pedido va al final, ordenado por id).
+   */
+  materialsPriority?: number | null;
 }
 
 export interface OrderHistory extends BaseEntity {

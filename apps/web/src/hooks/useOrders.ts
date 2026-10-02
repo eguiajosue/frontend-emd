@@ -6,14 +6,21 @@ import { toast } from "sonner";
 import { ApiError, getErrorMessage, request, type Paginated } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
-import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
+import {
+  CATALOG_STALE_TIME,
+  useAuthToken,
+  useEntityDetail,
+  useEntityList,
+} from "@/hooks/useEntity";
 import type {
   AreaTaskStatus,
   Order,
   OrderAuditLogEntry,
   OrderHistory,
   OrderNote,
+  Status,
 } from "@/types";
+import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { orderStatusUpdatedMessage } from "@/lib/copy";
 import {
   AREA_TASK_STATUS_BY_ORDER_STATUS,
@@ -170,7 +177,7 @@ export function useChangeOrderStatus() {
 export function useMoveOrderStatus(actor: MoveActor) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
-  const { changeStatus } = useChangeOrderStatus();
+  const { changeStatus, isChangingStatus } = useChangeOrderStatus();
 
   const mutation = useMutation({
     mutationFn: async ({
@@ -237,7 +244,10 @@ export function useMoveOrderStatus(actor: MoveActor) {
     [actor, changeStatus, mutation]
   );
 
-  return { move, canMove, isMoving: mutation.isPending };
+  // Cuenta también el camino de `changeStatus` (pedidos sin tareas de área):
+  // antes sólo miraba la mutación de tareas y en ese caso los botones no se
+  // deshabilitaban mientras guardaba, así que un doble click lo mandaba dos veces.
+  return { move, canMove, isMoving: mutation.isPending || isChangingStatus };
 }
 
 /**
@@ -275,6 +285,55 @@ export function useTakeOrderReception() {
     takeReception: (orderId: number) =>
       mutation.mutateAsync(orderId).then(() => true).catch(() => false),
     isTakingReception: mutation.isPending,
+  };
+}
+
+/**
+ * Orden de prioridad de compra (`PATCH /orders/materials-priority`), elegido
+ * arrastrando pedidos en "Hoja de Materiales". Actualiza la cache de forma
+ * optimista (se siente instantáneo al soltar) y revierte si el backend
+ * rechaza el request.
+ */
+export function useReorderMaterialsPriority() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  const listKey = queryKeys.list("orders");
+
+  const mutation = useMutation({
+    mutationFn: (orderIds: number[]) =>
+      request<{ updated: number }>(`${ENDPOINTS.orders}/materials-priority`, {
+        method: "PATCH",
+        token,
+        body: { orderIds },
+      }),
+    onMutate: async (orderIds: number[]) => {
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previous = queryClient.getQueryData<Order[]>(listKey);
+      if (previous) {
+        const priorityById = new Map(orderIds.map((id, index) => [id, index]));
+        queryClient.setQueryData<Order[]>(
+          listKey,
+          previous.map((order) =>
+            priorityById.has(order.id)
+              ? { ...order, materialsPriority: priorityById.get(order.id) }
+              : order
+          )
+        );
+      }
+      return { previous };
+    },
+    onError: (error, _orderIds, context) => {
+      if (context?.previous) queryClient.setQueryData(listKey, context.previous);
+      toast.error(getErrorMessage(error, "No se pudo guardar el orden de prioridad."));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    },
+  });
+
+  return {
+    reorder: (orderIds: number[]) => mutation.mutateAsync(orderIds),
+    isReordering: mutation.isPending,
   };
 }
 
@@ -635,4 +694,52 @@ export async function downloadOrdersExport(
   link.click();
   link.remove();
   URL.revokeObjectURL(objectUrl);
+}
+
+/**
+ * "Pasar a Diseño" desde Recepción: un pedido con diseño que quedó en
+ * "pendiente" (cargado antes de que el alta lo mandara directo a Diseño, o
+ * devuelto a mano) entra al circuito de diseño.
+ *
+ * El id de "en diseño" lo siembra el backend y varía por entorno, así que se
+ * resuelve por nombre contra el catálogo de estados (igual que el tablero).
+ * Deja el pedido en el área Diseño para que lo vea el diseñador, y registra el
+ * cambio en el historial de estados como cualquier otro.
+ */
+export function usePassOrderToDesign() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  const { data: statuses } = useEntityList<Status>("statuses", { staleTime: CATALOG_STALE_TIME });
+
+  const mutation = useMutation({
+    mutationFn: async (order: Pick<Order, "id" | "statusId">) => {
+      const target = statuses.find(
+        (s) => s.name?.toLowerCase() === DESIGN_FLOW_STATUS_NAMES.EN_DISENO
+      );
+      if (!target) throw new Error("No se encontró el estado “en diseño”.");
+      await request<Order>(`${ENDPOINTS.orders}/${order.id}`, {
+        method: "PATCH",
+        token,
+        body: { statusId: target.id, area: "diseno" },
+      });
+      await request<OrderHistory>(ENDPOINTS.orderHistories, {
+        method: "POST",
+        token,
+        body: { orderId: order.id, previousStatusId: order.statusId, newStatusId: target.id },
+      });
+      return order.id;
+    },
+    onSuccess: (orderId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      toast.success(`Pedido #${orderId} pasó a Diseño`);
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  return {
+    passToDesign: (order: Pick<Order, "id" | "statusId">) =>
+      mutation.mutateAsync(order).catch(() => undefined),
+    isPassingToDesign: mutation.isPending,
+  };
 }

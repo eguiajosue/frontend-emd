@@ -9,6 +9,7 @@ import {
   MessagesSquare,
   CalendarDays,
   Boxes,
+  Building2,
   ClipboardList,
   type LucideIcon,
 } from "lucide-react";
@@ -87,11 +88,17 @@ export const OPERATIONAL_MENU: NavGroup[] = [
   },
 ];
 
-/** Menú completo (roles administrativos/recepción), agrupado igual que hoy. */
+/**
+ * Menú completo (roles administrativos/recepción). Cuatro secciones de
+ * trabajo en vez de un grupo por página: antes eran 8 grupos para ~12
+ * destinos, con varios grupos de un solo ítem que repetían su propio nombre.
+ * El trabajo diario (Operación) va primero; la administración, al final.
+ * Los grupos que el rol no puede ver se ocultan en el sidebar.
+ */
 export function buildMenuItems(userRoles: string[]): NavGroup[] {
   return [
     {
-      groupLabel: "Administración",
+      groupLabel: "Operación",
       items: [
         {
           title: "Panel General",
@@ -100,23 +107,19 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
           roles: ["admin", "superuser"],
         },
         {
-          title: "Rendimiento",
-          url: "/dashboard/admin/rendimiento",
-          icon: TrendingUp,
-          roles: ["admin", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Pedidos",
-      items: [
-        {
           // "Pedidos" para quien administra, "Tareas asignadas" para quien
           // sólo ejecuta: es la misma pantalla, no significa lo mismo.
           title: ordersScreenTitle(userRoles),
           url: "/dashboard/orders",
           icon: Package,
           roles: ALL_ROLES,
+        },
+        {
+          // Calendario de equipo de Recepción: instalaciones, juntas, visitas.
+          title: "Calendario",
+          url: "/dashboard/calendario",
+          icon: CalendarDays,
+          roles: ["admin", "recepcion", "superuser"],
         },
         {
           title: "Historial",
@@ -127,93 +130,68 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
       ],
     },
     {
-      groupLabel: "Clientes",
+      groupLabel: "Compras y clientes",
       items: [
         {
-          title: "Clientes",
-          url: "/dashboard/clientes",
-          icon: UserRound,
+          // Checklist de compra por pedido, con prioridad arrastrable.
+          title: "Hoja de Materiales",
+          url: "/dashboard/hoja-materiales",
+          icon: ClipboardList,
           roles: ["admin", "recepcion", "superuser"],
         },
-      ],
-    },
-    {
-      groupLabel: "Materiales",
-      items: [
         {
-          // Catálogo de materiales/insumos + proveedores (tabs adentro),
-          // usado por Recepción para armar la hoja de materiales de un pedido.
+          // Catálogo de materiales/insumos + proveedores (tabs adentro).
           title: "Materiales",
           url: "/dashboard/materiales",
           icon: Boxes,
           roles: ["admin", "recepcion", "superuser"],
         },
         {
-          // Hoja de materiales por pedido: lista de pedidos, cada uno se
-          // despliega en un checklist de compra (cantidad/material/precio),
-          // con el total de lo ya comprado. Reemplaza a la sección que antes
-          // vivía adentro del detalle de cada pedido.
-          title: "Hoja de Materiales",
-          url: "/dashboard/hoja-materiales",
-          icon: ClipboardList,
+          title: "Clientes",
+          url: "/dashboard/clientes",
+          icon: Building2,
           roles: ["admin", "recepcion", "superuser"],
         },
       ],
     },
     {
-      groupLabel: "Calendario",
-      items: [
-        {
-          // Calendario de equipo de Recepción: instalaciones, juntas, visitas
-          // a clientes. Reemplaza la lista que se coordinaba a mano por
-          // WhatsApp; compartido entre recepcion/admin/superuser.
-          title: "Calendario",
-          url: "/dashboard/calendario",
-          icon: CalendarDays,
-          roles: ["admin", "recepcion", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Usuarios",
-      items: [
-        {
-          title: "Usuarios",
-          url: "/dashboard/usuarios",
-          icon: UserRound,
-          roles: ["admin", "superuser"],
-        },
-      ],
-    },
-    {
-      groupLabel: "Comunicación",
+      groupLabel: "Equipo",
       items: [
         {
           title: "Chat interno",
           url: "/dashboard/chat",
           icon: MessagesSquare,
-          // Visible para todos los roles: los canales de área y los DMs que
-          // cada uno puede ver los resuelve el backend.
+          // Canales de área y DMs visibles los resuelve el backend.
           roles: ALL_ROLES,
         },
-      ],
-    },
-    {
-      groupLabel: "Soporte",
-      items: [
         {
           title: "Notificaciones",
           url: "/dashboard/notificaciones",
           icon: Bell,
-          // Visible para todos los roles.
           roles: ALL_ROLES,
         },
         {
           title: "Ayuda",
           url: "/dashboard/ayuda",
           icon: HelpCircle,
-          // Visible para todos los roles.
           roles: ALL_ROLES,
+        },
+      ],
+    },
+    {
+      groupLabel: "Administración",
+      items: [
+        {
+          title: "Rendimiento",
+          url: "/dashboard/admin/rendimiento",
+          icon: TrendingUp,
+          roles: ["admin", "superuser"],
+        },
+        {
+          title: "Usuarios",
+          url: "/dashboard/usuarios",
+          icon: UserRound,
+          roles: ["admin", "superuser"],
         },
       ],
     },
@@ -234,6 +212,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/chat",
   "/dashboard/notificaciones",
   "/dashboard/admin/rendimiento",
+  "/dashboard/hoja-materiales",
   "/dashboard/historial",
   "/dashboard/clientes",
   "/dashboard/materiales",
@@ -258,4 +237,76 @@ export function isNavItemVisible(
     userRoles.includes("admin") ||
     userRoles.some((r) => (item.roles ? item.roles.includes(r) : true))
   );
+}
+
+/**
+ * URL del ítem que corresponde a `pathname`: coincidencia exacta o la ruta más
+ * específica que la contiene. Así `/dashboard/orders/123` mantiene marcado
+ * "Pedidos", y `/dashboard/admin/rendimiento` marca "Rendimiento" y no
+ * "Panel General" (`/dashboard/admin`), que también es prefijo.
+ */
+export function findActiveNavUrl(urls: string[], pathname: string | null): string | null {
+  if (!pathname) return null;
+  let best: string | null = null;
+  for (const url of urls) {
+    if (pathname === url || pathname.startsWith(`${url}/`)) {
+      if (!best || url.length > best.length) best = url;
+    }
+  }
+  return best;
+}
+
+/** Inicio de cada rol: admin al panel, el resto directo a su trabajo. */
+export function homePathForRoles(roles: string[]): string {
+  return roles.includes("admin") || roles.includes("superuser")
+    ? "/dashboard/admin"
+    : "/dashboard/orders";
+}
+
+/** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */
+const EXTRA_ROUTE_TITLES: Record<string, string> = {
+  "/dashboard/configuracion": "Configuración",
+};
+
+export interface Breadcrumb {
+  label: string;
+  /** Sin href = no navegable (sección o la página actual). */
+  href?: string;
+}
+
+/**
+ * Migas de la ruta actual a partir del menú (misma fuente que sidebar, móvil y
+ * paleta): sección › página › detalle. Ej. `/dashboard/orders/123` →
+ * Operación › Pedidos › #123.
+ */
+export function buildBreadcrumbs(groups: NavGroup[], pathname: string | null): Breadcrumb[] {
+  if (!pathname) return [];
+  const extra = EXTRA_ROUTE_TITLES[pathname];
+  if (extra) return [{ label: extra }];
+
+  const entries = groups.flatMap((group) =>
+    group.items.map((item) => ({ group: group.groupLabel, item }))
+  );
+  const activeUrl = findActiveNavUrl(entries.map((e) => e.item.url), pathname);
+  const entry = entries.find((e) => e.item.url === activeUrl);
+  if (!entry) return [];
+
+  const crumbs: Breadcrumb[] = [{ label: entry.group }];
+  const rest = pathname.slice(entry.item.url.length).split("/").filter(Boolean);
+  if (rest.length === 0) {
+    crumbs.push({ label: entry.item.title });
+  } else {
+    crumbs.push({ label: entry.item.title, href: entry.item.url });
+    const last = rest[rest.length - 1];
+    crumbs.push({ label: /^\d+$/.test(last) ? `#${last}` : decodeURIComponent(last) });
+  }
+  return crumbs;
+}
+
+/** Título para la pestaña del navegador: la última miga con contexto. */
+export function pageTitleFromBreadcrumbs(crumbs: Breadcrumb[]): string | null {
+  if (crumbs.length === 0) return null;
+  const last = crumbs[crumbs.length - 1].label;
+  if (crumbs.length >= 3) return `${crumbs[crumbs.length - 2].label} ${last}`;
+  return last;
 }

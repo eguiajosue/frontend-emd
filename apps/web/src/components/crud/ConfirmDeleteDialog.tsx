@@ -17,6 +17,10 @@ interface ConfirmDeleteDialogProps {
   onConfirm: () => void;
   title?: string;
   description?: string;
+  /** Texto del botón de confirmar (default "Eliminar"). */
+  confirmLabel?: string;
+  /** Texto del botón de volver (default "Cancelar"). */
+  cancelLabel?: string;
 }
 
 export function ConfirmDeleteDialog({
@@ -25,6 +29,8 @@ export function ConfirmDeleteDialog({
   onConfirm,
   title = "¿Eliminar registro?",
   description = "Esta acción no se puede deshacer.",
+  confirmLabel = "Eliminar",
+  cancelLabel = "Cancelar",
 }: ConfirmDeleteDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -34,12 +40,12 @@ export function ConfirmDeleteDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             onClick={onConfirm}
           >
-            Eliminar
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -119,6 +119,8 @@ function taskTiming(task: OrderAreaTask): string | null {
 
 interface AreaTasksSectionProps {
   order: Order;
+  /** Dentro del detalle rediseñado: sin recuadro ni título propios. */
+  embedded?: boolean;
 }
 
 /**
@@ -128,7 +130,7 @@ interface AreaTasksSectionProps {
  * todas quedan en "Terminado" el backend deja el pedido listo para entregar
  * (la entrega la confirma Recepción). Ver WORKFLOW.md §3 en el backend.
  */
-export function AreaTasksSection({ order }: AreaTasksSectionProps) {
+export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionProps) {
   const orderId = order.id;
   const { roles, session } = usePermissions();
   const { data: users } = useEntityList<User>("users");
@@ -277,11 +279,13 @@ export function AreaTasksSection({ order }: AreaTasksSectionProps) {
         : "Cada área avanza por su cuenta, sin esperar a las demás.";
 
   return (
-    <section className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+    <section className={embedded ? "space-y-3" : "space-y-3 rounded-2xl border bg-muted/20 p-4"}>
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-heading text-sm font-semibold">Áreas de producción</h3>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          {!embedded && <h3 className="font-heading text-sm font-semibold">Áreas de producción</h3>}
+          <p className={embedded ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>
+            {subtitle}
+          </p>
         </div>
         {allDone && (
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">

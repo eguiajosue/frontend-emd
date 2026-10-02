@@ -54,7 +54,7 @@ describe("MobileMoreSheet", () => {
     renderSheet();
 
     expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
-    expect(screen.getByText(/superuser/i)).toBeInTheDocument();
+    expect(screen.getByText(/Superusuario/)).toBeInTheDocument();
     expect(screen.getByText(/@ana/)).toBeInTheDocument();
     // Iniciales del avatar (fallback), mismo criterio que `app-sidebar.tsx`.
     expect(screen.getByText("AN")).toBeInTheDocument();
@@ -94,12 +94,12 @@ describe("MobileMoreSheet", () => {
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
   });
 
-  it("incluye Configuración, tema y Logout", () => {
+  it("incluye Configuración, tema y Cerrar sesión", () => {
     mocks.roles = ["superuser"];
     renderSheet();
 
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
     expect(screen.getByTestId("theme-toggle-stub")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Logout" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
   });
 });
