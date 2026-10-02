@@ -8,6 +8,8 @@ module.exports = {
 
     // Or if using `src` directory:
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
+    // Clases de color por estado viven en el paquete compartido (statusColors.ts).
+    "../../packages/business/src/**/*.{ts,tsx}",
   ],
   theme: {
   	extend: {

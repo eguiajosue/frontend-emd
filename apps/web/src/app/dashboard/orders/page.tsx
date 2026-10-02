@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
-import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { ColumnDef } from "@tanstack/react-table";
 import {
   CardsSkeleton,
   ErrorState,
-  TableSkeleton,
 } from "@/components/feedback/states";
 import {
   useOrders,
@@ -34,12 +31,11 @@ import {
   effectiveProductionStatusId,
   splitDesignAndProduction,
 } from "@/lib/kanbanColumns";
-import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { KanbanBoard } from "@/components/orders/KanbanBoard";
-import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
+import { OrdersJobWall } from "@/components/orders/OrdersJobWall";
 import { motion } from "framer-motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
@@ -51,7 +47,6 @@ import {
 import type { Client, Order, OrderProductPreset, Status, User } from "@/types";
 import {
   ChevronDown,
-  ExternalLink,
   FileDown,
   FilterX,
   LayoutGrid,
@@ -61,7 +56,6 @@ import {
   Plus,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -459,95 +453,6 @@ const OrdersPage = () => {
   const allVisibleSelected =
     visibleOrders.length > 0 && selectedIds.length === visibleOrders.length;
 
-  const columns: ColumnDef<Order>[] = useMemo(
-    () => [
-      ...(canManageOperations
-        ? [
-            {
-              id: "select",
-              header: () => (
-                <Checkbox
-                  checked={allVisibleSelected}
-                  onCheckedChange={(checked) => toggleSelectAll(checked === true)}
-                  aria-label="Seleccionar todos los pedidos"
-                />
-              ),
-              cell: ({ row }: { row: { original: Order } }) => (
-                <Checkbox
-                  checked={selectedIds.includes(row.original.id)}
-                  onCheckedChange={(checked) =>
-                    toggleSelected(row.original.id, checked === true)
-                  }
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`Seleccionar pedido #${row.original.id}`}
-                />
-              ),
-            } satisfies ColumnDef<Order>,
-          ]
-        : []),
-      { id: "id", header: "Pedido", cell: ({ row }) => `#${row.original.id}` },
-      {
-        id: "client",
-        header: "Cliente",
-        cell: ({ row }) => getOrderClientName(row.original),
-      },
-      {
-        accessorKey: "description",
-        header: "Descripción",
-        cell: ({ row }) => (
-          <span className="block max-w-[16rem] truncate" title={row.original.description}>
-            {row.original.description}
-          </span>
-        ),
-      },
-      {
-        id: "status",
-        header: "Estado actual",
-        cell: ({ row }) => (
-          <StatusBadge statusId={row.original.statusId} statusName={row.original.status?.name} />
-        ),
-      },
-      {
-        id: "assignedUser",
-        header: "Asignado a",
-        cell: ({ row }) => getAssignedUserName(row.original.assignedUser) ?? "-",
-      },
-      {
-        id: "deliveryDate",
-        header: "Fecha de Entrega",
-        cell: ({ row }) => formatDeliveryDate(row.original.deliveryDate, timeFormat),
-      },
-      {
-        id: "changeStatus",
-        header: "Avanzar estado",
-        cell: ({ row }) => (
-          <div className="flex min-w-0 flex-wrap gap-1.5">
-            <OrderQuickStatusChip order={row.original} />
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "",
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              openDetail(row.original.id);
-            }}
-            title="Ver detalle completo"
-            aria-label={`Ver detalle completo del pedido #${row.original.id}`}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        ),
-      },
-    ],
-    [openDetail, canManageOperations, selectedIds, allVisibleSelected, toggleSelected, toggleSelectAll, timeFormat]
-  );
-
   // Áreas de producción del usuario: definen cuál tarea de área manda al
   // ubicar un pedido en el tablero de producción (ver
   // `effectiveProductionStatusId`).
@@ -807,11 +712,7 @@ const OrdersPage = () => {
       </div>
 
       {loading ? (
-        viewMode === "list" ? (
-          <TableSkeleton rows={5} />
-        ) : (
-          <CardsSkeleton count={6} />
-        )
+        <CardsSkeleton count={6} />
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : visibleOrders.length === 0 ? (
@@ -849,7 +750,7 @@ const OrdersPage = () => {
           />
         )
       ) : viewMode === "list" ? (
-        <div className="w-full overflow-auto">
+        <div className="w-full">
           {canManageOperations && selectedCount > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -879,17 +780,24 @@ const OrdersPage = () => {
               >
                 {isBulkChanging ? "Aplicando..." : "Aplicar"}
               </Button>
+              {!allVisibleSelected && (
+                <Button size="sm" variant="ghost" onClick={() => toggleSelectAll(true)}>
+                  Seleccionar los {visibleOrders.length}
+                </Button>
+              )}
               <Button size="sm" variant="ghost" onClick={clearSelection}>
                 Cancelar
               </Button>
             </motion.div>
           )}
-          <DataTable
-            columns={columns}
-            data={visibleOrders}
-            onRowClick={(o) => openDetail(o.id)}
-            virtualize={visibleOrders.length > 30}
-            estimateRowHeight={56}
+          <OrdersJobWall
+            orders={visibleOrders}
+            timeFormat={timeFormat}
+            onOpenOrder={openDetail}
+            selectable={canManageOperations}
+            selectedIds={selectedIds}
+            onSelectedChange={toggleSelected}
+            onRefresh={refetch}
           />
         </div>
       ) : activeCircuit === "diseno" ? (
