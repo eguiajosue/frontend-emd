@@ -157,17 +157,17 @@ export function NotificationBell() {
           ) : (
             previewGroups.map((dayGroup) => (
               <div key={dayGroup.key}>
-                <p className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+                <p className="sticky top-0 z-10 bg-background/95 px-4 py-1.5 text-label backdrop-blur first-letter:uppercase">
                   {dayGroup.label}
                 </p>
                 <ul>
                   {dayGroup.notifications.map((notification) => (
                     <li key={notification.id}>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
                         onClick={() => handleSelect(notification)}
                         className={cn(
-                          "flex w-full items-start gap-2 border-b px-4 py-3 text-left text-sm transition-colors last:border-b-0 hover:bg-muted/60",
+                          "h-auto w-full items-start justify-start gap-2 whitespace-normal rounded-none border-b px-4 py-3 text-left font-normal last:border-b-0",
                           !notification.read && "bg-primary/5"
                         )}
                       >
@@ -190,11 +190,11 @@ export function NotificationBell() {
                               {notification.body}
                             </span>
                           )}
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground/80">
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
                             {relativeTime(notification.createdAt)}
                           </span>
                         </span>
-                      </button>
+                      </Button>
                     </li>
                   ))}
                 </ul>

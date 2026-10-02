@@ -81,7 +81,7 @@ const LoginForm = () => {
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="relative"
         >
-          <h1 className="font-heading text-6xl font-bold leading-[0.95] tracking-tight text-white lg:text-7xl">
+          <h1 className="font-heading text-6xl font-semibold leading-[0.95] tracking-tight text-white lg:text-7xl">
             EMD
             <br />
             <span className="text-brand-300">HUB</span>
@@ -110,16 +110,16 @@ const LoginForm = () => {
               alt="EMD"
               width={44}
               height={44}
-              className="shrink-0 shadow-soft"
+              className="shrink-0"
               priority
             />
-            <span className="font-heading text-xl font-bold tracking-tight text-foreground">
+            <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
               EMD HUB
             </span>
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-heading text-4xl font-bold leading-tight tracking-tight text-foreground">
+            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-foreground">
               Bienvenido de vuelta
             </h2>
             <p className="text-muted-foreground">
@@ -190,7 +190,7 @@ const LoginForm = () => {
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Iniciando sesión...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Iniciando sesión…
                   </>
                 ) : (
                   "Iniciar Sesión"

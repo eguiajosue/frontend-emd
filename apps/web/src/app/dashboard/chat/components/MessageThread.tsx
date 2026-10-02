@@ -21,6 +21,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -111,23 +112,23 @@ function OrderRefChip({
   onOpen: (orderId: number) => void;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       onClick={() => onOpen(order.id)}
       className={cn(
-        "mt-1 flex w-full items-start gap-2 rounded-xl border p-2.5 text-left text-xs transition-colors hover:opacity-80",
+        "mt-1 h-auto w-full items-start justify-start gap-2 whitespace-normal rounded-xl p-2.5 text-left text-xs font-normal hover:opacity-80",
         mine
-          ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
-          : "border-border bg-background/60 text-foreground"
+          ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          : "border-border bg-background/60 text-foreground hover:bg-background/60"
       )}
     >
       <Eye className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
       <div className="min-w-0">
         <p className="font-medium">Pedido #{order.id}</p>
         <p className="truncate opacity-70">{order.description}</p>
-        {order.status ? <p className="opacity-60">{order.status.name}</p> : null}
+        {order.status ? <p className="opacity-60 first-letter:uppercase">{order.status.name}</p> : null}
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -144,7 +145,7 @@ function MessageAttachment({ message, mine }: { message: ChatMessage; mine: bool
         <PreviewImage
           src={url}
           alt={filename}
-          className="max-h-48 w-auto rounded-xl border border-border/60 object-cover shadow-soft"
+          className="max-h-48 w-auto rounded-xl border border-border/60 object-cover"
         />
       </a>
     );
@@ -211,7 +212,7 @@ function OrderPicker({
           <Paperclip className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 rounded-2xl p-2 shadow-soft-md" side="top" align="start" sideOffset={8}>
+      <PopoverContent className="w-72 rounded-2xl p-2" side="top" align="start" sideOffset={8}>
         <p className="mb-2 px-1 text-xs font-medium text-muted-foreground">
           Adjuntar pedido como contexto
         </p>
@@ -228,9 +229,10 @@ function OrderPicker({
           ) : (
             filtered.slice(0, 20).map((order) => (
               <li key={order.id}>
-                <button
-                  type="button"
-                  className="w-full rounded px-2 py-1.5 text-left text-xs hover:bg-accent"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full justify-start whitespace-normal px-2 py-1.5 text-left text-xs font-normal"
                   onClick={() => {
                     onSelect(order);
                     setOpen(false);
@@ -239,7 +241,7 @@ function OrderPicker({
                 >
                   <span className="font-medium">#{order.id}</span>{" "}
                   <span className="text-muted-foreground">{order.description}</span>
-                </button>
+                </Button>
               </li>
             ))
           )}
@@ -559,7 +561,7 @@ export function MessageThread({
         ) : null}
         <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
           {!mine ? (
-            <Avatar className="h-7 w-7 shrink-0 shadow-soft">
+            <Avatar className="h-7 w-7 shrink-0">
               <AvatarFallback className="text-[10px] font-semibold">{chatInitials(author)}</AvatarFallback>
             </Avatar>
           ) : null}
@@ -567,8 +569,8 @@ export function MessageThread({
             className={cn(
               "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow sm:max-w-[75%]",
               mine
-                ? "rounded-br-md bg-primary text-primary-foreground shadow-soft"
-                : "rounded-bl-md border bg-card text-foreground shadow-soft"
+                ? "rounded-br-md bg-primary text-primary-foreground"
+                : "rounded-bl-md border bg-card text-foreground"
             )}
           >
             {!mine ? (
@@ -626,7 +628,7 @@ export function MessageThread({
                 <Hash className="h-4 w-4" />
               </span>
             ) : (
-              <Avatar className="h-9 w-9 shadow-soft">
+              <Avatar className="h-9 w-9">
                 <AvatarFallback className="text-xs font-semibold">
                   {chatInitials({
                     username: "",
@@ -783,24 +785,27 @@ export function MessageThread({
 
       <div className="border-t bg-card/60 p-3">
         {attachedOrder ? (
-          <div className="mb-2 flex items-center gap-2 rounded-2xl border bg-muted/40 px-3 py-2 text-xs shadow-soft">
+          <div className="mb-2 flex items-center gap-2 rounded-2xl border bg-muted/40 px-3 py-2 text-xs">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">
               <span className="font-semibold">Pedido #{attachedOrder.id}</span>{" "}
               <span className="text-muted-foreground">{attachedOrder.description}</span>
             </span>
-            <button
-              type="button"
-              onClick={() => setAttachedOrder(null)}
-              className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Quitar adjunto"
-            >
-              <X className="h-3 w-3" />
-            </button>
+            <SimpleTooltip label="Quitar adjunto">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAttachedOrder(null)}
+                className="ml-1 h-6 w-6 rounded-full text-muted-foreground"
+                aria-label="Quitar adjunto"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </SimpleTooltip>
           </div>
         ) : null}
         {attachedFile ? (
-          <div className="mb-2 flex items-center gap-3 rounded-2xl border bg-muted/40 px-3 py-2 text-xs shadow-soft">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border bg-muted/40 px-3 py-2 text-xs">
             {attachedFilePreview ? (
               <PreviewImage
                 src={attachedFilePreview}
@@ -811,14 +816,17 @@ export function MessageThread({
               <FileIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
             )}
             <span className="min-w-0 flex-1 truncate font-semibold">{attachedFile.filename}</span>
-            <button
-              type="button"
-              onClick={removeAttachedFile}
-              className="ml-1 rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="Quitar archivo"
-            >
-              <X className="h-3 w-3" />
-            </button>
+            <SimpleTooltip label="Quitar archivo">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={removeAttachedFile}
+                className="ml-1 h-6 w-6 rounded-full text-muted-foreground"
+                aria-label="Quitar archivo"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </SimpleTooltip>
           </div>
         ) : null}
         <div className="flex items-end gap-2">
@@ -879,7 +887,7 @@ export function MessageThread({
           <Button
             onClick={() => void handleSend()}
             disabled={isSending || (!draft.trim() && !attachedFile)}
-            className="shrink-0 rounded-full px-3 shadow-soft sm:px-4"
+            className="shrink-0 rounded-full px-3 sm:px-4"
             aria-label="Enviar"
           >
             <Send className="h-4 w-4 sm:mr-1" />

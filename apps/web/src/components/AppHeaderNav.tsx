@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Search } from "lucide-react";
 import { openCommandPalette } from "@/components/CommandPalette";
+import { Button } from "@/components/ui/button";
 import { useNavGroups } from "@/hooks/useVisibleNavItems";
 import { buildBreadcrumbs, type Breadcrumb } from "@/lib/navMenu";
 
@@ -67,17 +68,17 @@ export function SearchButton() {
   }, []);
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       onClick={openCommandPalette}
       aria-label="Buscar pantalla, pedido o cliente"
-      className="flex h-9 items-center gap-2 rounded-full border bg-card px-2.5 text-sm text-muted-foreground shadow-soft transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-56 sm:px-3"
+      className="h-9 justify-start gap-2 rounded-full bg-card px-2.5 font-normal text-muted-foreground hover:bg-card hover:text-foreground sm:w-56 sm:px-3"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
       <span className="hidden flex-1 text-left sm:inline">Buscar…</span>
-      <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[11px] font-medium sm:inline">
+      <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-xs font-medium sm:inline">
         {shortcut}
       </kbd>
-    </button>
+    </Button>
   );
 }

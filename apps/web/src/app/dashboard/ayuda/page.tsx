@@ -81,7 +81,7 @@ function TimelineStep({ step, index }: { step: GuideStep; index: number }) {
       <div className="min-w-0 flex-1 space-y-2 pt-0.5">
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">{step.icon}</span>
-          <h3 className="font-medium leading-none">{step.title}</h3>
+          <h3 className="text-section-title leading-none">{step.title}</h3>
         </div>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
           {step.description}
@@ -97,13 +97,9 @@ function OrderRowMockup({ statusValue, label }: { statusValue: number; label: st
   return (
     <div className="flex max-w-sm items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span
-        className={`rounded-full border px-2 py-0.5 font-medium capitalize ${getStatusBadgeClasses(
-          statusValue,
-        )}`}
-      >
+      <Badge variant="muted" className={`border capitalize ${getStatusBadgeClasses(statusValue)}`}>
         {statusOptions.find((o) => o.value === statusValue)?.label}
-      </span>
+      </Badge>
     </div>
   );
 }
@@ -297,14 +293,13 @@ function StatusButtonsPreview() {
   return (
     <div className="flex flex-wrap gap-2">
       {statusOptions.map((opt) => (
-        <span
+        <Badge
           key={opt.value}
-          className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${getStatusBadgeClasses(
-            opt.value,
-          )}`}
+          variant="muted"
+          className={`border px-3 py-1 capitalize ${getStatusBadgeClasses(opt.value)}`}
         >
           {opt.label}
-        </span>
+        </Badge>
       ))}
     </div>
   );
@@ -328,9 +323,9 @@ const AyudaPage = () => {
 
       {hasKnownRole ? (
         <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">
+          <div className="text-sm font-medium text-muted-foreground">
             Guía para el rol <Badge variant="secondary" className="align-middle capitalize">{profile.roleLabel}</Badge>
-          </p>
+          </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {profile.intro}
           </p>

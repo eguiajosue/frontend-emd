@@ -55,7 +55,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
         <>
           {images.length > 0 ? (
             <section className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+              <p className="mb-2 text-label">
                 Imágenes
               </p>
               <div className="grid grid-cols-2 gap-2">
@@ -65,7 +65,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                     href={attachment.dataUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-xl border shadow-soft transition-opacity hover:opacity-80"
+                    className="block overflow-hidden rounded-xl border transition-opacity hover:opacity-80"
                   >
                     <PreviewImage
                       src={attachment.dataUrl!}
@@ -80,7 +80,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
 
           {videos.length > 0 ? (
             <section className="mb-5">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+              <p className="mb-2 text-label">
                 Videos
               </p>
               <ul className="space-y-2">
@@ -90,7 +90,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                       href={attachment.dataUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs shadow-soft transition-colors hover:bg-accent"
+                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs transition-colors hover:bg-accent"
                     >
                       <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">
@@ -110,7 +110,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
 
           {files.length > 0 ? (
             <section>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">
+              <p className="mb-2 text-label">
                 Archivos
               </p>
               <ul className="space-y-2">
@@ -121,7 +121,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       download={attachment.filename}
-                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs shadow-soft transition-colors hover:bg-accent"
+                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs transition-colors hover:bg-accent"
                     >
                       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">

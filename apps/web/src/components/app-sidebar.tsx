@@ -235,7 +235,7 @@ export function AppSidebar() {
         </SidebarHeader>
         {visibleGroups.map((group) => (
           <div key={group.groupLabel}>
-            <SidebarGroupLabel className="text-[0.7rem] font-semibold uppercase tracking-wider md:text-xs md:font-medium md:normal-case md:tracking-normal">
+            <SidebarGroupLabel className="text-xs font-medium">
               {group.groupLabel}
             </SidebarGroupLabel>
             <SidebarMenu className="gap-1.5 md:gap-1">

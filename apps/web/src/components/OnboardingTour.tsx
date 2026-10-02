@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { X } from "lucide-react";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useMotionPreset } from "@/lib/motion";
@@ -178,19 +179,22 @@ export function OnboardingTour() {
           transition={{ type: "spring", bounce: 0, duration: 0.25 }}
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold">{step.title}</p>
-            <button
-              type="button"
-              aria-label="Cerrar tour"
-              onClick={finish}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <p className="text-section-title">{step.title}</p>
+            <SimpleTooltip label="Cerrar tour">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Cerrar tour"
+                onClick={finish}
+                className="-mr-1 -mt-1 h-7 w-7 text-muted-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </SimpleTooltip>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs tabular-nums text-muted-foreground">
               {stepIndex + 1} / {STEPS.length}
             </span>
             <div className="flex gap-2">

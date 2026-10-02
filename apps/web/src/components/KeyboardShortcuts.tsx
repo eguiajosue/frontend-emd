@@ -129,7 +129,7 @@ export function KeyboardShortcuts() {
         <div className="space-y-5">
           {sections.map((section) => (
             <section key={section.title}>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-2 text-label">
                 {section.title}
               </h3>
               <ul className="divide-y rounded-lg border">

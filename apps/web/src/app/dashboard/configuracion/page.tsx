@@ -25,6 +25,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAccentColor } from "@/hooks/useAccentColor";
@@ -98,54 +102,52 @@ function AppearanceSection() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <p className="text-sm font-medium">Tema</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="text-sm font-medium" id="theme-label">Tema</p>
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            value={mounted ? theme ?? "" : ""}
+            onValueChange={(v) => v && handleThemeSelect(v)}
+            aria-labelledby="theme-label"
+            className="flex-wrap justify-start"
+          >
             {THEME_OPTIONS.map((opt) => {
               const Icon = opt.icon;
-              const active = mounted && theme === opt.id;
               return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => handleThemeSelect(opt.id)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors active:scale-[0.97]",
-                    active
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-input hover:bg-muted"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
+                <ToggleGroupItem key={opt.id} value={opt.id} className="gap-2 px-3">
+                  <Icon aria-hidden />
                   {opt.label}
-                </button>
+                </ToggleGroupItem>
               );
             })}
-          </div>
+          </ToggleGroup>
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium">Color de acento</p>
+          <p className="text-sm font-medium" id="accent-label">Color de acento</p>
           <p className="text-xs text-muted-foreground">
             Cambia el color principal usado en botones, enlaces y resaltados.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3" role="group" aria-labelledby="accent-label">
             {ACCENT_OPTIONS.map((opt) => {
               const active = mounted && accent === opt.id;
               return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  title={opt.label}
-                  aria-label={opt.label}
-                  onClick={() => handleAccentSelect(opt.id)}
-                  className={cn(
-                    "relative flex h-9 w-9 items-center justify-center rounded-full ring-offset-2 ring-offset-background transition-shadow",
-                    active ? "ring-2 ring-foreground" : "hover:ring-2 hover:ring-border"
-                  )}
-                  style={{ backgroundColor: `hsl(${opt.previewHsl})` }}
-                >
-                  {active && <Check className="h-4 w-4 text-white drop-shadow" />}
-                </button>
+                <SimpleTooltip key={opt.id} label={opt.label}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={opt.label}
+                    aria-pressed={active}
+                    onClick={() => handleAccentSelect(opt.id)}
+                    className={cn(
+                      "relative h-9 w-9 rounded-full ring-offset-2 ring-offset-background transition-shadow hover:opacity-90",
+                      active ? "ring-2 ring-foreground" : "hover:ring-2 hover:ring-border"
+                    )}
+                    style={{ backgroundColor: `hsl(${opt.previewHsl})` }}
+                  >
+                    {active && <Check className="h-4 w-4 text-white drop-shadow" />}
+                  </Button>
+                </SimpleTooltip>
               );
             })}
 
@@ -153,7 +155,7 @@ function AppearanceSection() {
               title="Color personalizado"
               aria-label="Elegir color de acento personalizado"
               className={cn(
-                "relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-dashed ring-offset-2 ring-offset-background transition-shadow",
+                "relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-dashed ring-offset-2 ring-offset-background transition-shadow focus-within:ring-2 focus-within:ring-ring",
                 isCustomAccent
                   ? "ring-2 ring-foreground border-solid"
                   : "border-muted-foreground/40 hover:ring-2 hover:ring-border"
@@ -216,31 +218,29 @@ function LanguageSection() {
           Idioma de la interfaz. Por ahora sólo español está disponible.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        {LANGUAGE_OPTIONS.map((opt) => {
-          const active = mounted && language === opt.id;
-          return (
-            <button
+      <CardContent>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={mounted ? language : ""}
+          onValueChange={(v) => {
+            const opt = LANGUAGE_OPTIONS.find((o) => o.id === v);
+            if (opt) handleSelect(opt.id, opt.available);
+          }}
+          aria-label="Idioma"
+          className="flex-wrap justify-start"
+        >
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <ToggleGroupItem
               key={opt.id}
-              type="button"
-              onClick={() => handleSelect(opt.id, opt.available)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors active:scale-[0.97]",
-                active
-                  ? "border-primary bg-primary/10 text-primary font-medium"
-                  : "border-input hover:bg-muted",
-                !opt.available && "opacity-60"
-              )}
+              value={opt.id}
+              className={cn("gap-2 px-3", !opt.available && "text-muted-foreground")}
             >
               {opt.label}
-              {!opt.available && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Próximamente
-                </span>
-              )}
-            </button>
-          );
-        })}
+              {!opt.available && <Badge variant="muted">Próximamente</Badge>}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </CardContent>
     </Card>
   );
@@ -267,8 +267,12 @@ function DensitySection() {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium">Usar vista compacta</span>
-          <Switch checked={mounted && density === "compact"} onCheckedChange={handleToggle} />
+          <Label htmlFor="pref-compact">Usar vista compacta</Label>
+          <Switch
+            id="pref-compact"
+            checked={mounted && density === "compact"}
+            onCheckedChange={handleToggle}
+          />
         </div>
       </CardContent>
     </Card>
@@ -297,23 +301,26 @@ function TimeFormatSection() {
           Cómo se muestran las horas en toda la app (calendario, pedidos, chat).
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-2">
-        {TIME_FORMAT_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => handleSelect(opt.id)}
-            className={cn(
-              "flex min-w-[7rem] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-              mounted && timeFormat === opt.id
-                ? "border-primary bg-primary/5 text-primary"
-                : "border-input hover:bg-muted"
-            )}
-          >
-            {opt.label}
-            <span className="text-xs font-normal text-muted-foreground">{opt.example}</span>
-          </button>
-        ))}
+      <CardContent>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          value={mounted ? timeFormat : ""}
+          onValueChange={(v) => v && handleSelect(v as "24h" | "12h")}
+          aria-label="Formato de hora"
+          className="flex-wrap justify-start"
+        >
+          {TIME_FORMAT_OPTIONS.map((opt) => (
+            <ToggleGroupItem
+              key={opt.id}
+              value={opt.id}
+              className="h-auto min-w-[7rem] flex-col items-start gap-0.5 px-3 py-2"
+            >
+              {opt.label}
+              <span className="text-xs font-normal text-muted-foreground">{opt.example}</span>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </CardContent>
     </Card>
   );
@@ -340,15 +347,15 @@ function SoundSection() {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm font-medium">
+          <Label htmlFor="pref-sound" className="flex items-center gap-2">
             {mounted && soundEnabled ? (
               <Volume2 className="h-4 w-4 text-muted-foreground" />
             ) : (
               <VolumeX className="h-4 w-4 text-muted-foreground" />
             )}
             Sonido de notificaciones
-          </span>
-          <Switch checked={mounted && soundEnabled} onCheckedChange={handleToggle} />
+          </Label>
+          <Switch id="pref-sound" checked={mounted && soundEnabled} onCheckedChange={handleToggle} />
         </div>
       </CardContent>
     </Card>
@@ -357,6 +364,7 @@ function SoundSection() {
 
 /** Fila de un toggle individual de notificaciones, deshabilitada visualmente en modo silencio. */
 function NotificationToggleRow({
+  id,
   icon: Icon,
   label,
   description,
@@ -364,6 +372,7 @@ function NotificationToggleRow({
   disabled,
   onCheckedChange,
 }: {
+  id: string;
   icon: ComponentType<{ className?: string }>;
   label: string;
   description: string;
@@ -381,11 +390,13 @@ function NotificationToggleRow({
       <div className="flex items-start gap-3">
         <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <div>
-          <p className="text-sm font-medium leading-none">{label}</p>
+          <Label htmlFor={id} className="leading-none">
+            {label}
+          </Label>
           <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+      <Switch id={id} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
     </div>
   );
 }
@@ -477,16 +488,17 @@ function NotificationsSection() {
           <>
             <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/40 px-4 py-3">
               <div>
-                <p className="text-sm font-medium">Modo silencio</p>
+                <Label htmlFor="notify-muted">Modo silencio</Label>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Corta todas las notificaciones de la app y el push, como en WhatsApp.
                 </p>
               </div>
-              <Switch checked={muted} onCheckedChange={handleMuteToggle} />
+              <Switch id="notify-muted" checked={muted} onCheckedChange={handleMuteToggle} />
             </div>
 
             <div className="divide-y">
               <NotificationToggleRow
+                id="notify-mentions"
                 icon={AtSign}
                 label="Sólo menciones directas"
                 description="Avisar únicamente cuando te mencionen a vos. (Próximamente: el chat todavía no tiene @menciones.)"
@@ -495,6 +507,7 @@ function NotificationsSection() {
                 onCheckedChange={(checked) => updatePreferences({ notifyMentionsOnly: checked })}
               />
               <NotificationToggleRow
+                id="notify-production"
                 icon={Factory}
                 label="Actualizaciones de producción"
                 description="Pedidos asignados, cambios de estado y novedades de área."
@@ -505,6 +518,7 @@ function NotificationsSection() {
                 }
               />
               <NotificationToggleRow
+                id="notify-critical"
                 icon={AlertTriangle}
                 label="Alertas críticas"
                 description="Avisos importantes que no encajan en producción."
@@ -526,9 +540,9 @@ function NotificationsSection() {
                 className="shrink-0"
               >
                 {pushBusy ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <BellRing className="mr-2 h-4 w-4" />
+                  <BellRing className="h-4 w-4" />
                 )}
                 Activar notificaciones push
               </Button>
@@ -595,8 +609,9 @@ function AreaVisibilitySection() {
               const enabled = row?.generalViewEnabled ?? true;
               return (
                 <div key={role} className="flex items-center justify-between py-3">
-                  <span className="text-sm font-medium">{label}</span>
+                  <Label htmlFor={`area-visibility-${role}`}>{label}</Label>
                   <Switch
+                    id={`area-visibility-${role}`}
                     checked={enabled}
                     disabled={savingRole === role}
                     onCheckedChange={(checked) => handleToggle(role, checked)}
@@ -686,7 +701,7 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="space-y-6">
-      <Title title="Configuración" />
+      <Title title="Configuración" description="Tus preferencias en este dispositivo y, si sos administrador, las de la empresa." />
       <div className="grid gap-6 lg:max-w-2xl">
         <AppearanceSection />
         <DensitySection />
