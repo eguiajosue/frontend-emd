@@ -63,7 +63,7 @@ export function DeliveryProgressBar({
       {showLabel && (
         <p
           className={cn(
-            "mt-1 text-[10px]",
+            "mt-1 text-xs",
             level === "critical" ? "font-medium text-destructive" : "text-muted-foreground"
           )}
         >

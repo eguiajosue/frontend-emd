@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ElementType, type ReactNode } from "react";
+import { useState, type ElementType } from "react";
 import Link from "next/link";
 import {
   ClipboardList,
@@ -11,7 +11,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { TONE_META } from "@/components/orders/OrderJobCard";
 import { useDeleteOrder } from "@/hooks/useOrders";
@@ -44,33 +51,6 @@ export function deadlineLabel(order: Order, state: DeadlineState): string {
   }
 }
 
-function MenuItem({
-  icon: Icon,
-  children,
-  destructive = false,
-  ...props
-}: {
-  icon: ElementType;
-  children: ReactNode;
-  destructive?: boolean;
-  onClick?: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-        destructive ? "text-destructive hover:bg-destructive/10" : "hover:bg-muted"
-      )}
-      {...props}
-    >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      {children}
-    </button>
-  );
-}
-
 /**
  * Cabecera del pedido: de quién es, cuánto falta y las acciones de gestión
  * (editar, hoja de materiales, eliminar) guardadas en "⋯". Eliminar ya no
@@ -96,7 +76,6 @@ export function OrderDetailHeader({
   const now = useNow();
   const { timeFormat } = useTimeFormat();
   const { deleteOrder, isDeleting } = useDeleteOrder();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const state = getDeadlineState(order, now);
@@ -136,64 +115,56 @@ export function OrderDetailHeader({
         </p>
       </div>
 
-      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
-            aria-label="Más acciones del pedido"
-          >
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-56 p-1.5">
+      <DropdownMenu>
+        <SimpleTooltip label="Más acciones">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Más acciones del pedido"
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+            </Button>
+          </DropdownMenuTrigger>
+        </SimpleTooltip>
+        <DropdownMenuContent align="end" className="w-56">
           {permissions.canEdit && (
-            <MenuItem
-              icon={Pencil}
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit();
-              }}
-            >
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil aria-hidden />
               Editar datos
-            </MenuItem>
+            </DropdownMenuItem>
           )}
-          <Link
-            href={`/dashboard/hoja-materiales?order=${order.id}`}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <ClipboardList className="h-4 w-4 shrink-0" aria-hidden />
-            Hoja de materiales
-          </Link>
-          {showFullPageLink && (
-            <Link
-              href={`/dashboard/orders/${order.id}`}
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
-              Abrir en página completa
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/hoja-materiales?order=${order.id}`}>
+              <ClipboardList aria-hidden />
+              Hoja de materiales
             </Link>
+          </DropdownMenuItem>
+          {showFullPageLink && (
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/orders/${order.id}`}>
+                <ExternalLink aria-hidden />
+                Abrir en página completa
+              </Link>
+            </DropdownMenuItem>
           )}
           {permissions.canDelete && (
             <>
-              <div className="my-1 h-px bg-border" role="separator" />
-              <MenuItem
-                icon={Trash2}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 destructive
                 disabled={isDeleting}
-                onClick={() => {
-                  setMenuOpen(false);
-                  setConfirmDeleteOpen(true);
-                }}
+                onSelect={() => setConfirmDeleteOpen(true)}
               >
+                <Trash2 aria-hidden />
                 Eliminar pedido
-              </MenuItem>
+              </DropdownMenuItem>
             </>
           )}
-        </PopoverContent>
-      </Popover>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <ConfirmDeleteDialog
         open={confirmDeleteOpen}

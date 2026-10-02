@@ -28,6 +28,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -442,7 +443,7 @@ function RevisionTimelineItem({
       {!hideHeader && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-semibold">Ronda {revision.round}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${state.classes}`}>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${state.classes}`}>
             {state.label}
           </span>
         </div>
@@ -507,7 +508,7 @@ function RevisionTimelineItem({
 
       {revision.feedbackText && (
         <div className="rounded-lg border bg-muted/30 p-2.5 text-sm">
-          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-label mb-1">
             Feedback del cliente
             {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt, undefined, timeFormat)}` : ""}
           </p>
@@ -1280,18 +1281,18 @@ function ApproveDialog({
             </p>
           ) : (
             <FormField label="¿A qué área pasa?" required error={error}>
-              <select
-                className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
-                value={productionArea}
-                onChange={(e) => setProductionArea(e.target.value)}
-              >
-                <option value="">Selecciona un área...</option>
-                {PRODUCTION_AREA_OPTIONS.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={productionArea} onValueChange={setProductionArea}>
+                <SelectTrigger aria-label="¿A qué área pasa?">
+                  <SelectValue placeholder="Selecciona un área..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCTION_AREA_OPTIONS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FormField>
           )}
         </div>

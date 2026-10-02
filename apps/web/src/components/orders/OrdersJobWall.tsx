@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Maximize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SimpleTooltip } from "@/components/ui/tooltip";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderJobCard, TONE_META } from "@/components/orders/OrderJobCard";
 import { useNow } from "@/hooks/useNow";
 import { AREA_OPTIONS, getAreaIcon } from "@/lib/areas";
@@ -21,6 +23,8 @@ import type { Order } from "@/types";
 const KPI_TONES: DeadlineTone[] = ["overdue", "at_risk", "on_time", "no_date", "finished"];
 const LIVE_TONES: DeadlineTone[] = ["overdue", "at_risk", "on_time", "no_date"];
 const TV_REFRESH_MS = 30_000;
+/** Valor de "Todas" en el filtro de área del modo TV (Radix no admite `""`). */
+const ALL_AREAS = "all";
 
 type Entry = { order: Order; state: DeadlineState };
 
@@ -53,10 +57,13 @@ function KpiStrip({
   const active = LIVE_TONES.reduce((sum, tone) => sum + counts[tone], 0);
 
   return (
-    <div
-      role="group"
+    <ToggleGroup
+      type="single"
+      value={activeTone ?? ""}
+      onValueChange={(v) => onToneChange(v ? (v as DeadlineTone) : null)}
       aria-label="Filtrar por plazo"
       className={cn(
+        "justify-start",
         large
           ? "grid grid-cols-5 gap-3"
           : // En teléfono, fila con scroll horizontal: cinco tiles apilados empujaban las tarjetas fuera de vista.
@@ -68,14 +75,13 @@ function KpiStrip({
         const pressed = activeTone === tone;
         const share = LIVE_TONES.includes(tone) && active > 0 ? Math.round((counts[tone] / active) * 100) : null;
         return (
-          <button
+          <ToggleGroupItem
             key={tone}
-            type="button"
-            aria-pressed={pressed}
-            onClick={() => onToneChange(pressed ? null : tone)}
+            value={tone}
+            aria-label={`${meta.label}: ${counts[tone]}`}
             className={cn(
-              "flex min-w-[8.5rem] shrink-0 snap-start flex-col items-start rounded-xl border bg-card px-3.5 py-2.5 sm:min-w-0 text-left shadow-soft transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              pressed && "border-primary ring-1 ring-primary",
+              "h-auto min-w-[8.5rem] shrink-0 snap-start flex-col items-start gap-0.5 rounded-xl border bg-card px-3.5 py-2.5 text-left font-normal hover:border-foreground/20 hover:bg-card sm:min-w-0",
+              "data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary",
               counts[tone] === 0 && !pressed && "opacity-60"
             )}
           >
@@ -83,16 +89,16 @@ function KpiStrip({
               <span className={cn("h-2 w-2 rounded-full", meta.dot)} aria-hidden />
               {meta.label}
             </span>
-            <span className={cn("font-heading font-bold tabular-nums leading-tight", large ? "text-4xl" : "text-2xl")}>
+            <span className={cn("font-heading font-semibold leading-tight", large ? "text-4xl" : "text-2xl")}>
               {counts[tone]}
             </span>
-            <span className="text-[11px] text-muted-foreground">
-              {share != null ? `${share}% de activos` : tone === "finished" ? "Por entregar" : " "}
+            <span className="text-meta">
+              {share != null ? `${share}% de activos` : tone === "finished" ? "Por entregar" : " "}
             </span>
-          </button>
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }
 
@@ -168,9 +174,9 @@ export function OrdersJobWall({
       {shown.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
           Ningún pedido en &ldquo;{tone ? TONE_META[tone].label : ""}&rdquo;.{" "}
-          <button type="button" className="font-medium text-foreground underline underline-offset-2" onClick={() => setTone(null)}>
+          <Button variant="link" className="h-auto p-0 text-foreground" onClick={() => setTone(null)}>
             Ver todos
-          </button>
+          </Button>
         </p>
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3">
@@ -266,7 +272,7 @@ function OrdersTvWall({
     >
       <div className="mx-auto max-w-[120rem] space-y-4 p-6">
         <div className="flex items-center gap-4">
-          <h2 className="font-heading text-3xl font-bold">Pedidos en curso</h2>
+          <h2 className="font-heading text-3xl font-semibold">Pedidos en curso</h2>
           <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden />
             En vivo
@@ -274,35 +280,34 @@ function OrdersTvWall({
           <p className="ml-auto font-heading text-3xl font-bold tabular-nums">
             {clock.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
           </p>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Salir del modo TV (Esc)">
-            <X className="h-5 w-5" />
-          </Button>
+          <SimpleTooltip label="Salir (Esc)" side="bottom">
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Salir del modo TV (Esc)">
+              <X className="h-5 w-5" />
+            </Button>
+          </SimpleTooltip>
         </div>
 
         <KpiStrip entries={live} activeTone={tone} onToneChange={setTone} large />
 
         {presentAreas.length > 1 && (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por área">
-            {[{ value: null, label: "Todas" } as const, ...presentAreas].map((option) => {
-              const Icon = option.value ? getAreaIcon(option.value) : null;
-              const pressed = area === option.value;
+          <ToggleGroup
+            type="single"
+            variant="segmented"
+            value={area ?? ALL_AREAS}
+            onValueChange={(v) => v && setArea(v === ALL_AREAS ? null : v)}
+            aria-label="Filtrar por área"
+            className="flex-wrap justify-start gap-2"
+          >
+            {[{ value: ALL_AREAS, label: "Todas" }, ...presentAreas].map((option) => {
+              const Icon = option.value !== ALL_AREAS ? getAreaIcon(option.value) : null;
               return (
-                <button
-                  key={option.label}
-                  type="button"
-                  aria-pressed={pressed}
-                  onClick={() => setArea(option.value)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                    pressed ? "border-primary bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {Icon && <Icon className="h-4 w-4" aria-hidden />}
+                <ToggleGroupItem key={option.value} value={option.value} className="gap-1.5 border bg-card">
+                  {Icon && <Icon aria-hidden />}
                   {option.label}
-                </button>
+                </ToggleGroupItem>
               );
             })}
-          </div>
+          </ToggleGroup>
         )}
 
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4">

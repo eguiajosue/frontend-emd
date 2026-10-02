@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { staggerContainerVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { Order } from "@/types";
 
 export interface KanbanColumn {
@@ -118,48 +119,26 @@ export function KanbanBoard({
           "Pedidos" (spring `layoutId` sobre un fondo magenta), en vez de un
           `<Select>` que exige abrir un menú para ver las otras columnas. */}
       <div className="md:hidden">
-        <div
-          role="tablist"
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="sm"
+          value={String(activeMobileColumn.statusId)}
+          onValueChange={(v) => v && setMobileStatusId(Number(v))}
           aria-label="Columna"
-          className="-mx-1 mb-3 flex items-center gap-1 overflow-x-auto rounded-full border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-1 mb-3 justify-start overflow-x-auto rounded-full border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {columns.map((col) => {
-            const active = col.statusId === activeMobileColumn.statusId;
-            return (
-              <button
-                key={col.statusId}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setMobileStatusId(col.statusId)}
-                className={cn(
-                  "relative flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-sm font-medium transition-colors",
-                  active
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="kanban-mobile-column-pill"
-                    aria-hidden
-                    className="absolute inset-0 rounded-full bg-primary"
-                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                  />
-                )}
-                <span className="relative">{col.label}</span>
-                <span
-                  className={cn(
-                    "relative text-xs tabular-nums",
-                    active ? "text-primary-foreground/70" : "text-muted-foreground/70"
-                  )}
-                >
-                  {col.orders.length}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+          {columns.map((col) => (
+            <ToggleGroupItem
+              key={col.statusId}
+              value={String(col.statusId)}
+              className="shrink-0 gap-1.5 whitespace-nowrap first-letter:uppercase"
+            >
+              {col.label}
+              <span className="text-xs tabular-nums opacity-70">{col.orders.length}</span>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
         {renderCards(activeMobileColumn, false)}
       </div>
 
@@ -209,7 +188,7 @@ export function KanbanBoard({
                   isTarget && "border-primary/40"
                 )}
               >
-                <h3 className="truncate text-[0.8125rem] font-semibold uppercase tracking-[0.06em] text-foreground/70">
+                <h3 className="truncate text-section-title first-letter:uppercase">
                   {col.label}
                 </h3>
                 <span className="text-xs font-medium tabular-nums text-muted-foreground">

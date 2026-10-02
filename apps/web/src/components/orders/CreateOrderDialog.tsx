@@ -7,6 +7,9 @@ import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { motion } from "framer-motion";
 import { FormField } from "@/components/ui/form-field";
 import {
@@ -837,13 +840,14 @@ export function CreateOrderDialog({
         <ul className="list-inside list-disc space-y-1 text-sm">
           {Object.entries(errors).map(([field, message]) => (
             <li key={field}>
-              <button
+              <Button
                 type="button"
-                className="text-left text-destructive underline underline-offset-2 hover:no-underline"
+                variant="link"
+                className="h-auto whitespace-normal p-0 text-left text-destructive"
                 onClick={() => scrollToField(field)}
               >
                 {FIELD_LABELS[field] ?? field}: {message}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -986,35 +990,36 @@ export function CreateOrderDialog({
                     {recentClients.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Recientes — tocar para elegir
+                          Recientes, tocá para elegir
                         </p>
-                        <div className="flex flex-wrap gap-2">
+                        <ToggleGroup
+                          type="single"
+                          variant="outline"
+                          value={clientId != null ? String(clientId) : ""}
+                          onValueChange={(v) => {
+                            if (!v) return;
+                            setClientId(Number(v));
+                            setClientNameOverride("");
+                            setErrors((prev) => {
+                              const rest = { ...prev };
+                              delete rest.clientId;
+                              return rest;
+                            });
+                          }}
+                          aria-label="Clientes recientes"
+                          className="flex-wrap justify-start gap-2"
+                        >
                           {recentClients.map((c) => (
-                            <button
+                            <ToggleGroupItem
                               key={c.id}
-                              type="button"
-                              aria-pressed={clientId === c.id}
-                              onClick={() => {
-                                setClientId(c.id);
-                                setClientNameOverride("");
-                                setErrors((prev) => {
-                                  const rest = { ...prev };
-                                  delete rest.clientId;
-                                  return rest;
-                                });
-                              }}
-                              className={cn(
-                                "flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
-                                clientId === c.id
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-input text-muted-foreground hover:border-primary hover:text-primary"
-                              )}
+                              value={String(c.id)}
+                              className="min-h-11 gap-1.5 rounded-full px-3 text-xs sm:min-h-9"
                             >
                               <UserRound className="h-3 w-3" />
                               {clientLabel(c)}
-                            </button>
+                            </ToggleGroupItem>
                           ))}
-                        </div>
+                        </ToggleGroup>
                       </div>
                     )}
                     <FormField
@@ -1094,9 +1099,9 @@ export function CreateOrderDialog({
                         className="mt-0.5"
                       />
                       <div className="space-y-1">
-                        <label htmlFor="requires-design" className="cursor-pointer text-sm font-medium">
+                        <Label htmlFor="requires-design" className="cursor-pointer">
                           ¿Requiere diseño?
-                        </label>
+                        </Label>
                         <p className="text-xs text-muted-foreground">
                           {requiresDesign
                             ? "El pedido entra a Diseño y pasa a producción recién cuando el cliente autorice el montaje."
@@ -1245,13 +1250,15 @@ export function CreateOrderDialog({
                     {/* Áreas extra: caso secundario, oculto por defecto para no competir
                         visualmente con los campos principales. */}
                     {!showExtraAreas && extraAreas.length === 0 ? (
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
+                        size="sm"
                         onClick={() => setShowExtraAreas(true)}
-                        className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                        className="h-auto self-start p-0 text-xs"
                       >
                         + Agregar otra área
-                      </button>
+                      </Button>
                     ) : (
                       <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
                         <p className="text-sm font-medium">¿Necesita más de un área?</p>
@@ -1259,35 +1266,26 @@ export function CreateOrderDialog({
                           Marcar las áreas extra que van a trabajar el pedido. Cada una avanza por
                           su cuenta y el pedido queda listo cuando todas terminan.
                         </p>
-                        <div className="flex flex-wrap gap-2 pt-1">
+                        <ToggleGroup
+                          type="multiple"
+                          variant="outline"
+                          value={extraAreas}
+                          onValueChange={setExtraAreas}
+                          aria-label="Áreas extra"
+                          className="flex-wrap justify-start gap-2 pt-1"
+                        >
                           {PRODUCTION_AREA_OPTIONS.filter((option) => option.value !== area).map(
-                            (option) => {
-                              const checked = extraAreas.includes(option.value);
-                              return (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  aria-pressed={checked}
-                                  onClick={() =>
-                                    setExtraAreas((prev) =>
-                                      prev.includes(option.value)
-                                        ? prev.filter((a) => a !== option.value)
-                                        : [...prev, option.value]
-                                    )
-                                  }
-                                  className={cn(
-                                    "min-h-11 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
-                                    checked
-                                      ? "border-primary bg-primary text-primary-foreground shadow-soft"
-                                      : "border-input text-muted-foreground hover:border-primary hover:text-primary"
-                                  )}
-                                >
-                                  {option.label}
-                                </button>
-                              );
-                            }
+                            (option) => (
+                              <ToggleGroupItem
+                                key={option.value}
+                                value={option.value}
+                                className="min-h-11 rounded-full px-3 text-xs sm:min-h-9"
+                              >
+                                {option.label}
+                              </ToggleGroupItem>
+                            )
                           )}
-                        </div>
+                        </ToggleGroup>
                         {productionAreas.length > 1 && (
                           <p className="pt-1 text-xs text-primary">
                             {productionAreas.length} áreas van a trabajar este pedido en paralelo.
@@ -1358,7 +1356,7 @@ export function CreateOrderDialog({
                     {productPresets.length > 0 && (
                       <div className="space-y-1.5">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Frecuentes — tocar para agregar
+                          Frecuentes, tocá para agregar
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {productPresets.slice(0, 10).map((preset) => {
@@ -1366,25 +1364,25 @@ export function CreateOrderDialog({
                               (r) => r.customName?.trim().toLowerCase() === preset.name.trim().toLowerCase()
                             );
                             return (
-                              <button
+                              <Button
                                 key={preset.id}
                                 type="button"
+                                variant="outline"
+                                size="sm"
                                 onClick={() => addPresetProduct(preset.name)}
                                 className={cn(
-                                  "flex min-h-11 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors active:scale-[0.97] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:min-h-9",
+                                  "min-h-11 gap-1.5 rounded-full px-3 text-xs sm:min-h-9",
                                   row
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-input text-muted-foreground hover:border-primary hover:text-primary"
+                                    ? "border-primary/60 bg-primary/10 text-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
                                 )}
                               >
                                 <Plus className="h-3 w-3" />
                                 {preset.name}
                                 {row?.quantity ? (
-                                  <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
-                                    {row.quantity}
-                                  </span>
+                                  <Badge className="px-1.5 py-0 tabular-nums">{row.quantity}</Badge>
                                 ) : null}
-                              </button>
+                              </Button>
                             );
                           })}
                         </div>
@@ -1497,13 +1495,13 @@ export function CreateOrderDialog({
                       hint="Los recursos que mandó el cliente para poder hacer el diseño (logo, referencias). No es la hoja de autorización: esa la arma Diseño más adelante. PNG, JPG o PDF, máximo 5MB."
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <input
+                        <Input
                           id="order-client-resource-file"
                           ref={fileInputRef}
                           type="file"
                           accept="image/png,image/jpeg,application/pdf"
                           onChange={handleClientResourceFileChange}
-                          className="block flex-1 min-w-[12rem] rounded-lg border border-input text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+                          className="h-auto min-w-[12rem] flex-1 cursor-pointer py-1.5 text-muted-foreground file:mr-3 file:rounded-md file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
                         />
                         <CameraCaptureButton onChange={handleClientResourceFileChange} />
                       </div>

@@ -72,7 +72,6 @@ export function OrderNotesSection({ orderId }: { orderId: number }) {
               placeholder={notes.length === 0 ? "Dejá la primera nota para el equipo…" : "Agregar una nota…"}
               aria-label="Nueva nota interna"
               rows={2}
-              className="transition-colors focus-visible:border-primary focus-visible:ring-0"
               onKeyDown={(e) => {
                 // Ctrl/⌘+Enter envía sin ir al botón.
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -155,7 +154,7 @@ export function OrderActivitySection({ orderId }: { orderId: number }) {
               {auditLines.map((line) => (
                 <li key={line.key} className="flex items-start gap-3">
                   <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-[11px] font-semibold text-primary">
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                       {line.actorInitials}
                     </AvatarFallback>
                   </Avatar>

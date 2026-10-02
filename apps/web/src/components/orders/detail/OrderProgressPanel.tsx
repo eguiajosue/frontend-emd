@@ -3,7 +3,14 @@
 import { useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, CloudOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { HandoffStages } from "@/components/orders/OrderHandoff";
@@ -61,7 +68,6 @@ export function OrderProgressPanel({
   );
   const { move, isMoving } = useMoveOrderStatus(moveActor);
   const { forceFinish, isForcing } = useForceFinishOrder();
-  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
   const [confirmForceOpen, setConfirmForceOpen] = useState(false);
   const busy = isMoving || isForcing;
@@ -149,8 +155,8 @@ export function OrderProgressPanel({
 
         <div className="flex flex-wrap items-center gap-2">
           {canUseStatusMenu ? (
-            <Popover open={statusMenuOpen} onOpenChange={setStatusMenuOpen}>
-              <PopoverTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
                   variant="outline"
@@ -163,39 +169,24 @@ export function OrderProgressPanel({
                   <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                 </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-60 p-1.5">
-                <p className="px-2.5 pb-1 pt-1.5 text-xs text-muted-foreground">Mover a…</p>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>Mover a…</DropdownMenuLabel>
                 {menuOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    className="flex w-full items-center rounded-md px-2.5 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => {
-                      setStatusMenuOpen(false);
-                      changeTo(option.value);
-                    }}
-                  >
+                  <DropdownMenuItem key={option.value} onSelect={() => changeTo(option.value)}>
                     <StatusBadge statusId={option.value} />
-                  </button>
+                  </DropdownMenuItem>
                 ))}
                 {!cancelled && (
                   <>
-                    <div className="my-1 h-px bg-border" role="separator" />
-                    <button
-                      type="button"
-                      className="flex w-full items-center rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => {
-                        setStatusMenuOpen(false);
-                        setConfirmCancelOpen(true);
-                      }}
-                    >
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem destructive onSelect={() => setConfirmCancelOpen(true)}>
                       Cancelar pedido…
-                    </button>
+                    </DropdownMenuItem>
                   </>
                 )}
-              </PopoverContent>
-            </Popover>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
           )}

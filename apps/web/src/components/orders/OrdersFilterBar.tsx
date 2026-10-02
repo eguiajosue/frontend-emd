@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -81,7 +83,7 @@ interface OrdersFilterBarProps {
  * y que el panel abierto no daba.
  */
 /** Label uniforme para cada campo del popover. */
-const FIELD_LABEL_CLASS = "text-xs font-medium text-muted-foreground";
+const FIELD_LABEL_CLASS = "text-label";
 
 export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
@@ -214,9 +216,7 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
             <SlidersHorizontal className="h-4 w-4" />
             Filtros
             {activeChips.length > 0 && (
-              <span className="rounded-full bg-primary px-1.5 text-xs font-semibold tabular-nums text-primary-foreground">
-                {activeChips.length}
-              </span>
+              <Badge className="px-1.5 py-0 tabular-nums">{activeChips.length}</Badge>
             )}
           </Button>
         </PopoverTrigger>
@@ -306,24 +306,27 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
 
           <div className="space-y-1.5">
             <Label className={FIELD_LABEL_CLASS}>Estatus</Label>
-            <div className="flex flex-wrap gap-1.5">
+            <ToggleGroup
+              type="multiple"
+              variant="outline"
+              size="sm"
+              value={filters.statusIds.map(String)}
+              onValueChange={(values) =>
+                onChange({ ...filters, statusIds: values.map(Number) })
+              }
+              aria-label="Estatus"
+              className="flex-wrap justify-start gap-1.5"
+            >
               {statusOptions.map((opt) => (
-                <button
+                <ToggleGroupItem
                   key={opt.value}
-                  type="button"
-                  aria-pressed={filters.statusIds.includes(opt.value)}
-                  onClick={() => toggleStatus(opt.value)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs font-medium capitalize transition-colors",
-                    filters.statusIds.includes(opt.value)
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-input bg-transparent hover:bg-muted"
-                  )}
+                  value={String(opt.value)}
+                  className="h-7 rounded-full px-2.5 text-xs capitalize"
                 >
                   {opt.label}
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </div>
 
           <div className="space-y-1.5">
@@ -386,16 +389,18 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
       </Popover>
 
       {activeChips.map((chip) => (
-        <button
+        <Button
           key={chip.key}
           type="button"
+          variant="outline"
+          size="sm"
           onClick={chip.clear}
-          title={`Quitar el filtro "${chip.label}"`}
-          className="group inline-flex max-w-[14rem] items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-xs font-medium capitalize text-primary transition-colors hover:bg-primary/15"
+          aria-label={`Quitar el filtro "${chip.label}"`}
+          className="group h-7 max-w-[14rem] gap-1.5 rounded-full border-primary/30 bg-primary/10 pl-3 pr-2 text-xs capitalize text-primary hover:bg-primary/15 hover:text-primary"
         >
           <span className="truncate">{chip.label}</span>
           <X className="h-3 w-3 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
-        </button>
+        </Button>
       ))}
 
       {hasActiveFilters && (

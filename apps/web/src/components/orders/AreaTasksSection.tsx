@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -36,6 +37,9 @@ import {
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { AreaTaskStatus, Order, OrderAreaTask, User } from "@/types";
+
+/** Radix Select no admite `""` como valor: centinela para "sin asignar". */
+const UNASSIGNED = "none";
 
 /** Roles que pueden agregar/quitar áreas y reasignar libremente. */
 const MANAGER_ROLES = ["recepcion", "admin", "superuser"];
@@ -290,7 +294,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
         {allDone && (
           <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            LISTO PARA ENTREGAR
+            Listo para entregar
           </span>
         )}
       </header>
@@ -317,7 +321,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                   animate="show"
                   exit={{ opacity: 0, height: 0 }}
                   layout
-                  className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 shadow-soft"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
                 >
                   <span className="flex min-w-0 flex-1 items-center gap-2">
                     {AreaIcon && (
@@ -330,12 +334,12 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
 
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
                       meta.classes
                     )}
                   >
                     <StatusIcon className="h-3.5 w-3.5" />
-                    {meta.label.toUpperCase()}
+                    {meta.label}
                   </span>
 
                   <span className="flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground">
@@ -345,24 +349,28 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       // ofrece a los que sí lo tienen.
                       <span className="flex items-center gap-1">
                         <UserRound className="h-3.5 w-3.5 shrink-0" />
-                        <select
-                          aria-label={`Responsable de ${getAreaLabel(task.area)}`}
-                          className="h-7 min-w-0 max-w-[13rem] rounded-md border border-input bg-transparent px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
-                          value={task.assignedUserId ?? ""}
+                        <Select
+                          value={task.assignedUserId != null ? String(task.assignedUserId) : UNASSIGNED}
                           disabled={assign.isPending}
-                          onChange={(e) =>
-                            handleAssign(task, e.target.value ? Number(e.target.value) : null)
-                          }
+                          onValueChange={(v) => handleAssign(task, v === UNASSIGNED ? null : Number(v))}
                         >
-                          <option value="">Sin asignar</option>
-                          {(usersByArea.get(task.area) ?? []).map((user) => (
-                            <option key={user.id} value={user.id}>
-                              {user.isSharedAccount
-                                ? `Cualquiera de ${getAreaLabel(task.area)}`
-                                : userLabel(user)}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger
+                            aria-label={`Responsable de ${getAreaLabel(task.area)}`}
+                            className="h-7 w-auto min-w-0 max-w-[13rem] gap-1.5 px-2 text-xs text-foreground"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+                            {(usersByArea.get(task.area) ?? []).map((user) => (
+                              <SelectItem key={user.id} value={String(user.id)}>
+                                {user.isSharedAccount
+                                  ? `Cualquiera de ${getAreaLabel(task.area)}`
+                                  : userLabel(user)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </span>
                     ) : (
                       <span className="flex items-center gap-1">
@@ -394,7 +402,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       <Button
                         type="button"
                         size="sm"
-                        className="rounded-full text-xs shadow-soft"
+                        className="rounded-full text-xs"
                         disabled={setStatus.isPending}
                         onClick={() => handleAdvance(task)}
                       >
@@ -408,17 +416,19 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       </Button>
                     )}
                     {isManager && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full text-muted-foreground hover:text-destructive"
-                        title={`Quitar ${getAreaLabel(task.area)} del pedido`}
-                        disabled={removeArea.isPending}
-                        onClick={() => setRemovingTask(task)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <SimpleTooltip label={`Quitar ${getAreaLabel(task.area)}`}>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={`Quitar ${getAreaLabel(task.area)} del pedido`}
+                          disabled={removeArea.isPending}
+                          onClick={() => setRemovingTask(task)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </SimpleTooltip>
                     )}
                   </span>
                 </motion.li>
@@ -431,7 +441,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
       {isManager && availableAreas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Select value={areaToAdd} onValueChange={setAreaToAdd}>
-            <SelectTrigger className="h-9 w-[200px] rounded-lg">
+            <SelectTrigger className="h-9 w-[200px]">
               <SelectValue placeholder="Agregar un área..." />
             </SelectTrigger>
             <SelectContent>

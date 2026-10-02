@@ -58,10 +58,12 @@ import {
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Select,
   SelectContent,
@@ -72,7 +74,6 @@ import {
 import { ordersScreenCopy } from "@/lib/orderScreen";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
-import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
 function filtersFromUrl(): OrdersFilters {
@@ -191,7 +192,6 @@ const OrdersPage = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
   const [isBulkChanging, setIsBulkChanging] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const [circuit, setCircuit] = useState<Circuit>("produccion");
   const [tone, setTone] = useState<DeadlineTone | null>(null);
   const [tvOpen, setTvOpen] = useState(false);
@@ -619,55 +619,42 @@ const OrdersPage = () => {
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
               quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
               Antes eran dos pantallas distintas para el mismo trabajo. */}
-          <Title title={screenCopy.title} />
-          <p className="text-muted-foreground">{screenCopy.description}</p>
+          <Title title={screenCopy.title} description={screenCopy.description} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {canManageOperations && (
-            <Popover open={exportOpen} onOpenChange={setExportOpen}>
-              <PopoverTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <FileDown className="h-4 w-4" />
                   Exportar
                   <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </Button>
-              </PopoverTrigger>
+              </DropdownMenuTrigger>
               {/* Dos exportaciones que se usan de vez en cuando no merecen dos
                   botones permanentes al lado del de crear un pedido. */}
-              <PopoverContent align="end" className="w-64 p-1.5">
-                <button
-                  type="button"
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuItem
                   disabled={loading || visibleOrders.length === 0}
-                  onClick={() => {
-                    setExportOpen(false);
-                    void handleExport();
-                  }}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                  onSelect={() => void handleExport()}
+                  className="flex-col items-start gap-0.5"
                 >
-                  <span className="text-sm font-medium">Excel</span>
-                  <span className="text-xs text-muted-foreground">
-                    Lo que está a la vista, en tu equipo.
-                  </span>
-                </button>
-                <button
-                  type="button"
+                  <span className="font-medium">Excel</span>
+                  <span className="text-meta">Lo que está a la vista, en tu equipo.</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   disabled={isExportingCsv}
-                  onClick={() => {
-                    setExportOpen(false);
-                    void handleExportCsv();
-                  }}
-                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                  onSelect={() => void handleExportCsv()}
+                  className="flex-col items-start gap-0.5"
                 >
-                  <span className="text-sm font-medium">
-                    {isExportingCsv ? "Generando CSV..." : "CSV del servidor"}
+                  <span className="font-medium">
+                    {isExportingCsv ? "Generando CSV…" : "CSV del servidor"}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    Mismos filtros, generado por el backend.
-                  </span>
-                </button>
-              </PopoverContent>
-            </Popover>
+                  <span className="text-meta">Mismos filtros, generado por el backend.</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {canManageOperations && (
@@ -682,26 +669,22 @@ const OrdersPage = () => {
           vista, circuito y filtros. Antes eran tres bloques apilados y el
           tablero empezaba muy abajo. */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <div className="flex shrink-0 items-center gap-1 rounded-full border bg-card p-1">
-          <Button
-            type="button"
-            size="sm"
-            variant={viewMode === "list" ? "default" : "ghost"}
-            className="gap-1.5 rounded-full"
-            onClick={() => updateViewMode("list")}
-          >
-            <List className="h-4 w-4" /> Lista
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={viewMode === "grid" ? "default" : "ghost"}
-            className="gap-1.5 rounded-full"
-            onClick={() => updateViewMode("grid")}
-          >
-            <LayoutGrid className="h-4 w-4" /> Cuadrícula
-          </Button>
-        </div>
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="sm"
+          value={viewMode}
+          onValueChange={(v) => v && updateViewMode(v as ViewMode)}
+          aria-label="Vista"
+          className="shrink-0 rounded-full border bg-card p-1"
+        >
+          <ToggleGroupItem value="list" className="gap-1.5">
+            <List aria-hidden /> Lista
+          </ToggleGroupItem>
+          <ToggleGroupItem value="grid" className="gap-1.5">
+            <LayoutGrid aria-hidden /> Cuadrícula
+          </ToggleGroupItem>
+        </ToggleGroup>
 
         {viewMode === "grid" && showBothBoards && (
           // `basis-full` en móvil: el grupo del circuito no entra en la misma
@@ -711,54 +694,26 @@ const OrdersPage = () => {
             {/* Un circuito a la vez. Los dos tableros apilados obligaban a
                 bajar toda la pantalla para llegar al segundo, y el corte entre
                 uno y otro se leía como dos aplicaciones una encima de la otra. */}
-            <div
-              role="tablist"
+            <ToggleGroup
+              type="single"
+              variant="segmented"
+              size="sm"
+              value={circuit}
+              onValueChange={(v) => v && updateCircuit(v as Circuit)}
               aria-label="Circuito"
-              className="inline-flex items-center gap-1 rounded-full border bg-card p-1"
+              className="inline-flex rounded-full border bg-card p-1"
             >
-              {CIRCUITS.map((option) => {
-                const active = circuit === option.value;
-                const count =
-                  option.value === "diseno"
-                    ? designBoard.orders.length
-                    : productionBoard.orders.length;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => updateCircuit(option.value)}
-                    className={cn(
-                      "relative flex h-8 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
-                      active
-                        ? "text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="orders-circuit-pill"
-                        aria-hidden
-                        className="absolute inset-0 rounded-full bg-primary"
-                        transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                      />
-                    )}
-                    <span className="relative">{option.label}</span>
-                    <span
-                      className={cn(
-                        "relative text-xs tabular-nums",
-                        active
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground/70"
-                      )}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              {CIRCUITS.map((option) => (
+                <ToggleGroupItem key={option.value} value={option.value} className="group gap-1.5">
+                  {option.label}
+                  <span className="text-xs tabular-nums opacity-70">
+                    {option.value === "diseno"
+                      ? designBoard.orders.length
+                      : productionBoard.orders.length}
+                  </span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         )}
 

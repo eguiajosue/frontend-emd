@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
@@ -93,12 +94,10 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               usa el chat (`chatInitials`) para identificar a una persona de un
               vistazo, sin repetir el nombre completo en cada tarjeta. */}
           <div className="flex items-center justify-between gap-2">
-            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-              Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}
-            </span>
+            <Badge variant="muted">Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}</Badge>
             {assignedName && (
               <Avatar className="h-7 w-7 border" title={`Asignado a ${assignedName}`}>
-                <AvatarFallback className="text-[10px] font-semibold">
+                <AvatarFallback className="text-xs font-semibold">
                   {chatInitials(order.assignedUser)}
                 </AvatarFallback>
               </Avatar>
@@ -128,32 +127,27 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               {areaTags.map((area) => {
                 const AreaIcon = getAreaIcon(area);
                 return (
-                  <span
-                    key={area}
-                    className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                  >
+                  <Badge key={area} variant="muted" className="px-2 text-foreground/80">
                     {AreaIcon && <AreaIcon className="h-3 w-3" aria-hidden />}
                     {getAreaLabel(area)}
-                  </span>
+                  </Badge>
                 );
               })}
               {order.hasClientResourceFile && (
-                <span
-                  className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                  title="Tiene archivos del cliente adjuntos"
-                >
+                <Badge variant="outline" className="px-2 text-muted-foreground" title="Tiene archivos del cliente adjuntos">
                   <Paperclip className="h-3 w-3" aria-hidden />
                   Adjunto
-                </span>
+                </Badge>
               )}
               {pendingTasksCount > 0 && (
-                <span
-                  className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                <Badge
+                  variant="outline"
+                  className="border-amber-200 bg-amber-50 px-2 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
                   title={`${pendingTasksCount} tarea${pendingTasksCount === 1 ? "" : "s"} pendiente${pendingTasksCount === 1 ? "" : "s"} por marcar`}
                 >
                   <ListChecks className="h-3 w-3" aria-hidden />
                   {pendingTasksCount}
-                </span>
+                </Badge>
               )}
             </div>
             {/* Botón "abrir" puramente decorativo: la tarjeta entera ya es el
