@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
 import { MobileMoreSheet } from "./MobileMoreSheet";
@@ -67,7 +68,7 @@ export function MobileTabBar() {
               href={item.url}
               aria-current={active ? "page" : undefined}
               aria-label={item.title}
-              className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl"
+              className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
             >
               {active && (
                 <motion.span
@@ -90,7 +91,7 @@ export function MobileTabBar() {
               <span
                 aria-hidden
                 className={cn(
-                  "text-[10px] font-medium leading-none",
+                  "text-[11px] font-medium leading-none",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
@@ -99,17 +100,17 @@ export function MobileTabBar() {
             </Link>
           );
         })}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => setMoreOpen(true)}
           aria-label="Más opciones"
-          className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl text-muted-foreground"
+          className="relative h-14 w-16 flex-col gap-0.5 rounded-2xl px-0 text-muted-foreground hover:bg-transparent [&_svg]:size-5"
         >
-          <Menu className="h-5 w-5" />
-          <span aria-hidden className="text-[10px] font-medium leading-none">
+          <Menu />
+          <span aria-hidden className="text-[11px] font-medium leading-none">
             Más
           </span>
-        </button>
+        </Button>
       </div>
       <MobileMoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </nav>

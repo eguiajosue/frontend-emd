@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Hash, MessageSquarePlus, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
         type="button"
         onClick={() => onSelect(conversation)}
         className={cn(
-          "group relative flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
+          "group relative flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
           active
             ? "bg-primary/10 text-foreground"
             : "text-foreground/90 hover:bg-accent"
@@ -102,7 +103,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
               {conversation.title}
             </span>
             {conversation.lastMessageAt ? (
-              <span className="shrink-0 text-[11px] text-muted-foreground/80">
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {formatTime(new Date(conversation.lastMessageAt))}
               </span>
             ) : null}
@@ -122,9 +123,9 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
           )}
         </span>
         {conversation.unreadCount > 0 ? (
-          <span className="relative z-10 ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+          <Badge className="relative z-10 ml-auto h-5 min-w-5 shrink-0 justify-center px-1.5 tabular-nums hover:bg-primary">
             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
-          </span>
+          </Badge>
         ) : null}
       </button>
     </li>
@@ -152,7 +153,7 @@ export function ConversationList({
 
   const renderGroup = (label: string, items: ChatConversation[]) => (
     <div className="mb-4">
-      <p className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+      <p className="px-3 pb-1.5 text-label">
         {label}
       </p>
       {items.length === 0 ? (

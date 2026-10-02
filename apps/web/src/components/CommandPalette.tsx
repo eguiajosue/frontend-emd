@@ -301,7 +301,7 @@ export function CommandPalette() {
                         <action.icon className="mr-2 h-4 w-4" />
                         {action.label}
                         {action.hint && (
-                          <kbd className="ml-auto rounded border bg-muted px-1.5 font-sans text-[11px] text-muted-foreground">
+                          <kbd className="ml-auto rounded border bg-muted px-1.5 font-sans text-xs text-muted-foreground">
                             {action.hint}
                           </kbd>
                         )}

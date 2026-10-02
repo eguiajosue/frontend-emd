@@ -148,7 +148,7 @@ export default function ChatPage() {
           extra el contenedor del layout por la barra de tabs flotante
           (`MobileTabBar`), para que el composer del hilo no quede detrás. En
           `md+` la barra no existe y la altura vuelve a ser la de siempre. */}
-      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card shadow-soft md:h-[calc(100dvh-11rem)] md:flex-row">
+      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card md:h-[calc(100dvh-11rem)] md:flex-row">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}
@@ -189,7 +189,7 @@ export default function ChatPage() {
             className="rounded-full"
           />
           <div className="flex gap-1">
-            <div className="flex shrink-0 flex-col items-center justify-center py-1 text-[9px] font-medium leading-none text-muted-foreground">
+            <div className="flex shrink-0 flex-col items-center justify-center py-1 text-[10px] font-medium leading-none text-muted-foreground">
               {ALPHABET.map((letter) => (
                 <button
                   key={letter}

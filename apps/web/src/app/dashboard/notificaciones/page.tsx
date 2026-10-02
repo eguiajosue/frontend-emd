@@ -8,7 +8,7 @@ import { CheckCheck, MailCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TableSkeleton } from "@/components/feedback/states";
 import { ErrorState } from "@/components/feedback/states";
@@ -87,6 +87,8 @@ export default function NotificacionesPage() {
     [notifications]
   );
 
+  const availableGroups = GROUP_FILTERS.filter((key) => (countsByGroup.get(key) ?? 0) > 0);
+
   const handleSelect = (notification: Notification) => {
     if (!notification.read) markAsRead(notification.id);
     if (notification.orderId) {
@@ -112,45 +114,44 @@ export default function NotificacionesPage() {
         )}
       </div>
 
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as Filter)} className="mb-4">
-        <TabsList>
-          <TabsTrigger value="all">Todas</TabsTrigger>
-          <TabsTrigger value="unread">
-            No leídas{unreadCount > 0 ? ` (${unreadCount})` : ""}
-          </TabsTrigger>
-          <TabsTrigger value="read">Leídas</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setGroup("all")}
-          className={cn(
-            "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-            group === "all"
-              ? "border-primary bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted"
-          )}
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <ToggleGroup
+          type="single"
+          variant="segmented"
+          size="sm"
+          value={filter}
+          onValueChange={(v) => v && setFilter(v as Filter)}
+          aria-label="Estado de lectura"
+          className="self-start rounded-full border bg-card p-1"
         >
-          Todo
-        </button>
-        {GROUP_FILTERS.filter((key) => (countsByGroup.get(key) ?? 0) > 0).map(
-          (key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setGroup(key)}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                group === key
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted"
-              )}
-            >
-              {NOTIFICATION_GROUP_LABELS[key]} ({countsByGroup.get(key)})
-            </button>
-          )
+          <ToggleGroupItem value="all">Todas</ToggleGroupItem>
+          <ToggleGroupItem value="unread" className="gap-1.5">
+            No leídas
+            {unreadCount > 0 && <span className="text-xs tabular-nums opacity-70">{unreadCount}</span>}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="read">Leídas</ToggleGroupItem>
+        </ToggleGroup>
+
+        {availableGroups.length > 0 && (
+          <ToggleGroup
+            type="single"
+            variant="outline"
+            size="sm"
+            value={group}
+            onValueChange={(v) => v && setGroup(v as typeof group)}
+            aria-label="Tipo de notificación"
+            className="flex-wrap justify-start"
+          >
+            <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
+              Todo
+            </ToggleGroupItem>
+            {availableGroups.map((key) => (
+              <ToggleGroupItem key={key} value={key} className="gap-1.5 rounded-full px-3 text-xs">
+                {NOTIFICATION_GROUP_LABELS[key]}
+                <span className="tabular-nums opacity-70">{countsByGroup.get(key)}</span>
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
         )}
       </div>
 
@@ -186,7 +187,7 @@ export default function NotificacionesPage() {
         <div className="space-y-6">
           {dayGroups.map((dayGroup) => (
             <section key={dayGroup.key} className="space-y-2">
-              <h2 className="sticky top-0 z-10 bg-background/95 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur">
+              <h2 className="sticky top-0 z-10 bg-background/95 py-1 text-label backdrop-blur first-letter:uppercase">
                 {dayGroup.label}
               </h2>
               <ul className="space-y-2">
@@ -205,11 +206,11 @@ export default function NotificacionesPage() {
                           }
                     }
                   >
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
                       onClick={() => handleSelect(notification)}
                       className={cn(
-                        "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:bg-muted/60",
+                        "h-auto w-full items-start justify-start gap-3 whitespace-normal rounded-xl px-4 py-3 text-left font-normal",
                         !notification.read && "border-primary/30 bg-primary/5"
                       )}
                     >
@@ -243,7 +244,7 @@ export default function NotificacionesPage() {
                           </span>
                         )}
                       </span>
-                    </button>
+                    </Button>
                   </motion.li>
                 ))}
               </ul>
