@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Command,
@@ -12,11 +13,28 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useOrders } from "@/hooks/useOrders";
+import { useEntityList } from "@/hooks/useEntity";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useMotionPreset } from "@/lib/motion";
 import { getOrderClientName } from "@/lib/format";
-import { Plus, Search, Settings } from "lucide-react";
+import { openShortcutsHelp } from "@/lib/shortcuts";
+import { pushRecent, readRecents, type PaletteRecent } from "@/lib/paletteRecents";
+import type { Client } from "@/types";
+import {
+  Clock,
+  Keyboard,
+  Monitor,
+  Moon,
+  Package,
+  Plus,
+  Settings,
+  Sun,
+  UserPlus,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 /** Evento global para abrir la paleta desde un botón (ej. "Buscar" del header). */
 export const OPEN_COMMAND_PALETTE_EVENT = "emd:open-command-palette";
@@ -25,11 +43,30 @@ export function openCommandPalette() {
   window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
 }
 
+const ORDERS_URL = "/dashboard/orders";
+const CLIENTS_URL = "/dashboard/clientes";
+const CONFIG_URL = "/dashboard/configuracion";
+
+function clientName(client: Client): string {
+  return `${client.first_name ?? ""} ${client.last_name ?? ""}`.trim() || `Cliente #${client.id}`;
+}
+
+interface PaletteAction {
+  value: string;
+  label: string;
+  icon: LucideIcon;
+  hint?: string;
+  /** Palabras extra con las que también se encuentra al escribir. */
+  keywords?: string;
+  run: () => void;
+}
+
 /**
  * Command palette global del dashboard (Cmd+K / Ctrl+K, o el botón "Buscar"
  * del header). Navega a cualquier pantalla del menú del rol (misma fuente que
- * sidebar y barra móvil: `useVisibleNavItems`), abre "+ Nueva Orden" y busca
- * pedidos por cliente/descripción/número.
+ * sidebar y barra móvil: `useVisibleNavItems`), ejecuta acciones (nuevo
+ * pedido/cliente, modo TV, tema, atajos), recuerda los últimos destinos y
+ * busca pedidos y clientes.
  *
  * Se monta una sola vez en `dashboard/layout.tsx`: escucha el atajo desde
  * cualquier pantalla del dashboard.
@@ -37,13 +74,22 @@ export function openCommandPalette() {
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [recents, setRecents] = useState<PaletteRecent[]>([]);
   const router = useRouter();
   const { canManageOperations } = usePermissions();
   const navItems = useVisibleNavItems();
   const { reduced } = useMotionPreset();
-  // Sólo se pide la lista de pedidos cuando el palette está abierto: evita un
-  // fetch extra en cada pantalla del dashboard sólo para tener la búsqueda lista.
+  const { resolvedTheme, setTheme } = useTheme();
+  const { updatePreferences } = useUserPreferences();
+
+  const visibleUrls = useMemo(() => new Set(navItems.map((item) => item.url)), [navItems]);
+  const canSeeOrders = visibleUrls.has(ORDERS_URL);
+  const canSeeClients = visibleUrls.has(CLIENTS_URL);
+
+  // Sólo se piden pedidos/clientes con la paleta abierta: evita un fetch
+  // extra en cada pantalla del dashboard sólo para tener la búsqueda lista.
   const { data: orders } = useOrders({ enabled: open });
+  const { data: clients } = useEntityList<Client>("clients", { enabled: open && canSeeClients });
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -63,51 +109,138 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (open) setRecents(readRecents());
+    else setSearch("");
   }, [open]);
 
-  const go = (url: string) => {
+  const go = (url: string, recent?: Omit<PaletteRecent, "url">) => {
+    if (recent) pushRecent({ ...recent, url });
     setOpen(false);
     router.push(url);
   };
 
   const query = search.trim().toLowerCase();
+  const matches = (text: string) => !query || text.toLowerCase().includes(query);
+
+  const isDark = resolvedTheme === "dark";
+  const actions: PaletteAction[] = [
+    ...(canManageOperations && canSeeOrders
+      ? [
+          {
+            value: "action:new-order",
+            label: "Nuevo pedido",
+            icon: Plus,
+            hint: "N",
+            keywords: "crear orden alta",
+            run: () => go(`${ORDERS_URL}?new=1`),
+          },
+        ]
+      : []),
+    ...(canManageOperations && canSeeClients
+      ? [
+          {
+            value: "action:new-client",
+            label: "Nuevo cliente",
+            icon: UserPlus,
+            keywords: "crear alta",
+            run: () => go(`${CLIENTS_URL}?new=1`),
+          },
+        ]
+      : []),
+    ...(canSeeOrders
+      ? [
+          {
+            value: "action:tv",
+            label: "Modo TV",
+            icon: Monitor,
+            keywords: "pedidos pantalla completa tele taller muro",
+            run: () => go(`${ORDERS_URL}?tv=1`),
+          },
+        ]
+      : []),
+    {
+      value: "action:theme",
+      label: isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro",
+      icon: isDark ? Sun : Moon,
+      keywords: "tema oscuro claro apariencia",
+      run: () => {
+        const next = isDark ? "light" : "dark";
+        setTheme(next);
+        updatePreferences({ themePreference: next });
+        setOpen(false);
+      },
+    },
+    {
+      value: "action:shortcuts",
+      label: "Atajos de teclado",
+      icon: Keyboard,
+      hint: "?",
+      keywords: "teclas ayuda",
+      run: () => {
+        setOpen(false);
+        openShortcutsHelp();
+      },
+    },
+  ];
+  const matchingActions = actions.filter((a) => matches(`${a.label} ${a.keywords ?? ""}`));
 
   // Pantallas: se filtran también al escribir ("hoja" → Hoja de Materiales).
-  const matchingPages = useMemo(() => {
-    const pages = [
+  const pages = useMemo(
+    () => [
       ...navItems.map((item) => ({ title: item.title, group: item.group, url: item.url, icon: item.icon })),
-      { title: "Configuración", group: "Cuenta", url: "/dashboard/configuracion", icon: Settings },
-    ];
-    if (!query) return pages;
-    return pages.filter((p) => `${p.title} ${p.group}`.toLowerCase().includes(query));
-  }, [navItems, query]);
+      { title: "Configuración", group: "Cuenta", url: CONFIG_URL, icon: Settings },
+    ],
+    [navItems]
+  );
+  const pageIcons = useMemo(() => new Map(pages.map((p) => [p.url, p.icon])), [pages]);
+  const matchingPages = pages.filter((p) => matches(`${p.title} ${p.group}`));
 
-  // Con `shouldFilter={false}` cmdk no re-elige el resaltado al filtrar: si
-  // el ítem resaltado desaparece, Enter no hace nada. Se fija a mano al
-  // primer resultado visible en cada cambio de búsqueda.
-  const [selected, setSelected] = useState("");
+  // Recientes sólo sin búsqueda, y sólo lo que este rol puede abrir hoy
+  // (el navegador puede ser compartido entre usuarios del taller).
+  const visibleRecents = query
+    ? []
+    : recents.filter((r) =>
+        r.kind === "page"
+          ? pageIcons.has(r.url)
+          : r.kind === "client"
+          ? canSeeClients && canSeeOrders
+          : canSeeOrders
+      );
 
   const matchingOrders = useMemo(() => {
-    const q = query;
-    if (!q) return [];
+    if (!query) return [];
     return orders
       .filter(
         (o) =>
-          getOrderClientName(o).toLowerCase().includes(q) ||
-          o.description?.toLowerCase().includes(q) ||
-          String(o.id).includes(q)
+          getOrderClientName(o).toLowerCase().includes(query) ||
+          o.description?.toLowerCase().includes(query) ||
+          String(o.id).includes(query)
       )
       .slice(0, 8);
   }, [orders, query]);
 
-  useEffect(() => {
-    const first =
-      (canManageOperations && !query ? "action:new-order" : null) ??
-      matchingPages[0]?.url ??
-      (matchingOrders[0] ? `order-${matchingOrders[0].id}` : "");
-    setSelected(first);
-  }, [query, canManageOperations, matchingPages, matchingOrders]);
+  const matchingClients = useMemo(() => {
+    if (!query || !canSeeOrders) return [];
+    return clients
+      .filter((c) => `${clientName(c)} ${c.phone ?? ""} ${c.email ?? ""}`.toLowerCase().includes(query))
+      .slice(0, 5);
+  }, [clients, query, canSeeOrders]);
+
+  // Con `shouldFilter={false}` cmdk no re-elige el resaltado al filtrar: si
+  // el ítem resaltado desaparece, Enter no hace nada. Se fija a mano al
+  // primer resultado visible (en el orden en que se pintan los grupos).
+  const firstValue =
+    (visibleRecents[0] && `recent:${visibleRecents[0].id}`) ||
+    matchingActions[0]?.value ||
+    matchingPages[0]?.url ||
+    (matchingOrders[0] && `order-${matchingOrders[0].id}`) ||
+    (matchingClients[0] && `client-${matchingClients[0].id}`) ||
+    "";
+  const [selected, setSelected] = useState("");
+  useEffect(() => setSelected(firstValue), [firstValue]);
+
+  const recentIcon = (recent: PaletteRecent): LucideIcon =>
+    recent.kind === "page" ? pageIcons.get(recent.url) ?? Clock : recent.kind === "order" ? Package : Users;
 
   return (
     <AnimatePresence>
@@ -121,7 +254,7 @@ export function CommandPalette() {
           onClick={() => setOpen(false)}
         >
           <motion.div
-            className="elevation-2 bg-popover w-full max-w-lg overflow-hidden rounded-xl border border-border shadow-2xl"
+            className="elevation-2 bg-popover mx-4 w-full max-w-lg overflow-hidden rounded-xl border border-border shadow-2xl"
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
@@ -141,22 +274,50 @@ export function CommandPalette() {
                 onValueChange={setSearch}
               />
               <CommandList>
-                <CommandEmpty>Sin resultados.</CommandEmpty>
+                <CommandEmpty>Sin resultados para &ldquo;{search.trim()}&rdquo;.</CommandEmpty>
 
-                {canManageOperations && !query && (
+                {visibleRecents.length > 0 && (
+                  <CommandGroup heading="Recientes">
+                    {visibleRecents.map((recent) => {
+                      const Icon = recentIcon(recent);
+                      return (
+                        <CommandItem
+                          key={recent.id}
+                          value={`recent:${recent.id}`}
+                          onSelect={() => go(recent.url, recent)}
+                        >
+                          <Icon className="mr-2 h-4 w-4" />
+                          <span className="truncate">{recent.label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                )}
+
+                {matchingActions.length > 0 && (
                   <CommandGroup heading="Acciones">
-                    <CommandItem value="action:new-order" onSelect={() => go("/dashboard/orders?new=1")}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Nuevo pedido
-                      <kbd className="ml-auto text-xs text-muted-foreground">N</kbd>
-                    </CommandItem>
+                    {matchingActions.map((action) => (
+                      <CommandItem key={action.value} value={action.value} onSelect={action.run}>
+                        <action.icon className="mr-2 h-4 w-4" />
+                        {action.label}
+                        {action.hint && (
+                          <kbd className="ml-auto rounded border bg-muted px-1.5 font-sans text-[11px] text-muted-foreground">
+                            {action.hint}
+                          </kbd>
+                        )}
+                      </CommandItem>
+                    ))}
                   </CommandGroup>
                 )}
 
                 {matchingPages.length > 0 && (
                   <CommandGroup heading="Ir a">
                     {matchingPages.map((page) => (
-                      <CommandItem key={page.url} value={page.url} onSelect={() => go(page.url)}>
+                      <CommandItem
+                        key={page.url}
+                        value={page.url}
+                        onSelect={() => go(page.url, { id: `page:${page.url}`, kind: "page", label: page.title })}
+                      >
                         <page.icon className="mr-2 h-4 w-4" />
                         {page.title}
                         <span className="ml-auto text-xs text-muted-foreground">{page.group}</span>
@@ -167,18 +328,50 @@ export function CommandPalette() {
 
                 {matchingOrders.length > 0 && (
                   <CommandGroup heading="Pedidos">
-                    {matchingOrders.map((order) => (
-                      <CommandItem
-                        key={order.id}
-                        value={`order-${order.id}`}
-                        onSelect={() => go(`/dashboard/orders?openOrderId=${order.id}`)}
-                      >
-                        <Search className="mr-2 h-4 w-4" />
-                        <span className="truncate">
-                          #{order.id} · {getOrderClientName(order)} — {order.description}
-                        </span>
-                      </CommandItem>
-                    ))}
+                    {matchingOrders.map((order) => {
+                      const label = `#${order.id} · ${getOrderClientName(order)} — ${order.description}`;
+                      return (
+                        <CommandItem
+                          key={order.id}
+                          value={`order-${order.id}`}
+                          onSelect={() =>
+                            go(`${ORDERS_URL}?openOrderId=${order.id}`, {
+                              id: `order:${order.id}`,
+                              kind: "order",
+                              label,
+                            })
+                          }
+                        >
+                          <Package className="mr-2 h-4 w-4" />
+                          <span className="truncate">{label}</span>
+                        </CommandItem>
+                      );
+                    })}
+                  </CommandGroup>
+                )}
+
+                {matchingClients.length > 0 && (
+                  <CommandGroup heading="Clientes">
+                    {matchingClients.map((client) => {
+                      const name = clientName(client);
+                      return (
+                        <CommandItem
+                          key={client.id}
+                          value={`client-${client.id}`}
+                          onSelect={() =>
+                            go(`${ORDERS_URL}?clientId=${client.id}`, {
+                              id: `client:${client.id}`,
+                              kind: "client",
+                              label: `Pedidos de ${name}`,
+                            })
+                          }
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          <span className="truncate">{name}</span>
+                          <span className="ml-auto shrink-0 text-xs text-muted-foreground">Ver sus pedidos</span>
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 )}
               </CommandList>

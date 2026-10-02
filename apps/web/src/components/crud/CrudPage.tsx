@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { Plus, Search, type LucideIcon } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -117,6 +117,10 @@ export interface CrudPageProps<T extends BaseEntity> {
   search?: boolean | CrudSearchConfig<T>;
   /** Filtros adicionales (dropdowns), combinados en AND entre sí y con la búsqueda. */
   filters?: CrudFilterConfig<T>[];
+  /** Abre el alta apenas monta (deep-link `?new=1` desde la paleta ⌘K). */
+  openCreateOnMount?: boolean;
+  /** Avisa cuando se cierra el formulario (ej. para limpiar ese `?new=1`). */
+  onFormClose?: () => void;
 }
 
 export function CrudPage<T extends BaseEntity>({
@@ -137,6 +141,8 @@ export function CrudPage<T extends BaseEntity>({
   hideTitle,
   search,
   filters,
+  openCreateOnMount = false,
+  onFormClose,
 }: CrudPageProps<T>) {
   const { data, isPending, isError, refetch } = useEntityList<T>(entity, {
     staleTime: CATALOG_ENTITIES.has(entity) ? CATALOG_STALE_TIME : undefined,
@@ -196,6 +202,12 @@ export function CrudPage<T extends BaseEntity>({
     setEditing(null);
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (openCreateOnMount && canEdit) handleCreate();
+    // Sólo al montar: es un deep-link, no un estado a sincronizar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateOnMount, canEdit]);
 
   const handleEdit = (item: T) => {
     setEditing(item);
@@ -303,7 +315,10 @@ export function CrudPage<T extends BaseEntity>({
       {dialogOpen && (
         <EntityFormDialog
           open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
+          onClose={() => {
+            setDialogOpen(false);
+            onFormClose?.();
+          }}
           title={
             dialogTitle
               ? dialogTitle(editing)

@@ -105,6 +105,16 @@ interface OrdersJobWallProps {
   onSelectedChange?: (id: number, checked: boolean) => void;
   /** Lo llama el modo TV cada 30s: el muro se queda colgado horas en una tele. */
   onRefresh?: () => void;
+  /**
+   * Filtro por plazo controlado desde fuera (la página lo sincroniza con
+   * `?plazo=` para que los accesos del menú y los links compartidos caigan
+   * directo en "Vencidos"). Sin esto, el muro lo maneja solo.
+   */
+  tone?: DeadlineTone | null;
+  onToneChange?: (tone: DeadlineTone | null) => void;
+  /** Modo TV controlado (deep-link `?tv=1` desde la paleta ⌘K). */
+  tvOpen?: boolean;
+  onTvOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -120,11 +130,25 @@ export function OrdersJobWall({
   selectedIds = [],
   onSelectedChange,
   onRefresh,
+  tone: toneProp,
+  onToneChange,
+  tvOpen: tvOpenProp,
+  onTvOpenChange,
 }: OrdersJobWallProps) {
   const now = useNow();
   const entries = useEntries(orders, now);
-  const [tone, setTone] = useState<DeadlineTone | null>(null);
-  const [tvOpen, setTvOpen] = useState(false);
+  const [ownTone, setOwnTone] = useState<DeadlineTone | null>(null);
+  const [ownTvOpen, setOwnTvOpen] = useState(false);
+  const tone = toneProp !== undefined ? toneProp : ownTone;
+  const tvOpen = tvOpenProp ?? ownTvOpen;
+  const setTone = (next: DeadlineTone | null) => {
+    setOwnTone(next);
+    onToneChange?.(next);
+  };
+  const setTvOpen = (open: boolean) => {
+    setOwnTvOpen(open);
+    onTvOpenChange?.(open);
+  };
 
   const shown = tone ? entries.filter((e) => e.state.tone === tone) : entries;
 

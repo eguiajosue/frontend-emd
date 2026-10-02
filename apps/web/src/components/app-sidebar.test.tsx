@@ -21,6 +21,10 @@ vi.mock("@/hooks/useNotifications", () => ({
   useUnreadNotificationsCount: () => ({ count: 0 }),
 }));
 
+vi.mock("@/components/SidebarOrderViews", () => ({
+  SidebarOrderViews: () => null,
+  useOrderViewCounts: () => ({ overdue: 0 }),
+}));
 vi.mock("@/hooks/useInstallPrompt", () => ({
   useInstallPrompt: () => ({ canInstall: false, promptInstall: vi.fn() }),
 }));

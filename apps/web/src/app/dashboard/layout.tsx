@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { useMotionPreset } from "@/lib/motion";
 import { CommandPalette } from "@/components/CommandPalette";
+import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { NotificationBell } from "@/components/NotificationBell";
 import { AppBreadcrumbs, SearchButton, useBreadcrumbs } from "@/components/AppHeaderNav";
@@ -81,6 +82,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
         <CommandPalette />
+        <KeyboardShortcuts />
         <OnboardingTour />
       </SidebarProvider>
     </ChatSocketContext.Provider>

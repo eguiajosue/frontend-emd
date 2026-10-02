@@ -11,7 +11,7 @@ import type { FieldConfig, EntityValues } from "@/components/crud/EntityFormDial
 import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Role, User } from "@/types";
-import { getUserColumns } from "@/app/dashboard/users/components/columns";
+import { getUserColumns } from "./components/userColumns";
 import { ADMIN_ROLES as ADMIN_ROLE_NAMES } from "@/lib/roleTaskMapping";
 import { getRoleLabel } from "@/lib/roles";
 

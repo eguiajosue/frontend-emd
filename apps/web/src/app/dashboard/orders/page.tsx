@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ordersScreenCopy } from "@/lib/orderScreen";
+import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
+import type { DeadlineTone } from "@/lib/orderDeadline";
 import { cn } from "@/lib/utils";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
@@ -98,8 +101,9 @@ function filtersFromUrl(): OrdersFilters {
   };
 }
 
-function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
+function filtersToUrlParams(filters: OrdersFilters, tone: DeadlineTone | null = null): URLSearchParams {
   const params = new URLSearchParams();
+  if (tone) params.set(ORDER_TONE_PARAM, tone);
   if (filters.clientId !== undefined) params.set("clientId", String(filters.clientId));
   if (filters.statusIds.length > 0) params.set("statusIds", filters.statusIds.join(","));
   if (filters.dateRange?.from) params.set("deliveryFrom", filters.dateRange.from.toISOString().slice(0, 10));
@@ -111,6 +115,18 @@ function filtersToUrlParams(filters: OrdersFilters): URLSearchParams {
   }
   if (filters.createdByMe) params.set("createdByMe", "1");
   return params;
+}
+
+/**
+ * Escucha la query de Pedidos. Va aparte y dentro de `<Suspense>` porque
+ * `useSearchParams` lo exige, y porque la paleta ⌘K y los accesos del menú
+ * navegan a `/dashboard/orders?…` estando ya en Pedidos: la página no se
+ * vuelve a montar, así que sin escuchar no se enteraba del deep-link.
+ */
+function OrdersUrlWatcher({ onChange }: { onChange: (params: URLSearchParams) => void }) {
+  const query = useSearchParams().toString();
+  useEffect(() => onChange(new URLSearchParams(query)), [query, onChange]);
+  return null;
 }
 
 /** Roles que corresponden a un área de producción (Diseño no es un destino). */
@@ -177,40 +193,18 @@ const OrdersPage = () => {
   const [isBulkChanging, setIsBulkChanging] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [circuit, setCircuit] = useState<Circuit>("produccion");
+  const [tone, setTone] = useState<DeadlineTone | null>(null);
+  const [tvOpen, setTvOpen] = useState(false);
+  // Lo leen los escritores de URL: filtros y plazo comparten la misma query.
+  const filtersRef = useRef(filters);
+  const toneRef = useRef(tone);
+  filtersRef.current = filters;
+  toneRef.current = tone;
   const { bulkChangeStatus } = useBulkChangeOrderStatus();
 
 
   useEffect(() => {
     setFilters(filtersFromUrl());
-    // Deep-links usados por el command palette / atajo "N":
-    //  - ?new=1 abre "+ Nueva Orden".
-    //  - ?openOrderId=<id> abre el detalle de ese pedido directamente.
-    // En ambos casos se limpia el query param usado.
-    try {
-      const params = new URLSearchParams(window.location.search);
-      let changed = false;
-      if (params.get("new") === "1") {
-        setCreateOpen(true);
-        params.delete("new");
-        changed = true;
-      }
-      const openId = params.get("openOrderId");
-      if (openId && !Number.isNaN(Number(openId))) {
-        setOpenOrderId(Number(openId));
-        params.delete("openOrderId");
-        changed = true;
-      }
-      if (changed) {
-        const query = params.toString();
-        window.history.replaceState(
-          null,
-          "",
-          `${window.location.pathname}${query ? `?${query}` : ""}`
-        );
-      }
-    } catch {
-      // Sin acceso a la URL: no bloquea el resto de la pantalla.
-    }
   }, []);
 
   // Atajo "N": abre "+ Nueva Orden" (sólo si nadie tiene foco en un input/textarea
@@ -219,7 +213,7 @@ const OrdersPage = () => {
     if (!canManageOperations) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "n" && e.key !== "N") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
@@ -230,11 +224,9 @@ const OrdersPage = () => {
     return () => window.removeEventListener("keydown", handler);
   }, [canManageOperations]);
 
-  const updateFilters = useCallback((next: OrdersFilters) => {
-    setFilters(next);
+  const writeUrl = useCallback((nextFilters: OrdersFilters, nextTone: DeadlineTone | null) => {
     try {
-      const params = filtersToUrlParams(next);
-      const query = params.toString();
+      const query = filtersToUrlParams(nextFilters, nextTone).toString();
       const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
       window.history.replaceState(null, "", url);
     } catch {
@@ -242,9 +234,75 @@ const OrdersPage = () => {
     }
   }, []);
 
+  const updateFilters = useCallback(
+    (next: OrdersFilters) => {
+      setFilters(next);
+      writeUrl(next, toneRef.current);
+    },
+    [writeUrl]
+  );
+
+  const updateTone = useCallback(
+    (next: DeadlineTone | null) => {
+      setTone(next);
+      writeUrl(filtersRef.current, next);
+    },
+    [writeUrl]
+  );
+
+  // Deep-links (paleta ⌘K, atajo "N", accesos del menú, links compartidos):
+  //  - ?plazo=<tono> filtra el muro; sólo existe en Lista, así que se cambia
+  //    a ella sin pisar la preferencia guardada.
+  //  - ?tv=1 abre el modo TV; ?new=1 abre "+ Nueva Orden";
+  //    ?openOrderId=<id> abre ese detalle. Quedan en la URL mientras eso siga
+  //    abierto y se limpian al cerrarlo: la transición de ruta puede montar la
+  //    página dos veces, y si se limpiaban al leerlos el segundo montaje ya no
+  //    los veía (el modo TV o el detalle se abrían y se cerraban solos).
+  //  - ?clientId=<id> fija el filtro de cliente ("Ver sus pedidos").
+  const forcedListRef = useRef(false);
+  const handleUrlParams = useCallback((params: URLSearchParams) => {
+    const nextTone = parseToneParam(params.get(ORDER_TONE_PARAM));
+    setTone(nextTone);
+    const tv = params.get("tv") === "1";
+    if (nextTone || tv) {
+      forcedListRef.current = true;
+      setViewMode("list");
+    }
+    if (tv) setTvOpen(true);
+    if (params.get("new") === "1") setCreateOpen(true);
+    const openId = Number(params.get("openOrderId"));
+    if (openId) setOpenOrderId(openId);
+    const clientId = Number(params.get("clientId"));
+    if (clientId && clientId !== filtersRef.current.clientId) {
+      setFilters({ ...filtersRef.current, clientId });
+    }
+  }, []);
+
+  const clearUrlParam = useCallback((key: string) => {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has(key)) return;
+      url.searchParams.delete(key);
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      // Sin acceso a la URL: no afecta a la pantalla.
+    }
+  }, []);
+
+  const handleTvOpenChange = useCallback(
+    (open: boolean) => {
+      setTvOpen(open);
+      if (!open) clearUrlParam("tv");
+    },
+    [clearUrlParam]
+  );
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem(VIEW_MODE_KEY);
+      // El watcher de URL corre antes (es hijo): si ya forzó "Lista" por un
+      // `?plazo=`/`?tv=1`, la preferencia guardada no lo pisa.
+      if (forcedListRef.current) return;
       if (stored === "list" || stored === "grid") setViewMode(stored);
     } catch {
       // Sin acceso a localStorage (modo privado, etc.): se queda en "list".
@@ -281,7 +339,10 @@ const OrdersPage = () => {
   }, []);
 
   const openDetail = useCallback((id: number) => setOpenOrderId(id), []);
-  const closeDetail = useCallback(() => setOpenOrderId(null), []);
+  const closeDetail = useCallback(() => {
+    setOpenOrderId(null);
+    clearUrlParam("openOrderId");
+  }, [clearUrlParam]);
 
   // El backend (GET /orders) ya devuelve, para roles operativos, sólo los pedidos
   // que ese usuario debe ver (según su rol, la config. de visibilidad por área y si
@@ -798,6 +859,10 @@ const OrdersPage = () => {
             selectedIds={selectedIds}
             onSelectedChange={toggleSelected}
             onRefresh={refetch}
+            tone={tone}
+            onToneChange={updateTone}
+            tvOpen={tvOpen}
+            onTvOpenChange={handleTvOpenChange}
           />
         </div>
       ) : activeCircuit === "diseno" ? (
@@ -811,11 +876,15 @@ const OrdersPage = () => {
         />
       )}
 
+      <Suspense fallback={null}>
+        <OrdersUrlWatcher onChange={handleUrlParams} />
+      </Suspense>
       <OrderDetailDialog orderId={openOrderId} onClose={closeDetail} />
       <CreateOrderDialog
         open={createOpen}
         onClose={() => {
           setCreateOpen(false);
+          clearUrlParam("new");
           setCreatePrefillClient(null);
         }}
         onCreated={(order) => openDetail(order.id)}

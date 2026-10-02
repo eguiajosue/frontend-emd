@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -36,6 +36,9 @@ import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { OPERATIONAL_MENU, buildMenuItems, findActiveNavUrl, isNavItemVisible } from "@/lib/navMenu";
 import { formatRoleList } from "@/lib/roles";
+import { SidebarOrderViews, useOrderViewCounts } from "./SidebarOrderViews";
+
+const ORDERS_URL = "/dashboard/orders";
 
 /** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
 function getTimeBasedGreeting(): string {
@@ -134,6 +137,10 @@ export function AppSidebar() {
     visibleGroups.flatMap((group) => group.items.map((item) => item.url)),
     pathname
   );
+  const showsOrders = visibleGroups.some((group) => group.items.some((item) => item.url === ORDERS_URL));
+  // Rail colapsado: no hay lugar para los accesos guardados, así que los
+  // vencidos se avisan como badge sobre el ícono de Pedidos.
+  const { overdue } = useOrderViewCounts(showsOrders);
   const { state, isMobile, toggleSidebar } = useSidebar();
   // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
   // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
@@ -279,6 +286,19 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                     {/* Colapsado el badge va sobre el `li` (relative) y no dentro
                         del botón, que tiene `overflow-hidden` y lo recortaría. */}
+                    {!collapsed && item.url === ORDERS_URL && (
+                      <Suspense fallback={null}>
+                        <SidebarOrderViews />
+                      </Suspense>
+                    )}
+                    {collapsed && item.url === ORDERS_URL && overdue > 0 ? (
+                      <span
+                        className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar"
+                        title={`${overdue} vencido${overdue === 1 ? "" : "s"}`}
+                      >
+                        {overdue > 99 ? "99+" : overdue}
+                      </span>
+                    ) : null}
                     {collapsed && unread > 0 ? (
                       <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-sidebar">
                         {unread > 99 ? "99+" : unread}

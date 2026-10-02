@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Package, ClipboardList } from "lucide-react";
+import { Package, ClipboardList, Building2 } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "./CommandPalette";
 import type { Order } from "@/types";
 
@@ -23,7 +23,14 @@ vi.mock("@/hooks/useVisibleNavItems", () => ({
       icon: ClipboardList,
       unreadCount: 0,
     },
+    { title: "Clientes", group: "Compras y clientes", url: "/dashboard/clientes", icon: Building2, unreadCount: 0 },
   ],
+}));
+
+vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }) }));
+vi.mock("@/hooks/useUserPreferences", () => ({ useUserPreferences: () => ({ updatePreferences: vi.fn() }) }));
+vi.mock("@/hooks/useEntity", () => ({
+  useEntityList: () => ({ data: [{ id: 7, first_name: "Ana", last_name: "Ríos", phone: "555" }] }),
 }));
 
 const orders = [
@@ -32,6 +39,7 @@ const orders = [
 vi.mock("@/hooks/useOrders", () => ({ useOrders: () => ({ data: orders }) }));
 
 beforeEach(() => {
+  localStorage.clear();
   push.mockReset();
   canManageOperations = true;
 });
@@ -75,5 +83,44 @@ describe("CommandPalette teclado", () => {
     await userEvent.keyboard("hoja");
     await userEvent.keyboard("{Enter}");
     expect(push).toHaveBeenCalledWith("/dashboard/hoja-materiales");
+  });
+});
+
+describe("CommandPalette fase 3", () => {
+  it("recuerda el último destino y lo ofrece en Recientes", async () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.keyboard("hoja{Enter}");
+
+    act(() => openCommandPalette());
+    const recent = screen.getByRole("group", { name: "Recientes" });
+    expect(recent).toHaveTextContent("Hoja de Materiales");
+  });
+
+  it("las acciones también se encuentran escribiendo", async () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.keyboard("tema");
+    expect(screen.getByRole("option", { name: /Cambiar a modo oscuro/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Nuevo pedido/ })).not.toBeInTheDocument();
+  });
+
+  it("busca clientes y lleva a sus pedidos", async () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.keyboard("ríos");
+    await userEvent.click(screen.getByRole("option", { name: /Ana Ríos/ }));
+    expect(push).toHaveBeenCalledWith("/dashboard/orders?clientId=7");
+  });
+
+  it("modo TV y nuevo cliente son deep-links", async () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.click(screen.getByRole("option", { name: /Modo TV/ }));
+    expect(push).toHaveBeenCalledWith("/dashboard/orders?tv=1");
+
+    act(() => openCommandPalette());
+    await userEvent.click(screen.getByRole("option", { name: /Nuevo cliente/ }));
+    expect(push).toHaveBeenCalledWith("/dashboard/clientes?new=1");
   });
 });
