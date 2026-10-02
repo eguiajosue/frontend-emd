@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { Users2 } from "lucide-react";
 import { RowActions } from "@/components/crud/RowActions";
@@ -19,10 +20,10 @@ export const getUserColumns = ({
       <div className="flex items-center gap-2">
         <span>{row.original.firstName}</span>
         {row.original.isSharedAccount && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <Badge variant="outline" className="border-primary/20 bg-primary/10 px-2 text-primary">
             <Users2 className="h-3 w-3" />
             Área
-          </span>
+          </Badge>
         )}
       </div>
     ),

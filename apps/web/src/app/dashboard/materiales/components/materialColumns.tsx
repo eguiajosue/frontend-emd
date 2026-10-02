@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { ColumnDef } from "@tanstack/react-table";
 import { RowActions } from "@/components/crud/RowActions";
 import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
@@ -46,12 +47,9 @@ export const getMaterialColumns = ({
           <span className="text-muted-foreground">—</span>
         ) : (
           row.original.areas.map((area) => (
-            <span
-              key={area}
-              className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-            >
+            <Badge key={area} variant="muted" className="px-2">
               {getAreaLabel(area)}
-            </span>
+            </Badge>
           ))
         )}
       </div>

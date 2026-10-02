@@ -79,7 +79,7 @@ export function DataTable<TData, TValue>({
     return (
       <>
         {/* Escritorio/tablet: tabla con scroll horizontal si hace falta. */}
-        <div className="hidden w-full overflow-x-auto rounded-xl border shadow-soft md:block">
+        <div className="hidden w-full overflow-x-auto rounded-xl border md:block">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -87,7 +87,7 @@ export function DataTable<TData, TValue>({
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
-                      className="h-11 bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
+                      className="h-11 bg-muted/40 text-xs font-medium text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
                     >
                       {header.isPlaceholder
                         ? null
@@ -138,7 +138,7 @@ export function DataTable<TData, TValue>({
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
-                  "rounded-xl border bg-card p-3.5 shadow-soft transition-colors",
+                  "rounded-xl border bg-card p-3.5 transition-colors",
                   onRowClick && "cursor-pointer active:bg-primary/[0.04]"
                 )}
               >
@@ -152,7 +152,7 @@ export function DataTable<TData, TValue>({
                       className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
                     >
                       {isLabeled && (
-                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="text-label shrink-0">
                           {headerLabel}
                         </span>
                       )}
@@ -185,7 +185,7 @@ export function DataTable<TData, TValue>({
       {/* Escritorio/tablet: misma tabla virtualizada de siempre. */}
       <div
         ref={scrollRef}
-        className="hidden w-full overflow-auto rounded-xl border shadow-soft md:block"
+        className="hidden w-full overflow-auto rounded-xl border md:block"
         style={{ maxHeight }}
       >
       <Table>
@@ -195,7 +195,7 @@ export function DataTable<TData, TValue>({
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
-                  className="h-11 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="h-11 text-xs font-medium text-muted-foreground"
                 >
                   {header.isPlaceholder
                     ? null
@@ -264,7 +264,7 @@ export function DataTable<TData, TValue>({
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
-                  "rounded-xl border bg-card p-3.5 shadow-soft transition-colors",
+                  "rounded-xl border bg-card p-3.5 transition-colors",
                   onRowClick && "cursor-pointer active:bg-primary/[0.04]"
                 )}
               >
@@ -278,7 +278,7 @@ export function DataTable<TData, TValue>({
                       className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
                     >
                       {isLabeled && (
-                        <span className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="text-label shrink-0">
                           {headerLabel}
                         </span>
                       )}

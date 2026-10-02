@@ -98,7 +98,7 @@ describe("OrderMaterialsChecklistTable", () => {
     ];
     render(<OrderMaterialsChecklistTable orderId={7} />);
 
-    await userEvent.click(screen.getByTitle("Quitar"));
+    await userEvent.click(screen.getByRole("button", { name: /^Quitar / }));
     await userEvent.click(await screen.findByRole("button", { name: /^Eliminar$/i }));
 
     expect(removeMutateAsync).toHaveBeenCalledWith(1);

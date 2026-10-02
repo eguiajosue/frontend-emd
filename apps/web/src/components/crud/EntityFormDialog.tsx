@@ -17,6 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { FormField } from "@/components/ui/form-field";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+/** Radix Select no admite `""` como valor: centinela para vaciar el campo. */
+const EMPTY_OPTION = "__none";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { useMotionPreset } from "@/lib/motion";
 import { toast } from "sonner";
@@ -166,9 +171,9 @@ export function EntityFormDialog({
                         : [];
                       const checked = selected.includes(opt.value);
                       return (
-                        <label
+                        <Label
                           key={opt.value}
-                          className="flex items-center gap-2 text-sm font-normal"
+                          className="flex cursor-pointer items-center gap-2 font-normal"
                         >
                           <Checkbox
                             checked={checked}
@@ -181,7 +186,7 @@ export function EntityFormDialog({
                             }}
                           />
                           {opt.label}
-                        </label>
+                        </Label>
                       );
                     })}
                     {(!field.options || field.options.length === 0) && (
@@ -204,31 +209,39 @@ export function EntityFormDialog({
                     invalid={Boolean(error)}
                   />
                 ) : field.type === "select" ? (
-                  <select
-                    className="flex h-9 w-full min-w-0 max-w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none"
-                    value={values[field.name] ?? ""}
-                    onBlur={() => markTouched(field.name)}
-                    onChange={(e) => {
-                      const raw = e.target.value;
+                  <Select
+                    value={values[field.name] != null ? String(values[field.name]) : ""}
+                    onValueChange={(raw) =>
                       handleChange(
                         field.name,
-                        raw === "" ? undefined : field.valueType === "string" ? raw : Number(raw)
-                      );
-                    }}
+                        raw === EMPTY_OPTION
+                          ? undefined
+                          : field.valueType === "string"
+                            ? raw
+                            : Number(raw)
+                      )
+                    }
+                    onOpenChange={(open) => !open && markTouched(field.name)}
                   >
-                    <option value="">Selecciona...</option>
-                    {field.options?.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id={field.name} aria-invalid={Boolean(error)}>
+                      <SelectValue placeholder="Selecciona..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_OPTION} className="text-muted-foreground">
+                        Sin seleccionar
+                      </SelectItem>
+                      {field.options?.map((opt) => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : field.type === "textarea" ? (
                   <Textarea
                     value={values[field.name] ?? ""}
                     onChange={(e) => handleChange(field.name, e.target.value)}
                     onBlur={() => markTouched(field.name)}
-                    className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                   />
                 ) : (
                   <Input
@@ -253,7 +266,6 @@ export function EntityFormDialog({
                           : e.target.value
                       )
                     }
-                    className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
                   />
                 )}
               </FormField>

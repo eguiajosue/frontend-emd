@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import {
   Dialog,
@@ -63,13 +64,9 @@ export function ClientOrdersDialog({ clientId, onClose }: ClientOrdersDialogProp
             ) : isError ? (
               <div className="space-y-2 text-sm">
                 <p className="text-muted-foreground">No se pudo cargar el historial.</p>
-                <button
-                  type="button"
-                  className="text-primary underline"
-                  onClick={() => refetch()}
-                >
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
                   Reintentar
-                </button>
+                </Button>
               </div>
             ) : orders.length === 0 ? (
               <p className="text-sm text-muted-foreground">

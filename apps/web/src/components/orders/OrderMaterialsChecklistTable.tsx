@@ -5,6 +5,15 @@ import { toast } from "sonner";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { OrderMaterialDialog } from "@/components/orders/OrderMaterialDialog";
@@ -92,35 +101,35 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
         <p className="text-sm text-muted-foreground">Todavía no se cargó ningún material.</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="w-10 px-2 py-2 text-left">Comprado</th>
-                <th className="w-16 px-2 py-2 text-right">Cant.</th>
-                <th className="px-2 py-2 text-left">Material</th>
-                <th className="px-2 py-2 text-left">Proveedor</th>
-                <th className="px-2 py-2 text-right">Precio</th>
-                {canManageOperations && <th className="w-20 px-2 py-2 text-right">Acciones</th>}
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader className="bg-muted/40">
+              <TableRow>
+                <TableHead className="w-10 text-left">Comprado</TableHead>
+                <TableHead className="w-16 text-right">Cant.</TableHead>
+                <TableHead>Material</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead className="text-right">Precio</TableHead>
+                {canManageOperations && <TableHead className="w-20 text-right">Acciones</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {items.map((item) => (
-                <tr
+                <TableRow
                   key={item.id}
-                  className={cn("border-t", item.purchased && "bg-muted/20")}
+                  className={cn(item.purchased && "bg-muted/20")}
                 >
-                  <td className="px-2 py-2">
+                  <TableCell>
                     <Checkbox
                       aria-label={`Marcar ${item.description} como comprado`}
                       checked={Boolean(item.purchased)}
                       disabled={update.isPending || !canManageOperations}
                       onCheckedChange={(checked) => handleToggle(item, checked === true)}
                     />
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">{item.quantity}</td>
-                  <td
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{item.quantity}</TableCell>
+                  <TableCell
                     className={cn(
-                      "px-2 py-2",
+                      "",
                       item.purchased && "text-muted-foreground line-through"
                     )}
                   >
@@ -128,22 +137,22 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
                     {item.material?.unit && (
                       <span className="text-muted-foreground"> ({item.material.unit.name})</span>
                     )}
-                  </td>
-                  <td className="px-2 py-2 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
                     {item.supplier?.name ?? "—"}
-                  </td>
-                  <td className="px-2 py-2 text-right tabular-nums">
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
                     {formatCurrencyMXN(item.price)}
-                  </td>
+                  </TableCell>
                   {canManageOperations && (
-                    <td className="px-2 py-2">
+                    <TableCell>
                       <div className="flex justify-end gap-1">
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 text-muted-foreground"
-                          title="Editar"
+                          aria-label={`Editar ${item.description}`}
                           onClick={() => handleEdit(item)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -153,27 +162,27 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          title="Quitar"
+                          aria-label={`Quitar ${item.description}`}
                           onClick={() => setDeletingItem(item)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                    </td>
+                    </TableCell>
                   )}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t bg-muted/30 font-semibold">
-                <td colSpan={4} className="px-2 py-2 text-right">
+            </TableBody>
+            <TableFooter>
+              <TableRow className="font-semibold">
+                <TableCell colSpan={4} className="text-right">
                   Total comprado
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums">{formatCurrencyMXN(total)}</td>
-                {canManageOperations && <td />}
-              </tr>
-            </tfoot>
-          </table>
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatCurrencyMXN(total)}</TableCell>
+                {canManageOperations && <TableCell />}
+              </TableRow>
+            </TableFooter>
+          </Table>
         </div>
       )}
 
