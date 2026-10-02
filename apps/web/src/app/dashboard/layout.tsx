@@ -10,6 +10,8 @@ import { useMotionPreset } from "@/lib/motion";
 import { CommandPalette } from "@/components/CommandPalette";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { NotificationBell } from "@/components/NotificationBell";
+import { AppBreadcrumbs, SearchButton, useBreadcrumbs } from "@/components/AppHeaderNav";
+import { pageTitleFromBreadcrumbs } from "@/lib/navMenu";
 
 import { useEffect } from "react";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
@@ -22,14 +24,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { routeTransition } = useMotionPreset();
   const { count } = useUnreadNotificationsCount();
+  const crumbs = useBreadcrumbs();
+  const pageTitle = pageTitleFromBreadcrumbs(crumbs);
 
-  // Refleja el conteo de no leídas en el título de la pestaña, ej. "(3) EMD HUB".
+  // Pestaña con la página y las no leídas, ej. "(3) Pedidos #12 · EMD HUB":
+  // con varias pestañas abiertas antes todas decían sólo "EMD HUB".
   useEffect(() => {
-    document.title = count > 0 ? `(${count > 99 ? "99+" : count}) ${BASE_TITLE}` : BASE_TITLE;
+    const unread = count > 0 ? `(${count > 99 ? "99+" : count}) ` : "";
+    document.title = `${unread}${pageTitle ? `${pageTitle} · ` : ""}${BASE_TITLE}`;
     return () => {
       document.title = BASE_TITLE;
     };
-  }, [count]);
+  }, [count, pageTitle]);
 
   return (
     <ChatSocketContext.Provider value={socketRef}>
@@ -47,8 +53,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 no se monta (ver `AppSidebar`) y "Más" vive en su propio
                 bottom sheet, así que se oculta y sólo queda operativo en
                 escritorio, donde sigue colapsando/expandiendo el rail. */}
-            <SidebarTrigger className="hidden md:flex" />
-            <NotificationBell />
+            <div className="flex min-w-0 items-center gap-3">
+              <SidebarTrigger className="hidden shrink-0 md:flex" />
+              <AppBreadcrumbs crumbs={crumbs} />
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <SearchButton />
+              <NotificationBell />
+            </div>
           </div>
           <AnimatePresence mode="wait">
             <motion.div

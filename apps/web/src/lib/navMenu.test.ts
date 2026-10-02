@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildMenuItems, findActiveNavUrl, homePathForRoles, isNavItemVisible } from "./navMenu";
+import {
+  buildBreadcrumbs,
+  buildMenuItems,
+  findActiveNavUrl,
+  homePathForRoles,
+  isNavItemVisible,
+  pageTitleFromBreadcrumbs,
+} from "./navMenu";
 
 describe("findActiveNavUrl", () => {
   const urls = ["/dashboard/admin", "/dashboard/admin/rendimiento", "/dashboard/orders"];
@@ -42,5 +49,39 @@ describe("buildMenuItems", () => {
   it("recepción no ve ningún ítem de Administración (el grupo queda vacío y se oculta)", () => {
     const admin = buildMenuItems(["recepcion"]).find((g) => g.groupLabel === "Administración")!;
     expect(admin.items.filter((i) => isNavItemVisible(i, ["recepcion"], false))).toHaveLength(0);
+  });
+});
+
+describe("buildBreadcrumbs", () => {
+  const groups = buildMenuItems(["admin"]);
+
+  it("página del menú: sección › página", () => {
+    expect(buildBreadcrumbs(groups, "/dashboard/orders")).toEqual([
+      { label: "Operación" },
+      { label: "Pedidos" },
+    ]);
+  });
+
+  it("detalle: la página pasa a ser link y se agrega #id", () => {
+    const crumbs = buildBreadcrumbs(groups, "/dashboard/orders/123");
+    expect(crumbs).toEqual([
+      { label: "Operación" },
+      { label: "Pedidos", href: "/dashboard/orders" },
+      { label: "#123" },
+    ]);
+    expect(pageTitleFromBreadcrumbs(crumbs)).toBe("Pedidos #123");
+  });
+
+  it("Rendimiento cae en Administración, no bajo Panel General", () => {
+    expect(buildBreadcrumbs(groups, "/dashboard/admin/rendimiento")).toEqual([
+      { label: "Administración" },
+      { label: "Rendimiento" },
+    ]);
+  });
+
+  it("rutas fuera del menú con nombre propio; desconocidas sin migas", () => {
+    expect(buildBreadcrumbs(groups, "/dashboard/configuracion")).toEqual([{ label: "Configuración" }]);
+    expect(buildBreadcrumbs(groups, "/dashboard/no-existe")).toEqual([]);
+    expect(pageTitleFromBreadcrumbs([])).toBeNull();
   });
 });

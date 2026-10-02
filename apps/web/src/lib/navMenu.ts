@@ -262,3 +262,51 @@ export function homePathForRoles(roles: string[]): string {
     ? "/dashboard/admin"
     : "/dashboard/orders";
 }
+
+/** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */
+const EXTRA_ROUTE_TITLES: Record<string, string> = {
+  "/dashboard/configuracion": "Configuración",
+};
+
+export interface Breadcrumb {
+  label: string;
+  /** Sin href = no navegable (sección o la página actual). */
+  href?: string;
+}
+
+/**
+ * Migas de la ruta actual a partir del menú (misma fuente que sidebar, móvil y
+ * paleta): sección › página › detalle. Ej. `/dashboard/orders/123` →
+ * Operación › Pedidos › #123.
+ */
+export function buildBreadcrumbs(groups: NavGroup[], pathname: string | null): Breadcrumb[] {
+  if (!pathname) return [];
+  const extra = EXTRA_ROUTE_TITLES[pathname];
+  if (extra) return [{ label: extra }];
+
+  const entries = groups.flatMap((group) =>
+    group.items.map((item) => ({ group: group.groupLabel, item }))
+  );
+  const activeUrl = findActiveNavUrl(entries.map((e) => e.item.url), pathname);
+  const entry = entries.find((e) => e.item.url === activeUrl);
+  if (!entry) return [];
+
+  const crumbs: Breadcrumb[] = [{ label: entry.group }];
+  const rest = pathname.slice(entry.item.url.length).split("/").filter(Boolean);
+  if (rest.length === 0) {
+    crumbs.push({ label: entry.item.title });
+  } else {
+    crumbs.push({ label: entry.item.title, href: entry.item.url });
+    const last = rest[rest.length - 1];
+    crumbs.push({ label: /^\d+$/.test(last) ? `#${last}` : decodeURIComponent(last) });
+  }
+  return crumbs;
+}
+
+/** Título para la pestaña del navegador: la última miga con contexto. */
+export function pageTitleFromBreadcrumbs(crumbs: Breadcrumb[]): string | null {
+  if (crumbs.length === 0) return null;
+  const last = crumbs[crumbs.length - 1].label;
+  if (crumbs.length >= 3) return `${crumbs[crumbs.length - 2].label} ${last}`;
+  return last;
+}

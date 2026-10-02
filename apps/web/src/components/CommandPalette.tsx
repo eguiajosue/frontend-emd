@@ -12,24 +12,24 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useOrders } from "@/hooks/useOrders";
+import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { getOrderClientName } from "@/lib/format";
-import {
-  CalendarDays,
-  History,
-  Package,
-  Plus,
-  Search,
-  Settings,
-  UserRound,
-  Users2,
-} from "lucide-react";
+import { Plus, Search, Settings } from "lucide-react";
+
+/** Evento global para abrir la paleta desde un botón (ej. "Buscar" del header). */
+export const OPEN_COMMAND_PALETTE_EVENT = "emd:open-command-palette";
+
+export function openCommandPalette() {
+  window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE_EVENT));
+}
 
 /**
- * Command palette global del dashboard (Cmd+K / Ctrl+K). Navega a las
- * pantallas principales, abre "+ Nueva Orden" y busca pedidos por
- * cliente/descripción (click en un resultado va directo al detalle).
+ * Command palette global del dashboard (Cmd+K / Ctrl+K, o el botón "Buscar"
+ * del header). Navega a cualquier pantalla del menú del rol (misma fuente que
+ * sidebar y barra móvil: `useVisibleNavItems`), abre "+ Nueva Orden" y busca
+ * pedidos por cliente/descripción/número.
  *
  * Se monta una sola vez en `dashboard/layout.tsx`: escucha el atajo desde
  * cualquier pantalla del dashboard.
@@ -38,7 +38,8 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const router = useRouter();
-  const { isAdmin, canManageOperations, roles } = usePermissions();
+  const { canManageOperations } = usePermissions();
+  const navItems = useVisibleNavItems();
   const { reduced } = useMotionPreset();
   // Sólo se pide la lista de pedidos cuando el palette está abierto: evita un
   // fetch extra en cada pantalla del dashboard sólo para tener la búsqueda lista.
@@ -52,8 +53,13 @@ export function CommandPalette() {
       }
       if (e.key === "Escape") setOpen(false);
     };
+    const openFromButton = () => setOpen(true);
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, openFromButton);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      window.removeEventListener(OPEN_COMMAND_PALETTE_EVENT, openFromButton);
+    };
   }, []);
 
   useEffect(() => {
@@ -65,8 +71,25 @@ export function CommandPalette() {
     router.push(url);
   };
 
+  const query = search.trim().toLowerCase();
+
+  // Pantallas: se filtran también al escribir ("hoja" → Hoja de Materiales).
+  const matchingPages = useMemo(() => {
+    const pages = [
+      ...navItems.map((item) => ({ title: item.title, group: item.group, url: item.url, icon: item.icon })),
+      { title: "Configuración", group: "Cuenta", url: "/dashboard/configuracion", icon: Settings },
+    ];
+    if (!query) return pages;
+    return pages.filter((p) => `${p.title} ${p.group}`.toLowerCase().includes(query));
+  }, [navItems, query]);
+
+  // Con `shouldFilter={false}` cmdk no re-elige el resaltado al filtrar: si
+  // el ítem resaltado desaparece, Enter no hace nada. Se fija a mano al
+  // primer resultado visible en cada cambio de búsqueda.
+  const [selected, setSelected] = useState("");
+
   const matchingOrders = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = query;
     if (!q) return [];
     return orders
       .filter(
@@ -76,12 +99,15 @@ export function CommandPalette() {
           String(o.id).includes(q)
       )
       .slice(0, 8);
-  }, [orders, search]);
+  }, [orders, query]);
 
-  const showUsuarios = isAdmin || roles.includes("superuser");
-  const showClientes = isAdmin || roles.includes("recepcion");
-  const showHistorial = isAdmin || roles.includes("recepcion");
-  const showCalendario = isAdmin || roles.includes("recepcion");
+  useEffect(() => {
+    const first =
+      (canManageOperations && !query ? "action:new-order" : null) ??
+      matchingPages[0]?.url ??
+      (matchingOrders[0] ? `order-${matchingOrders[0].id}` : "");
+    setSelected(first);
+  }, [query, canManageOperations, matchingPages, matchingOrders]);
 
   return (
     <AnimatePresence>
@@ -102,58 +128,44 @@ export function CommandPalette() {
             transition={{ type: "spring", bounce: 0, duration: 0.25 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <Command shouldFilter={false} className="bg-transparent">
+            <Command
+              shouldFilter={false}
+              className="bg-transparent"
+              value={selected}
+              onValueChange={setSelected}
+            >
               <CommandInput
-                placeholder="Ir a... o buscar un pedido por cliente/descripción"
+                autoFocus
+                placeholder="Buscar pantalla, pedido o cliente…"
                 value={search}
                 onValueChange={setSearch}
               />
               <CommandList>
                 <CommandEmpty>Sin resultados.</CommandEmpty>
 
-                {!search.trim() && (
-                  <CommandGroup heading="Navegación">
-                    <CommandItem onSelect={() => go("/dashboard/orders")}>
-                      <Package className="mr-2 h-4 w-4" />
-                      Ir a Pedidos
+                {canManageOperations && !query && (
+                  <CommandGroup heading="Acciones">
+                    <CommandItem value="action:new-order" onSelect={() => go("/dashboard/orders?new=1")}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Nuevo pedido
+                      <kbd className="ml-auto text-xs text-muted-foreground">N</kbd>
                     </CommandItem>
-                    {showHistorial && (
-                      <CommandItem onSelect={() => go("/dashboard/historial")}>
-                        <History className="mr-2 h-4 w-4" />
-                        Ir a Historial
-                      </CommandItem>
-                    )}
-                    {showClientes && (
-                      <CommandItem onSelect={() => go("/dashboard/clientes")}>
-                        <Users2 className="mr-2 h-4 w-4" />
-                        Ir a Clientes
-                      </CommandItem>
-                    )}
-                    {showCalendario && (
-                      <CommandItem onSelect={() => go("/dashboard/calendario")}>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        Ir a Calendario
-                      </CommandItem>
-                    )}
-                    {showUsuarios && (
-                      <CommandItem onSelect={() => go("/dashboard/usuarios")}>
-                        <UserRound className="mr-2 h-4 w-4" />
-                        Ir a Usuarios
-                      </CommandItem>
-                    )}
-                    <CommandItem onSelect={() => go("/dashboard/configuracion")}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Ir a Configuración
-                    </CommandItem>
-                    {canManageOperations && (
-                      <CommandItem onSelect={() => go("/dashboard/orders?new=1")}>
-                        <Plus className="mr-2 h-4 w-4" />+ Nueva Orden
-                      </CommandItem>
-                    )}
                   </CommandGroup>
                 )}
 
-                {search.trim() && (
+                {matchingPages.length > 0 && (
+                  <CommandGroup heading="Ir a">
+                    {matchingPages.map((page) => (
+                      <CommandItem key={page.url} value={page.url} onSelect={() => go(page.url)}>
+                        <page.icon className="mr-2 h-4 w-4" />
+                        {page.title}
+                        <span className="ml-auto text-xs text-muted-foreground">{page.group}</span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+
+                {matchingOrders.length > 0 && (
                   <CommandGroup heading="Pedidos">
                     {matchingOrders.map((order) => (
                       <CommandItem
