@@ -10,6 +10,7 @@ import { format, isSameDay, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { fcTimeFormatOptions, makeFcEventClickHandler, renderFcEventContent, useFcEvents } from "../fullcalendarShared";
 import { weekDaysFor } from "./mobileCalendarUtils";
@@ -153,7 +154,7 @@ export function MobileDayWeekView({
         <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={onBack} aria-label="Volver al mes">
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <p className="text-base font-semibold capitalize">
+        <p className="text-section-title capitalize">
           {format(selectedDate, "MMMM yyyy", { locale: es })}
         </p>
       </div>
@@ -178,9 +179,9 @@ export function MobileDayWeekView({
                 onClick={() => setSelectedDate(day)}
                 aria-current={selected ? "date" : undefined}
                 aria-label={format(day, "EEEE d 'de' MMMM", { locale: es })}
-                className="flex flex-col items-center gap-1 rounded-lg py-1"
+                className="flex flex-col items-center gap-1 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
-                <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                <span className="text-xs font-medium text-muted-foreground">
                   {WEEKDAY_LETTERS[i]}
                 </span>
                 <span
@@ -207,7 +208,7 @@ export function MobileDayWeekView({
         </Button>
       </div>
 
-      <div className="flex overflow-hidden rounded-xl border bg-card shadow-soft">
+      <Card className="flex overflow-hidden">
         <div className="shrink-0 border-r" aria-hidden style={{ width: AXIS_WIDTH }}>
           <div style={{ height: axisLayout?.headerHeight ?? 0 }} />
           {axisLayout &&
@@ -245,7 +246,7 @@ export function MobileDayWeekView({
             />
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

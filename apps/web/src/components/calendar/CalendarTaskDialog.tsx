@@ -117,7 +117,7 @@ export function CalendarTaskDialog({ open, onClose, task }: CalendarTaskDialogPr
               autoFocus
               aria-required
               aria-invalid={Boolean(titleError)}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+             
             />
           </FormField>
 
@@ -128,7 +128,7 @@ export function CalendarTaskDialog({ open, onClose, task }: CalendarTaskDialogPr
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Notas adicionales..."
               rows={3}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+             
             />
           </FormField>
 

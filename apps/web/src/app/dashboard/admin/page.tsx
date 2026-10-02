@@ -27,6 +27,8 @@ import type { Order, OrderHistory } from "@/types";
 import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp, LayoutDashboard } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
 import { UpcomingDeliveries } from "@/components/admin/UpcomingDeliveries";
@@ -242,7 +244,7 @@ const AdminDashboardPage = () => {
           : null;
       return {
         statusId,
-        label: label.toUpperCase(),
+        label: label.charAt(0).toUpperCase() + label.slice(1),
         currentCount,
         avgMs,
         samples,
@@ -350,16 +352,17 @@ const AdminDashboardPage = () => {
       cell: ({ row }) => {
         const isStagnant = stagnantOrderIds.has(row.original.order.id);
         return (
-          <span
-            className={
-              isStagnant
-                ? "inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-950 dark:text-red-300"
-                : "text-sm"
-            }
-          >
-            {isStagnant && <AlertTriangle className="h-3 w-3" />}
-            {formatDuration(row.original.timeInStatusMs)}
-          </span>
+          isStagnant ? (
+            <Badge
+              variant="muted"
+              className="bg-red-100 font-semibold text-red-700 dark:bg-red-950 dark:text-red-300"
+            >
+              <AlertTriangle className="h-3 w-3" aria-hidden />
+              {formatDuration(row.original.timeInStatusMs)}
+            </Badge>
+          ) : (
+            <span className="text-sm">{formatDuration(row.original.timeInStatusMs)}</span>
+          )
         );
       },
     },
@@ -376,13 +379,10 @@ const AdminDashboardPage = () => {
       id: "status",
       header: "Estado",
       cell: ({ row }) => (
-        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-800 dark:bg-orange-950 dark:text-orange-300">
-          {(
-            row.original.order.status?.name ??
-            statusMap[row.original.order.statusId] ??
-            "desconocido"
-          ).toUpperCase()}
-        </span>
+        <StatusBadge
+          statusId={row.original.order.statusId}
+          statusName={row.original.order.status?.name}
+        />
       ),
     },
     {
@@ -411,24 +411,15 @@ const AdminDashboardPage = () => {
 
   if (roles.length > 0 && !isAdmin) {
     return (
-      <div className="mt-10 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+      <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">
         No tienes permiso para ver esta página.
-      </div>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-10">
       <GreetingHeader firstName={session?.user?.first_name} />
-
-      <div className="flex justify-end">
-        <Button variant="outline" className="gap-2 shrink-0 rounded-full shadow-soft" asChild>
-          <a href="/dashboard/admin/rendimiento">
-            <TrendingUp className="h-4 w-4" />
-            Ver rendimiento de empleados y áreas
-          </a>
-        </Button>
-      </div>
 
       {hasError ? (
         <ErrorState
@@ -466,10 +457,18 @@ const AdminDashboardPage = () => {
               1x1 por etapa. En mobile colapsa a una columna en orden de
               importancia (score global primero). */}
           <div className="space-y-4">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Gauge className="h-5 w-5" />
-              Rendimiento por área/etapa
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-section-title">
+                <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
+                Rendimiento por área/etapa
+              </h2>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" asChild>
+                <Link href="/dashboard/admin/rendimiento">
+                  <TrendingUp className="h-4 w-4" aria-hidden />
+                  Rendimiento de empleados y áreas
+                </Link>
+              </Button>
+            </div>
             <motion.div
               className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
               variants={staggerContainerVariants}
@@ -503,7 +502,7 @@ const AdminDashboardPage = () => {
                     />
                   </div>
                   <div className="mt-6">
-                    <div className="text-6xl font-black leading-none tracking-tighter tabular-nums md:text-7xl">
+                    <div className="font-heading text-6xl font-semibold leading-none tracking-tight tabular-nums md:text-7xl">
                       {overallScore.onTimePct != null ? `${overallScore.onTimePct}%` : "—"}
                     </div>
                     <p className="mt-3 text-sm text-muted-foreground">
@@ -531,7 +530,7 @@ const AdminDashboardPage = () => {
                 >
                   <Card className="flex h-full min-w-0 flex-col justify-between p-6">
                     <div className="flex min-w-0 items-start justify-between gap-2">
-                      <p className="min-w-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <p className="min-w-0 text-label first-letter:uppercase">
                         {p.label}
                       </p>
                       <ProgressRing
@@ -551,7 +550,7 @@ const AdminDashboardPage = () => {
                       />
                     </div>
                     <div className="mt-4">
-                      <div className="text-4xl font-black leading-none tracking-tight tabular-nums">
+                      <div className="font-heading text-4xl font-semibold leading-none tracking-tight tabular-nums">
                         {p.currentCount}
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">pedidos en esta etapa</p>
@@ -568,7 +567,7 @@ const AdminDashboardPage = () => {
                       </p>
                       <p>
                         Estancados:{" "}
-                        <span className={p.stagnantCount > 0 ? "font-medium text-red-600" : "font-medium"}>
+                        <span className={p.stagnantCount > 0 ? "font-medium text-red-600 dark:text-red-400" : "font-medium"}>
                           {p.stagnantCount}
                         </span>
                       </p>
@@ -580,7 +579,7 @@ const AdminDashboardPage = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Tiempo promedio por etapa (horas)</CardTitle>
+                <CardTitle>Tiempo promedio por etapa (horas)</CardTitle>
                 {slowestStageInsight && (
                   <p className="text-sm text-muted-foreground">
                     La etapa{" "}
@@ -632,19 +631,16 @@ const AdminDashboardPage = () => {
             }
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldAlert className="h-5 w-5 text-red-600" />
+              <CardTitle className="flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-red-600" aria-hidden />
                 Pedidos estancados
               </CardTitle>
-              <span
-                className={
-                  stagnantOrders.length > 0
-                    ? "rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-soft"
-                    : "rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
-                }
+              <Badge
+                variant={stagnantOrders.length > 0 ? "destructive" : "muted"}
+                className="tabular-nums"
               >
                 {stagnantOrders.length}
-              </span>
+              </Badge>
             </CardHeader>
             <CardContent>
               {stagnantOrders.length === 0 ? (
@@ -662,8 +658,8 @@ const AdminDashboardPage = () => {
           {/* Seguimiento global */}
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <ListChecks className="h-5 w-5" />
+              <h2 className="flex items-center gap-2 text-section-title">
+                <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden />
                 Seguimiento global de pedidos
               </h2>
               <div className="flex flex-wrap items-center gap-2">
@@ -675,7 +671,7 @@ const AdminDashboardPage = () => {
                     <SelectItem value="all">Todos los estados</SelectItem>
                     {Object.entries(statusMap).map(([id, label]) => (
                       <SelectItem key={id} value={id}>
-                        {label.toUpperCase()}
+                        {label.charAt(0).toUpperCase() + label.slice(1)}
                       </SelectItem>
                     ))}
                   </SelectContent>

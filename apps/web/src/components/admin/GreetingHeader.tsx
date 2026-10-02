@@ -28,7 +28,7 @@ export function GreetingHeader({ firstName }: GreetingHeaderProps) {
     <Card className="relative overflow-hidden">
       <CardContent className="relative flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+          <h1 className="text-page-title">
             Hola{firstName ? `, ${firstName}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -36,7 +36,7 @@ export function GreetingHeader({ firstName }: GreetingHeaderProps) {
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-start sm:items-end">
-          <span className="text-2xl font-semibold tabular-nums tracking-tight">{timeLabel}</span>
+          <span className="font-heading text-2xl font-semibold tabular-nums tracking-tight">{timeLabel}</span>
           <span className="text-xs capitalize text-muted-foreground">{dateLabel}</span>
         </div>
       </CardContent>

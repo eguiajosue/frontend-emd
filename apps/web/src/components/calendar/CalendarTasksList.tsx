@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ListChecks, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -93,31 +95,35 @@ export function CalendarTasksList() {
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
         )}
         {task.orderId && (
-          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            <Package className="h-2.5 w-2.5" aria-hidden />
+          <Badge variant="muted" className="mt-1 px-2 py-0">
+            <Package className="h-3 w-3" aria-hidden />
             Pedido #{task.orderId}
-          </span>
+          </Badge>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
-          onClick={() => openEdit(task)}
-          aria-label="Editar tarea"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-destructive hover:text-destructive"
-          onClick={() => setTaskToDelete(task)}
-          aria-label="Eliminar tarea"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex shrink-0 items-center gap-0.5 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-within:opacity-100">
+        <SimpleTooltip label="Editar">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground"
+            onClick={() => openEdit(task)}
+            aria-label="Editar tarea"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </SimpleTooltip>
+        <SimpleTooltip label="Eliminar">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setTaskToDelete(task)}
+            aria-label="Eliminar tarea"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </SimpleTooltip>
       </div>
     </div>
   );
@@ -148,7 +154,7 @@ export function CalendarTasksList() {
             {pending.length > 0 && <div className="space-y-2">{pending.map(renderTask)}</div>}
             {completed.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-label text-muted-foreground">
                   Completadas
                 </p>
                 <div className="space-y-2">{completed.map(renderTask)}</div>

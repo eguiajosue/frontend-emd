@@ -69,8 +69,8 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col items-start gap-2 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-5 w-5 text-primary" />
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
           Calendario de entregas
         </CardTitle>
         <div className="flex items-center gap-1">
@@ -98,7 +98,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase text-muted-foreground">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
           {WEEKDAY_LABELS.map((d, i) => (
             <div key={i} className="py-1">
               {d}
@@ -130,7 +130,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
               >
                 <span>{format(day, "d")}</span>
                 {dayOrders.length > 0 && (
-                  <span className="text-[9px] leading-none opacity-90">
+                  <span className="text-[10px] leading-none tabular-nums opacity-90">
                     {dayOrders.length}
                   </span>
                 )}
@@ -142,7 +142,11 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                 {dayOrders.length > 0 ? (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button type="button" className="w-full">
+                      <button
+                        type="button"
+                        className="w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                        aria-label={`${format(day, "d 'de' MMMM", { locale: es })}: ${dayOrders.length} entrega${dayOrders.length === 1 ? "" : "s"}`}
+                      >
                         {cell}
                       </button>
                     </PopoverTrigger>
@@ -152,11 +156,11 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                       </p>
                       <div className="space-y-2">
                         {dayOrders.map((order) => (
-                          <button
+                          <Button
                             key={order.id}
-                            type="button"
+                            variant="outline"
                             onClick={() => onSelectOrder(order.id)}
-                            className="flex w-full flex-col gap-1 rounded-lg border p-2.5 text-left text-sm transition-colors hover:bg-muted"
+                            className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal p-2.5 text-left font-normal"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">#{order.id} · {getOrderClientName(order)}</span>
@@ -165,7 +169,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                             <p className="line-clamp-1 text-xs text-muted-foreground">
                               {order.description}
                             </p>
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </PopoverContent>

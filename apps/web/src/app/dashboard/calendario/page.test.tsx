@@ -72,7 +72,8 @@ describe("CalendarioPage - filtro de área también sobre pedidos", () => {
   it("al elegir un área específica, sólo deja los pedidos de esa área (antes se mostraban todos igual)", async () => {
     render(<CalendarioPage />);
 
-    await userEvent.click(screen.getByRole("tab", { name: /Taller/i }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Filtrar por área" }));
+    await userEvent.click(screen.getByRole("option", { name: /Taller/i }));
 
     const calendar = screen.getByTestId("team-calendar");
     expect(calendar).toHaveTextContent("orden-1");
