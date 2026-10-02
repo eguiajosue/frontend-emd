@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Sidebar,
@@ -142,6 +142,19 @@ export function AppSidebar() {
   // vencidos se avisan como badge sobre el ícono de Pedidos.
   const { overdue } = useOrderViewCounts(showsOrders);
   const { state, isMobile, toggleSidebar } = useSidebar();
+  // Al entrar a una pantalla del fondo del menú (ej. Usuarios), su ítem
+  // activo se trae a la vista en vez de quedar oculto bajo el pie.
+  const navScrollRef = useRef<HTMLDivElement>(null);
+  // Espera a que termine la transición de ancho del rail (200 ms): antes de
+  // eso el pie todavía no tiene su alto final y el cálculo queda corto.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      navScrollRef.current
+        ?.querySelector<HTMLElement>('[aria-current="page"]')
+        ?.scrollIntoView({ block: "nearest" });
+    }, 260);
+    return () => window.clearTimeout(id);
+  }, [activeUrl, state]);
   // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
   // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
   // (ver Sidebar en ui/sidebar.tsx): si se hereda la cookie de escritorio
@@ -159,7 +172,15 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent data-tour="sidebar-nav">
+      {/* Sólo la lista scrollea; el pie (configuración, cuenta, salir) queda
+          fijo. Colapsado, el primitivo trae `overflow-hidden` y en pantallas
+          bajas los últimos íconos (Rendimiento, Usuarios) quedaban debajo del
+          pie sin forma de alcanzarlos con la rueda. */}
+      <SidebarContent
+        ref={navScrollRef}
+        data-tour="sidebar-nav"
+        className="group-data-[collapsible=icon]:overflow-y-auto group-data-[collapsible=icon]:overflow-x-hidden group-data-[collapsible=icon]:[scrollbar-width:none] [scrollbar-width:thin]"
+      >
         <SidebarHeader className={cn("p-4 pb-5 md:pb-4", collapsed && "px-2")}>
           {collapsed ? (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
@@ -321,8 +342,14 @@ export function AppSidebar() {
             </SidebarMenu>
           </div>
         ))}
+        {/* Desvanecido al pie de la lista: avisa que hay más abajo. Al llegar
+            al final queda debajo del último ítem, sin taparlo. */}
+        <div
+          aria-hidden
+          className="pointer-events-none sticky bottom-0 -mt-2 h-6 shrink-0 bg-gradient-to-t from-sidebar to-transparent"
+        />
       </SidebarContent>
-      <div className={cn("mt-auto p-4", collapsed && "px-2")}>
+      <div className={cn("mt-auto shrink-0 p-4", collapsed && "px-2")}>
         {/* Chevron de colapsar/expandir el rail, sólo escritorio (en móvil el
             menú es el Sheet a ancho completo, no tiene estado colapsado). Es
             aditivo al `SidebarTrigger` de la barra superior — ambos controles
