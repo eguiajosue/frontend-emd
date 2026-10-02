@@ -52,17 +52,14 @@ const HistorialPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Title title="Historial de Pedidos" />
-          <p className="text-muted-foreground">
-            Todos los pedidos de la empresa, incluidos los entregados hace tiempo
-            que ya no aparecen en el tablero.
-          </p>
-        </div>
+        <Title
+          title="Historial de pedidos"
+          description="Todos los pedidos de la empresa, incluidos los entregados hace tiempo que ya no aparecen en el tablero."
+        />
         {canManageOperations && (
           <Button variant="outline" onClick={handleExportCsv} disabled={isExportingCsv}>
-            <FileDown className="mr-2 h-4 w-4" />
-            {isExportingCsv ? "Exportando..." : "Exportar CSV"}
+            <FileDown className="h-4 w-4" />
+            {isExportingCsv ? "Exportando…" : "Exportar CSV"}
           </Button>
         )}
       </div>
@@ -91,7 +88,7 @@ const HistorialPage = () => {
           </motion.div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-meta tabular-nums">
               {meta ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedidos` : null}
             </p>
             <div className="flex items-center gap-2">
@@ -101,7 +98,7 @@ const HistorialPage = () => {
                 disabled={page <= 1 || isFetching}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
-                <ChevronLeft className="mr-1 h-4 w-4" /> Anterior
+                <ChevronLeft className="h-4 w-4" /> Anterior
               </Button>
               <Button
                 variant="outline"
@@ -109,7 +106,7 @@ const HistorialPage = () => {
                 disabled={page >= totalPages || isFetching}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                Siguiente <ChevronRight className="ml-1 h-4 w-4" />
+                Siguiente <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>

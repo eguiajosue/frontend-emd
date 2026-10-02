@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
@@ -112,7 +114,7 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col items-start gap-2 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="text-base">Calendario de equipo</CardTitle>
+        <CardTitle>Calendario de equipo</CardTitle>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -138,7 +140,7 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase text-muted-foreground">
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
           {WEEKDAY_LABELS.map((d, i) => (
             <div key={i} className="py-1">
               {d}
@@ -185,8 +187,8 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
                       <CalendarPill key={item.id} item={item} />
                     ))}
                     {overflow > 0 && (
-                      <span className="truncate px-1 text-[10px] font-medium text-muted-foreground">
-                        +{overflow} more...
+                      <span className="truncate px-1 text-[11px] font-medium text-muted-foreground">
+                        +{overflow} más
                       </span>
                     )}
                   </div>
@@ -198,7 +200,10 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
               <motion.div key={key} variants={staggerItemVariants}>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button type="button" className="w-full">
+                    <button
+                      type="button"
+                      className="w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    >
                       {cell}
                     </button>
                   </PopoverTrigger>
@@ -276,7 +281,7 @@ export function CalendarPill({ item }: { item: CalendarItem }) {
 
   if (item.kind === "order") {
     return (
-      <div className="flex items-center gap-1 truncate rounded border border-dashed border-current px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+      <div className="flex items-center gap-1 truncate rounded border border-dashed border-current px-1 py-0.5 text-[11px] font-medium text-muted-foreground">
         <Package className="h-2.5 w-2.5 shrink-0" />
         <span className="truncate">{calendarItemTitle(item)}</span>
       </div>
@@ -289,7 +294,7 @@ export function CalendarPill({ item }: { item: CalendarItem }) {
       {meta.tracksStatus && (
         <span className={cn("w-1 shrink-0", EVENT_STATUS_DOT_CLASS[item.event.status])} />
       )}
-      <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-[10px] font-medium">
+      <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-[11px] font-medium">
         {item.hasTime && <span className="font-semibold">{formatTime(item.date)} </span>}
         {calendarItemTitle(item)}
       </span>
@@ -318,14 +323,9 @@ function EventRow({
     <div className="rounded-lg border p-2.5 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span
-            className={cn(
-              "mb-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
-              meta.pillClasses
-            )}
-          >
+          <Badge variant="muted" className={cn("mb-1 px-2 py-0", meta.pillClasses)}>
             {meta.label}
-          </span>
+          </Badge>
           {client && <p className="truncate text-xs font-semibold text-muted-foreground">{client}</p>}
           <p className="truncate font-medium">{calendarItemTitle(item)}</p>
           {event.hasTime && (
@@ -333,40 +333,46 @@ function EventRow({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onEdit(event)}
-            className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label={`Editar ${event.title}`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(event)}
-            className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            aria-label={`Eliminar ${event.title}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <SimpleTooltip label="Editar">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground"
+              onClick={() => onEdit(event)}
+              aria-label={`Editar ${event.title}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </SimpleTooltip>
+          <SimpleTooltip label="Eliminar">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => onDelete(event)}
+              aria-label={`Eliminar ${event.title}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </SimpleTooltip>
         </div>
       </div>
       {meta.tracksStatus && (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onAdvance(event)}
           disabled={!next}
           className={cn(
-            "mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
+            "mt-2 h-6 gap-1.5 rounded-full px-2.5 text-xs disabled:opacity-100",
             EVENT_STATUS_BADGE_CLASS[event.status],
-            next && "cursor-pointer hover:opacity-80",
-            !next && "cursor-default"
+            next && "hover:opacity-80"
           )}
           title={next ? `Marcar como ${EVENT_STATUS_LABEL[next].toLowerCase()}` : "Terminado"}
         >
           <span className={cn("h-2 w-2 rounded-full", EVENT_STATUS_DOT_CLASS[event.status])} />
           {EVENT_STATUS_LABEL[event.status]}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -384,10 +390,10 @@ function OrderRow({
   const { formatTime } = useTimeFormat();
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       onClick={() => onSelectOrder(order.id)}
-      className="flex w-full flex-col gap-1 rounded-lg border border-dashed p-2.5 text-left text-sm transition-colors hover:bg-muted"
+      className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal border-dashed p-2.5 text-left font-normal"
     >
       <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         <Package className="h-3 w-3" />
@@ -395,6 +401,6 @@ function OrderRow({
       </div>
       <p className="truncate font-medium">{calendarItemTitle(item)}</p>
       {item.hasTime && <p className="text-xs text-muted-foreground">{formatTime(item.date)}</p>}
-    </button>
+    </Button>
   );
 }

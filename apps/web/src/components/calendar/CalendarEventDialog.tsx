@@ -218,7 +218,7 @@ export function CalendarEventDialog({
               autoFocus
               aria-required
               aria-invalid={Boolean(titleError)}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+             
             />
           </FormField>
 
@@ -340,7 +340,7 @@ export function CalendarEventDialog({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 aria-required
-                className="h-11 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                className="h-11 sm:h-9"
               />
             </FormField>
             {!allDay && (
@@ -350,7 +350,7 @@ export function CalendarEventDialog({
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="h-11 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                  className="h-11 sm:h-9"
                 />
               </FormField>
             )}

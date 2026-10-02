@@ -6,7 +6,9 @@ import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ErrorState } from "@/components/feedback/states";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -117,9 +119,9 @@ export default function CalendarioPage() {
 
   if (!isSessionLoading && !canManageOperations) {
     return (
-      <div className="mt-10 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+      <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">
         No tenés permiso para ver esta página.
-      </div>
+      </Card>
     );
   }
 
@@ -128,13 +130,10 @@ export default function CalendarioPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Title title="Calendario" />
-          <p className="text-muted-foreground">
-            Instalaciones, juntas, visitas a clientes y pedidos con entrega: compartido por todo el
-            equipo.
-          </p>
-        </div>
+        <Title
+          title="Calendario"
+          description="Instalaciones, juntas, visitas a clientes y pedidos con entrega: compartido por todo el equipo."
+        />
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="outline"
@@ -199,13 +198,19 @@ export default function CalendarioPage() {
         <div className="flex flex-col gap-4 xl:flex-row">
           <div className="min-w-0 flex-1 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Tabs value={view} onValueChange={(v) => setView(v as CalendarView)}>
-                <TabsList>
-                  <TabsTrigger value="dia">Día</TabsTrigger>
-                  <TabsTrigger value="semana">Semana</TabsTrigger>
-                  <TabsTrigger value="mes">Mes</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <ToggleGroup
+                type="single"
+                variant="segmented"
+                size="sm"
+                value={view}
+                onValueChange={(v) => v && setView(v as CalendarView)}
+                aria-label="Vista"
+                className="shrink-0 self-start rounded-full border bg-card p-1"
+              >
+                <ToggleGroupItem value="dia">Día</ToggleGroupItem>
+                <ToggleGroupItem value="semana">Semana</ToggleGroupItem>
+                <ToggleGroupItem value="mes">Mes</ToggleGroupItem>
+              </ToggleGroup>
               <div className="flex flex-wrap items-center gap-2">
                 <CategoryFilterBar value={categoryFilter} onChange={setCategoryFilter} />
                 <AreaFilterBar value={areaFilter} onChange={setAreaFilter} />
@@ -225,7 +230,7 @@ export default function CalendarioPage() {
                 onSelectOrder={setOpenOrderId}
               />
             ) : (
-              <div className="rounded-xl border bg-card p-2 shadow-soft sm:p-4">
+              <Card className="p-2 sm:p-4">
                 <TimeGridCalendar
                   view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
                   events={filteredEvents}
@@ -234,7 +239,7 @@ export default function CalendarioPage() {
                   onEdit={openEdit}
                   onSelectOrder={setOpenOrderId}
                 />
-              </div>
+              </Card>
             )}
 
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -246,21 +251,25 @@ export default function CalendarioPage() {
 
           {tasksPanelOpen && (
             <aside className="w-full shrink-0 xl:w-80">
-              <div className="flex h-96 flex-col rounded-xl border bg-card p-3 shadow-soft xl:sticky xl:top-4 xl:h-[32rem]">
-                <div className="mb-2 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">Tareas pendientes</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setTasksPanelOpen(false)}
-                    aria-label="Ocultar tareas"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <CalendarTasksList />
-              </div>
+              <Card className="flex h-96 flex-col xl:sticky xl:top-4 xl:h-[32rem]">
+                <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
+                  <CardTitle>Tareas pendientes</CardTitle>
+                  <SimpleTooltip label="Ocultar tareas">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => setTasksPanelOpen(false)}
+                      aria-label="Ocultar tareas"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </SimpleTooltip>
+                </CardHeader>
+                <CardContent className="flex min-h-0 flex-1 flex-col p-4 pt-2">
+                  <CalendarTasksList />
+                </CardContent>
+              </Card>
             </aside>
           )}
         </div>

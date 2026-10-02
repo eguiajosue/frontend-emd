@@ -12,6 +12,9 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   calendarItemClientLabel,
   calendarItemTitle,
@@ -88,26 +91,30 @@ export function UpcomingEventsSheet({
             <div className="space-y-5">
               {groupedDays.map(([dayKey, items]) => (
                 <div key={dayKey}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-2 text-label text-muted-foreground first-letter:uppercase">
                     {dayHeaderLabel(items[0].date)}
                   </p>
                   <div className="space-y-2">
                     {items.map((item) => {
                       const client = calendarItemClientLabel(item);
                       return (
-                        <button
+                        <Button
                           key={item.id}
-                          type="button"
+                          variant="outline"
                           onClick={() => handleSelect(dayKey, item.id)}
-                          className="flex w-full items-start gap-2 rounded-lg border p-2.5 text-left text-sm transition-colors hover:bg-muted"
+                          className="h-auto w-full items-start justify-start gap-2 whitespace-normal p-2.5 text-left font-normal"
                         >
                           <div className="min-w-0 flex-1">
                             {item.kind === "event" && (
-                              <span
-                                className={`mb-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold ${CATEGORY_META[item.event.category].pillClasses}`}
+                              <Badge
+                                variant="muted"
+                                className={cn(
+                                  "mb-1 px-2 py-0",
+                                  CATEGORY_META[item.event.category].pillClasses
+                                )}
                               >
                                 {CATEGORY_META[item.event.category].label}
-                              </span>
+                              </Badge>
                             )}
                             {client && (
                               <p className="truncate text-xs font-semibold text-muted-foreground">
@@ -123,19 +130,20 @@ export function UpcomingEventsSheet({
                           </div>
                           {item.kind === "event" ? (
                             CATEGORY_META[item.event.category].tracksStatus && (
-                              <span
-                                className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${EVENT_STATUS_BADGE_CLASS[item.event.status]}`}
+                              <Badge
+                                variant="muted"
+                                className={cn("shrink-0 border", EVENT_STATUS_BADGE_CLASS[item.event.status])}
                               >
                                 {EVENT_STATUS_LABEL[item.event.status]}
-                              </span>
+                              </Badge>
                             )
                           ) : (
-                            <span className="flex shrink-0 items-center gap-1 rounded-full border border-dashed px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                              <Package className="h-3 w-3" />
+                            <Badge variant="outline" className="shrink-0 border-dashed text-muted-foreground">
+                              <Package className="h-3 w-3" aria-hidden />
                               Pedido
-                            </span>
+                            </Badge>
                           )}
-                        </button>
+                        </Button>
                       );
                     })}
                   </div>

@@ -16,6 +16,7 @@ import { usePerformanceSummary } from "@/hooks/usePerformance";
 import { useOrders } from "@/hooks/useOrders";
 import { statusMap } from "@/lib/orderStatus";
 import { getOrderClientName } from "@/lib/format";
+import { getAreaLabel } from "@/lib/areas";
 import type { AreaPerformance, EmployeePerformance } from "@/types";
 import { EyeOff, Gauge } from "lucide-react";
 
@@ -76,7 +77,7 @@ const RendimientoPage = () => {
   ];
 
   const areaColumns: ColumnDef<AreaPerformance>[] = [
-    { id: "area", header: "Área", cell: ({ row }) => row.original.area },
+    { id: "area", header: "Área", cell: ({ row }) => getAreaLabel(row.original.area) },
     { id: "assigned", header: "Asignados", cell: ({ row }) => row.original.totalAssigned },
     { id: "completed", header: "Completados", cell: ({ row }) => row.original.totalCompleted },
     {
@@ -122,22 +123,24 @@ const RendimientoPage = () => {
 
   if (!isSessionLoading && !isAdmin) {
     return (
-      <div className="mt-10 rounded-md border border-dashed p-10 text-center text-sm text-muted-foreground">
+      <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">
         No tienes permiso para ver esta página.
-      </div>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-8">
-      <div>
-        <Title title="Rendimiento" />
-        <p className="flex items-center gap-1.5 text-muted-foreground">
-          <EyeOff className="h-4 w-4 shrink-0" />
-          Información sensible/interna: sólo visible para administración. Comparación de
-          desempeño por empleado y por área a partir del histórico de pedidos.
-        </p>
-      </div>
+      <Title
+        title="Rendimiento"
+        description={
+          <span className="flex items-start gap-1.5">
+            <EyeOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            Información interna, sólo visible para administración: desempeño por empleado y por
+            área a partir del histórico de pedidos.
+          </span>
+        }
+      />
 
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
@@ -150,9 +153,9 @@ const RendimientoPage = () => {
       ) : (
         <>
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Empleados</h2>
+            <h2 className="text-section-title">Empleados</h2>
             {data.employees.length === 0 ? (
-              <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Todavía no hay datos suficientes de empleados.
               </p>
             ) : (
@@ -163,9 +166,9 @@ const RendimientoPage = () => {
           </div>
 
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Áreas</h2>
+            <h2 className="text-section-title">Áreas</h2>
             {data.areas.length === 0 ? (
-              <p className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Todavía no hay datos suficientes de áreas.
               </p>
             ) : (
@@ -177,13 +180,13 @@ const RendimientoPage = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Gauge className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
                 Comparación de score por área
               </CardTitle>
               {lowestAreaInsight && (
                 <p className="text-sm text-muted-foreground">
-                  El área de <span className="font-medium text-foreground">{lowestAreaInsight.area}</span>{" "}
+                  El área de <span className="font-medium text-foreground">{getAreaLabel(lowestAreaInsight.area)}</span>{" "}
                   tiene el rendimiento más bajo este período (score {lowestAreaInsight.score?.toFixed(2)}).
                 </p>
               )}
@@ -214,7 +217,7 @@ const RendimientoPage = () => {
                     {areaOrdersByStatus
                       .filter((group) => group.orders.length > 0)
                       .map((group) => (
-                        <div key={group.statusId} className="rounded-lg border bg-background p-3">
+                        <div key={group.statusId} className="rounded-lg border p-3">
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <StatusBadge
                               statusId={group.statusId}

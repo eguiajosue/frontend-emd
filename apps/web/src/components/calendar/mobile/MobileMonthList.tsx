@@ -97,7 +97,7 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
       // tabs móvil una vez se pueda probar en dispositivo.
       className="h-[calc(100dvh-16rem)] overflow-y-auto"
     >
-      <div className="sticky top-0 z-10 grid grid-cols-7 gap-0.5 bg-background py-1 text-center text-[11px] font-medium uppercase text-muted-foreground">
+      <div className="sticky top-0 z-10 grid grid-cols-7 gap-0.5 bg-background py-1 text-center text-xs font-medium text-muted-foreground">
         {WEEKDAY_LABELS.map((label, i) => (
           <div key={i}>{label}</div>
         ))}
@@ -123,11 +123,11 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
                   type="button"
                   onClick={() => onSelectDay(day)}
                   aria-label={format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}
-                  className="flex min-h-[3.5rem] flex-col items-center gap-0.5 rounded px-0.5 pt-1 text-left hover:bg-muted"
+                  className="flex min-h-[3.5rem] flex-col items-center gap-0.5 rounded-md px-0.5 pt-1 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   <span
                     className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-medium",
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                       today && "bg-foreground text-background"
                     )}
                   >

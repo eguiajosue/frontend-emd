@@ -4,26 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { CategoryFilterBar } from "./CategoryFilterBar";
 
 describe("CategoryFilterBar", () => {
-  it("en modo tabs, muestra Todos + una tab por categoría", () => {
+  it("es un Select con todas las categorías", async () => {
     render(<CategoryFilterBar value="todos" onChange={() => {}} />);
 
-    expect(screen.getByRole("tab", { name: "Todos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Instalación/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Junta \/ Reunión/i })).toBeInTheDocument();
+    const trigger = screen.getByRole("combobox", { name: "Filtrar por categoría" });
+    expect(trigger).toHaveTextContent("Todas las categorías");
+    await userEvent.click(trigger);
+    expect(screen.getByRole("option", { name: /Instalación/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Junta \/ Reunión/i })).toBeInTheDocument();
   });
 
   it("al elegir una categoría, avisa el cambio", async () => {
     const onChange = vi.fn();
     render(<CategoryFilterBar value="todos" onChange={onChange} />);
 
-    await userEvent.click(screen.getByRole("tab", { name: /Entrega/i }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Filtrar por categoría" }));
+    await userEvent.click(screen.getByRole("option", { name: /Entrega/i }));
     expect(onChange).toHaveBeenCalledWith("entrega");
-  });
-
-  it("en modo compacto, usa un dropdown en vez de tabs", () => {
-    render(<CategoryFilterBar value="todos" onChange={() => {}} compact />);
-
-    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Filtrar por categoría")).toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getStatusDotClasses } from "@/lib/statusColors";
 import { getOrderClientName, formatDeliveryDate } from "@/lib/format";
@@ -40,8 +41,8 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <PackageCheck className="h-5 w-5 text-primary" />
+        <CardTitle className="flex items-center gap-2">
+          <PackageCheck className="h-4 w-4 text-primary" aria-hidden />
           Próximas entregas
         </CardTitle>
       </CardHeader>
@@ -56,27 +57,27 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
             animate="show"
           >
             {upcoming.map((order) => (
-              <motion.button
-                key={order.id}
-                type="button"
-                variants={staggerItemVariants}
-                onClick={() => onSelectOrder(order.id)}
-                className="flex w-full items-center gap-3 rounded-xl border bg-card/50 p-3 text-left transition-colors hover:bg-muted"
-              >
-                <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClasses(order.statusId, order.status?.name)}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    #{order.id} · {getOrderClientName(order)}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">{order.description}</p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {formatDeliveryDate(order.deliveryDate, timeFormat)}
-                  </span>
-                  <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-                </div>
-              </motion.button>
+              <motion.div key={order.id} variants={staggerItemVariants}>
+                <Button
+                  variant="outline"
+                  onClick={() => onSelectOrder(order.id)}
+                  className="h-auto w-full justify-start gap-3 whitespace-normal p-3 text-left font-normal"
+                >
+                  <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClasses(order.statusId, order.status?.name)}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      #{order.id} · {getOrderClientName(order)}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{order.description}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {formatDeliveryDate(order.deliveryDate, timeFormat)}
+                    </span>
+                    <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+                  </div>
+                </Button>
+              </motion.div>
             ))}
           </motion.div>
         )}
