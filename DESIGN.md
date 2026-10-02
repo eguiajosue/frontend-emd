@@ -29,32 +29,41 @@ never the base surface/text tokens, so brand pink stays the shipped default.
 
 ## Typography
 
-- **Display** (H1/H2, dashboard greeting, login hero): `font-heading`, loaded
-  via `next/font/google` in `src/app/layout.tsx`.
-  - **Ezra Bold was requested but could not be obtained.** The listed
-    third-party sources (freefontdl.com, fontspad.com, fontshut.com,
-    exfont.com, freefonts.co) only exposed canvas-rendered previews or
-    generator flows with no verifiable, downloadable font binary (valid
-    sfnt/OTTO/WOFF signature) reachable headlessly. Per the brief's fallback
-    instruction, we substituted **Space Grotesk** (weight 700), a bold
-    geometric sans with a similar display character, self-hosted with no
-    runtime request. **To swap in a licensed Ezra Bold file later:** drop it
-    under `src/app/fonts/`, switch the import in `src/app/layout.tsx` from
-    `next/font/google` (`Space_Grotesk`) to `next/font/local`, keep the same
-    `variable: "--font-heading"` — no other file changes needed.
-- **Body/UI**: **Poppins** (400/500/600/700) via `next/font/google`,
-  `--font-body`, mapped to Tailwind's default `font-sans`.
+- **Display / titles**: **Space Grotesk** (`font-heading`, weight 600 for
+  titles — 700 read heavy at app sizes). Loaded via `next/font/google` in
+  `src/app/layout.tsx`. (Ezra Bold was requested originally but no verifiable
+  font binary was obtainable; to swap it in later, switch the import to
+  `next/font/local` keeping `variable: "--font-heading"`.)
+- **Body/UI**: **DM Sans** (variable, `--font-body`, Tailwind `font-sans`).
+  Replaced Poppins: Poppins is very wide and geometric, read poorly at 14px in
+  dense screens, and next to Space Grotesk gave two near-identical geometric
+  voices with no hierarchy contrast. DM Sans is compact with clean tabular
+  figures.
+- Numbers are tabular app-wide (`font-variant-numeric: tabular-nums` on
+  `body`): dates, quantities and counts align across rows.
 
-## Shape & elevation
+### Type roles (`src/app/globals.css`, `@layer components`)
 
-- `--radius: 0.875rem` (14px) — cards and dialogs render at `rounded-xl`
-  (12–16px per the reference), small controls (badges, chips, avatars) use
-  full pill radius via the `Badge`/`StatusBadge` components.
-- Elevation is a solid card fill (`bg-card`) plus `shadow-soft` /
-  `shadow-soft-md` (offset + blur, never a flat/hard shadow) in light mode;
-  dark mode uses layered surface tone (`--elevation-1/2`) instead, since
-  shadows barely read on dark backgrounds.
-- One declared elevation per surface: border **or** shadow, not both stacked.
+Few, fixed roles — identical on every screen:
+
+| role | class | spec |
+|---|---|---|
+| Page title | `text-page-title` | Space Grotesk 24→28px / 600 / tight |
+| Section title | `text-section-title` (also `CardTitle`) | Space Grotesk 15px / 600 |
+| Body | default `text-sm` | DM Sans 14px |
+| Reading text | `text-[0.95rem] leading-relaxed max-w-prose` | descriptions, notes |
+| Label | `text-label` | 12px / 500 / muted |
+| Metadata | `text-meta` | 12px / muted |
+
+No uppercase 10px "eyebrow" labels above headings; the heading carries its
+own weight.
+
+## Spacing
+
+4px base scale. Tight inside a group (`gap-1`–`gap-3`), generous between
+groups (`space-y-5`–`space-y-8`), more space above a section title than
+below it. Separate sections with space and a hairline (`border-t pt-5`),
+not with a card per section — never nest cards.
 
 ## Sidebar
 
@@ -143,9 +152,15 @@ same spring family rather than introducing new easing curves.
 
 ## Components
 
-- Buttons, inputs, dialogs, tables: shadcn/ui primitives in
-  `src/components/ui/`, restyled only through the tokens above — no
-  component API changes.
+- **Everything is shadcn/ui** (`src/components/ui/`): Button, Input,
+  Textarea, Select (no native `<select>`), Checkbox, Switch, Tabs,
+  ToggleGroup (segmented controls and filter chips), DropdownMenu (any "⋯" or
+  action menu), Popover (rich pickers only), Dialog/AlertDialog/Sheet,
+  Collapsible, Accordion, Card, Badge, Table, Tooltip (`SimpleTooltip` on
+  icon-only buttons), ScrollArea, Skeleton. Raw HTML controls only where a
+  primitive can't express it (e.g. the full-card invisible hit area).
+- Neutral hover for ghost/outline controls (`bg-muted`), not the cyan
+  `accent`; tooltips are neutral (`bg-foreground`).
 - Status/priority pills: `src/components/StatusBadge.tsx` and
   `src/lib/statusColors.ts` remain the single source of truth for status
   color mapping; only their visual treatment (pill shape, tint) follows the

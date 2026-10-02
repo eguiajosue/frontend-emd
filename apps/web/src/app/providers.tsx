@@ -6,6 +6,7 @@ import { SessionProvider, useSession } from "next-auth/react";
 import { logout } from "@/lib/logout";
 import { ThemeProvider, useTheme } from "next-themes";
 import { MotionConfig } from "framer-motion";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   MutationCache,
   QueryCache,
@@ -178,12 +179,15 @@ export default function Providers({ children }: { children: ReactNode }) {
         */}
         <MotionConfig reducedMotion="user">
           <QueryClientProvider client={queryClient}>
+            {/* Un solo proveedor de tooltips para toda la app (shadcn). */}
+            <TooltipProvider delayDuration={300} skipDelayDuration={150}>
             <SessionErrorWatcher />
             <PreferencesSync />
             <OfflineSyncWatcher />
             <ServiceWorkerRegistrar />
             {children}
             {isDev && <ReactQueryDevtools initialIsOpen={false} />}
+            </TooltipProvider>
           </QueryClientProvider>
         </MotionConfig>
       </ThemeProvider>

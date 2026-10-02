@@ -9,8 +9,8 @@ import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { HandoffStages } from "@/components/orders/OrderHandoff";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePendingSync } from "@/hooks/usePendingSync";
-import { useMoveOrderStatus, usePassOrderToDesign } from "@/hooks/useOrders";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { useForceFinishOrder, useMoveOrderStatus } from "@/hooks/useOrders";
+import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { buildOrderHandoff } from "@/lib/orderHandoff";
 import {
   getOrderNextAction,
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
 const CANCELLED_STATUS_ID = statusOptions.find((o) => o.label === "cancelado")?.value ?? 10;
+const FINISHED_STATUS_ID = statusOptions.find((o) => o.label === "terminado")?.value ?? 4;
 
 export type OrderDetailSectionTarget = "design" | "areas";
 
@@ -59,10 +60,28 @@ export function OrderProgressPanel({
     [viewer.roles, viewer.canManageOperations]
   );
   const { move, isMoving } = useMoveOrderStatus(moveActor);
-  const { passToDesign, isPassingToDesign } = usePassOrderToDesign();
+  const { forceFinish, isForcing } = useForceFinishOrder();
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
-  const busy = isMoving || isPassingToDesign;
+  const [confirmForceOpen, setConfirmForceOpen] = useState(false);
+  const busy = isMoving || isForcing;
+  // El detalle (`GET /orders/:id`) no trae las tareas de área: sin ellas,
+  // mover el estado escribía sólo el pedido y el tablero de producción (que
+  // ubica cada pedido por sus tareas) no se enteraba.
+  const orderWithTasks = useMemo(() => ({ ...order, areaTasks: tasks }), [order, tasks]);
+  const unfinishedTasks = tasks.filter((t) => t.status !== "terminado");
+
+  /**
+   * Cambiar el estado. "Terminado" = listo para entregar: si lo pide quien
+   * gestiona con áreas todavía trabajando, es FORZARLO y se confirma antes.
+   */
+  const changeTo = (statusId: number) => {
+    if (statusId === FINISHED_STATUS_ID && permissions.canEdit && unfinishedTasks.length > 0) {
+      setConfirmForceOpen(true);
+      return;
+    }
+    void move(orderWithTasks, statusId);
+  };
 
   const cancelled = isCancelledStatus(order.statusId);
   const current = handoff.current;
@@ -84,8 +103,7 @@ export function OrderProgressPanel({
 
   const runAction = () => {
     if (!action) return;
-    if (action.kind === "to-design") void passToDesign(order);
-    else if (action.kind === "status") void move(order, action.statusId);
+    if (action.kind === "status") changeTo(action.statusId);
     else onGoToSection(action.section);
   };
 
@@ -155,7 +173,7 @@ export function OrderProgressPanel({
                     className="flex w-full items-center rounded-md px-2.5 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => {
                       setStatusMenuOpen(false);
-                      void move(order, option.value);
+                      changeTo(option.value);
                     }}
                   >
                     <StatusBadge statusId={option.value} />
@@ -199,11 +217,30 @@ export function OrderProgressPanel({
         onOpenChange={setConfirmCancelOpen}
         onConfirm={() => {
           setConfirmCancelOpen(false);
-          void move(order, CANCELLED_STATUS_ID);
+          void move(orderWithTasks, CANCELLED_STATUS_ID);
         }}
         title={`¿Cancelar el pedido #${order.id}?`}
         description="Sale del tablero y deja de avisar a las áreas. Se puede volver a activar cambiando el estado."
         confirmLabel="Cancelar pedido"
+        cancelLabel="Volver"
+      />
+
+      <ConfirmDeleteDialog
+        open={confirmForceOpen}
+        onOpenChange={setConfirmForceOpen}
+        onConfirm={() => {
+          setConfirmForceOpen(false);
+          void forceFinish(order, tasks);
+        }}
+        title={`¿Marcar el pedido #${order.id} como listo para entregar?`}
+        description={`${
+          unfinishedTasks.length === 1
+            ? `${getAreaLabel(unfinishedTasks[0].area)} todavía no terminó`
+            : `${unfinishedTasks.length} áreas todavía no terminaron (${unfinishedTasks
+                .map((t) => getAreaLabel(t.area))
+                .join(", ")})`
+        }. Se van a marcar como terminadas y el pedido queda listo para entregar.`}
+        confirmLabel="Marcar listo"
         cancelLabel="Volver"
       />
     </section>

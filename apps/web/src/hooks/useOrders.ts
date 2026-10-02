@@ -6,21 +6,15 @@ import { toast } from "sonner";
 import { ApiError, getErrorMessage, request, type Paginated } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
-import {
-  CATALOG_STALE_TIME,
-  useAuthToken,
-  useEntityDetail,
-  useEntityList,
-} from "@/hooks/useEntity";
+import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
 import type {
   AreaTaskStatus,
   Order,
   OrderAuditLogEntry,
   OrderHistory,
+  OrderAreaTask,
   OrderNote,
-  Status,
 } from "@/types";
-import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { orderStatusUpdatedMessage } from "@/lib/copy";
 import {
   AREA_TASK_STATUS_BY_ORDER_STATUS,
@@ -697,49 +691,49 @@ export async function downloadOrdersExport(
 }
 
 /**
- * "Pasar a Diseño" desde Recepción: un pedido con diseño que quedó en
- * "pendiente" (cargado antes de que el alta lo mandara directo a Diseño, o
- * devuelto a mano) entra al circuito de diseño.
+ * Forzar "listo para entregar" (Recepción/admin) aunque queden áreas sin
+ * terminar. El pedido pasa solo a "terminado" cuando todas sus tareas de área
+ * terminan; forzar es marcar terminadas las que faltan, para que el tablero
+ * de producción (que ubica cada pedido por sus tareas) quede coherente.
  *
- * El id de "en diseño" lo siembra el backend y varía por entorno, así que se
- * resuelve por nombre contra el catálogo de estados (igual que el tablero).
- * Deja el pedido en el área Diseño para que lo vea el diseñador, y registra el
- * cambio en el historial de estados como cualquier otro.
+ * Las tareas sólo avanzan de a un paso (el backend rechaza saltos), así que
+ * una pendiente pasa primero a "en proceso". Al terminar la última, el
+ * backend lleva el pedido a "terminado" y avisa a Recepción. Sin tareas de
+ * área, se escribe el estado del pedido directamente.
  */
-export function usePassOrderToDesign() {
+export function useForceFinishOrder() {
   const token = useAuthToken();
   const queryClient = useQueryClient();
-  const { data: statuses } = useEntityList<Status>("statuses", { staleTime: CATALOG_STALE_TIME });
+  const { changeStatus } = useChangeOrderStatus();
 
   const mutation = useMutation({
-    mutationFn: async (order: Pick<Order, "id" | "statusId">) => {
-      const target = statuses.find(
-        (s) => s.name?.toLowerCase() === DESIGN_FLOW_STATUS_NAMES.EN_DISENO
-      );
-      if (!target) throw new Error("No se encontró el estado “en diseño”.");
-      await request<Order>(`${ENDPOINTS.orders}/${order.id}`, {
-        method: "PATCH",
-        token,
-        body: { statusId: target.id, area: "diseno" },
-      });
-      await request<OrderHistory>(ENDPOINTS.orderHistories, {
-        method: "POST",
-        token,
-        body: { orderId: order.id, previousStatusId: order.statusId, newStatusId: target.id },
-      });
+    mutationFn: async ({ order, tasks }: { order: Order; tasks: OrderAreaTask[] }) => {
+      const taskUrl = (taskId: number) =>
+        `${ENDPOINTS.orders}/${order.id}/area-tasks/${taskId}/status`;
+      for (const task of tasks.filter((t) => t.status !== "terminado")) {
+        if (task.status === "pendiente") {
+          await patchStatusChange(taskUrl(task.id), { status: "en_proceso" }, token);
+        }
+        await patchStatusChange(taskUrl(task.id), { status: "terminado" }, token);
+      }
       return order.id;
     },
     onSuccess: (orderId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
-      toast.success(`Pedido #${orderId} pasó a Diseño`);
+      toast.success(`Pedido #${orderId} listo para entregar`);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   return {
-    passToDesign: (order: Pick<Order, "id" | "statusId">) =>
-      mutation.mutateAsync(order).catch(() => undefined),
-    isPassingToDesign: mutation.isPending,
+    forceFinish: (order: Order, tasks: OrderAreaTask[]) =>
+      tasks.length === 0
+        ? changeStatus(order, FINISHED_STATUS_ID)
+        : mutation.mutateAsync({ order, tasks }).catch(() => undefined),
+    isForcing: mutation.isPending,
   };
 }
+
+/** "terminado" = listo para entregar (ver `statusMap`). */
+const FINISHED_STATUS_ID = 4;

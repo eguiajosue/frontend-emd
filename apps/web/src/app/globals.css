@@ -53,7 +53,7 @@
     --chart-3: 43 90% 55%;
     --chart-4: 262 70% 60%;
     --chart-5: 150 60% 42%;
-    --radius: 0.875rem;
+    --radius: 0.75rem;
 
     --sidebar-background: 330 25% 95%;
     --sidebar-foreground: 330 15% 24%;
@@ -265,7 +265,55 @@
     overscroll-behavior-y: auto;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    /* Cifras de ancho fijo y ligaduras normales en toda la UI: fechas,
+       cantidades y conteos se alinean entre filas sin tener que acordarse
+       de `tabular-nums` en cada lugar. */
+    font-variant-numeric: tabular-nums;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Superficies del navegador con la paleta de la app, no con los grises
+     por defecto (selección, cursor de texto, scrollbars). */
+  ::selection {
+    background-color: hsl(var(--primary) / 0.2);
+  }
+  input,
+  textarea,
+  [contenteditable="true"] {
+    caret-color: hsl(var(--primary));
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+}
+
+/*
+ * Roles tipográficos. Pocos y fijos, para que título de página, título de
+ * sección, etiqueta y metadato se distingan de un vistazo y sean idénticos
+ * en todas las pantallas (antes cada una elegía su tamaño: 10, 11, 12, 13px…).
+ */
+@layer components {
+  .text-page-title {
+    @apply font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-[1.75rem];
+  }
+  .text-section-title {
+    @apply font-heading text-[0.9375rem] font-semibold leading-snug tracking-tight;
+  }
+  .text-label {
+    @apply text-xs font-medium text-muted-foreground;
+  }
+  .text-meta {
+    @apply text-xs text-muted-foreground;
   }
 }
 

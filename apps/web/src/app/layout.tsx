@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, Poppins } from "next/font/google";
+import { Space_Grotesk, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,10 +23,15 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-// Fuente de cuerpo/UI en toda la app.
-const poppins = Poppins({
+// Fuente de cuerpo/UI en toda la app. DM Sans y no Poppins (la anterior):
+// Poppins es muy ancha y geométrica — a 14px en una interfaz densa ocupa de
+// más y se lee peor, y junto a Space Grotesk dejaba dos geométricas casi
+// iguales sin contraste de jerarquía. DM Sans es más compacta, con cifras
+// tabulares limpias (fechas, cantidades, conteos) y comparte la familia
+// "grotesca" de Space Grotesk sin confundirse con ella. Variable: sólo se
+// carga un archivo para todos los pesos.
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
@@ -62,7 +67,7 @@ export default function RootLayout({
     <html
       suppressHydrationWarning
       lang="es"
-      className={`${spaceGrotesk.variable} ${poppins.variable}`}
+      className={`${spaceGrotesk.variable} ${dmSans.variable}`}
     >
       <body className="font-sans antialiased">
         <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />

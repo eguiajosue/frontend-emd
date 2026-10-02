@@ -1,9 +1,11 @@
 import { statusIdsForRoles } from "@/lib/roleTaskMapping";
 import {
+  DESIGN_FLOW_STATUS_NAMES,
   getNextStatusOption,
   isCancelledStatus,
   isDeliveredStatus,
   isDesignFlowStatusName,
+  isOrderInDesignStatus,
 } from "@/lib/orderStatus";
 import type { OrderHandoff } from "@/lib/orderHandoff";
 import type { Order } from "@/types";
@@ -31,9 +33,10 @@ export interface OrderDetailPermissions {
   /** Estados a los que puede moverlo (`undefined` = todos). */
   allowedStatusIds?: number[];
   /**
-   * El pedido está dentro del circuito de diseño: el estado se avanza sólo
-   * con las acciones de "Proceso de diseño", nunca a mano, para no saltear la
-   * autorización del cliente.
+   * El pedido está dentro del circuito de diseño (todavía sin autorizar): el
+   * estado se avanza sólo con las acciones de "Diseño", nunca a mano, para no
+   * saltear la autorización del cliente. Una vez autorizado ya está en
+   * producción y Recepción/admin pueden forzar "listo para entregar".
    */
   isInDesignLimbo: boolean;
 }
@@ -45,7 +48,11 @@ export function getOrderDetailPermissions(
   const canSeeHistory = viewer.isAdmin || viewer.roles.includes("recepcion");
   const canEdit = canSeeHistory;
   const myStageIds = statusIdsForRoles(viewer.roles);
-  const isInDesignLimbo = !!order.requiresDesign && isDesignFlowStatusName(order.status?.name);
+  const statusName = order.status?.name;
+  const isInDesignLimbo =
+    !!order.requiresDesign &&
+    isDesignFlowStatusName(statusName) &&
+    !isOrderInDesignStatus(statusName, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
   return {
     canEdit,
     canDelete: viewer.canManageOperations,
@@ -77,14 +84,12 @@ export function splitDeliveryDate(iso?: string | null): { date: string; time: st
  * El botón principal del detalle: lo único que este usuario puede hacer
  * ahora para que el pedido avance.
  *
- * - `to-design`: el pedido con diseño sigue en Recepción.
  * - `section`: la acción vive en una sección del detalle (subir montaje,
  *   registrar la respuesta del cliente, definir áreas); el botón lleva ahí.
  * - `status`: el siguiente estado del flujo lineal, si este rol puede fijarlo.
  * - `null`: no le toca a este usuario; se muestra a quién espera.
  */
 export type OrderNextAction =
-  | { kind: "to-design"; label: string }
   | { kind: "section"; section: "design" | "areas"; label: string }
   | { kind: "status"; statusId: number; label: string }
   | null;
@@ -101,9 +106,6 @@ export function getOrderNextAction(
   const canDesign = viewer.isAdmin || viewer.roles.includes("diseno");
   const canReception = viewer.isAdmin || viewer.roles.includes("recepcion");
 
-  if (order.requiresDesign && stage === "recepcion") {
-    return permissions.canEdit ? { kind: "to-design", label: "Pasar a Diseño" } : null;
-  }
   if (stage === "diseno") {
     return canDesign ? { kind: "section", section: "design", label: "Subir montaje" } : null;
   }
