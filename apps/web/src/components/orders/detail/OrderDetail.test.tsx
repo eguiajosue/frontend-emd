@@ -11,10 +11,10 @@ vi.mock("@/hooks/useAreaTasks", () => ({ useAreaTasks: () => ({ tasks }) }));
 vi.mock("@/hooks/usePendingSync", () => ({ usePendingSync: () => false }));
 
 const move = vi.fn();
-const passToDesign = vi.fn();
+const forceFinish = vi.fn();
 vi.mock("@/hooks/useOrders", () => ({
   useMoveOrderStatus: () => ({ move, isMoving: false }),
-  usePassOrderToDesign: () => ({ passToDesign, isPassingToDesign: false }),
+  useForceFinishOrder: () => ({ forceFinish, isForcing: false }),
 }));
 
 const update = vi.fn().mockResolvedValue({});
@@ -56,17 +56,32 @@ function renderPanel(o: Order, viewer: OrderDetailViewer, onGoToSection = vi.fn(
 beforeEach(() => {
   tasks = [];
   move.mockReset();
-  passToDesign.mockReset();
+  forceFinish.mockReset();
   update.mockClear();
 });
 
 describe("OrderProgressPanel", () => {
-  it("pedido con diseño en Recepción: un solo botón 'Pasar a Diseño', sin 'Recepción · Recepción'", async () => {
-    const o = order(1, "pendiente", { requiresDesign: true });
-    renderPanel(o, recepcion);
+  it("no repite 'Recepción · Recepción' y ya no ofrece 'Pasar a Diseño'", () => {
+    renderPanel(order(1, "pendiente", { requiresDesign: true }), recepcion);
     expect(screen.getByText(/Ahora en/).textContent).toBe("Ahora en Recepción");
-    await userEvent.click(screen.getByRole("button", { name: /Pasar a Diseño/ }));
-    expect(passToDesign).toHaveBeenCalledWith(o);
+    expect(screen.queryByRole("button", { name: /Pasar a Diseño/ })).not.toBeInTheDocument();
+  });
+
+  it("autorizado con áreas trabajando: recepción puede forzar 'listo para entregar' con confirmación", async () => {
+    tasks = [
+      { id: 1, orderId: 16, area: "dtf", status: "terminado" } as OrderAreaTask,
+      { id: 2, orderId: 16, area: "bordado", status: "pendiente" } as OrderAreaTask,
+    ];
+    const o = order(7, "autorizado", { requiresDesign: true });
+    renderPanel(o, recepcion);
+    await userEvent.click(screen.getByRole("button", { name: "Cambiar estado" }));
+    await userEvent.click(screen.getByRole("button", { name: /terminado/i }));
+    expect(forceFinish).not.toHaveBeenCalled();
+    const confirm = screen.getByRole("alertdialog");
+    expect(confirm).toHaveTextContent("Bordado todavía no terminó");
+    await userEvent.click(within(confirm).getByRole("button", { name: "Marcar listo" }));
+    expect(forceFinish).toHaveBeenCalledWith(o, tasks);
+    expect(move).not.toHaveBeenCalled();
   });
 
   it("un área ve su siguiente paso como botón y el estado sin menú", async () => {
@@ -75,7 +90,8 @@ describe("OrderProgressPanel", () => {
     renderPanel(o, dtf);
     expect(screen.queryByRole("button", { name: "Cambiar estado" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Marcar terminado" }));
-    expect(move).toHaveBeenCalledWith(o, 4);
+    // Con las tareas de área: es lo que lee el tablero de producción.
+    expect(move).toHaveBeenCalledWith({ ...o, areaTasks: tasks }, 4);
   });
 
   it("sin acción para el usuario se dice a quién se espera", () => {
@@ -92,7 +108,7 @@ describe("OrderProgressPanel", () => {
     expect(move).not.toHaveBeenCalled();
     const confirm = screen.getByRole("alertdialog");
     await userEvent.click(within(confirm).getByRole("button", { name: "Cancelar pedido" }));
-    expect(move).toHaveBeenCalledWith(o, 10);
+    expect(move).toHaveBeenCalledWith({ ...o, areaTasks: tasks }, 10);
   });
 
   it("producción sin áreas: el botón lleva a la sección", async () => {

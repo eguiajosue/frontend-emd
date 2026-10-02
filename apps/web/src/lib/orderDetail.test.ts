@@ -47,6 +47,15 @@ describe("getOrderDetailPermissions", () => {
     expect(area.allowedStatusIds).not.toContain(5);
   });
 
+  it("autorizado ya es producción: quien gestiona puede mover el estado (forzar)", () => {
+    const o = order(7, "autorizado", { requiresDesign: true });
+    expect(getOrderDetailPermissions(o, recepcion)).toMatchObject({
+      canChangeStatus: true,
+      isInDesignLimbo: false,
+    });
+    expect(getOrderDetailPermissions(o, dtf).canChangeStatus).toBe(false);
+  });
+
   it("dentro del circuito de diseño nadie mueve el estado a mano", () => {
     const o = order(20, "esperando autorización", { requiresDesign: true });
     expect(getOrderDetailPermissions(o, admin)).toMatchObject({
@@ -72,10 +81,9 @@ describe("splitDeliveryDate", () => {
 });
 
 describe("getOrderNextAction", () => {
-  it("pedido con diseño en Recepción: recepción lo pasa a Diseño, un área no hace nada", () => {
+  it("ya no existe 'Pasar a Diseño': el alta con diseño entra directo a Diseño", () => {
     const o = order(1, "pendiente", { requiresDesign: true });
-    expect(next(o, recepcion)).toEqual({ kind: "to-design", label: "Pasar a Diseño" });
-    expect(next(o, dtf)).toBeNull();
+    expect(next(o, recepcion)?.kind).not.toBe("to-design");
   });
 
   it("en diseño el botón lleva a la sección de Diseño sólo para quien diseña", () => {
