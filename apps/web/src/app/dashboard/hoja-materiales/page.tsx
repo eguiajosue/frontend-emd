@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 import { GripVertical, Search } from "lucide-react";
 import {
@@ -244,22 +245,24 @@ function SortableOrderRow({
       value={String(order.id)}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "rounded-xl border bg-card px-4 shadow-soft",
+        "rounded-xl border bg-card px-4",
         isDragging && "opacity-40",
         isBeingDragged && "opacity-40"
       )}
     >
       <div className="flex items-center gap-1">
         {draggable && (
-          <button
+          <Button
             type="button"
-            className="-ml-1 shrink-0 touch-none rounded-md p-1.5 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+            variant="ghost"
+            size="icon"
+            className="-ml-1 h-8 w-8 shrink-0 cursor-grab touch-none text-muted-foreground/70 active:cursor-grabbing"
             aria-label={`Arrastrar para cambiar la prioridad del pedido #${order.id}`}
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="h-4 w-4 cursor-grab" aria-hidden />
-          </button>
+            <GripVertical aria-hidden />
+          </Button>
         )}
         {draggable && (
           <span
