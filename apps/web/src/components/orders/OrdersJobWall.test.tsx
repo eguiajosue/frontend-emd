@@ -42,11 +42,11 @@ describe("OrdersJobWall", () => {
 
   it("la franja de conteos filtra por plazo y se desactiva al volver a tocarla", async () => {
     render(<OrdersJobWall orders={orders} timeFormat="24h" onOpenOrder={vi.fn()} />);
-    const kpis = screen.getByRole("group", { name: "Filtrar por plazo" });
-    const overdue = within(kpis).getByRole("button", { name: /Vencido/ });
+    const kpis = screen.getByRole("radiogroup", { name: "Filtrar por plazo" });
+    const overdue = within(kpis).getByRole("radio", { name: /Vencido/ });
 
     await userEvent.click(overdue);
-    expect(overdue).toHaveAttribute("aria-pressed", "true");
+    expect(overdue).toHaveAttribute("aria-checked", "true");
     expect(cardIds()).toEqual(["2"]);
 
     await userEvent.click(overdue);

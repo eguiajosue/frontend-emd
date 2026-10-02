@@ -75,7 +75,7 @@ describe("OrderProgressPanel", () => {
     const o = order(7, "autorizado", { requiresDesign: true });
     renderPanel(o, recepcion);
     await userEvent.click(screen.getByRole("button", { name: "Cambiar estado" }));
-    await userEvent.click(screen.getByRole("button", { name: /terminado/i }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /terminado/i }));
     expect(forceFinish).not.toHaveBeenCalled();
     const confirm = screen.getByRole("alertdialog");
     expect(confirm).toHaveTextContent("Bordado todavía no terminó");
@@ -104,7 +104,7 @@ describe("OrderProgressPanel", () => {
     const o = order(3, "en proceso");
     renderPanel(o, recepcion);
     await userEvent.click(screen.getByRole("button", { name: "Cambiar estado" }));
-    await userEvent.click(screen.getByRole("button", { name: /Cancelar pedido/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Cancelar pedido/ }));
     expect(move).not.toHaveBeenCalled();
     const confirm = screen.getByRole("alertdialog");
     await userEvent.click(within(confirm).getByRole("button", { name: "Cancelar pedido" }));
@@ -157,7 +157,8 @@ describe("OrderDetailsSection", () => {
     await userEvent.click(screen.getByRole("button", { name: /Editar/ }));
     expect(screen.queryByText(/Área/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de entrega")).toHaveValue("2026-10-03");
-    await userEvent.selectOptions(screen.getByLabelText("Asignado a"), "7");
+    await userEvent.click(screen.getByLabelText("Asignado a"));
+    await userEvent.click(await screen.findByRole("option", { name: "Ana Ruiz" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(update).toHaveBeenCalledWith(o.id, {
       description: "Lona 3x2",

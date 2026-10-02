@@ -60,7 +60,7 @@ export function HandoffStrip({
           {/* La única acción que importa ahora mismo, destacada — el resto
               del detalle explica el cómo, pero esto dice el qué. */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <p className="text-label">
               Siguiente acción
             </p>
             <p className="text-sm font-medium">{handoff.nextStep}</p>

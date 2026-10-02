@@ -43,11 +43,15 @@ function SimpleTooltip({
   children: React.ReactElement
   side?: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>["side"]
 }) {
+  // Proveedor propio: funciona también fuera del árbol de la app (tests,
+  // portales) sin depender del TooltipProvider global.
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side={side}>{label}</TooltipContent>
-    </Tooltip>
+    <TooltipProvider delayDuration={300} skipDelayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side}>{label}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

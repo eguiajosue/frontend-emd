@@ -57,7 +57,7 @@ describe("AreaTasksSection - quitar área pide confirmación", () => {
   it("no quita el área al primer click: pide confirmación antes de llamar a removeArea", async () => {
     render(<AreaTasksSection order={order} />);
 
-    await userEvent.click(screen.getByTitle(/Quitar .* del pedido/i));
+    await userEvent.click(screen.getByRole("button", { name: /Quitar .* del pedido/i }));
 
     expect(removeMutateAsync).not.toHaveBeenCalled();
     expect(screen.getByText(/¿Quitar .* del pedido\?/i)).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe("AreaTasksSection - quitar área pide confirmación", () => {
   it("al confirmar, llama a removeArea con el id de la tarea", async () => {
     render(<AreaTasksSection order={order} />);
 
-    await userEvent.click(screen.getByTitle(/Quitar .* del pedido/i));
+    await userEvent.click(screen.getByRole("button", { name: /Quitar .* del pedido/i }));
     await userEvent.click(await screen.findByRole("button", { name: /^Eliminar$/i }));
 
     expect(removeMutateAsync).toHaveBeenCalledWith(1);

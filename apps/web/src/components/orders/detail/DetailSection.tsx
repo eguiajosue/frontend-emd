@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +31,7 @@ export function DetailSection({
       className={cn("scroll-mt-28 space-y-3 border-t pt-5", className)}
     >
       <header className="flex min-h-8 items-center justify-between gap-3">
-        <h3 id={headingId} className="font-heading text-sm font-semibold">
+        <h3 id={headingId} className="text-section-title">
           {title}
         </h3>
         {action}
@@ -41,9 +42,10 @@ export function DetailSection({
 }
 
 /**
- * Sección plegable para lo secundario (diseño ya resuelto, actividad). Con
- * `<details>`: el contenido queda montado aunque esté cerrado, así no se
- * pierde estado interno (rondas abiertas, confirmaciones) al plegar.
+ * Sección plegable para lo secundario (diseño ya resuelto, actividad).
+ * Collapsible de shadcn con `forceMount`: el contenido queda montado aunque
+ * esté cerrado, así no se pierde estado interno (rondas abiertas,
+ * confirmaciones) al plegar.
  */
 export function CollapsibleSection({
   id,
@@ -63,28 +65,29 @@ export function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <details
+    <Collapsible
       id={id}
       open={open}
-      onToggle={(e) => {
-        const next = (e.currentTarget as HTMLDetailsElement).open;
+      onOpenChange={(next) => {
         setOpen(next);
         onOpenChange?.(next);
       }}
       className="group scroll-mt-28 border-t pt-5"
     >
-      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        <h3 className="font-heading text-sm font-semibold">{title}</h3>
+      <CollapsibleTrigger className="flex min-h-8 w-full items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60">
+        <h3 className="text-section-title">{title}</h3>
         {summary && !open && (
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{summary}</span>
         )}
         <ChevronDown
           aria-hidden
-          className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+          className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
         />
-      </summary>
-      <div className="pt-3">{children}</div>
-    </details>
+      </CollapsibleTrigger>
+      <CollapsibleContent forceMount className="pt-3 data-[state=closed]:hidden">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

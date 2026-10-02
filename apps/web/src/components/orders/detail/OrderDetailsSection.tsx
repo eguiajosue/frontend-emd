@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
@@ -19,8 +20,8 @@ import type { Order, UpdateOrderPayload, User } from "@/types";
 
 const ImageLightbox = dynamic(() => import("../ImageLightbox"), { ssr: false });
 
-const SELECT_CLASS =
-  "flex h-9 w-full min-w-0 rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none";
+/** Radix Select no admite `""` como valor: centinela para "sin asignar". */
+const UNASSIGNED = "none";
 
 function userLabel(u: User): string {
   const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username;
@@ -88,7 +89,7 @@ export function OrderDetailsSection({
 
           {products.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">Productos</p>
+              <p className="text-label">Productos</p>
               <ul className="divide-y rounded-lg border">
                 {products.map((op, i) => (
                   <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
@@ -104,7 +105,7 @@ export function OrderDetailsSection({
               trabaje. No es el montaje: ese vive en "Diseño". */}
           {file && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground">Archivo del cliente</p>
+              <p className="text-label">Archivo del cliente</p>
               <div className="flex flex-wrap items-center gap-3">
                 {file.mimeType.startsWith("image/") ? (
                   <button
@@ -195,7 +196,6 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="transition-colors focus-visible:border-primary focus-visible:ring-0"
         />
       </FormField>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -205,7 +205,6 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
             type="date"
             value={deliveryDate}
             onChange={(e) => setDeliveryDate(e.target.value)}
-            className="transition-colors focus-visible:border-primary focus-visible:ring-0"
           />
         </FormField>
         <FormField label="Hora (opcional)" htmlFor="order-edit-time">
@@ -215,23 +214,25 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
             value={deliveryTime}
             onChange={(e) => setDeliveryTime(e.target.value)}
             disabled={!deliveryDate}
-            className="transition-colors focus-visible:border-primary focus-visible:ring-0"
           />
         </FormField>
         <FormField label="Asignado a" htmlFor="order-edit-assignee">
-          <select
-            id="order-edit-assignee"
-            className={SELECT_CLASS}
-            value={assignedUserId ?? ""}
-            onChange={(e) => setAssignedUserId(e.target.value ? Number(e.target.value) : undefined)}
+          <Select
+            value={assignedUserId != null ? String(assignedUserId) : UNASSIGNED}
+            onValueChange={(v) => setAssignedUserId(v === UNASSIGNED ? undefined : Number(v))}
           >
-            <option value="">Sin asignar</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {userLabel(u)}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="order-edit-assignee">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={String(u.id)}>
+                  {userLabel(u)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FormField>
       </div>
       <div className="flex items-center gap-2">

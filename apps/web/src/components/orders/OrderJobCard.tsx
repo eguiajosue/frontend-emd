@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import { ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
@@ -120,7 +121,7 @@ export const OrderJobCard = memo(function OrderJobCard({
   return (
     <article
       className={cn(
-        "group relative flex w-full min-w-0 flex-col rounded-xl border bg-card shadow-soft transition-shadow duration-150 hover:shadow-soft-md dark:hover:border-foreground/20",
+        "group relative flex w-full min-w-0 flex-col rounded-xl border bg-card transition-[box-shadow,border-color] duration-150 hover:border-foreground/15 hover:shadow-soft-md",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
     >
@@ -134,7 +135,7 @@ export const OrderJobCard = memo(function OrderJobCard({
 
       <header className="pointer-events-none relative flex items-start gap-3 p-4 pb-3">
         <div className="min-w-0 flex-1">
-          <p className={cn("font-heading font-bold tabular-nums leading-none", wall ? "text-xl" : "text-base")}>
+          <p className={cn("font-heading font-semibold tabular-nums leading-none", wall ? "text-xl" : "text-base")}>
             #{order.id}
           </p>
           <p className={cn("mt-1.5 truncate font-medium", wall ? "text-base" : "text-sm")}>{clientName}</p>
@@ -147,18 +148,17 @@ export const OrderJobCard = memo(function OrderJobCard({
             {areas.map((area) => {
               const Icon = getAreaIcon(area);
               return (
-                <li
-                  key={area}
-                  className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                >
-                  {Icon && <Icon className="h-3 w-3" aria-hidden />}
-                  {getAreaLabel(area)}
+                <li key={area}>
+                  <Badge variant="muted" className="px-2">
+                    {Icon && <Icon className="h-3 w-3" aria-hidden />}
+                    {getAreaLabel(area)}
+                  </Badge>
                 </li>
               );
             })}
             {hiddenAreas > 0 && (
-              <li className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                +{hiddenAreas}
+              <li>
+                <Badge variant="muted" className="px-2">+{hiddenAreas}</Badge>
               </li>
             )}
           </ul>
@@ -175,7 +175,7 @@ export const OrderJobCard = memo(function OrderJobCard({
       </header>
 
       <div className={cn("pointer-events-none relative mx-3 rounded-lg px-3 py-2.5", meta.block)}>
-        <p className={cn("text-[11px] font-semibold uppercase tracking-wider", meta.caption)}>
+        <p className={cn("text-xs font-medium", meta.caption)}>
           {meta.label}
           {state.tone === "overdue" && " hace"}
         </p>
@@ -187,15 +187,15 @@ export const OrderJobCard = memo(function OrderJobCard({
         >
           {headline(order, state)}
         </p>
-        <dl className={cn("mt-1.5 grid grid-cols-2 gap-2 text-[11px] leading-tight", meta.caption)}>
+        <dl className={cn("mt-1.5 grid grid-cols-2 gap-2 text-xs leading-tight", meta.caption)}>
           <div>
-            <dt className="uppercase tracking-wider opacity-80">Entrega</dt>
+            <dt className="opacity-80">Entrega</dt>
             <dd className="font-medium tabular-nums">
               {order.deliveryDate ? formatDeliveryDate(order.deliveryDate, timeFormat) : "—"}
             </dd>
           </div>
           <div className="text-right">
-            <dt className="uppercase tracking-wider opacity-80">Transcurrido</dt>
+            <dt className="opacity-80">Transcurrido</dt>
             <dd className="font-medium tabular-nums">{formatElapsed(state.elapsedMs)}</dd>
           </div>
         </dl>
@@ -204,11 +204,11 @@ export const OrderJobCard = memo(function OrderJobCard({
       <div className="pointer-events-none relative grid grid-cols-2 gap-3 px-4 pb-3 pt-3 text-xs">
         <div>
           <p className="text-muted-foreground">Productos</p>
-          <p className="font-heading text-lg font-bold tabular-nums leading-tight">{productCount}</p>
+          <p className="font-heading text-lg font-semibold tabular-nums leading-tight">{productCount}</p>
         </div>
         <div className="text-right">
           <p className="text-muted-foreground">Tareas de área</p>
-          <p className="font-heading text-lg font-bold tabular-nums leading-tight">
+          <p className="font-heading text-lg font-semibold tabular-nums leading-tight">
             {tasks.total === 0 ? "—" : `${tasks.done}/${tasks.total}`}
           </p>
           {tasks.total > 0 && (
