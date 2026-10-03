@@ -1,3 +1,4 @@
+import { formatOrderCode } from "@/lib/orderCode";
 import { formatDate } from "@/lib/format";
 import { LOCATION_LABELS } from "@/lib/suppliers";
 import type { Order, OrderMaterialItem } from "@/types";
@@ -38,7 +39,7 @@ export async function downloadMaterialsSheetPdf(
   doc.text("Hoja de materiales", 14, 18);
 
   doc.setFontSize(10);
-  doc.text(`Pedido #${order.id}`, 14, 26);
+  doc.text(`Pedido ${formatOrderCode(order.id)}`, 14, 26);
   doc.text(`Cliente: ${clientName(order)}`, 14, 32);
   doc.text(`Fecha: ${formatDate(new Date().toISOString())}`, 14, 38);
 

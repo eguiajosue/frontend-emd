@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import {
   startOfMonth,
@@ -176,7 +177,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                             className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-xl bg-muted/50 p-3 text-left font-normal"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium">#{order.id} · {getOrderClientName(order)}</span>
+                              <span className="font-medium">{formatOrderCode(order.id)} · {getOrderClientName(order)}</span>
                               <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                             </div>
                             <p className="line-clamp-1 text-xs text-muted-foreground">

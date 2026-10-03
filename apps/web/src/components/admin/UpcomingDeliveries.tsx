@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +77,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                       aria-hidden
                     />
                     <p className="min-w-0 flex-1 truncate text-sm font-medium">
-                      <span className="tabular-nums">#{order.id}</span> · {getOrderClientName(order)}
+                      <span className="tabular-nums">{formatOrderCode(order.id)}</span> · {getOrderClientName(order)}
                     </p>
                     <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                   </div>

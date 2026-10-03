@@ -116,7 +116,7 @@ describe("TeamCalendar", () => {
     await openDay15Popover();
 
     expect(screen.getByText("Instalar torniquetes", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText(/Pedido #42/)).toBeInTheDocument();
+    expect(screen.getByText(/Pedido EMD-P0042/)).toBeInTheDocument();
     expect(screen.getByText("Armar pendones", { selector: "p" })).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("TeamCalendar", () => {
     renderCalendar({ orders: [baseOrder], onSelectOrder });
     await openDay15Popover();
 
-    await userEvent.click(screen.getByText(/Pedido #42/).closest("button")!);
+    await userEvent.click(screen.getByText(/Pedido EMD-P0042/).closest("button")!);
     expect(onSelectOrder).toHaveBeenCalledWith(42);
   });
 

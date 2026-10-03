@@ -110,7 +110,7 @@ function ChatMockup() {
     <div className="max-w-sm space-y-1.5 rounded-xl bg-muted/60 p-3 text-xs">
       <div className="flex justify-start">
         <span className="rounded-2xl rounded-bl-md bg-card px-3 py-1.5 shadow-soft">
-          ¿En cuánto va el pedido #128?
+          ¿En cuánto va el pedido EMD-P0128?
         </span>
       </div>
       <div className="flex justify-end">
@@ -132,7 +132,7 @@ const ADMIN_PROFILE: GuideProfile = {
       title: "Panel General",
       description:
         "Vista global de todos los pedidos de la empresa: filtrá por estado, ordená la lista y detectá pedidos estancados (los que tardan más que el promedio histórico de su etapa).",
-      mockup: <OrderRowMockup statusValue={3} label="Pedido #128 · Bordados SA" />,
+      mockup: <OrderRowMockup statusValue={3} label="Pedido EMD-P0128 · Bordados SA" />,
     },
     {
       icon: <BarChart3 className="h-4 w-4" />,
@@ -178,7 +178,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       title: "Crear un pedido nuevo",
       description:
         "En \"Pedidos\" tocá \"+ Nuevo Pedido\" (o la tecla N), elegí el cliente, completá la descripción y la fecha de entrega, y guardá. Arranca en estado \"pendiente\".",
-      mockup: <OrderRowMockup statusValue={1} label="Pedido #131 · Nuevo" />,
+      mockup: <OrderRowMockup statusValue={1} label="Pedido EMD-P0131 · Nuevo" />,
     },
     {
       icon: <Split className="h-4 w-4" />,
@@ -224,7 +224,7 @@ const DISENO_PROFILE: GuideProfile = {
       title: "Pedidos que requieren diseño",
       description:
         "En \"Estatus de Pedidos\" aparecen los pedidos que Recepción marcó como \"requiere diseño\" y que están esperando la parte de Diseño.",
-      mockup: <OrderRowMockup statusValue={2} label="Pedido #129 · En pruebas" />,
+      mockup: <OrderRowMockup statusValue={2} label="Pedido EMD-P0129 · En pruebas" />,
     },
     {
       icon: <Palette className="h-4 w-4" />,
@@ -264,7 +264,7 @@ const PRODUCCION_PROFILE: GuideProfile = {
       title: "Pedidos asignados",
       description:
         "\"Estatus de Pedidos\" muestra únicamente los pedidos \"en proceso\" que le corresponden al área — nada de otras etapas, para no generar confusión.",
-      mockup: <OrderRowMockup statusValue={3} label="Pedido #124 · En proceso" />,
+      mockup: <OrderRowMockup statusValue={3} label="Pedido EMD-P0124 · En proceso" />,
     },
     {
       icon: <CheckCircle2 className="h-4 w-4" />,

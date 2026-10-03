@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -46,16 +47,40 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
  * (que trae el array plano completo), acá se pagina explícitamente porque el
  * historial puede crecer indefinidamente.
  */
-export function useOrderHistoryList(page: number, limit = 20) {
+/** Búsqueda y filtros del Historial (se resuelven en el backend, paginados). */
+export interface OrderHistoryFilters {
+  /** Código ("EMD-P0042", "42"), cliente, empresa o descripción. */
+  q?: string;
+  statusId?: number;
+  area?: string;
+  /** Fecha de creación desde/hasta, `YYYY-MM-DD`. */
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+/** Sólo los filtros con valor, como parámetros de query. */
+export function historyFilterParams(filters: OrderHistoryFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.q?.trim()) params.q = filters.q.trim();
+  if (filters.statusId !== undefined) params.statusId = String(filters.statusId);
+  if (filters.area) params.area = filters.area;
+  // Fin de día inclusivo: "hasta el 31" incluye lo creado ese día.
+  if (filters.dateFrom) params.dateFrom = `${filters.dateFrom}T00:00:00`;
+  if (filters.dateTo) params.dateTo = `${filters.dateTo}T23:59:59.999`;
+  return params;
+}
+
+export function useOrderHistoryList(page: number, limit = 20, filters: OrderHistoryFilters = {}) {
   const token = useAuthToken();
+  const filterParams = historyFilterParams(filters);
 
   const query = useQuery<Paginated<Order>>({
-    queryKey: [...queryKeys.all("orderHistory"), page, limit],
+    queryKey: [...queryKeys.all("orderHistory"), page, limit, filterParams],
     enabled: Boolean(token),
     queryFn: () =>
       request<Paginated<Order>>(ENDPOINTS.orderHistory, {
         token,
-        params: { page, limit },
+        params: { page, limit, ...filterParams },
       }),
     placeholderData: (previous) => previous,
   });
@@ -266,7 +291,7 @@ export function useTakeOrderReception() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Atendés el pedido #${order.id}: las notificaciones te llegan a vos.`);
+      toast.success(`Atendés el pedido ${formatOrderCode(order.id)}: las notificaciones te llegan a vos.`);
     },
     // El backend explica el rechazo en español (rol sin permiso, pedido
     // inexistente): mostrar SU mensaje, no uno genérico.
@@ -354,7 +379,7 @@ export function useTakeOrderDesign() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Tomaste el pedido #${order.id}: queda a tu nombre`);
+      toast.success(`Tomaste el pedido ${formatOrderCode(order.id)}: queda a tu nombre`);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
@@ -386,7 +411,7 @@ export function useStartOrderDesign() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Empezaste el pedido #${order.id}: Recepción ya lo ve en curso`);
+      toast.success(`Empezaste el pedido ${formatOrderCode(order.id)}: Recepción ya lo ve en curso`);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo marcar el pedido como empezado."));
@@ -665,7 +690,7 @@ export function useClientOrders(clientId: number | null) {
  * Filtros compartidos por la pantalla de pedidos, reusados como query params
  * de `GET /orders/export`.
  */
-export interface OrdersExportFilters {
+export interface OrdersExportFilters extends OrderHistoryFilters {
   clientId?: number;
   statusIds?: number[];
   deliveryFrom?: string;
@@ -683,7 +708,7 @@ export async function downloadOrdersExport(
   token: string | undefined,
   filters: OrdersExportFilters
 ): Promise<void> {
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = historyFilterParams(filters);
   if (filters.clientId !== undefined) params.clientId = String(filters.clientId);
   if (filters.statusIds && filters.statusIds.length > 0) {
     params.statusIds = filters.statusIds.join(",");
@@ -755,7 +780,7 @@ export function useForceFinishOrder() {
     onSuccess: (orderId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
-      toast.success(`Pedido #${orderId} listo para entregar`);
+      toast.success(`Pedido ${formatOrderCode(orderId)} listo para entregar`);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

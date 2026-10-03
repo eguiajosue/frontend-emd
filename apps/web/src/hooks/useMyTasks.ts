@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { request, getErrorMessage } from "@/lib/api";
@@ -50,8 +51,8 @@ export function useAdvanceMyTask() {
       const area = getAreaLabel(task.area);
       toast.success(
         status === "terminado"
-          ? `${area} terminado en el pedido #${task.order.id}`
-          : `Empezaste ${area} del pedido #${task.order.id}`
+          ? `${area} terminado en el pedido ${formatOrderCode(task.order.id)}`
+          : `Empezaste ${area} del pedido ${formatOrderCode(task.order.id)}`
       );
     },
     onError: (error) => toast.error(getErrorMessage(error, "No se pudo actualizar la tarea.")),

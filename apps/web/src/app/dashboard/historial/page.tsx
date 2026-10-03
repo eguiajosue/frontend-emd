@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { formatOrderCode } from "@/lib/orderCode";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
-import { useOrderHistoryList, downloadOrdersExport } from "@/hooks/useOrders";
+import { useOrderHistoryList, downloadOrdersExport, type OrderHistoryFilters } from "@/hooks/useOrders";
+import { HistoryFilters, hasHistoryFilters } from "./HistoryFilters";
 import { useAuthToken } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -19,7 +21,7 @@ import { orderAreaTags } from "@/lib/orderAreas";
 import { useDeliveryProgress } from "@/lib/deliveryProgress";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { cn } from "@/lib/utils";
-import { CalendarDays, ChevronLeft, ChevronRight, FileDown, Archive, ListChecks, Paperclip, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FilterX, Archive, ListChecks, Paperclip, UserRound } from "lucide-react";
 import type { Order } from "@/types";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -46,10 +48,10 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
         variant="bare"
         size="bare"
         onClick={() => onOpen(order.id)}
-        aria-label={`Ver pedido #${order.id} de ${client}`}
-        className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center sm:grid-cols-[3rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors hover:bg-muted/50 lg:grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
+        aria-label={`Ver pedido ${formatOrderCode(order.id)} de ${client}`}
+        className="grid w-full grid-cols-[5.5rem_minmax(0,1fr)] items-center sm:grid-cols-[5.75rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors hover:bg-muted/50 lg:grid-cols-[6rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
       >
-        <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
+        <span className="font-heading text-sm font-semibold tabular-nums">{formatOrderCode(order.id)}</span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium">{client}</span>
           <span className="block truncate text-xs text-muted-foreground">{order.description}</span>
@@ -120,10 +122,19 @@ const HistorialPage = () => {
   const [page, setPage] = useState(1);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [filters, setFilters] = useState<OrderHistoryFilters>({});
   const { orders, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
     page,
-    PAGE_SIZE
+    PAGE_SIZE,
+    filters
   );
+  const filtering = hasHistoryFilters(filters);
+  // Cambiar un filtro vuelve a la primera página: quedarse en la 7 de un
+  // resultado que ahora tiene 2 mostraba una lista vacía.
+  const updateFilters = useCallback((next: OrderHistoryFilters) => {
+    setFilters(next);
+    setPage(1);
+  }, []);
   const { canManageOperations } = usePermissions();
   const token = useAuthToken();
 
@@ -132,7 +143,8 @@ const HistorialPage = () => {
   const handleExportCsv = async () => {
     setIsExportingCsv(true);
     try {
-      await downloadOrdersExport(token, {});
+      // El CSV exporta lo mismo que se está viendo.
+      await downloadOrdersExport(token, filters);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "No se pudo exportar el CSV."
@@ -157,6 +169,8 @@ const HistorialPage = () => {
         )}
       </div>
 
+      <HistoryFilters filters={filters} onChange={updateFilters} />
+
       {isPending ? (
         <Card className="divide-y divide-border/60">
           {Array.from({ length: 6 }, (_, i) => (
@@ -169,6 +183,13 @@ const HistorialPage = () => {
         </Card>
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
+      ) : orders.length === 0 && filtering ? (
+        <EmptyState
+          icon={FilterX}
+          title="Ningún pedido coincide con la búsqueda"
+          description="Probá con otro código, cliente o rango de fechas."
+          action={{ label: "Limpiar filtros", icon: FilterX, onClick: () => updateFilters({}) }}
+        />
       ) : orders.length === 0 ? (
         <EmptyState
           icon={Archive}
@@ -179,10 +200,10 @@ const HistorialPage = () => {
         <>
           <Card className="overflow-hidden">
             <div
-              className="hidden grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid"
+              className="hidden grid-cols-[6rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid"
               aria-hidden
             >
-              <span>Pedido</span>
+              <span>Código</span>
               <span>Cliente</span>
               <span>Áreas</span>
               <span>Entrega</span>
@@ -197,7 +218,9 @@ const HistorialPage = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="text-meta tabular-nums">
-              {meta ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedidos` : null}
+              {meta
+                ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedido${meta.total === 1 ? "" : "s"}${filtering ? " encontrados" : ""}`
+                : null}
             </p>
             <div className="flex items-center gap-2">
               <Button
