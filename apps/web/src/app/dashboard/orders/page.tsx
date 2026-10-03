@@ -202,6 +202,8 @@ const OrdersPage = () => {
     id?: number;
     label: string;
   } | null>(null);
+  // "Repetir pedido" (menú del detalle): pedido a usar como base del alta.
+  const [repeatFromId, setRepeatFromId] = useState<number | null>(null);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -274,6 +276,8 @@ const OrdersPage = () => {
   //    página dos veces, y si se limpiaban al leerlos el segundo montaje ya no
   //    los veía (el modo TV o el detalle se abrían y se cerraban solos).
   //  - ?clientId=<id> fija el filtro de cliente ("Ver sus pedidos").
+  //  - ?new=1&repeatFrom=<id> abre "+ Nueva Orden" con ese pedido como base
+  //    ("Repetir pedido"); cierra el detalle desde el que se pidió.
   const forcedListRef = useRef(false);
   const handleUrlParams = useCallback((params: URLSearchParams) => {
     const nextTone = parseToneParam(params.get(ORDER_TONE_PARAM));
@@ -285,6 +289,12 @@ const OrdersPage = () => {
     }
     if (tv) setTvOpen(true);
     if (params.get("new") === "1") setCreateOpen(true);
+    const repeatFrom = Number(params.get("repeatFrom"));
+    if (repeatFrom) {
+      setRepeatFromId(repeatFrom);
+      setOpenOrderId(null);
+      setCreateOpen(true);
+    }
     const openId = Number(params.get("openOrderId"));
     if (openId) setOpenOrderId(openId);
     const clientId = Number(params.get("clientId"));
@@ -870,12 +880,16 @@ const OrdersPage = () => {
         onClose={() => {
           setCreateOpen(false);
           clearUrlParam("new");
+          clearUrlParam("repeatFrom");
           setCreatePrefillClient(null);
+          setRepeatFromId(null);
         }}
         onCreated={(order) => openDetail(order.id)}
         initialClientId={createPrefillClient?.id}
         initialClientNameOverride={createPrefillClient?.id ? undefined : createPrefillClient?.label}
+        repeatFromOrderId={repeatFromId ?? undefined}
         onCreateAnother={(clientId, clientNameOverride) => {
+          setRepeatFromId(null);
           setCreatePrefillClient({ id: clientId, label: clientNameOverride });
           setCreateOpen(true);
         }}

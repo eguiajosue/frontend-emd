@@ -207,3 +207,112 @@ export const MAX_QUANTITY = 99_999;
 export function clampName(value: string): string {
   return value.trim().slice(0, MAX_NAME_LENGTH);
 }
+
+/* ---------------------------- Repetir un pedido --------------------------- */
+
+/**
+ * Lo que se reutiliza de un pedido anterior del cliente al tocar "Usar como
+ * base" (o "Repetir pedido" en el detalle). Se repite EL PEDIDO —qué se pide,
+ * descripción, ruta de diseño/producción y hoja de materiales—, nunca la
+ * fecha de entrega ni el archivo del cliente: un cliente que encarga
+ * "Figuras" de vinil sobre coroplast para cada evento repite el pedido, pero
+ * las figuras (y la fecha) son otras cada vez.
+ */
+export interface RepeatPrefill {
+  sourceOrderId: number;
+  requiresDesign: boolean;
+  /** Áreas de producción, la principal primero. Sólo áreas que siguen existiendo. */
+  areas: string[];
+  assignedUserId?: number;
+  description: string;
+  products: Array<{ customName: string; quantity: number }>;
+}
+
+interface RepeatSource {
+  id: number;
+  requiresDesign?: boolean;
+  productionArea?: string | null;
+  area?: string | null;
+  areaTasks?: Array<{ area: string }>;
+  assignedUserId?: number | null;
+  description?: string | null;
+  orderProducts?: Array<{ customName?: string | null; quantity: number }>;
+}
+
+export function buildRepeatPrefill(order: RepeatSource): RepeatPrefill {
+  const requiresDesign = Boolean(order.requiresDesign);
+  // La principal va primero: `productionArea` (o, sin diseño, el área en la
+  // que arrancó) y después el resto de las tareas, sin repetir ni Diseño.
+  const candidates = [
+    order.productionArea,
+    ...(order.areaTasks ?? []).map((t) => t.area),
+    requiresDesign ? null : order.area,
+  ];
+  const areas = candidates.filter(
+    (a, i): a is string =>
+      typeof a === "string" && PRODUCTION_AREA_VALUES.includes(a) && candidates.indexOf(a) === i
+  );
+
+  const products: RepeatPrefill["products"] = [];
+  for (const op of order.orderProducts ?? []) {
+    const customName = clampName(op.customName ?? "");
+    if (!customName || products.length >= MAX_PRODUCT_LINES) continue;
+    const quantity = Math.min(Math.max(Math.trunc(op.quantity) || 1, 1), MAX_QUANTITY);
+    const existing = products.find((p) => p.customName.toLowerCase() === customName.toLowerCase());
+    if (existing) existing.quantity = Math.min(existing.quantity + quantity, MAX_QUANTITY);
+    else products.push({ customName, quantity });
+  }
+
+  return {
+    sourceOrderId: order.id,
+    requiresDesign,
+    areas,
+    assignedUserId: order.assignedUserId ?? undefined,
+    description: (order.description ?? "").slice(0, MAX_DESCRIPTION_LENGTH),
+    products,
+  };
+}
+
+/** "Figuras ×20 · Playeras ×10 · +2 más": resumen corto de lo que se pidió. */
+export function describeOrderProducts(
+  products: Array<{ customName?: string | null; quantity: number }> | undefined,
+  max = 2
+): string {
+  const named = (products ?? []).filter((p) => p.customName?.trim());
+  if (named.length === 0) return "Sin productos";
+  const shown = named.slice(0, max).map((p) => `${p.customName!.trim()} ×${p.quantity}`);
+  const rest = named.length - shown.length;
+  return rest > 0 ? `${shown.join(" · ")} · +${rest} más` : shown.join(" · ");
+}
+
+/** Línea de la hoja de materiales que se copia al pedido nuevo. */
+export interface RepeatMaterial {
+  key: string;
+  materialId: number;
+  quantity: number;
+  description: string;
+  supplierId?: number;
+  unitName?: string;
+}
+
+export function toRepeatMaterials(
+  items: Array<{
+    id: number;
+    materialId: number;
+    quantity: number;
+    description: string;
+    supplierId?: number | null;
+    material?: { name: string; unit?: { name: string } | null } | null;
+  }>
+): RepeatMaterial[] {
+  return items
+    .filter((item) => item.materialId > 0 && item.quantity > 0)
+    .map((item) => ({
+      key: `material-${item.id}`,
+      materialId: item.materialId,
+      quantity: item.quantity,
+      description: (item.description?.trim() || item.material?.name || "Material").slice(0, 200),
+      supplierId: item.supplierId ?? undefined,
+      unitName: item.material?.unit?.name ?? undefined,
+    }));
+}

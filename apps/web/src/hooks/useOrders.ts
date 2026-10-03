@@ -630,17 +630,22 @@ export function useOrderAuditLog(orderId: number | null, options?: { enabled?: b
  * Endpoint nuevo: si aún no existe, cae a array vacío (404 defensivo) en vez
  * de romper la ficha del cliente.
  */
-export function useClientOrders(clientId: number | null) {
+/**
+ * Pedidos de un cliente, del más nuevo al más viejo. Con `limit` pide sólo
+ * esa primera página (ej. "Pedidos anteriores" del alta); sin él, todos.
+ */
+export function useClientOrders(clientId: number | null, options?: { limit?: number }) {
   const token = useAuthToken();
   const enabled = Boolean(token) && clientId !== null;
+  const limit = options?.limit;
 
   const query = useQuery<Order[]>({
-    queryKey: ["clientOrders", clientId],
+    queryKey: ["clientOrders", clientId, limit ?? "all"],
     enabled,
     queryFn: async () => {
       try {
         const payload = await request<Order[] | Paginated<Order>>(
-          `${ENDPOINTS.clients}/${clientId}/orders`,
+          `${ENDPOINTS.clients}/${clientId}/orders${limit ? `?page=1&limit=${limit}` : ""}`,
           { token }
         );
         return Array.isArray(payload) ? payload : payload?.data ?? [];

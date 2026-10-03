@@ -9,7 +9,31 @@ let mockData: Record<string, unknown[]> = {};
 vi.mock("@/hooks/useEntity", () => ({
   useEntityList: (key: string) => ({ data: mockData[key] ?? [] }),
   useEntityMutations: () => ({ create: createMock }),
+  useAuthToken: () => "token",
   CATALOG_STALE_TIME: 5 * 60_000,
+}));
+
+let mockClientOrders: unknown[] = [];
+let mockRepeatSource: unknown = undefined;
+vi.mock("@/hooks/useOrders", () => ({
+  useClientOrders: (clientId: number | null) => ({
+    orders: clientId ? mockClientOrders : [],
+    isLoading: false,
+  }),
+  useOrder: (_id: unknown, options?: { enabled?: boolean }) => ({
+    data: options?.enabled ? mockRepeatSource : undefined,
+  }),
+}));
+
+const invalidateQueries = vi.fn();
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({ invalidateQueries }),
+}));
+
+const requestMock = vi.fn();
+vi.mock("@/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api")>()),
+  request: (...args: unknown[]) => requestMock(...args),
 }));
 
 vi.mock("@/hooks/usePermissions", () => ({
@@ -22,6 +46,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    warning: vi.fn(),
   },
 }));
 
@@ -39,6 +64,11 @@ beforeEach(() => {
   toastSuccess.mockReset();
   toastError.mockReset();
   mockData = {};
+  mockClientOrders = [];
+  mockRepeatSource = undefined;
+  requestMock.mockReset();
+  requestMock.mockResolvedValue([]);
+  invalidateQueries.mockReset();
   window.localStorage.clear();
 });
 
@@ -349,5 +379,117 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(screen.getByRole("combobox", { name: "Hora de entrega" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Quitar fecha" }));
     expect(screen.queryByText(/^Entrega el/)).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Repetir un pedido anterior                                                 */
+/* -------------------------------------------------------------------------- */
+
+const CLIENT = { id: 9, first_name: "Colegio", last_name: "Alameda" };
+
+/** Pedido de "Figuras" de coroplast: se repite el pedido, no las figuras ni la fecha. */
+const PREVIOUS_ORDER = {
+  id: 41,
+  clientId: 9,
+  requiresDesign: false,
+  area: "impresiones",
+  productionArea: "impresiones",
+  areaTasks: [{ id: 1, area: "impresiones", status: "pendiente" }],
+  description: "Figuras para el festival de primavera",
+  creationDate: "2026-09-01T10:00:00Z",
+  deliveryDate: "2026-09-10T18:00:00Z",
+  clientResourceFileName: "logo.png",
+  orderProducts: [{ customName: "Figuras", quantity: 20 }],
+  materialItems: [{ id: 3, quantity: 4, description: "Vinil impreso sobre coroplast" }],
+};
+
+const PREVIOUS_MATERIALS = [
+  {
+    id: 3,
+    orderId: 41,
+    materialId: 12,
+    quantity: 4,
+    description: "Vinil impreso sobre coroplast",
+    supplierId: 2,
+    material: { id: 12, name: "Coroplast", unit: { name: "Hoja" } },
+  },
+];
+
+async function pickRecentClient() {
+  window.localStorage.setItem("emd:recentClientIds", JSON.stringify([CLIENT.id]));
+  mockData.clients = [CLIENT];
+}
+
+describe("CreateOrderDialog: repetir un pedido anterior", () => {
+  it("con cliente elegido lista sus pedidos y «Usar como base» copia productos, ruta, descripción y materiales", async () => {
+    await pickRecentClient();
+    mockClientOrders = [PREVIOUS_ORDER];
+    requestMock.mockResolvedValueOnce(PREVIOUS_MATERIALS);
+    renderDialog();
+
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    expect(screen.getByText("Pedidos anteriores")).toBeInTheDocument();
+    expect(screen.getByText("Figuras ×20")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
+
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
+    expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras para el festival de primavera");
+    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
+    expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+    expect(requestMock).toHaveBeenCalledWith("orders/41/materials", { token: "token" });
+    // La fecha no se repite.
+    expect(screen.queryByText(/Entrega el/)).toBeNull();
+
+    // Cambia lo de esta vez y crea.
+    await setQty("Figuras", "35");
+    await submit();
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 9,
+        requiresDesign: false,
+        area: "impresiones",
+        orderProducts: [{ customName: "Figuras", quantity: 35 }],
+        description: "Figuras para el festival de primavera",
+        deliveryDate: undefined,
+        clientResourceFile: undefined,
+      })
+    );
+    expect(requestMock).toHaveBeenCalledWith("orders/123/materials", {
+      token: "token",
+      method: "POST",
+      body: { materialId: 12, quantity: 4, description: "Vinil impreso sobre coroplast", supplierId: 2 },
+    });
+  });
+
+  it("«Quitar base» vuelve a lo que había antes", async () => {
+    await pickRecentClient();
+    mockClientOrders = [PREVIOUS_ORDER];
+    requestMock.mockResolvedValueOnce(PREVIOUS_MATERIALS);
+    renderDialog();
+
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
+    expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Quitar base/ }));
+
+    expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("");
+    expect(screen.queryByText("Vinil impreso sobre coroplast")).toBeNull();
+    expect(screen.getByRole("button", { name: "Usar el pedido #41 como base" })).toBeInTheDocument();
+  });
+
+  it("«Repetir pedido» abre con el cliente y el pedido como base", async () => {
+    mockData.clients = [CLIENT];
+    mockRepeatSource = PREVIOUS_ORDER;
+    renderDialog({ repeatFromOrderId: 41 });
+
+    expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
+    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
   });
 });
