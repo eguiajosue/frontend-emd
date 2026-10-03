@@ -69,6 +69,43 @@ export interface OrderProductPreset extends BaseEntity {
   name: string;
 }
 
+/**
+ * Plantilla de pedido de un cliente (GET /clients/:id/order-templates): lo
+ * que suele pedir, con nombre ("Figuras de coroplast"). Precarga el alta;
+ * no guarda fecha, archivo del cliente ni asignado.
+ */
+export interface OrderTemplate extends BaseEntity {
+  clientId: number;
+  name: string;
+  requiresDesign: boolean;
+  /** Áreas de producción, la principal primero. */
+  productionAreas: string[];
+  description: string;
+  /** Pedidos creados con la plantilla (las más usadas van primero). */
+  useCount: number;
+  lastUsedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  products: Array<{ customName: string; quantity: number }>;
+  materials: Array<{
+    id: number;
+    materialId: number;
+    quantity: number;
+    description: string;
+    supplierId?: number | null;
+    material?: { id: number; name: string; unit?: { name: string } | null } | null;
+  }>;
+}
+
+export interface OrderTemplatePayload {
+  name: string;
+  requiresDesign: boolean;
+  productionAreas?: string[];
+  description?: string;
+  products: Array<{ customName: string; quantity: number }>;
+  materials?: Array<{ materialId: number; quantity: number; description: string; supplierId?: number }>;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Rendimiento (GET /performance/summary, solo admin/superuser)               */
 /* -------------------------------------------------------------------------- */
