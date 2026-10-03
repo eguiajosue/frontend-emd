@@ -87,7 +87,7 @@ describe("MobileTabBar", () => {
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });
 
-  it("rol operativo (taller): Tareas asignadas, Chat interno, Notificaciones, Ayuda + Más", () => {
+  it("rol operativo (taller): Tareas asignadas, Chat interno, Notificaciones, Inventario + Más", () => {
     mocks.roles = ["taller"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
@@ -95,7 +95,8 @@ describe("MobileTabBar", () => {
     expect(screen.getByRole("link", { name: "Tareas asignadas" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inventario" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ayuda" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });

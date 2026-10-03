@@ -13,6 +13,7 @@ import {
   ClipboardList,
   ListChecks,
   Truck,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,9 @@ export interface NavGroup {
 
 /** Bandeja de tareas de Diseño y Producción. */
 export const TASKS_URL = "/dashboard/tareas";
+
+/** Existencias físicas por departamento (no es el catálogo de Materiales). */
+export const INVENTORY_URL = "/dashboard/inventario";
 
 /** Roles que ejecutan trabajo (Diseño + áreas de producción). */
 const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
@@ -67,6 +71,12 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         title: "Tareas asignadas",
         url: TASKS_URL,
         icon: ListChecks,
+      },
+      {
+        // Cada área lleva las existencias de su estante (hilos, tintas...).
+        title: "Inventario",
+        url: INVENTORY_URL,
+        icon: Warehouse,
       },
     ],
   },
@@ -170,6 +180,13 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
+          // Existencias por departamento; cada área ve sólo la suya.
+          title: "Inventario",
+          url: INVENTORY_URL,
+          icon: Warehouse,
+          roles: ALL_ROLES,
+        },
+        {
           title: "Clientes",
           url: "/dashboard/clientes",
           icon: Building2,
@@ -241,6 +258,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/clientes",
   "/dashboard/materiales",
   "/dashboard/proveedores",
+  INVENTORY_URL,
   "/dashboard/calendario",
   "/dashboard/usuarios",
   "/dashboard/ayuda",

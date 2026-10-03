@@ -15,6 +15,7 @@ export type NotificationType =
   | "area_task_created"
   | "area_task_completed"
   | "chat_message"
+  | "inventory_low_stock"
   | (string & {});
 
 /**
@@ -22,12 +23,13 @@ export type NotificationType =
  * uno; los tipos que el backend agregue y todavía no estén mapeados caen en
  * "otras" en vez de perderse.
  */
-export type NotificationGroup = "diseno" | "produccion" | "pedidos" | "otras";
+export type NotificationGroup = "diseno" | "produccion" | "pedidos" | "inventario" | "otras";
 
 export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
   pedidos: "Pedidos",
   diseno: "Diseño",
   produccion: "Producción",
+  inventario: "Inventario",
   otras: "Otras",
 };
 
@@ -42,6 +44,7 @@ const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
   area_task_created: "produccion",
   area_task_completed: "produccion",
   order_ready: "produccion",
+  inventory_low_stock: "inventario",
 };
 
 /** Grupo al que pertenece un tipo de notificación (nunca falla). */
@@ -114,6 +117,12 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     className:
       "border-transparent bg-lime-500/10 text-lime-700 dark:bg-lime-400/15 dark:text-lime-300",
   },
+  // Un artículo del inventario de un departamento cruzó su mínimo o se agotó.
+  inventory_low_stock: {
+    label: "Stock bajo",
+    className:
+      "border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+  },
   chat_message: {
     label: "Chat",
     className:
@@ -124,6 +133,19 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
 /** Metadatos de la etiqueta de un tipo de notificación (nunca falla). */
 export const notificationTag = (type: NotificationType): NotificationTagMeta =>
   NOTIFICATION_TAGS[type] ?? DEFAULT_TAG;
+
+/**
+ * Pantalla a la que lleva un aviso al tocarlo: el pedido si referencia uno,
+ * el inventario para los avisos de stock; `null` = no navega.
+ */
+export const notificationHref = (notification: {
+  type: NotificationType;
+  orderId?: number | null;
+}): string | null => {
+  if (notification.orderId) return `/dashboard/orders/${notification.orderId}`;
+  if (notification.type === "inventory_low_stock") return "/dashboard/inventario";
+  return null;
+};
 
 /** Payload en vivo (WebSocket `orderStatusChanged`) de un cambio de estado. */
 export interface OrderStatusChangedPayload {
