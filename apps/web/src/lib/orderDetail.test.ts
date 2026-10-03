@@ -92,6 +92,11 @@ describe("getOrderNextAction", () => {
     expect(next(o, recepcion)).toBeNull();
   });
 
+  it("volvió con cambios: Diseño ve 'Ver cambios y corregir'", () => {
+    const o = order(23, "cambios solicitados", { requiresDesign: true });
+    expect(next(o, diseno)).toMatchObject({ kind: "section", label: "Ver cambios y corregir" });
+  });
+
   it("esperando autorización: recepción registra la respuesta", () => {
     const o = order(22, "esperando autorización", { requiresDesign: true });
     expect(next(o, recepcion)).toMatchObject({ kind: "section", label: "Registrar respuesta del cliente" });

@@ -107,7 +107,18 @@ export function getOrderNextAction(
   const canReception = viewer.isAdmin || viewer.roles.includes("recepcion");
 
   if (stage === "diseno") {
-    return canDesign ? { kind: "section", section: "design", label: "Subir montaje" } : null;
+    if (!canDesign) return null;
+    // Volvió con cambios: lo primero es leer qué pidió el cliente y corregir,
+    // no "subir montaje" como si fuera un pedido nuevo.
+    const changesRequested = isOrderInDesignStatus(
+      order.status?.name,
+      DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS
+    );
+    return {
+      kind: "section",
+      section: "design",
+      label: changesRequested ? "Ver cambios y corregir" : "Subir montaje",
+    };
   }
   if (stage === "autorizacion") {
     return canReception

@@ -104,6 +104,7 @@ export function useDesignRevisions(
       toast.success("Montaje enviado a Recepción");
     },
     onError: (error) => toast.error(getDesignErrorMessage(error)),
+    meta: { ownErrorToast: true },
   });
 
   const feedbackMutation = useMutation({
@@ -125,25 +126,35 @@ export function useDesignRevisions(
       toast.success("Cambios del cliente registrados, vuelve a Diseño");
     },
     onError: (error) => toast.error(getDesignErrorMessage(error)),
+    meta: { ownErrorToast: true },
   });
 
   const approveMutation = useMutation({
     mutationFn: ({
       revisionId,
-      productionArea,
+      productionAreas,
     }: {
       revisionId: number;
-      productionArea?: string;
+      /** Vacío = usa las áreas ya planificadas del pedido. */
+      productionAreas?: string[];
     }) =>
       request<DesignRevision>(
         `${designRevisionsPath(orderId as number)}/${revisionId}/approve`,
-        { method: "PATCH", token, body: { productionArea } }
+        {
+          method: "PATCH",
+          token,
+          body:
+            productionAreas && productionAreas.length > 0
+              ? { productionAreas, productionArea: productionAreas[0] }
+              : {},
+        }
       ),
     onSuccess: () => {
       invalidate();
       toast.success("Pedido autorizado: pasa a producción");
     },
     onError: (error) => toast.error(getDesignErrorMessage(error)),
+    meta: { ownErrorToast: true },
   });
 
   return {
@@ -170,7 +181,7 @@ export function useDesignRevisions(
         .catch(() => false),
     isSubmittingFeedback: feedbackMutation.isPending,
 
-    approveRevision: (args: { revisionId: number; productionArea?: string }) =>
+    approveRevision: (args: { revisionId: number; productionAreas?: string[] }) =>
       approveMutation
         .mutateAsync(args)
         .then(() => true)
