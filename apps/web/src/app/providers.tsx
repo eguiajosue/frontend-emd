@@ -74,7 +74,13 @@ function createQueryClient() {
       onError: (error) => notifyError(error, "No se pudo cargar la información."),
     }),
     mutationCache: new MutationCache({
-      onError: (error) => notifyError(error, "No se pudo guardar el cambio."),
+      // Una mutación que ya avisa su propio error (con un mensaje más
+      // específico) lo marca con `meta.ownErrorToast`: sin esto salían dos
+      // toasts iguales por cada fallo.
+      onError: (error, _vars, _ctx, mutation) => {
+        if (mutation.meta?.ownErrorToast) return;
+        notifyError(error, "No se pudo guardar el cambio.");
+      },
     }),
   });
 }

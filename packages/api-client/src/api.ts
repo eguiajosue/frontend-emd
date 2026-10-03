@@ -45,6 +45,9 @@ export function getErrorMessage(
     if (error.status === 0) return "No se pudo conectar con el servidor.";
     if (error.status === 403) return error.message || "Sin permisos para realizar esta acción.";
     if (error.status === 404) return "No se encontró el recurso solicitado.";
+    // El throttler del backend responde "ThrottlerException: Too Many
+    // Requests" en inglés; se mostraba tal cual.
+    if (error.status === 429) return "Demasiados intentos seguidos. Esperá unos segundos y probá de nuevo.";
     // El backend manda mensajes específicos y en español incluso para 5xx
     // deliberados (ej. "servicio no configurado todavía", "no se pudo
     // enviar el reporte") — sólo caemos al genérico cuando no hay mensaje

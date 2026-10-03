@@ -123,7 +123,10 @@ export function NotificationBell() {
                 transition={
                   reduced
                     ? { duration: 0.15 }
-                    : { type: "spring", bounce: 0.5, duration: 0.35 }
+                    : // Spring sólo admite dos keyframes: el "bump" de tres
+                      // ([1, 1.35, 1]) tiraba un error de Motion que congelaba
+                      // las demás animaciones de la página (detalle, tablero).
+                      { duration: 0.35, ease: "easeOut" }
                 }
                 className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-destructive-foreground"
               >

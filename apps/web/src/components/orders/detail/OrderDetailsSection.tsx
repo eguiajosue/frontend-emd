@@ -167,6 +167,17 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
     order.assignedUserId ?? undefined
   );
 
+  // Mientras está en Diseño sólo puede tenerlo alguien de Diseño (el backend
+  // lo exige): ofrecer Taller o un admin era un "Guardar" que sólo fallaba.
+  const inDesign = order.area === "diseno";
+  const hasRoleInfo = users.some((u) => Array.isArray(u.roles));
+  const assignableUsers =
+    inDesign && hasRoleInfo
+      ? users.filter(
+          (u) => u.id === order.assignedUserId || u.roles?.some((r) => r.name === "diseno")
+        )
+      : users;
+
   const handleSave = async () => {
     try {
       await update(order.id, {
@@ -226,9 +237,9 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={UNASSIGNED}>Sin asignar</SelectItem>
-              {users.map((u) => (
+              {assignableUsers.map((u) => (
                 <SelectItem key={u.id} value={String(u.id)}>
-                  {userLabel(u)}
+                  {inDesign && u.isSharedAccount ? "Cualquiera de Diseño" : userLabel(u)}
                 </SelectItem>
               ))}
             </SelectContent>

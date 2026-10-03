@@ -19,8 +19,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { OrderMaterialDialog } from "@/components/orders/OrderMaterialDialog";
+import { useOrderMaterials } from "@/hooks/useOrderMaterials";
 import {
   Accordion,
   AccordionContent,
@@ -28,7 +32,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,12 +62,14 @@ import {
 } from "@/lib/fileInput";
 import {
   CheckCircle2,
+  CircleDashed,
   Download,
   FileText,
   Loader2,
   MessagesSquare,
   Palette,
   Paperclip,
+  Plus,
   RotateCcw,
   Upload,
   UserRound,
@@ -130,10 +135,12 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const isDesignTurn =
     currentStatus === DESIGN_FLOW_STATUS_NAMES.EN_DISENO ||
     currentStatus === DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS;
+  const isChangesRequested = currentStatus === DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS;
   const isWaitingAuthorization = currentStatus === DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION;
   const isAuthorized = currentStatus === DESIGN_FLOW_STATUS_NAMES.AUTORIZADO;
 
   const latestRevision = revisions[revisions.length - 1] ?? null;
+  const nextRound = (latestRevision?.round ?? 0) + 1;
   /** Áreas ya planificadas: si las hay, autorizar no vuelve a preguntarlas. */
   const plannedAreas = areaTasks.map((task) => task.area);
 
@@ -252,6 +259,8 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
                 orderId={order.id}
                 revision={revisions[revisions.length - 1]}
                 isCurrentRound
+                feedbackFirst={isChangesRequested}
+                respondsTo={revisions.length > 1 ? revisions[revisions.length - 2].feedbackText : null}
                 onZoom={setLightboxSrc}
               />
             </AnimatePresence>
@@ -296,30 +305,41 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            {isSendingMontage ? "Enviando..." : "Enviar montaje a Recepción"}
+            {isSendingMontage
+              ? "Enviando…"
+              : isChangesRequested
+              ? `Corregir y reenviar (ronda ${nextRound})`
+              : "Enviar montaje a Recepción"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Arrastrá, adjuntá o pegá imágenes (Ctrl+V). Pueden ser varias. PNG,
-            JPG o PDF, máximo 5MB cada una y 7MB en total.
+            {isChangesRequested
+              ? "Subí el montaje corregido: vuelve a Recepción para que lo vea el cliente."
+              : "La hoja de autorización: imágenes o PDF. Recepción se la muestra al cliente."}
           </p>
         </div>
       )}
 
       {canReception && isWaitingAuthorization && latestRevision && (
-        <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setFeedbackOpen(true)}
-            className="gap-1.5"
-          >
-            <MessagesSquare className="h-4 w-4" />
-            Registrar cambios del cliente
-          </Button>
-          <Button size="sm" onClick={() => setApproveOpen(true)} className="gap-1.5">
-            <CheckCircle2 className="h-4 w-4" />
-            Cliente autorizó
-          </Button>
+        <div className="space-y-2 border-t border-border pt-3">
+          <p className="text-sm font-medium">¿Qué respondió el cliente?</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => setApproveOpen(true)} className="gap-1.5">
+              <CheckCircle2 className="h-4 w-4" />
+              Autorizó
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setFeedbackOpen(true)}
+              className="gap-1.5"
+            >
+              <MessagesSquare className="h-4 w-4" />
+              Pidió cambios
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Autorizado pasa a producción · con cambios vuelve a Diseño.
+          </p>
         </div>
       )}
 
@@ -365,11 +385,13 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
           open={approveOpen}
           onClose={() => setApproveOpen(false)}
           isSubmitting={isApproving}
+          orderId={order.id}
+          round={latestRevision.round}
           plannedAreas={plannedAreas}
-          onSubmit={async (productionArea) => {
+          onSubmit={async (productionAreas) => {
             const ok = await approveRevision({
               revisionId: latestRevision.id,
-              productionArea,
+              productionAreas,
             });
             if (ok) setApproveOpen(false);
             return ok;
@@ -394,9 +416,18 @@ function RevisionTimelineItem({
   isCurrentRound,
   onZoom,
   hideHeader = false,
+  feedbackFirst = false,
+  respondsTo = null,
 }: {
   orderId: number;
   revision: import("@/types").DesignRevision;
+  /**
+   * El cliente pidió cambios sobre esta ronda: lo que hay que corregir va
+   * ARRIBA del montaje viejo, que es lo primero que tiene que leer Diseño.
+   */
+  feedbackFirst?: boolean;
+  /** Cambios de la ronda anterior que esta ronda corrige (contexto para Recepción). */
+  respondsTo?: string | null;
   /** La ronda vigente precarga sus imágenes; las anteriores, bajo demanda. */
   isCurrentRound: boolean;
   onZoom: (src: string) => void;
@@ -429,6 +460,47 @@ function RevisionTimelineItem({
     : { label: "Enviada", classes: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" };
 
   const legacyMontageName = revision.montageFileName ?? `montaje-ronda-${revision.round}`;
+  const feedbackBlock = revision.feedbackText ? (
+    <div
+      className={cn(
+        "rounded-lg border p-2.5 text-sm",
+        feedbackFirst
+          ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40"
+          : "bg-muted/30"
+      )}
+    >
+      <p className={cn("mb-1", feedbackFirst ? "text-sm font-semibold" : "text-label")}>
+        {feedbackFirst ? "El cliente pidió estos cambios" : "Cambios pedidos por el cliente"}
+        {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt, undefined, timeFormat)}` : ""}
+      </p>
+      <p className="whitespace-pre-wrap">{revision.feedbackText}</p>
+      {feedbackFiles.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-3">
+          {feedbackFiles.map((file) => (
+            <RevisionFileCard
+              key={file.id}
+              orderId={orderId}
+              revisionId={revision.id}
+              file={file}
+              eager={isCurrentRound}
+              onZoom={onZoom}
+            />
+          ))}
+        </div>
+      )}
+      {useLegacyFeedbackFile && (
+        <div className="mt-2">
+          <RevisionFileButton
+            orderId={orderId}
+            revisionId={revision.id}
+            kind="feedback-file"
+            filename={revision.feedbackFileName ?? `adjunto-ronda-${revision.round}`}
+            label={`Ver adjunto${revision.feedbackFileName ? ` (${revision.feedbackFileName})` : ""}`}
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
   const Wrapper = hideHeader ? motion.div : motion.li;
 
   return (
@@ -448,8 +520,15 @@ function RevisionTimelineItem({
           </span>
         </div>
       )}
+      {feedbackFirst && feedbackBlock}
+
       {revision.sentAt && (
         <p className="text-xs text-muted-foreground">Montaje enviado {formatDateTime(revision.sentAt, undefined, timeFormat)}</p>
+      )}
+      {respondsTo && (
+        <p className="line-clamp-2 text-xs text-muted-foreground">
+          Corrige lo que pidió el cliente: “{respondsTo}”
+        </p>
       )}
 
       {montageFiles.length > 0 && (
@@ -506,40 +585,7 @@ function RevisionTimelineItem({
           />
         ))}
 
-      {revision.feedbackText && (
-        <div className="rounded-lg border bg-muted/30 p-2.5 text-sm">
-          <p className="text-label mb-1">
-            Feedback del cliente
-            {revision.feedbackAt ? ` · ${formatDateTime(revision.feedbackAt, undefined, timeFormat)}` : ""}
-          </p>
-          <p className="whitespace-pre-wrap">{revision.feedbackText}</p>
-          {feedbackFiles.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-3">
-              {feedbackFiles.map((file) => (
-                <RevisionFileCard
-                  key={file.id}
-                  orderId={orderId}
-                  revisionId={revision.id}
-                  file={file}
-                  eager={isCurrentRound}
-                  onZoom={onZoom}
-                />
-              ))}
-            </div>
-          )}
-          {useLegacyFeedbackFile && (
-            <div className="mt-2">
-              <RevisionFileButton
-                orderId={orderId}
-                revisionId={revision.id}
-                kind="feedback-file"
-                filename={revision.feedbackFileName ?? `adjunto-ronda-${revision.round}`}
-                label={`Ver adjunto${revision.feedbackFileName ? ` (${revision.feedbackFileName})` : ""}`}
-              />
-            </div>
-          )}
-        </div>
-      )}
+      {!feedbackFirst && feedbackBlock}
 
       {revision.approved && (
         <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -935,6 +981,114 @@ function StagedFileList({
   );
 }
 
+/**
+ * Zona para sumar archivos: arrastrar, pegar (Ctrl+V), adjuntar o sacar foto.
+ * La comparten el montaje (Diseño) y los cambios del cliente (Recepción),
+ * que antes tenía un input nativo sin pegado ni arrastre.
+ */
+function FileDropzone({
+  files,
+  onAdd,
+  onRemove,
+  onClear,
+  disabled,
+  emptyHint,
+}: {
+  files: StagedFile[];
+  onAdd: (incoming: File[]) => Promise<void>;
+  onRemove: (index: number) => void;
+  onClear: () => void;
+  disabled?: boolean;
+  emptyHint: string;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    await onAdd(picked);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const pasted: File[] = [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        const pastedFile = item.getAsFile();
+        if (pastedFile) pasted.push(pastedFile);
+      }
+    }
+    if (pasted.length === 0) return;
+    e.preventDefault();
+    await onAdd(pasted);
+  };
+
+  return (
+    <div
+      className={cn(
+        "space-y-3 rounded-xl border-2 border-dashed p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+        isDragging ? "border-primary bg-primary/5" : "border-border"
+      )}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        await onAdd(Array.from(e.dataTransfer.files ?? []));
+      }}
+      onPaste={handlePaste}
+      tabIndex={0}
+      aria-label="Zona para soltar o pegar archivos"
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
+        className="hidden"
+        onChange={handleInputChange}
+      />
+      {files.length > 0 && <StagedFileList files={files} onRemove={onRemove} disabled={disabled} />}
+      <div className="space-y-3 py-1">
+        {files.length === 0 && (
+          <>
+            <Upload className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+            <p className="text-sm text-muted-foreground">{emptyHint}</p>
+          </>
+        )}
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled}
+            className="gap-1.5"
+          >
+            <Paperclip className="h-4 w-4" />
+            {files.length === 0 ? "Adjuntar archivos" : "Agregar otro"}
+          </Button>
+          <CameraCaptureButton onChange={handleInputChange} />
+          {files.length > 0 && (
+            <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={disabled} className="gap-1.5">
+              <X className="h-4 w-4" />
+              Quitar todos
+            </Button>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno y {MAX_UPLOAD_TOTAL_LABEL} en total.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function MontageDialog({
   open,
   onClose,
@@ -948,19 +1102,16 @@ function MontageDialog({
   isSubmitting: boolean;
 }) {
   const { formButtonMotion } = useMotionPreset();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   // Una hoja de autorización puede ser varias imágenes (o un PDF), así que el
   // montaje es una LISTA: cada archivo elegido se acumula en vez de reemplazar
   // al anterior.
   const [files, setFiles] = useState<StagedFile[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
 
   // Revocar FUERA del updater: en StrictMode el updater corre dos veces y la
   // segunda revocaría una URL ya revocada (o una todavía en uso).
   const reset = () => {
     revokePreviews(files);
     setFiles([]);
-    setIsDragging(false);
   };
 
   const acceptFiles = async (incoming: File[]) => {
@@ -980,33 +1131,6 @@ function MontageDialog({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    await acceptFiles(picked);
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    await acceptFiles(Array.from(e.dataTransfer.files ?? []));
-  };
-
-  const handlePaste = async (e: React.ClipboardEvent<HTMLDivElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const pasted: File[] = [];
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const pastedFile = item.getAsFile();
-        if (pastedFile) pasted.push(pastedFile);
-      }
-    }
-    if (pasted.length === 0) return;
-    e.preventDefault();
-    await acceptFiles(pasted);
-  };
-
   const handleSubmit = async () => {
     if (files.length === 0) return;
     // Sólo se limpia si el envío salió bien: si falla, los archivos siguen
@@ -1023,67 +1147,18 @@ function MontageDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Enviar montaje a Recepción</DialogTitle>
+          <DialogDescription>
+            Recepción se lo muestra al cliente y registra si lo autoriza o pide cambios.
+          </DialogDescription>
         </DialogHeader>
-        <div
-          className={cn(
-            "space-y-3 rounded-xl border-2 border-dashed p-4 text-center transition-colors",
-            isDragging ? "border-primary bg-primary/5" : "border-border"
-          )}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onPaste={handlePaste}
-          tabIndex={0}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
-            className="hidden"
-            onChange={handleInputChange}
-          />
-          {files.length > 0 && (
-            <StagedFileList files={files} onRemove={removeFile} disabled={isSubmitting} />
-          )}
-          <div className="space-y-3 py-2">
-            {files.length === 0 && (
-              <>
-                <Upload className="mx-auto h-6 w-6 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Arrastrá las imágenes acá, pegalas con Ctrl+V, o adjuntalas
-                  manualmente.
-                </p>
-              </>
-            )}
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-1.5"
-              >
-                <Paperclip className="h-4 w-4" />
-                {files.length === 0 ? "Adjuntar archivos" : "Agregar otro"}
-              </Button>
-              <CameraCaptureButton onChange={handleInputChange} />
-              {files.length > 0 && (
-                <Button type="button" variant="ghost" size="sm" onClick={reset} className="gap-1.5">
-                  <X className="h-4 w-4" />
-                  Quitar todos
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno
-              y {MAX_UPLOAD_TOTAL_LABEL} en total.
-            </p>
-          </div>
-        </div>
+        <FileDropzone
+          files={files}
+          onAdd={acceptFiles}
+          onRemove={removeFile}
+          onClear={reset}
+          disabled={isSubmitting}
+          emptyHint="Arrastrá la hoja de autorización acá, pegala con Ctrl+V o adjuntala."
+        />
         <DialogFooter>
           <Button variant="secondary" onClick={() => (onClose(), reset())} disabled={isSubmitting}>
             Cancelar
@@ -1095,7 +1170,7 @@ function MontageDialog({
               className="gap-1.5"
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSubmitting ? "Enviando..." : "Confirmar y enviar"}
+              {isSubmitting ? "Enviando…" : "Enviar a Recepción"}
             </Button>
           </motion.div>
         </DialogFooter>
@@ -1144,17 +1219,20 @@ function FeedbackDialog({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (picked.length === 0) return;
+  const acceptFiles = async (incoming: File[]) => {
+    if (incoming.length === 0) return;
     const staged = await stageIncomingFiles(
-      picked,
+      incoming,
       files,
       "El adjunto",
       `Se pueden adjuntar hasta ${MAX_UPLOAD_FILES} archivos.`
     );
     if (staged.length > 0) setFiles((prev) => [...prev, ...staged]);
+  };
+
+  const clearFiles = () => {
+    revokePreviews(files);
+    setFiles([]);
   };
 
   const handleSubmit = async () => {
@@ -1176,7 +1254,10 @@ function FeedbackDialog({
     <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && (onClose(), reset())}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Cambios solicitados por el cliente</DialogTitle>
+          <DialogTitle>El cliente pidió cambios</DialogTitle>
+          <DialogDescription>
+            El pedido vuelve a Diseño con estas indicaciones.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <FormField label="¿Qué pidió cambiar el cliente?" required error={error}>
@@ -1184,31 +1265,20 @@ function FeedbackDialog({
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={4}
-              placeholder="Ej: agrandar el logo, cambiar el color a azul..."
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              placeholder="Ej.: agrandar el logo, cambiar el color a azul…"
             />
           </FormField>
-          <FormField label="Adjuntos (opcional)">
-            <div className="space-y-2">
-              {files.length > 0 && (
-                <StagedFileList files={files} onRemove={removeFile} disabled={isSubmitting} />
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="file"
-                  multiple
-                  accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
-                  onChange={handleFileChange}
-                  className="block flex-1 min-w-[12rem] text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
-                />
-                <CameraCaptureButton onChange={handleFileChange} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG o PDF. Hasta {MAX_UPLOAD_FILES} archivos, 5MB cada uno
-                y {MAX_UPLOAD_TOTAL_LABEL} en total.
-              </p>
-            </div>
-          </FormField>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Fotos o capturas del cliente (opcional)</p>
+            <FileDropzone
+              files={files}
+              onAdd={acceptFiles}
+              onRemove={removeFile}
+              onClear={clearFiles}
+              disabled={isSubmitting}
+              emptyHint="Pegá con Ctrl+V la captura de WhatsApp, o arrastrala acá."
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="secondary" onClick={() => (onClose(), reset())} disabled={isSubmitting}>
@@ -1217,7 +1287,7 @@ function FeedbackDialog({
           <motion.div {...(isSubmitting ? {} : formButtonMotion)}>
             <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-1.5">
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSubmitting ? "Enviando..." : "Enviar a Diseño"}
+              {isSubmitting ? "Enviando…" : "Devolver a Diseño"}
             </Button>
           </motion.div>
         </DialogFooter>
@@ -1230,84 +1300,146 @@ function FeedbackDialog({
 /* Dialog: cliente autorizó (Recepción)                                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Autorizar tiene dos requisitos (al menos un material y saber a qué áreas
+ * va). Antes ninguno se veía hasta apretar "Confirmar": el backend devolvía
+ * el error en un toast y el diálogo quedaba abierto sin decir cómo seguir.
+ * Ahora se muestran como checklist y se resuelven acá mismo.
+ */
 function ApproveDialog({
   open,
   onClose,
   onSubmit,
   isSubmitting,
+  orderId,
+  round,
   plannedAreas,
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (productionArea?: string) => Promise<boolean>;
+  onSubmit: (productionAreas?: string[]) => Promise<boolean>;
   isSubmitting: boolean;
-  /** Áreas ya definidas en "Áreas de producción". Vacío = falta elegirla acá. */
+  orderId: number;
+  round: number;
+  /** Áreas ya definidas en "Áreas de producción". Vacío = se eligen acá. */
   plannedAreas: string[];
 }) {
   const { formButtonMotion } = useMotionPreset();
-  const [productionArea, setProductionArea] = useState<string>("");
-  const [error, setError] = useState("");
+  const { items: materials, isLoading: materialsLoading } = useOrderMaterials(open ? orderId : null);
+  const [areas, setAreas] = useState<string[]>([]);
+  const [materialOpen, setMaterialOpen] = useState(false);
 
-  const needsProductionArea = plannedAreas.length === 0;
+  const needsAreas = plannedAreas.length === 0;
+  const hasMaterials = materials.length > 0;
+  const hasAreas = !needsAreas || areas.length > 0;
+  const ready = hasMaterials && hasAreas;
 
   const handleSubmit = async () => {
-    if (needsProductionArea && !productionArea) {
-      setError("Seleccionar el área de producción antes de confirmar");
-      return;
-    }
-    setError("");
-    const ok = await onSubmit(productionArea || undefined);
-    if (ok) setProductionArea("");
+    if (!ready) return;
+    const ok = await onSubmit(needsAreas ? areas : undefined);
+    if (ok) setAreas([]);
   };
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Confirmar autorización del cliente</DialogTitle>
+          <DialogTitle>El cliente autorizó la ronda {round}</DialogTitle>
+          <DialogDescription>
+            El pedido sale de Diseño y pasa a producción con este montaje.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            El pedido pasa a producción con este montaje. Esta acción no se puede deshacer.
-          </p>
-          {plannedAreas.length > 0 ? (
-            // Ya está decidido en "Áreas de producción": acá se confirma, no se
-            // vuelve a preguntar.
-            <p className="text-sm">
-              <span className="text-muted-foreground">Pasa a </span>
-              <span className="font-medium">
-                {plannedAreas.map(getAreaLabel).join(", ")}
-              </span>
-            </p>
-          ) : (
-            <FormField label="¿A qué área pasa?" required error={error}>
-              <Select value={productionArea} onValueChange={setProductionArea}>
-                <SelectTrigger aria-label="¿A qué área pasa?">
-                  <SelectValue placeholder="Selecciona un área..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCTION_AREA_OPTIONS.map((a) => (
-                    <SelectItem key={a.value} value={a.value}>
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-          )}
-        </div>
+
+        <ul className="space-y-3" aria-label="Requisitos para autorizar">
+          <li className="flex items-start gap-3">
+            <RequirementMark done={hasMaterials} loading={materialsLoading} />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-sm font-medium">Hoja de materiales</p>
+              {hasMaterials ? (
+                <p className="text-xs text-muted-foreground">
+                  {materials.length === 1 ? "1 material cargado" : `${materials.length} materiales cargados`}
+                </p>
+              ) : (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Cargá al menos un material: producción tiene que saber qué va a usar.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMaterialOpen(true)}
+                    className="gap-1.5"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Cargar material
+                  </Button>
+                </>
+              )}
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <RequirementMark done={hasAreas} />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <p className="text-sm font-medium" id="approve-areas-label">
+                Áreas de producción
+              </p>
+              {needsAreas ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    ¿Quién lo produce? Si va a más de un área, elegilas todas.
+                  </p>
+                  <ToggleGroup
+                    type="multiple"
+                    variant="outline"
+                    size="sm"
+                    value={areas}
+                    onValueChange={setAreas}
+                    aria-labelledby="approve-areas-label"
+                    className="flex-wrap justify-start"
+                  >
+                    {PRODUCTION_AREA_OPTIONS.map((a) => (
+                      <ToggleGroupItem key={a.value} value={a.value} className="rounded-full px-3">
+                        {a.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Pasa a{" "}
+                  <span className="font-medium text-foreground">
+                    {plannedAreas.map(getAreaLabel).join(", ")}
+                  </span>
+                </p>
+              )}
+            </div>
+          </li>
+        </ul>
+
         <DialogFooter>
           <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Cancelar
           </Button>
-          <motion.div {...(isSubmitting ? {} : formButtonMotion)}>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-1.5">
+          <motion.div {...(isSubmitting || !ready ? {} : formButtonMotion)}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !ready} className="gap-1.5">
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isSubmitting ? "Confirmando..." : "Confirmar autorización"}
+              {isSubmitting ? "Pasando a producción…" : "Pasar a producción"}
             </Button>
           </motion.div>
         </DialogFooter>
+
+        <OrderMaterialDialog open={materialOpen} onClose={() => setMaterialOpen(false)} orderId={orderId} />
       </DialogContent>
     </Dialog>
   );
+}
+
+function RequirementMark({ done, loading = false }: { done: boolean; loading?: boolean }) {
+  if (loading) return <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden />;
+  return done ? (
+    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Listo" />
+  ) : (
+    <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-label="Falta" />
+  )
 }

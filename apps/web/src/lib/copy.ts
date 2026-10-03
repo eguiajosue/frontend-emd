@@ -16,7 +16,15 @@ const ORDER_CREATED_VARIANTS = [
   "Listo, el pedido quedó registrado",
 ];
 
-export function orderCreatedMessage(): string {
+/**
+ * Toast de alta: con número y destino ("a Diseño", "a Taller") dice qué pasó
+ * con el pedido, que es lo que Recepción quiere confirmar. Sin datos cae a
+ * las variantes genéricas.
+ */
+export function orderCreatedMessage(details?: { id?: number; destination?: string }): string {
+  if (details?.id && details.destination) {
+    return `Pedido #${details.id} enviado a ${details.destination}`;
+  }
   return pickVariant(ORDER_CREATED_VARIANTS);
 }
 

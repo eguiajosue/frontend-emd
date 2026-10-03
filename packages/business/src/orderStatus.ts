@@ -153,8 +153,15 @@ export function isOrderInDesignStatus(
  * pedido sigue accesible en la vista Lista, la búsqueda y el historial.
  */
 export const DESIGN_BOARD_STATUS_NAMES: string[] = [
-  "pendiente",
+  // Primero lo que volvió con cambios: es lo más urgente para Diseño (el
+  // cliente ya está esperando la corrección).
+  DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS,
   DESIGN_FLOW_STATUS_NAMES.EN_DISENO,
   DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION,
-  DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS,
 ];
+
+/**
+ * Un pedido con diseño ya no pasa por "pendiente" (entra directo a "en
+ * diseño"), así que esa columna sólo se muestra si quedó alguno viejo ahí.
+ */
+export const DESIGN_BOARD_LEGACY_STATUS_NAME = "pendiente";

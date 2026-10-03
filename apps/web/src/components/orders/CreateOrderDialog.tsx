@@ -763,7 +763,13 @@ export function CreateOrderDialog({
       if (submittedClientId) pushRecentClientId(submittedClientId);
       writeLastOrderDefaults({ requiresDesign: parsed.data.requiresDesign, area: parsed.data.area });
 
-      toast.success(orderCreatedMessage(), {
+      const isSharedAssignee = !assignedUserId || sharedAccountForArea?.id === assignedUserId;
+      const destination = parsed.data.requiresDesign
+        ? `Diseño${isSharedAssignee ? ": lo toma quien esté libre" : ` (${assignedUserLabel})`}`
+        : parsed.data.area
+        ? getAreaLabel(parsed.data.area)
+        : undefined;
+      toast.success(orderCreatedMessage({ id: order?.id, destination }), {
         action: onCreateAnother
           ? {
               label: submittedClientLabel

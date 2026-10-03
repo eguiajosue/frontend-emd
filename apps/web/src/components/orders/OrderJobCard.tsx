@@ -16,6 +16,7 @@ import {
   type DeadlineState,
   type DeadlineTone,
 } from "@/lib/orderDeadline";
+import { isDesignFlowStatusName } from "@/lib/orderStatus";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
@@ -109,7 +110,13 @@ export const OrderJobCard = memo(function OrderJobCard({
   wall = false,
 }: OrderJobCardProps) {
   const meta = TONE_META[state.tone];
-  const allAreas = getOrderAreas(order);
+  // Mientras está en diseño, la primera "área" que lo toca es Diseño; las de
+  // producción vienen después (antes se veía "Bordado" en un pedido que
+  // todavía estaba en manos de Diseño).
+  const inDesign = !!order.requiresDesign && isDesignFlowStatusName(order.status?.name);
+  const allAreas = inDesign
+    ? ["diseno", ...getOrderAreas(order).filter((a) => a !== "diseno")]
+    : getOrderAreas(order);
   // Más de dos chips empujan el encabezado; el resto se resume en "+N".
   const areas = allAreas.slice(0, 2);
   const hiddenAreas = allAreas.length - areas.length;
@@ -207,11 +214,11 @@ export const OrderJobCard = memo(function OrderJobCard({
           <p className="font-heading text-lg font-semibold tabular-nums leading-tight">{productCount}</p>
         </div>
         <div className="text-right">
-          <p className="text-muted-foreground">Tareas de área</p>
+          <p className="text-muted-foreground">{inDesign ? "Áreas planificadas" : "Tareas de área"}</p>
           <p className="font-heading text-lg font-semibold tabular-nums leading-tight">
-            {tasks.total === 0 ? "—" : `${tasks.done}/${tasks.total}`}
+            {tasks.total === 0 ? "—" : inDesign ? tasks.total : `${tasks.done}/${tasks.total}`}
           </p>
-          {tasks.total > 0 && (
+          {tasks.total > 0 && !inDesign && (
             <div
               className="ml-auto mt-1 h-1 w-16 overflow-hidden rounded-full bg-muted"
               role="progressbar"

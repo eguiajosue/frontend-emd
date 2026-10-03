@@ -5,6 +5,7 @@ import { DesignFlowSection } from "./DesignFlowSection";
 import type { DesignRevision, Order } from "@/types";
 
 let revisions: DesignRevision[] = [];
+let materials: { id: number }[] = [];
 
 vi.mock("@/hooks/useDesignRevisions", () => ({
   useDesignRevisions: () => ({
@@ -21,6 +22,12 @@ vi.mock("@/hooks/useDesignRevisions", () => ({
   useDesignRevisionFile: () => ({ data: undefined, isError: false, isLoading: false }),
   useDesignRevisionFileContent: () => ({ data: undefined, isError: false, isLoading: false }),
 }));
+
+vi.mock("@/hooks/useOrderMaterials", () => ({
+  useOrderMaterials: () => ({ items: materials, isLoading: false, isError: false }),
+}));
+
+vi.mock("@/components/orders/OrderMaterialDialog", () => ({ OrderMaterialDialog: () => null }));
 
 vi.mock("@/hooks/useAreaTasks", () => ({
   useAreaTasks: () => ({ tasks: [] }),
@@ -78,5 +85,48 @@ describe("DesignFlowSection - rondas anteriores colapsadas, ronda vigente abiert
 
     await userEvent.click(trigger1);
     expect(trigger1).toHaveAttribute("aria-expanded", "true");
+  });
+});
+
+describe("DesignFlowSection - respuesta del cliente", () => {
+  const waiting = {
+    ...order,
+    status: { id: 22, name: "esperando autorización" },
+  } as Order;
+
+  it("sin materiales, 'Pasar a producción' queda bloqueado y ofrece cargarlos ahí mismo", async () => {
+    revisions = [revision(1, false)];
+    materials = [];
+    render(<DesignFlowSection order={waiting} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Hoja de materiales");
+    expect(screen.getByRole("button", { name: /Cargar material/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
+  });
+
+  it("con materiales y un área elegida, se puede pasar a producción", async () => {
+    revisions = [revision(1, false)];
+    materials = [{ id: 1 }];
+    render(<DesignFlowSection order={waiting} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Taller" }));
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeEnabled();
+  });
+
+  it("con cambios pedidos, lo que pidió el cliente se lee primero", () => {
+    revisions = [{ ...revision(1, false), feedbackText: "Agrandar el logo" } as DesignRevision];
+    render(
+      <DesignFlowSection
+        order={{ ...order, status: { id: 23, name: "cambios solicitados" } } as Order}
+      />
+    );
+
+    expect(screen.getByText("El cliente pidió estos cambios")).toBeInTheDocument();
+    expect(screen.getByText("Agrandar el logo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Corregir y reenviar \(ronda 2\)/ })).toBeInTheDocument();
   });
 });

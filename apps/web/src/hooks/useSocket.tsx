@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useEffect, useRef, type RefObject } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { playNotificationSound } from "@/lib/sound";
 import { markUserTyping, markUserStoppedTyping } from "@/hooks/useChatTyping";
+import { getAreaLabel } from "@/lib/areas";
 
 /** Payload de "chatMessage" (ver ChatService.sendMessage en el backend). */
 interface ChatMessagePayload {
@@ -94,6 +95,9 @@ export function useSocket() {
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
+  const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
 
   useEffect(() => {
     if (!token) return;
@@ -127,12 +131,13 @@ export function useSocket() {
     // pedido nuevo llegado a la room de su área/rol.
     const showHighlightedOrderToast = (
       title: string,
-      details: { description?: string | null; area?: string | null; clientName?: string | null }
+      details: { description?: string | null; area?: string | null; clientName?: string | null },
+      orderId?: number | string
     ) => {
       playNotificationSound();
       const descriptionParts = [
         details.description || undefined,
-        details.area ? `Área: ${details.area}` : undefined,
+        details.area ? getAreaLabel(details.area) : undefined,
         details.clientName ? `Cliente: ${details.clientName}` : undefined,
       ].filter(Boolean);
       toast(title, {
@@ -140,6 +145,14 @@ export function useSocket() {
         duration: HIGHLIGHT_TOAST_DURATION_MS,
         icon: <Bell className="h-5 w-5" />,
         className: "text-base",
+        // Un aviso de "te llegó trabajo" sin forma de abrirlo obligaba a ir a
+        // buscar el pedido en el tablero.
+        action: orderId
+          ? {
+              label: "Abrir",
+              onClick: () => routerRef.current.push(`/dashboard/orders/${orderId}`),
+            }
+          : undefined,
       });
     };
 
@@ -157,9 +170,11 @@ export function useSocket() {
       }
       // Llega a esta room (área/rol) porque el pedido se creó sin asignar a
       // nadie en particular y corresponde al área del usuario actual.
-      showHighlightedOrderToast(`Nuevo pedido #${order.id} en tu área`, {
-        clientName: order.clientName,
-      });
+      showHighlightedOrderToast(
+        `Nuevo pedido #${order.id} en tu área`,
+        { clientName: order.clientName },
+        order.id
+      );
     };
 
     const handleAssignedOrder = (order: AssignedOrderNotificationPayload) => {
@@ -168,11 +183,15 @@ export function useSocket() {
         order.reason === "design_montage_sent"
           ? `Hoja de autorización lista: pedido #${order.orderId}`
           : `Nuevo pedido asignado: #${order.orderId}`;
-      showHighlightedOrderToast(title, {
-        description: order.description,
-        area: order.area,
-        clientName: order.clientName,
-      });
+      showHighlightedOrderToast(
+        title,
+        {
+          description: order.description,
+          area: order.area,
+          clientName: order.clientName,
+        },
+        order.orderId
+      );
     };
 
     const handleStatusChange = (order: OrderNotificationPayload) => {
@@ -181,7 +200,7 @@ export function useSocket() {
         ? statusMap[Number(order.status)] || order.status
         : "desconocido";
       toast.info(`Pedido #${order.id} actualizado`, {
-        description: `Nuevo estado: ${statusLabel.toString().toUpperCase()}`,
+        description: `Nuevo estado: ${statusLabel}`,
       });
     };
 
