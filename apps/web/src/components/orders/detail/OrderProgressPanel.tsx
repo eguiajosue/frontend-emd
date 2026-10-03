@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/StatusBadge";
+import { DETAIL_BLOCK_CLASS } from "@/components/orders/detail/DetailSection";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { HandoffStages } from "@/components/orders/OrderHandoff";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
@@ -117,15 +118,16 @@ export function OrderProgressPanel({
     <section
       aria-label="Dónde está el pedido"
       className={cn(
-        "space-y-4 rounded-xl p-4",
-        cancelled ? "bg-destructive/10" : "bg-muted/50"
+        "space-y-5",
+        DETAIL_BLOCK_CLASS,
+        cancelled && "border-destructive/30 bg-destructive/5"
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <HandoffStages stages={handoff.stages} />
         {pendingSync && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-amber-500/50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
             title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
           >
             <CloudOff className="h-3 w-3 shrink-0" aria-hidden />
@@ -134,13 +136,13 @@ export function OrderProgressPanel({
         )}
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-border/60 pt-5">
         <div className="min-w-0 space-y-1">
           {cancelled ? (
             <p className="font-medium text-destructive">{handoff.nextStep}</p>
           ) : (
             <>
-              <p className="text-base">
+              <p className="font-heading text-lg leading-snug tracking-tight">
                 Ahora en <span className="font-semibold">{current.label}</span>
                 {holder && <span className="text-muted-foreground"> · {holder}</span>}
               </p>
@@ -157,17 +159,16 @@ export function OrderProgressPanel({
           {canUseStatusMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
+                {/* El estado ya se ve en la cabecera: acá sólo el control. */}
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="gap-2 bg-background"
+                  className="gap-1.5"
                   disabled={busy}
                   aria-label="Cambiar estado"
                 >
-                  <span className="text-muted-foreground">Estado</span>
-                  <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  Cambiar estado
+                  <ChevronDown className="text-muted-foreground" aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
@@ -187,12 +188,10 @@ export function OrderProgressPanel({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
-            <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-          )}
+          ) : null}
 
           {action && (
-            <Button type="button" size="sm" className="gap-1.5" onClick={runAction} disabled={busy}>
+            <Button type="button" className="gap-1.5" onClick={runAction} disabled={busy}>
               {busy && action.kind !== "section" ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}

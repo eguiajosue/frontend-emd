@@ -18,7 +18,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCalendarTasks } from "@/hooks/useCalendarTasks";
-import { Paperclip, ArrowUpRight, CheckCircle2, ListChecks } from "lucide-react";
+import { CalendarDays, ListChecks, Paperclip } from "lucide-react";
 import type { Order } from "@/types";
 
 interface OrderCardProps {
@@ -59,7 +59,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
     <motion.div variants={staggerItemVariants}>
       {/* Sin pulso infinito: en una columna con varias tarjetas vencidas eran
           seis animaciones latiendo a la vez y la urgencia dejaba de leerse. El
-          borde rojo, la barra en rojo y el texto "Vencido" ya lo dicen. */}
+          borde teñido, la barra en rojo y el texto "Vencido" ya lo dicen. */}
       <motion.div
         whileHover={{ ...cardHoverMotion.whileHover, transition: cardHoverMotion.transition }}
         whileTap={{ ...cardTapMotion.whileTap, transition: cardTapMotion.transition }}
@@ -72,58 +72,47 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             if (e.key === "Enter" || e.key === " ") onOpen(order.id);
           }}
           className={cn(
-            "cursor-pointer shadow-soft transition-shadow duration-200 hover:shadow-soft-md",
-            isCritical && "border-destructive"
+            "cursor-pointer shadow-soft transition-[box-shadow,border-color] duration-200 hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isCritical && "border-rose-500/40 dark:border-rose-400/40"
           )}
         >
-        <CardContent className="density-card density-stack space-y-2 p-4">
+        <CardContent className="density-card space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-semibold">#{order.id}</span>
-            {delivered ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                ENTREGADO
-              </span>
-            ) : (
-              <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-            )}
+            <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+            <span className="text-xs font-medium tabular-nums text-muted-foreground">#{order.id}</span>
           </div>
 
-          {/* Chip de entrega + avatar del asignado: reemplaza la fila anterior
-              de ícono+texto por el mismo patrón de "chip mudo + avatar" que ya
-              usa el chat (`chatInitials`) para identificar a una persona de un
-              vistazo, sin repetir el nombre completo en cada tarjeta. */}
-          <div className="flex items-center justify-between gap-2">
-            <Badge variant="muted">Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}</Badge>
-            {assignedName && (
-              <Avatar className="h-7 w-7 border" title={`Asignado a ${assignedName}`}>
-                <AvatarFallback className="text-xs font-semibold">
-                  {chatInitials(order.assignedUser)}
-                </AvatarFallback>
-              </Avatar>
-            )}
+          <div className="min-w-0 space-y-1">
+            <p className="truncate font-heading text-base font-semibold leading-snug text-foreground">
+              {getOrderClientName(order)}
+            </p>
+            <p className="line-clamp-2 text-[0.8125rem] text-muted-foreground">
+              {order.description}
+            </p>
           </div>
-
-          <p className="truncate text-base font-semibold text-foreground">
-            {getOrderClientName(order)}
-          </p>
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {order.description}
-          </p>
 
           {!delivered && (
             <DeliveryProgressBar
               creationDate={order.creationDate}
               deliveryDate={order.deliveryDate}
               label="at-risk"
-              className="pt-1"
             />
           )}
 
-          <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs tabular-nums text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">
+              Entrega: <span className="font-medium text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
+            </span>
+          </span>
+
+          {/* Pie: áreas a la izquierda; adjuntos, tareas pendientes y
+              asignado a la derecha, como los contadores de la referencia. */}
+          {(areaTags.length > 0 || order.hasClientResourceFile || pendingTasksCount > 0 || assignedName) && (
+          <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-3">
             {/* Una etiqueta por área, no una sola: un pedido puede ir a
                 Bordado Y DTF. Ver `orderAreaTags`. */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
               {areaTags.map((area) => {
                 const AreaIcon = getAreaIcon(area);
                 return (
@@ -133,34 +122,33 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
                   </Badge>
                 );
               })}
+            </div>
+            <div className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
               {order.hasClientResourceFile && (
-                <Badge variant="outline" className="px-2 text-muted-foreground" title="Tiene archivos del cliente adjuntos">
-                  <Paperclip className="h-3 w-3" aria-hidden />
-                  Adjunto
-                </Badge>
+                <span className="inline-flex items-center gap-1" title="Tiene archivos del cliente adjuntos">
+                  <Paperclip className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">Tiene adjuntos</span>
+                </span>
               )}
               {pendingTasksCount > 0 && (
-                <Badge
-                  variant="outline"
-                  className="border-amber-200 bg-amber-50 px-2 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                <span
+                  className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-300"
                   title={`${pendingTasksCount} tarea${pendingTasksCount === 1 ? "" : "s"} pendiente${pendingTasksCount === 1 ? "" : "s"} por marcar`}
                 >
-                  <ListChecks className="h-3 w-3" aria-hidden />
+                  <ListChecks className="h-3.5 w-3.5" aria-hidden />
                   {pendingTasksCount}
-                </Badge>
+                </span>
+              )}
+              {assignedName && (
+                <Avatar className="h-7 w-7 border-2 border-card" title={`Asignado a ${assignedName}`}>
+                  <AvatarFallback className="text-[0.6875rem] font-semibold">
+                    {chatInitials(order.assignedUser)}
+                  </AvatarFallback>
+                </Avatar>
               )}
             </div>
-            {/* Botón "abrir" puramente decorativo: la tarjeta entera ya es el
-                único disparador de click/teclado (`onOpen` arriba). Duplicar
-                el handler acá abriría dos veces o generaría un target
-                competidor si algún día cambia el layout. */}
-            <span
-              aria-hidden
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </span>
           </div>
+          )}
         </CardContent>
         </Card>
       </motion.div>

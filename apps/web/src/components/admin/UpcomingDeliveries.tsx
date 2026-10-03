@@ -10,7 +10,7 @@ import { getOrderClientName, formatDeliveryDate } from "@/lib/format";
 import { staggerContainerVariants } from "@/lib/motion";
 import { useMotionPreset } from "@/lib/motion";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
-import { PackageCheck } from "lucide-react";
+import { CalendarDays, PackageCheck } from "lucide-react";
 import type { Order } from "@/types";
 
 interface UpcomingDeliveriesProps {
@@ -40,46 +40,55 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <PackageCheck className="h-4 w-4 text-primary" aria-hidden />
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
+        <CardTitle className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
+            <PackageCheck className="h-4 w-4 text-muted-foreground" />
+          </span>
           Próximas entregas
         </CardTitle>
+        {upcoming.length > 0 && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+            {upcoming.length}
+          </span>
+        )}
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 pb-3">
         {upcoming.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No hay entregas próximas programadas.</p>
+          <p className="px-2 pb-2 text-sm text-muted-foreground">No hay entregas próximas programadas.</p>
         ) : (
-          <motion.div
-            className="space-y-2"
+          <motion.ul
+            className="divide-y divide-border/60"
             variants={staggerContainerVariants}
             initial="hidden"
             animate="show"
           >
             {upcoming.map((order) => (
-              <motion.div key={order.id} variants={staggerItemVariants}>
+              <motion.li key={order.id} variants={staggerItemVariants} className="py-1">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => onSelectOrder(order.id)}
-                  className="h-auto w-full justify-start gap-3 whitespace-normal p-3 text-left font-normal"
+                  className="h-auto w-full flex-col items-stretch gap-2 whitespace-normal rounded-xl px-2.5 py-2.5 text-left font-normal"
                 >
-                  <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${getStatusDotClasses(order.statusId, order.status?.name)}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      #{order.id} · {getOrderClientName(order)}
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotClasses(order.statusId, order.status?.name)}`}
+                      aria-hidden
+                    />
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium">
+                      <span className="tabular-nums">#{order.id}</span> · {getOrderClientName(order)}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">{order.description}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {formatDeliveryDate(order.deliveryDate, timeFormat)}
-                    </span>
                     <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                   </div>
+                  <p className="truncate pl-[1.125rem] text-xs text-muted-foreground">{order.description}</p>
+                  <span className="ml-[1.125rem] inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+                    Entrega: <span className="font-medium tabular-nums text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
+                  </span>
                 </Button>
-              </motion.div>
+              </motion.li>
             ))}
-          </motion.div>
+          </motion.ul>
         )}
       </CardContent>
     </Card>

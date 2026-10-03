@@ -19,14 +19,14 @@ interface CategoryFilterBarProps {
 }
 
 /**
- * Filtro por categoría del evento. Un Select (con el punto de color de cada
- * categoría) en vez de una fila de tabs: junto al de área eran 13 pestañas
- * compitiendo con el selector Día/Semana/Mes.
+ * Filtro por categoría del evento. Un Select en píldora (con el punto de
+ * color de cada categoría) en vez de una fila de tabs: junto al de área eran
+ * 13 pestañas compitiendo con el selector Día/Semana/Mes.
  */
 export function CategoryFilterBar({ value, onChange, compact }: CategoryFilterBarProps) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as CategoryFilter)}>
-      <SelectTrigger className={cn("w-full", !compact && "sm:w-48")} aria-label="Filtrar por categoría">
+      <SelectTrigger className={cn("w-full rounded-full", compact ? "px-3" : "px-4 sm:w-48")} aria-label="Filtrar por categoría">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

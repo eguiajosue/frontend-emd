@@ -10,6 +10,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  AXIS_PROPS,
+  GRID_PROPS,
+  TOOLTIP_CONTENT_STYLE,
+  TOOLTIP_CURSOR,
+  chartColor,
+} from "./chartTheme";
 
 interface AvgTimeBarChartProps {
   data: Array<{ etapa: string; horasPromedio: number }>;
@@ -19,8 +26,6 @@ interface AvgTimeBarChartProps {
   onBarClick?: (etapa: string) => void;
 }
 
-const BASE_FILL = "hsl(var(--chart-1))";
-const ACTIVE_FILL = "hsl(var(--chart-2))";
 
 /**
  * Extraído a su propio componente para poder cargarlo con next/dynamic
@@ -34,21 +39,28 @@ export default function AvgTimeBarChart({ data, activeEtapa, onBarClick }: AvgTi
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="etapa" />
-        <YAxis />
-        <Tooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }} />
+        <CartesianGrid {...GRID_PROPS} />
+        <XAxis dataKey="etapa" {...AXIS_PROPS} interval={0} />
+        <YAxis {...AXIS_PROPS} width={40} />
+        <Tooltip cursor={TOOLTIP_CURSOR} contentStyle={TOOLTIP_CONTENT_STYLE} />
         <Bar
           dataKey="horasPromedio"
-          radius={[4, 4, 0, 0]}
+          name="Horas promedio"
+          radius={[8, 8, 8, 8]}
+          maxBarSize={56}
           onClick={(entry) => {
             const etapa = (entry as unknown as { etapa?: string })?.etapa;
             if (etapa) onBarClick?.(etapa);
           }}
           cursor={onBarClick ? "pointer" : undefined}
         >
-          {data.map((d) => (
-            <Cell key={d.etapa} fill={d.etapa === activeEtapa ? ACTIVE_FILL : BASE_FILL} />
+          {data.map((d, i) => (
+            <Cell
+              key={d.etapa}
+              fill={chartColor(i)}
+              // Con una barra seleccionada (drill-down) el resto se atenúa.
+              fillOpacity={activeEtapa == null || d.etapa === activeEtapa ? 1 : 0.3}
+            />
           ))}
         </Bar>
       </BarChart>

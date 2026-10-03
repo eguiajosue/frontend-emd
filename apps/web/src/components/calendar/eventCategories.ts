@@ -8,7 +8,7 @@ import type { CalendarEventCategory } from "@/types";
  */
 export interface CategoryMeta {
   label: string;
-  /** Fondo + texto suaves para la píldora del evento (mes/semana/día/próximos). */
+  /** Píldora tintada: texto del color + fondo del mismo color al ~10% (mes/próximos/popover). */
   pillClasses: string;
   /** Punto sólido para el selector de categoría del formulario. */
   swatchClass: string;
@@ -20,39 +20,39 @@ export const CATEGORY_META: Record<CalendarEventCategory, CategoryMeta> = {
   instalacion: {
     label: "Instalación",
     pillClasses:
-      "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+      "bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
     swatchClass: "bg-orange-400",
     tracksStatus: true,
   },
   visita: {
     label: "Visita a cliente",
-    pillClasses: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+    pillClasses: "bg-blue-500/10 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300",
     swatchClass: "bg-blue-400",
     tracksStatus: true,
   },
   entrega: {
     label: "Entrega",
-    pillClasses: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300",
+    pillClasses: "bg-teal-500/10 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
     swatchClass: "bg-teal-400",
     tracksStatus: true,
   },
   junta: {
     label: "Junta / Reunión",
     pillClasses:
-      "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300",
+      "bg-purple-500/10 text-purple-700 dark:bg-purple-400/15 dark:text-purple-300",
     swatchClass: "bg-purple-400",
     tracksStatus: false,
   },
   compras: {
     label: "Compra de materiales",
     pillClasses:
-      "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+      "bg-amber-500/10 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
     swatchClass: "bg-amber-400",
     tracksStatus: true,
   },
   otro: {
     label: "Otro",
-    pillClasses: "bg-muted text-muted-foreground",
+    pillClasses: "bg-muted text-foreground/75",
     swatchClass: "bg-muted-foreground/60",
     tracksStatus: true,
   },

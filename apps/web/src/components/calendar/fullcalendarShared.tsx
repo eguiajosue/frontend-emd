@@ -25,29 +25,33 @@ export function fcTimeFormatOptions(timeFormat: TimeFormatPreference) {
  * para que ninguna de las dos duplique esta lógica.
  */
 
-/** Franja ("cuticle") de estado — mismo semáforo que la vista Mes. */
+/** Punto de estado — mismo semáforo que la vista Mes. */
 export const STATUS_HEX: Record<CalendarEvent["status"], string> = {
   pendiente: "#ef4444",
   en_proceso: "#f97316",
   terminado: "#10b981",
 };
 
-/** Color sólido del bloque de evento por categoría (mismo tono que `CATEGORY_META`, en hex para FullCalendar). */
-export const CATEGORY_HEX: Record<CalendarEventCategory, string> = {
-  instalacion: "#f97316",
-  visita: "#3b82f6",
-  entrega: "#14b8a6",
-  junta: "#a855f7",
-  compras: "#fbbf24",
-  otro: "#6b7280",
+/**
+ * Bloque tintado por categoría (mismo tono que `CATEGORY_META`): fondo del
+ * color al ~10–15% + texto del mismo color, como las píldoras de la vista
+ * Mes. Son referencias a variables CSS de `fullcalendar-theme.css`, que las
+ * redefine en oscuro (un hex fijo no podría cambiar de tono con el tema).
+ */
+export const CATEGORY_FC_COLORS: Record<CalendarEventCategory, { bg: string; fg: string }> = {
+  instalacion: { bg: "var(--cal-instalacion-bg)", fg: "var(--cal-instalacion-fg)" },
+  visita: { bg: "var(--cal-visita-bg)", fg: "var(--cal-visita-fg)" },
+  entrega: { bg: "var(--cal-entrega-bg)", fg: "var(--cal-entrega-fg)" },
+  junta: { bg: "var(--cal-junta-bg)", fg: "var(--cal-junta-fg)" },
+  compras: { bg: "var(--cal-compras-bg)", fg: "var(--cal-compras-fg)" },
+  otro: { bg: "hsl(var(--muted))", fg: "hsl(var(--foreground) / 0.75)" },
 };
 
 /**
- * Color de marca para los pedidos (distinto de las categorías de evento).
- * Referencia viva a `--brand-500` (no un hex fijo aparte) para no
- * desincronizarse si ese token cambia.
+ * Pedidos: píldora gris (mismo criterio que la vista Mes) con ícono de
+ * paquete y borde punteado — distinta de cualquier categoría de evento.
  */
-export const ORDER_COLOR = "hsl(var(--brand-500))";
+export const ORDER_FC_COLORS = { bg: "hsl(var(--muted))", fg: "hsl(var(--foreground) / 0.8)" };
 
 /** Arma la lista de eventos en el formato que espera `<FullCalendar events={...}>`. */
 export function useFcEvents(events: CalendarEvent[], orders: Order[]) {
@@ -60,7 +64,11 @@ export function useFcEvents(events: CalendarEvent[], orders: Order[]) {
         title: item.kind === "event" ? item.event.title : item.order.description,
         start: item.date,
         allDay: !item.hasTime,
-        color: item.kind === "event" ? CATEGORY_HEX[item.event.category] : ORDER_COLOR,
+        backgroundColor:
+          item.kind === "event" ? CATEGORY_FC_COLORS[item.event.category].bg : ORDER_FC_COLORS.bg,
+        borderColor: "transparent",
+        textColor:
+          item.kind === "event" ? CATEGORY_FC_COLORS[item.event.category].fg : ORDER_FC_COLORS.fg,
         classNames: item.kind === "order" ? ["fc-order-event"] : [],
         extendedProps: { item } satisfies { item: CalendarItem },
       })),
@@ -83,15 +91,15 @@ export function makeFcEventClickHandler(
   };
 }
 
-/** Contenido de un bloque de evento/pedido: franja de estado (si aplica), ícono de pedido, hora y título. */
+/** Contenido de un bloque de evento/pedido: punto de estado (si aplica), ícono de pedido, hora y título. */
 export function renderFcEventContent(arg: EventContentArg) {
   const item = arg.event.extendedProps.item as CalendarItem;
   const showCuticle = item.kind === "event" && CATEGORY_META[item.event.category].tracksStatus;
   return (
-    <div className="flex items-stretch gap-1 overflow-hidden">
+    <div className="flex items-center gap-1.5 overflow-hidden">
       {showCuticle && (
         <span
-          className="w-1 shrink-0 rounded-full"
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
           style={{
             backgroundColor: STATUS_HEX[(item as Extract<CalendarItem, { kind: "event" }>).event.status],
           }}

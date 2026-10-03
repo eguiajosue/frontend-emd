@@ -47,7 +47,7 @@ export function ChartDrillDownPanel({
         >
           <div
             className={cn(
-              "mt-4 rounded-xl border border-border/60 bg-muted/30 p-4",
+              "mt-4 rounded-2xl bg-muted/50 p-4 sm:p-5",
               className
             )}
           >
@@ -57,7 +57,7 @@ export function ChartDrillDownPanel({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                className="h-7 gap-1 px-2.5 text-xs text-muted-foreground hover:bg-card"
                 onClick={onClose}
               >
                 <X className="h-3.5 w-3.5" />

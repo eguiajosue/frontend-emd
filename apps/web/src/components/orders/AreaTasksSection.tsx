@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import {
   CheckCircle2,
   Circle,
+  ListChecks,
   Loader2,
   Play,
   Plus,
@@ -50,20 +51,17 @@ const STATUS_META: Record<
 > = {
   pendiente: {
     label: "Pendiente",
-    classes:
-      "border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300",
+    classes: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
     icon: Circle,
   },
   en_proceso: {
     label: "En proceso",
-    classes:
-      "border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300",
+    classes: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
     icon: Play,
   },
   terminado: {
     label: "Terminado",
-    classes:
-      "border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300",
+    classes: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     icon: CheckCircle2,
   },
 };
@@ -284,22 +282,62 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
         ? "Todas las áreas terminaron: el pedido está listo para entregar."
         : "Cada área avanza por su cuenta, sin esperar a las demás.";
 
+  // Avance del pedido en producción: áreas terminadas sobre el total. La barra
+  // toma el color del momento (en curso / terminado), como en el tablero.
+  const doneCount = tasks.filter((t) => t.status === "terminado").length;
+  const anyInProgress = tasks.some((t) => t.status === "en_proceso");
+  const progressPct = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
+  const progressBar = allDone
+    ? "bg-emerald-500"
+    : anyInProgress || doneCount > 0
+      ? "bg-blue-500"
+      : "bg-muted-foreground/30";
+
   return (
-    <section className={embedded ? "space-y-3" : "space-y-3 rounded-2xl border bg-muted/20 p-4"}>
+    <section
+      className={
+        embedded ? "space-y-4" : "space-y-4 rounded-2xl border border-border/60 bg-card p-5 shadow-soft"
+      }
+    >
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          {!embedded && <h3 className="font-heading text-sm font-semibold">Áreas de producción</h3>}
-          <p className={embedded ? "text-sm text-muted-foreground" : "text-xs text-muted-foreground"}>
-            {subtitle}
-          </p>
+        <div className="space-y-1">
+          {!embedded && <h3 className="text-section-title">Áreas de producción</h3>}
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
         {allDone && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-            <CheckCircle2 className="h-3.5 w-3.5" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
             Listo para entregar
           </span>
         )}
       </header>
+
+      {!isLoading && tasks.length > 0 && !awaitingAuthorization && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+              <ListChecks className="h-4 w-4" aria-hidden />
+              Progreso
+            </span>
+            <span className="font-medium tabular-nums">
+              {doneCount}/{tasks.length}
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="Áreas terminadas"
+            aria-valuemin={0}
+            aria-valuemax={tasks.length}
+            aria-valuenow={doneCount}
+            className="h-2 w-full overflow-hidden rounded-full bg-muted"
+          >
+            <div
+              className={cn("h-full rounded-full transition-[width] duration-500 ease-out", progressBar)}
+              style={{ width: `${Math.max(progressPct, doneCount > 0 || anyInProgress ? 6 : 0)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Cargando áreas...</p>
@@ -323,11 +361,13 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                   animate="show"
                   exit={{ opacity: 0, height: 0 }}
                   layout
-                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
+                  className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3.5"
                 >
-                  <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="flex min-w-[8rem] flex-1 items-center gap-2.5">
                     {AreaIcon && (
-                      <AreaIcon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground shadow-soft">
+                        <AreaIcon className="h-4 w-4" aria-hidden />
+                      </span>
                     )}
                     <span className="truncate text-sm font-semibold">
                       {getAreaLabel(task.area)}
@@ -336,11 +376,11 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
 
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
                       meta.classes
                     )}
                   >
-                    <StatusIcon className="h-3.5 w-3.5" />
+                    <StatusIcon className="h-3.5 w-3.5" aria-hidden />
                     {/* Planificada mientras el cliente no autoriza: todavía no
                         es trabajo del área, así que "Pendiente" confundía. */}
                     {awaitingAuthorization && task.status === "pendiente"
@@ -362,7 +402,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                         >
                           <SelectTrigger
                             aria-label={`Responsable de ${getAreaLabel(task.area)}`}
-                            className="h-7 w-auto min-w-0 max-w-[13rem] gap-1.5 px-2 text-xs text-foreground"
+                            className="h-7 w-auto min-w-0 max-w-[13rem] gap-1.5 rounded-full px-2.5 text-xs text-foreground"
                           >
                             <SelectValue />
                           </SelectTrigger>
@@ -396,8 +436,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
-                        className="rounded-full text-xs"
+                        variant="outline"
+                        className="text-xs"
                         disabled={assign.isPending}
                         onClick={() => handleTake(task)}
                       >
@@ -408,7 +448,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       <Button
                         type="button"
                         size="sm"
-                        className="rounded-full text-xs"
+                        className="text-xs"
                         disabled={setStatus.isPending}
                         onClick={() => handleAdvance(task)}
                       >
@@ -447,7 +487,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
       {isManager && availableAreas.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <Select value={areaToAdd} onValueChange={setAreaToAdd}>
-            <SelectTrigger className="h-9 w-[200px]">
+            <SelectTrigger className="h-9 w-[200px] rounded-full">
               <SelectValue placeholder="Agregar un área..." />
             </SelectTrigger>
             <SelectContent>
@@ -462,7 +502,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
             type="button"
             size="sm"
             variant="outline"
-            className="gap-1.5 rounded-full"
+            className="gap-1.5"
             disabled={!areaToAdd || addAreas.isPending}
             onClick={handleAddArea}
           >

@@ -39,7 +39,9 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="p-0 sm:max-h-[88vh] sm:max-w-2xl sm:overflow-y-auto sm:p-0 lg:max-w-3xl">
+      {/* Lienzo gris con bloques blancos, como la página: `!bg-background` gana
+          a la elevación oscura del diálogo. En móvil es pantalla completa. */}
+      <DialogContent className="!bg-background p-0 sm:max-h-[90vh] sm:max-w-2xl sm:overflow-y-auto sm:border-border/60 sm:p-0 lg:max-w-3xl">
         <AnimatePresence mode="wait">
           {isError ? (
             <motion.div
@@ -85,8 +87,10 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
               exit={{ opacity: 0 }}
               transition={{ type: "spring", stiffness: 320, damping: 30 }}
             >
-              {/* Fija: quién es y cuánto falta quedan a la vista al bajar. */}
-              <DialogHeader className="elevation-2 sticky top-0 z-10 bg-popover sm:px-6 sm:pb-4 sm:pr-14 sm:pt-6 sm:shadow-[0_1px_0_hsl(var(--border))]">
+              {/* Quién es y cuánto falta quedan a la vista al bajar (sólo en
+                  escritorio: en móvil la cabecera fija ocuparía un cuarto de
+                  pantalla). */}
+              <DialogHeader className="relative z-10 sm:sticky sm:top-0 -mx-4 -mt-4 space-y-0 bg-background px-4 pb-4 pr-14 pt-4 sm:mx-0 sm:shadow-[0_1px_0_hsl(var(--border)/0.6)] sm:mt-0 sm:px-6 sm:pb-5 sm:pr-16 sm:pt-6">
                 <OrderDetailHeader
                   order={order}
                   permissions={permissions}
@@ -101,7 +105,7 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
                   Title={DialogTitle}
                 />
               </DialogHeader>
-              <div className="px-4 pb-6 pt-4 text-sm sm:px-6">
+              <div className="pb-6 pt-4 text-sm sm:px-6 sm:pt-5">
                 <OrderDetailBody
                   order={order}
                   viewer={viewer}

@@ -11,7 +11,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
 import { getStatusBadgeClasses } from "@/lib/statusColors";
 import { statusOptions } from "@/lib/orderStatus";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -23,6 +22,7 @@ import {
   ClipboardList,
   History,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   MessagesSquare,
   PackagePlus,
@@ -49,7 +49,7 @@ interface GuideProfile {
 /** Círculo de ícono reutilizado en pasos y encabezados de sección. */
 function IconBadge({ children }: { children: ReactNode }) {
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-muted text-foreground">
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
       {children}
     </div>
   );
@@ -64,7 +64,7 @@ function TimelineStep({ step, index }: { step: GuideStep; index: number }) {
 
   return (
     <motion.li
-      className="relative flex gap-4 pb-10 last:pb-0"
+      className="relative flex gap-4 pb-9 last:pb-0"
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.4 }}
@@ -73,12 +73,12 @@ function TimelineStep({ step, index }: { step: GuideStep; index: number }) {
       {/* Conector vertical sutil entre pasos */}
       <span
         aria-hidden
-        className="absolute left-[17px] top-9 bottom-0 w-px bg-border last:hidden"
+        className="absolute bottom-0 left-[17px] top-11 w-px bg-border/70 last:hidden"
       />
-      <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card text-sm font-semibold text-muted-foreground">
+      <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground/70">
         {index + 1}
       </div>
-      <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+      <div className="min-w-0 flex-1 space-y-2 pt-1.5">
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground">{step.icon}</span>
           <h3 className="text-section-title leading-none">{step.title}</h3>
@@ -95,9 +95,9 @@ function TimelineStep({ step, index }: { step: GuideStep; index: number }) {
 /** Mini "captura" conceptual de una fila de pedido con badge de estado. */
 function OrderRowMockup({ statusValue, label }: { statusValue: number; label: string }) {
   return (
-    <div className="flex max-w-sm items-center justify-between rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+    <div className="flex max-w-sm items-center justify-between rounded-xl bg-muted/60 px-3.5 py-2.5 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <Badge variant="muted" className={`border capitalize ${getStatusBadgeClasses(statusValue)}`}>
+      <Badge variant="muted" className={`capitalize ${getStatusBadgeClasses(statusValue)}`}>
         {statusOptions.find((o) => o.value === statusValue)?.label}
       </Badge>
     </div>
@@ -107,14 +107,14 @@ function OrderRowMockup({ statusValue, label }: { statusValue: number; label: st
 /** Mini "captura" conceptual de un mensaje de chat entre dos áreas. */
 function ChatMockup() {
   return (
-    <div className="max-w-sm space-y-1.5 rounded-lg border bg-muted/40 p-3 text-xs">
+    <div className="max-w-sm space-y-1.5 rounded-xl bg-muted/60 p-3 text-xs">
       <div className="flex justify-start">
-        <span className="rounded-lg rounded-bl-sm bg-card px-2.5 py-1.5 shadow-sm">
+        <span className="rounded-2xl rounded-bl-md bg-card px-3 py-1.5 shadow-soft">
           ¿En cuánto va el pedido #128?
         </span>
       </div>
       <div className="flex justify-end">
-        <span className="rounded-lg rounded-br-sm bg-primary/10 px-2.5 py-1.5 text-foreground">
+        <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-ink-foreground">
           Sale hoy, ya está en bordado.
         </span>
       </div>
@@ -296,7 +296,7 @@ function StatusButtonsPreview() {
         <Badge
           key={opt.value}
           variant="muted"
-          className={`border px-3 py-1 capitalize ${getStatusBadgeClasses(opt.value)}`}
+          className={`px-3 py-1 capitalize ${getStatusBadgeClasses(opt.value)}`}
         >
           {opt.label}
         </Badge>
@@ -318,28 +318,39 @@ const AyudaPage = () => {
   const profile = pickProfile(roles, isAdmin);
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-10">
       <Title title="Ayuda" />
 
-      {hasKnownRole ? (
-        <div className="space-y-1">
-          <div className="text-sm font-medium text-muted-foreground">
-            Guía para el rol <Badge variant="secondary" className="align-middle capitalize">{profile.roleLabel}</Badge>
+      {/* Banner del rol: tarjeta ancha con ícono en círculo, como el aviso
+          informativo del panel. */}
+      <Card className="flex items-start gap-4 p-5 sm:items-center sm:p-6">
+        <span
+          aria-hidden
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-primary-foreground shadow-sm shadow-primary/25"
+        >
+          <LifeBuoy className="h-5 w-5" />
+        </span>
+        {hasKnownRole ? (
+          <div className="min-w-0 space-y-1">
+            <p className="flex flex-wrap items-center gap-2 text-[0.9375rem] font-semibold">
+              Guía para el rol
+              <Badge variant="muted" className="capitalize text-foreground">{profile.roleLabel}</Badge>
+            </p>
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {profile.intro}
+            </p>
           </div>
+        ) : (
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {profile.intro}
+            Tu usuario todavía no tiene un rol asignado. Pedile a un
+            administrador que te asigne uno para ver tus tareas acá.
           </p>
-        </div>
-      ) : (
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Tu usuario todavía no tiene un rol asignado. Pedile a un
-          administrador que te asigne uno para ver tus tareas acá.
-        </p>
-      )}
+        )}
+      </Card>
 
       {hasKnownRole && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-5 sm:p-8">
             <ol className="relative">
               {profile.steps.map((step, index) => (
                 <TimelineStep key={step.title} step={step} index={index} />
@@ -349,77 +360,71 @@ const AyudaPage = () => {
         </Card>
       )}
 
-      <Separator />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <Card className="space-y-4 p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <IconBadge>
+              <BarChart3 className="h-4 w-4" />
+            </IconBadge>
+            <h2 className="text-section-title">Colores de estado</h2>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            En toda la app un mismo estado siempre tiene el mismo color, así lo
+            identificás de un vistazo sin importar en qué pantalla estés.
+          </p>
+          <StatusButtonsPreview />
+        </Card>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <IconBadge>
-            <BarChart3 className="h-4 w-4" />
-          </IconBadge>
-          <h2 className="text-lg font-semibold tracking-tight">Colores de estado</h2>
-        </div>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          En toda la app un mismo estado siempre tiene el mismo color, así lo
-          identificás de un vistazo sin importar en qué pantalla estés.
-        </p>
-        <StatusButtonsPreview />
-      </div>
-
-      <Separator />
-
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <IconBadge>
-            <ListChecks className="h-4 w-4" />
-          </IconBadge>
-          <h2 className="text-lg font-semibold tracking-tight">Preguntas frecuentes</h2>
-        </div>
-        <Card>
-          <CardContent className="px-2 py-2 sm:px-4">
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="atajos">
-                <AccordionTrigger>¿Qué atajos de teclado hay?</AccordionTrigger>
-                <AccordionContent>
-                  <ul className="space-y-1.5">
-                    <li>
-                      <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">
-                        Ctrl/Cmd + K
-                      </kbd>{" "}
-                      abre el buscador rápido (navegar a una sección o buscar un pedido).
-                    </li>
-                    <li>
-                      <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">N</kbd>{" "}
-                      en la pantalla de Pedidos abre &quot;+ Nueva Orden&quot; (sin tener nada
-                      escribiendo en un campo).
-                    </li>
-                    <li>
-                      <kbd className="rounded border bg-muted px-1.5 py-0.5 text-xs">Esc</kbd>{" "}
-                      cierra cualquier ventana o diálogo abierto.
-                    </li>
-                  </ul>
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="diseno">
-                <AccordionTrigger>¿Cómo funciona el flujo de diseño?</AccordionTrigger>
-                <AccordionContent>
-                  Cuando un pedido &quot;requiere diseño&quot;, no va directo a
-                  producción: Recepción lo asigna a Diseño, Diseño sube un
-                  montaje, Recepción se lo envía al cliente y espera su
-                  autorización. Si pide cambios, vuelve a Diseño tantas veces
-                  como haga falta; cuando el cliente autoriza, el pedido salta
-                  al área de producción elegida. Todo queda registrado en la
-                  sección &quot;Proceso de diseño&quot; del detalle del pedido.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="mas-ayuda">
-                <AccordionTrigger>¿Hace falta más ayuda?</AccordionTrigger>
-                <AccordionContent>
-                  Si algo no funciona como se espera o hace falta un permiso que
-                  no está habilitado, contactar a un administrador de EMD HUB.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
+        <Card className="p-5 pb-2 sm:p-6 sm:pb-2">
+          <div className="flex items-center gap-3">
+            <IconBadge>
+              <ListChecks className="h-4 w-4" />
+            </IconBadge>
+            <h2 className="text-section-title">Preguntas frecuentes</h2>
+          </div>
+          <Accordion type="single" collapsible className="mt-2 w-full">
+            <AccordionItem value="atajos">
+              <AccordionTrigger>¿Qué atajos de teclado hay?</AccordionTrigger>
+              <AccordionContent>
+                <ul className="space-y-1.5">
+                  <li>
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">
+                      Ctrl/Cmd + K
+                    </kbd>{" "}
+                    abre el buscador rápido (navegar a una sección o buscar un pedido).
+                  </li>
+                  <li>
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">N</kbd>{" "}
+                    en la pantalla de Pedidos abre &quot;+ Nueva Orden&quot; (sin tener nada
+                    escribiendo en un campo).
+                  </li>
+                  <li>
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">Esc</kbd>{" "}
+                    cierra cualquier ventana o diálogo abierto.
+                  </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="diseno">
+              <AccordionTrigger>¿Cómo funciona el flujo de diseño?</AccordionTrigger>
+              <AccordionContent>
+                Cuando un pedido &quot;requiere diseño&quot;, no va directo a
+                producción: Recepción lo asigna a Diseño, Diseño sube un
+                montaje, Recepción se lo envía al cliente y espera su
+                autorización. Si pide cambios, vuelve a Diseño tantas veces
+                como haga falta; cuando el cliente autoriza, el pedido salta
+                al área de producción elegida. Todo queda registrado en la
+                sección &quot;Proceso de diseño&quot; del detalle del pedido.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="mas-ayuda">
+              <AccordionTrigger>¿Hace falta más ayuda?</AccordionTrigger>
+              <AccordionContent>
+                Si algo no funciona como se espera o hace falta un permiso que
+                no está habilitado, contactar a un administrador de EMD HUB.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </Card>
       </div>
     </div>

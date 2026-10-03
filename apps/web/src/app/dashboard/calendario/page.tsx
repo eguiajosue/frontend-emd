@@ -17,6 +17,7 @@ import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useCalendarTasks } from "@/hooks/useCalendarTasks";
 import { useCalendarPrefs } from "@/hooks/useCalendarPrefs";
 import { useOrders } from "@/hooks/useOrders";
+import { isCancelledStatus } from "@/lib/orderStatus";
 import { TeamCalendar } from "@/components/calendar/TeamCalendar";
 import { TimeGridCalendar } from "@/components/calendar/TimeGridCalendar";
 import { MobileMonthList } from "@/components/calendar/mobile/MobileMonthList";
@@ -27,6 +28,7 @@ import { CategoryFilterBar } from "@/components/calendar/CategoryFilterBar";
 import { AreaFilterBar } from "@/components/calendar/AreaFilterBar";
 import { CalendarTasksList } from "@/components/calendar/CalendarTasksList";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types";
 
 type CalendarView = "mes" | "semana" | "dia";
@@ -85,7 +87,8 @@ export default function CalendarioPage() {
   const ordersWithDelivery = useMemo(
     () =>
       orders
-        .filter((o) => Boolean(o.deliveryDate))
+        // Los cancelados están archivados: no ocupan el calendario.
+        .filter((o) => Boolean(o.deliveryDate) && !isCancelledStatus(o.statusId))
         .filter((o) => areaFilter === "todas" || o.area === areaFilter),
     [orders, areaFilter]
   );
@@ -153,7 +156,13 @@ export default function CalendarioPage() {
             <ListChecks className="h-4 w-4" />
             Tareas
             {pendingTasksCount > 0 && (
-              <Badge variant="secondary" className="ml-0.5 px-1.5 py-0">
+              <Badge
+                variant="secondary"
+                className={cn(
+                  "ml-0.5 rounded-full border-transparent px-1.5 py-0 tabular-nums",
+                  tasksPanelOpen && !isMobile && "bg-ink-foreground/15 text-ink-foreground"
+                )}
+              >
                 {pendingTasksCount}
               </Badge>
             )}
@@ -175,7 +184,7 @@ export default function CalendarioPage() {
           {isError ? (
             <ErrorState onRetry={() => refetch()} />
           ) : loading ? (
-            <Skeleton className="h-[32rem] w-full" />
+            <Skeleton className="h-[32rem] w-full rounded-2xl" />
           ) : mobileView === "mes" ? (
             <MobileMonthList
               events={filteredEvents}
@@ -220,7 +229,7 @@ export default function CalendarioPage() {
             {isError ? (
               <ErrorState onRetry={() => refetch()} />
             ) : loading ? (
-              <Skeleton className="h-[32rem] w-full" />
+              <Skeleton className="h-[32rem] w-full rounded-2xl" />
             ) : view === "mes" ? (
               <TeamCalendar
                 events={filteredEvents}
@@ -230,7 +239,7 @@ export default function CalendarioPage() {
                 onSelectOrder={setOpenOrderId}
               />
             ) : (
-              <Card className="p-2 sm:p-4">
+              <Card className="p-4 sm:p-6">
                 <TimeGridCalendar
                   view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
                   events={filteredEvents}
@@ -251,14 +260,21 @@ export default function CalendarioPage() {
 
           {tasksPanelOpen && (
             <aside className="w-full shrink-0 xl:w-80">
-              <Card className="flex h-96 flex-col xl:sticky xl:top-4 xl:h-[32rem]">
-                <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
-                  <CardTitle>Tareas pendientes</CardTitle>
+              <Card className="flex h-96 flex-col xl:sticky xl:top-4 xl:h-[36rem]">
+                <CardHeader className="flex-row items-center justify-between space-y-0 p-5 pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    Tareas pendientes
+                    {pendingTasksCount > 0 && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                        {pendingTasksCount}
+                      </span>
+                    )}
+                  </CardTitle>
                   <SimpleTooltip label="Ocultar tareas">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
+                      className="h-8 w-8 bg-muted"
                       onClick={() => setTasksPanelOpen(false)}
                       aria-label="Ocultar tareas"
                     >
@@ -266,7 +282,7 @@ export default function CalendarioPage() {
                     </Button>
                   </SimpleTooltip>
                 </CardHeader>
-                <CardContent className="flex min-h-0 flex-1 flex-col p-4 pt-2">
+                <CardContent className="flex min-h-0 flex-1 flex-col p-5 pt-0">
                   <CalendarTasksList />
                 </CardContent>
               </Card>

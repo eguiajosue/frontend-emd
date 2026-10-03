@@ -36,7 +36,21 @@ interface DataTableProps<TData, TValue> {
   estimateRowHeight?: number;
   /** Alto máximo del viewport con scroll cuando `virtualize` está activo. */
   maxHeight?: number;
+  /**
+   * Clases extra para la superficie de escritorio. Por defecto la tabla es un
+   * panel con borde suave (sirve embebida en una `Card`); las pantallas donde
+   * la tabla ES la superficie principal (CrudPage) le suman `shadow-soft`.
+   */
+  className?: string;
 }
+
+/** Superficie de escritorio: panel blanco redondeado, borde casi invisible. */
+const DESKTOP_SURFACE =
+  "hidden w-full overflow-x-auto rounded-2xl border border-border/60 bg-card md:block";
+/** Fila en móvil: misma superficie, como tarjeta independiente. */
+const MOBILE_CARD = "rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-soft transition-colors";
+const MOBILE_EMPTY =
+  "rounded-2xl border border-border/60 bg-card p-6 text-center text-sm text-muted-foreground";
 
 const MOBILE_PAGE_SIZE = 30;
 
@@ -47,6 +61,7 @@ export function DataTable<TData, TValue>({
   virtualize = false,
   estimateRowHeight = 44,
   maxHeight = 560,
+  className,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -79,16 +94,13 @@ export function DataTable<TData, TValue>({
     return (
       <>
         {/* Escritorio/tablet: tabla con scroll horizontal si hace falta. */}
-        <div className="hidden w-full overflow-x-auto rounded-xl border md:block">
+        <div className={cn(DESKTOP_SURFACE, className)}>
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent">
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="h-11 bg-muted/40 text-xs font-medium text-muted-foreground first:rounded-tl-xl last:rounded-tr-xl"
-                    >
+                    <TableHead key={header.id}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -109,11 +121,11 @@ export function DataTable<TData, TValue>({
                     onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                     className={cn(
                       "transition-colors",
-                      onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
+                      onRowClick && "cursor-pointer"
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-3">
+                      <TableCell key={cell.id} className="py-3.5">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -121,7 +133,7 @@ export function DataTable<TData, TValue>({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                     No hay resultados.
                   </TableCell>
                 </TableRow>
@@ -138,8 +150,8 @@ export function DataTable<TData, TValue>({
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
-                  "rounded-xl border bg-card p-3.5 transition-colors",
-                  onRowClick && "cursor-pointer active:bg-primary/[0.04]"
+                  MOBILE_CARD,
+                  onRowClick && "cursor-pointer active:bg-muted/60"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -149,7 +161,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <div
                       key={cell.id}
-                      className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
+                      className="flex min-h-9 items-center justify-between gap-3 border-b border-border/50 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
                     >
                       {isLabeled && (
                         <span className="text-label shrink-0">
@@ -165,7 +177,7 @@ export function DataTable<TData, TValue>({
               </div>
             ))
           ) : (
-            <div className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
+            <div className={MOBILE_EMPTY}>
               No hay resultados.
             </div>
           )}
@@ -185,18 +197,15 @@ export function DataTable<TData, TValue>({
       {/* Escritorio/tablet: misma tabla virtualizada de siempre. */}
       <div
         ref={scrollRef}
-        className="hidden w-full overflow-auto rounded-xl border md:block"
+        className={cn(DESKTOP_SURFACE, "overflow-auto", className)}
         style={{ maxHeight }}
       >
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted/40 backdrop-blur">
+        <TableHeader className="sticky top-0 z-10 bg-card">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className="h-11 text-xs font-medium text-muted-foreground"
-                >
+                <TableHead key={header.id}>
                   {header.isPlaceholder
                     ? null
                     : flexRender(header.column.columnDef.header, header.getContext())}
@@ -208,7 +217,7 @@ export function DataTable<TData, TValue>({
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
+              <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
                 No hay resultados.
               </TableCell>
             </TableRow>
@@ -230,11 +239,11 @@ export function DataTable<TData, TValue>({
                     onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                     className={cn(
                       "transition-colors",
-                      onRowClick && "cursor-pointer hover:bg-primary/[0.04]"
+                      onRowClick && "cursor-pointer"
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className="py-3">
+                      <TableCell key={cell.id} className="py-3.5">
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     ))}
@@ -264,8 +273,8 @@ export function DataTable<TData, TValue>({
                 key={row.id}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
-                  "rounded-xl border bg-card p-3.5 transition-colors",
-                  onRowClick && "cursor-pointer active:bg-primary/[0.04]"
+                  MOBILE_CARD,
+                  onRowClick && "cursor-pointer active:bg-muted/60"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -275,7 +284,7 @@ export function DataTable<TData, TValue>({
                   return (
                     <div
                       key={cell.id}
-                      className="flex items-center justify-between gap-3 border-b border-border/60 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
+                      className="flex min-h-9 items-center justify-between gap-3 border-b border-border/50 py-1.5 last:border-b-0 last:pb-0 first:pt-0"
                     >
                       {isLabeled && (
                         <span className="text-label shrink-0">
@@ -301,7 +310,7 @@ export function DataTable<TData, TValue>({
             )}
           </>
         ) : (
-          <div className="rounded-xl border p-6 text-center text-sm text-muted-foreground">
+          <div className={MOBILE_EMPTY}>
             No hay resultados.
           </div>
         )}

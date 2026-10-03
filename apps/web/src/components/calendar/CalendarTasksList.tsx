@@ -74,7 +74,7 @@ export function CalendarTasksList() {
   const renderTask = (task: CalendarTask) => (
     <div
       key={task.id}
-      className="group flex items-start gap-2.5 rounded-lg border p-2.5 transition-colors hover:bg-muted/50"
+      className="group flex items-start gap-3 rounded-xl bg-muted/50 p-3 transition-colors hover:bg-muted"
     >
       <Checkbox
         checked={task.completed}
@@ -95,7 +95,7 @@ export function CalendarTasksList() {
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{task.description}</p>
         )}
         {task.orderId && (
-          <Badge variant="muted" className="mt-1 px-2 py-0">
+          <Badge variant="muted" className="mt-1.5 rounded-full border-transparent bg-card px-2 py-0">
             <Package className="h-3 w-3" aria-hidden />
             Pedido #{task.orderId}
           </Badge>
@@ -130,7 +130,7 @@ export function CalendarTasksList() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <Button onClick={openCreate} size="sm" className="w-full gap-1.5">
+      <Button onClick={openCreate} variant="outline" size="sm" className="w-full gap-1.5">
         <Plus className="h-4 w-4" />
         Nueva tarea
       </Button>

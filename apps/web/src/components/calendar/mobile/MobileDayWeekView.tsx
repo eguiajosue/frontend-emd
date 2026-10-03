@@ -189,7 +189,7 @@ export function MobileDayWeekView({
                 <span
                   className={cn(
                     "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium",
-                    selected && "bg-foreground text-background",
+                    selected && "bg-ink text-ink-foreground",
                     !selected && isToday(day) && "text-primary"
                   )}
                 >
@@ -211,7 +211,7 @@ export function MobileDayWeekView({
       </div>
 
       <Card className="flex overflow-hidden">
-        <div className="shrink-0 border-r" aria-hidden style={{ width: AXIS_WIDTH }}>
+        <div className="shrink-0 border-r border-border/60" aria-hidden style={{ width: AXIS_WIDTH }}>
           <div style={{ height: axisLayout?.headerHeight ?? 0 }} />
           {axisLayout &&
             HOURS.map((hour) => (

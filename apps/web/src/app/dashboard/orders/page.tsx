@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { useAppSettings } from "@/hooks/useSettings";
 import {
   statusMap,
   statusOptions,
+  isCancelledStatus,
   isDeliveredStatus,
   isFinishedStatus,
 } from "@/lib/orderStatus";
@@ -72,6 +73,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ordersScreenCopy } from "@/lib/orderScreen";
+import { TASKS_URL } from "@/lib/navMenu";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 
@@ -87,6 +89,7 @@ function filtersFromUrl(): OrdersFilters {
   const area = params.get("area");
   const assignedUserId = params.get("assignedUserId");
   const createdByMe = params.get("createdByMe");
+  const archived = params.get("archivados");
   return {
     clientId: clientId ? Number(clientId) : undefined,
     statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
@@ -99,6 +102,7 @@ function filtersFromUrl(): OrdersFilters {
     assignedUserId:
       assignedUserId === null ? undefined : assignedUserId === "unassigned" ? null : Number(assignedUserId),
     createdByMe: createdByMe === "1",
+    showArchived: archived === "1",
   };
 }
 
@@ -115,6 +119,7 @@ function filtersToUrlParams(filters: OrdersFilters, tone: DeadlineTone | null = 
     params.set("assignedUserId", filters.assignedUserId === null ? "unassigned" : String(filters.assignedUserId));
   }
   if (filters.createdByMe) params.set("createdByMe", "1");
+  if (filters.showArchived) params.set("archivados", "1");
   return params;
 }
 
@@ -161,8 +166,18 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
  * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
+const WORK_AREA_ROLE_SET = new Set(["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]);
+
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading, session } = usePermissions();
+  // Diseño y Producción no gestionan pedidos: su pantalla es "Tareas
+  // asignadas". Un link viejo (notificación, marcador) los lleva ahí.
+  const ordersRouter = useRouter();
+  const redirectToTasks =
+    !isSessionLoading && !canManageOperations && roles.some((r) => WORK_AREA_ROLE_SET.has(r));
+  useEffect(() => {
+    if (redirectToTasks) ordersRouter.replace(TASKS_URL);
+  }, [redirectToTasks, ordersRouter]);
   const currentUserId = session?.user?.id ? Number(session.user.id) : undefined;
   const { timeFormat } = useTimeFormat();
   const { data: orders, isPending, isError, refetch } = useOrders();
@@ -354,8 +369,13 @@ const OrdersPage = () => {
   // tablero en vivo (siguen existiendo en la DB y son visibles en Historial).
   const retentionMs = deliveredRetentionHours * 60 * 60 * 1000;
 
+  // Un cancelado queda archivado: fuera de la vista salvo con el toggle
+  // "Archivados", o si se filtra a propósito por el estado "cancelado".
+  const wantsCancelled = filters.showArchived || filters.statusIds.some(isCancelledStatus);
+
   const visibleOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (!wantsCancelled && isCancelledStatus(order.statusId)) return false;
       if (
         isDeliveredStatus(order.statusId) &&
         order.deliveredAt &&
@@ -396,7 +416,12 @@ const OrdersPage = () => {
       }
       return true;
     });
-  }, [orders, filters, retentionMs, currentUserId]);
+  }, [orders, filters, retentionMs, currentUserId, wantsCancelled]);
+
+  const archivedCount = useMemo(
+    () => orders.filter((order) => isCancelledStatus(order.statusId)).length,
+    [orders]
+  );
 
   const handleExport = async () => {
     if (visibleOrders.length === 0) {
@@ -542,10 +567,14 @@ const OrdersPage = () => {
       designBoard: { orders: design, columns: buildDesignColumns(design, statuses) },
       productionBoard: {
         orders: production,
-        columns: buildProductionColumns(production, viewerAreas),
+        // La columna "Cancelado" es el archivo: sólo aparece con el toggle
+        // "Archivados" (o filtrando a propósito por ese estado).
+        columns: buildProductionColumns(production, viewerAreas).filter(
+          (column) => wantsCancelled || !isCancelledStatus(column.statusId)
+        ),
       },
     };
-  }, [visibleOrders, statuses, viewerAreas]);
+  }, [visibleOrders, statuses, viewerAreas, wantsCancelled]);
 
   // Drag & drop: soltar una tarjeta en otra columna cambia el estado del
   // pedido. Se permite sólo hacia estados que ese rol puede fijar (mismo
@@ -676,7 +705,7 @@ const OrdersPage = () => {
           value={viewMode}
           onValueChange={(v) => v && updateViewMode(v as ViewMode)}
           aria-label="Vista"
-          className="shrink-0 rounded-full border bg-card p-1"
+          className="shrink-0 rounded-full border border-border/60 bg-card p-1"
         >
           <ToggleGroupItem value="list" className="gap-1.5">
             <List aria-hidden /> Lista
@@ -701,7 +730,7 @@ const OrdersPage = () => {
               value={circuit}
               onValueChange={(v) => v && updateCircuit(v as Circuit)}
               aria-label="Circuito"
-              className="inline-flex rounded-full border bg-card p-1"
+              className="inline-flex rounded-full border border-border/60 bg-card p-1"
             >
               {CIRCUITS.map((option) => (
                 <ToggleGroupItem key={option.value} value={option.value} className="group gap-1.5">
@@ -724,6 +753,7 @@ const OrdersPage = () => {
           users={users}
           filters={filters}
           onChange={updateFilters}
+          archivedCount={archivedCount}
         />
       </div>
 
@@ -771,7 +801,7 @@ const OrdersPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-2xl border bg-background/95 p-3 shadow-soft-md backdrop-blur"
+              className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-soft-md"
             >
               <span className="text-sm font-medium">
                 {selectedCount} pedido{selectedCount === 1 ? "" : "s"} seleccionado

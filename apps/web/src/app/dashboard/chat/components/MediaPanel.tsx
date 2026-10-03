@@ -40,11 +40,11 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
   return (
     <aside
       className={cn(
-        "hidden w-72 shrink-0 flex-col overflow-y-auto border-l bg-card/40 p-4 xl:flex",
+        "hidden w-72 shrink-0 flex-col overflow-y-auto rounded-2xl border border-border/60 bg-card p-5 xl:flex",
         className
       )}
     >
-      <h3 className="mb-3 text-sm font-semibold tracking-tight">Archivos compartidos</h3>
+      <h3 className="mb-3 text-section-title">Archivos compartidos</h3>
 
       {attachments.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -65,7 +65,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                     href={attachment.dataUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block overflow-hidden rounded-xl border transition-opacity hover:opacity-80"
+                    className="block overflow-hidden rounded-xl border border-border/60 transition-opacity hover:opacity-80"
                   >
                     <PreviewImage
                       src={attachment.dataUrl!}
@@ -90,7 +90,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                       href={attachment.dataUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs transition-colors hover:bg-accent"
+                      className="flex items-center gap-2 rounded-xl bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted"
                     >
                       <Video className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">
@@ -121,7 +121,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
                       target="_blank"
                       rel="noopener noreferrer"
                       download={attachment.filename}
-                      className="flex items-center gap-2 rounded-xl border bg-background/60 p-2.5 text-xs transition-colors hover:bg-accent"
+                      className="flex items-center gap-2 rounded-xl bg-muted/60 p-2.5 text-xs transition-colors hover:bg-muted"
                     >
                       <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                       <span className="min-w-0 flex-1 truncate font-medium">

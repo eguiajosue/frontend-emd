@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { OrderCard } from "@/components/orders/OrderCard";
+import { StatusBadge, getStatusIcon } from "@/components/StatusBadge";
 import { staggerContainerVariants } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -73,7 +74,7 @@ export function KanbanBoard({
     col.orders.length === 0 ? (
       <p
         className={cn(
-          "rounded-xl border border-dashed px-3 py-6 text-center text-xs text-muted-foreground/70 transition-colors",
+          "rounded-2xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground transition-colors",
           isTarget && "border-primary/50 text-primary"
         )}
       >
@@ -115,8 +116,8 @@ export function KanbanBoard({
   return (
     <>
       {/* Móvil: una columna a la vez, elegida con pastillas de scroll
-          horizontal — mismo patrón animado que el selector de circuito de
-          "Pedidos" (spring `layoutId` sobre un fondo magenta), en vez de un
+          horizontal — mismo control segmentado que el selector de circuito
+          de "Pedidos" (activa en gris suave), en vez de un
           `<Select>` que exige abrir un menú para ver las otras columnas. */}
       <div className="md:hidden">
         <ToggleGroup
@@ -128,16 +129,20 @@ export function KanbanBoard({
           aria-label="Columna"
           className="-mx-1 mb-3 justify-start overflow-x-auto rounded-full border bg-card p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {columns.map((col) => (
-            <ToggleGroupItem
-              key={col.statusId}
-              value={String(col.statusId)}
-              className="shrink-0 gap-1.5 whitespace-nowrap first-letter:uppercase"
-            >
-              {col.label}
-              <span className="text-xs tabular-nums opacity-70">{col.orders.length}</span>
-            </ToggleGroupItem>
-          ))}
+          {columns.map((col) => {
+            const Icon = getStatusIcon(col.statusId, col.label);
+            return (
+              <ToggleGroupItem
+                key={col.statusId}
+                value={String(col.statusId)}
+                className="shrink-0 gap-1.5 whitespace-nowrap"
+              >
+                <Icon aria-hidden />
+                <span className="inline-block first-letter:uppercase">{col.label}</span>
+                <span className="text-xs tabular-nums opacity-70">{col.orders.length}</span>
+              </ToggleGroupItem>
+            );
+          })}
         </ToggleGroup>
         {renderCards(activeMobileColumn, false)}
       </div>
@@ -145,7 +150,7 @@ export function KanbanBoard({
       {/* Escritorio/tablet: todas las columnas en una sola fila con scroll
           horizontal, para leer el flujo completo de izquierda a derecha. */}
       <div className="-mx-1 hidden overflow-x-auto px-1 pb-3 [scrollbar-color:hsl(var(--border))_transparent] [scrollbar-width:thin] md:block">
-      <div className="flex min-w-max items-start gap-5">
+      <div className="flex min-w-max items-start gap-3">
         {columns.map((col) => {
           const isTarget = overStatusId === col.statusId && acceptsDrop(col.statusId);
           return (
@@ -153,7 +158,7 @@ export function KanbanBoard({
               key={col.statusId}
               aria-label={col.label}
               className={cn(
-                "w-[17.5rem] shrink-0 rounded-2xl px-2 pb-2 transition-colors duration-150",
+                "w-[18.5rem] shrink-0 rounded-2xl p-1.5 transition-colors duration-150",
                 // La columna no es una tarjeta: las tarjetas van adentro y
                 // anidarlas ensucia la jerarquía. Sólo se tiñe mientras es
                 // destino de un arrastre.
@@ -182,18 +187,22 @@ export function KanbanBoard({
                 onMoveOrder(order, col.statusId);
               }}
             >
+              {/* Cabecera = tarjeta baja con la píldora del estado (ícono +
+                  nombre + contador). Fija al hacer scroll largo de la columna. */}
               <header
                 className={cn(
-                  "sticky top-0 z-10 -mx-2 mb-3 flex items-baseline gap-2 border-b bg-background/85 px-2 pb-2 pt-1 backdrop-blur transition-colors",
-                  isTarget && "border-primary/40"
+                  "sticky top-0 z-10 mb-3 flex items-center gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-soft transition-colors",
+                  isTarget && "border-primary/50"
                 )}
               >
-                <h3 className="truncate text-section-title first-letter:uppercase">
-                  {col.label}
+                <h3 className="min-w-0">
+                  <StatusBadge
+                    statusId={col.statusId}
+                    statusName={col.label}
+                    count={col.orders.length}
+                    className="py-1 text-[0.8125rem]"
+                  />
                 </h3>
-                <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                  {col.orders.length}
-                </span>
               </header>
 
               {renderCards(col, isTarget)}

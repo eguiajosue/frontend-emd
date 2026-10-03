@@ -118,8 +118,8 @@ function OrderRefChip({
       className={cn(
         "mt-1 h-auto w-full items-start justify-start gap-2 whitespace-normal rounded-xl p-2.5 text-left text-xs font-normal hover:opacity-80",
         mine
-          ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-          : "border-border bg-background/60 text-foreground hover:bg-background/60"
+          ? "border-ink-foreground/25 bg-ink-foreground/10 text-ink-foreground hover:bg-ink-foreground/10 hover:text-ink-foreground"
+          : "border-border/60 bg-card text-foreground hover:bg-card"
       )}
     >
       <Eye className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
@@ -168,8 +168,8 @@ function MessageAttachment({ message, mine }: { message: ChatMessage; mine: bool
       className={cn(
         "mt-1 flex items-center gap-2 rounded-xl border p-2.5 text-xs transition-colors hover:opacity-80",
         mine
-          ? "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground"
-          : "border-border bg-background/60 text-foreground"
+          ? "border-ink-foreground/25 bg-ink-foreground/10 text-ink-foreground"
+          : "border-border/60 bg-card text-foreground"
       )}
     >
       <FileIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
@@ -292,7 +292,7 @@ function MessageCheck({ state, messageId }: { state: MessageCheckState; messageI
   return (
     <CheckCheck
       data-testid={`check-${state}-${messageId}`}
-      className={cn("h-3.5 w-3.5", state === "read" && "text-sky-300")}
+      className={cn("h-3.5 w-3.5", state === "read" && "text-sky-400 dark:text-sky-600")}
       aria-label={state === "read" ? "Leído" : "Entregado"}
     />
   );
@@ -427,7 +427,7 @@ export function MessageThread({
     return (
       <div
         className={cn(
-          "flex flex-1 items-center justify-center p-6 text-sm text-muted-foreground",
+          "flex flex-1 items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground",
           className
         )}
       >
@@ -554,9 +554,9 @@ export function MessageThread({
       <>
         {showDay ? (
           <div className="flex items-center gap-2 py-3">
-            <Separator className="flex-1" />
-            <span className="text-xs capitalize text-muted-foreground">{day}</span>
-            <Separator className="flex-1" />
+            <Separator className="flex-1 bg-border/60" />
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize text-muted-foreground">{day}</span>
+            <Separator className="flex-1 bg-border/60" />
           </div>
         ) : null}
         <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
@@ -568,9 +568,11 @@ export function MessageThread({
           <div
             className={cn(
               "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow sm:max-w-[75%]",
+              // Propias en tinta (negro en claro / blanco en oscuro), ajenas en
+              // gris suave: contraste alto en los dos temas sin bloques magenta.
               mine
-                ? "rounded-br-md bg-primary text-primary-foreground"
-                : "rounded-bl-md border bg-card text-foreground"
+                ? "rounded-br-md bg-ink text-ink-foreground"
+                : "rounded-bl-md bg-muted text-foreground"
             )}
           >
             {!mine ? (
@@ -588,7 +590,7 @@ export function MessageThread({
             <p
               className={cn(
                 "flex items-center justify-end gap-1 pt-1 text-[10px]",
-                mine ? "text-primary-foreground/70" : "text-muted-foreground"
+                mine ? "text-ink-foreground/65" : "text-muted-foreground"
               )}
             >
               {formatTime(new Date(message.createdAt))}
@@ -606,8 +608,13 @@ export function MessageThread({
   };
 
   return (
-    <section className={cn("flex h-full min-h-0 min-w-0 flex-1 flex-col", className)}>
-      <header className="flex items-center justify-between gap-2 border-b p-3">
+    <section
+      className={cn(
+        "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card",
+        className
+      )}
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           {onBack ? (
             <Button
@@ -645,12 +652,12 @@ export function MessageThread({
               <span
                 aria-hidden
                 data-testid="presence-badge"
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
               />
             ) : null}
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-sm font-semibold">{conversation.title}</h2>
+            <h2 className="truncate text-section-title">{conversation.title}</h2>
             <p className="truncate text-xs text-muted-foreground">
               {conversation.type === "area"
                 ? "Canal entre Recepción y el área"
@@ -670,8 +677,8 @@ export function MessageThread({
         </div>
         <Button
           size="sm"
-          variant="ghost"
-          className="shrink-0 gap-1 px-2 sm:px-3"
+          variant="secondary"
+          className="shrink-0 gap-1 px-2.5 sm:px-3"
           onClick={() => setShowMembers((v) => !v)}
           title={`Participantes (${members.length})`}
           aria-label={`Participantes (${members.length})`}
@@ -682,12 +689,12 @@ export function MessageThread({
       </header>
 
       {showMembers ? (
-        <div className="border-b bg-muted/40 p-3">
+        <div className="border-b border-border/60 bg-muted/40 px-4 py-3">
           <ul className="flex flex-wrap gap-2">
             {members.map((member) => (
               <li
                 key={member.id}
-                className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs"
+                className="flex items-center gap-2 rounded-full border border-border/60 bg-card py-1 pl-1 pr-3 text-xs"
               >
                 <Avatar className="h-5 w-5">
                   <AvatarFallback className="text-[10px]">{chatInitials(member)}</AvatarFallback>
@@ -709,7 +716,7 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-4 sm:px-5">
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
@@ -783,9 +790,9 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t bg-card/60 p-3">
+      <div className="p-3 pt-1 sm:px-4 sm:pb-4">
         {attachedOrder ? (
-          <div className="mb-2 flex items-center gap-2 rounded-2xl border bg-muted/40 px-3 py-2 text-xs">
+          <div className="mb-2 flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">
               <span className="font-semibold">Pedido #{attachedOrder.id}</span>{" "}
@@ -805,7 +812,7 @@ export function MessageThread({
           </div>
         ) : null}
         {attachedFile ? (
-          <div className="mb-2 flex items-center gap-3 rounded-2xl border bg-muted/40 px-3 py-2 text-xs">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl bg-muted px-3 py-2 text-xs">
             {attachedFilePreview ? (
               <PreviewImage
                 src={attachedFilePreview}
@@ -829,7 +836,9 @@ export function MessageThread({
             </SimpleTooltip>
           </div>
         ) : null}
-        <div className="flex items-end gap-2">
+        {/* Compositor en píldora: adjuntos, campo y enviar dentro de una sola
+            superficie gris; el foco se marca en el contenedor. */}
+        <div className="flex items-end gap-0.5 rounded-[1.75rem] border border-border/60 bg-muted/60 p-1.5 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/25">
           <OrderPicker selected={attachedOrder} onSelect={setAttachedOrder} />
           <Input
             ref={fileInputRef}
@@ -885,7 +894,8 @@ export function MessageThread({
               }
             }}
             placeholder="Escribir un mensaje…"
-            className="min-w-0 max-h-40 min-h-[44px] flex-1 resize-none rounded-2xl"
+            rows={1}
+            className="min-h-[40px] min-w-0 max-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-2 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0"
             maxLength={2000}
           />
           <Button

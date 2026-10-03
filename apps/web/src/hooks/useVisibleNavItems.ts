@@ -20,7 +20,7 @@ export interface VisibleNavItem {
 export function useNavGroups() {
   const { data: session } = useSession();
   const userRoles = session?.user?.roles || [];
-  return isOperationalOnly(userRoles) ? OPERATIONAL_MENU : buildMenuItems(userRoles);
+  return isOperationalOnly(userRoles) ? OPERATIONAL_MENU : buildMenuItems();
 }
 
 /**
@@ -38,7 +38,7 @@ export function useVisibleNavItems(): VisibleNavItem[] {
   const chatUnread = useChatUnreadCount();
   const { count: notificationsUnread } = useUnreadNotificationsCount();
 
-  const groups = operationalOnly ? OPERATIONAL_MENU : buildMenuItems(userRoles);
+  const groups = operationalOnly ? OPERATIONAL_MENU : buildMenuItems();
 
   const items: VisibleNavItem[] = [];
   for (const group of groups) {

@@ -18,7 +18,7 @@ import { statusMap } from "@/lib/orderStatus";
 import { getOrderClientName } from "@/lib/format";
 import { getAreaLabel } from "@/lib/areas";
 import type { AreaPerformance, EmployeePerformance } from "@/types";
-import { EyeOff, Gauge } from "lucide-react";
+import { EyeOff, Gauge, Layers, Users } from "lucide-react";
 
 // recharts es pesado y no crítico para el primer render de la página.
 const PerformanceScoreChart = dynamic(
@@ -146,42 +146,46 @@ const RendimientoPage = () => {
         <ErrorState onRetry={() => refetch()} />
       ) : isPending || isSessionLoading ? (
         <div className="space-y-4">
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-72 w-full" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-64 w-full rounded-2xl" />
+          <Skeleton className="h-72 w-full rounded-2xl" />
         </div>
       ) : (
         <>
-          <div className="space-y-3">
-            <h2 className="text-section-title">Empleados</h2>
+          <section className="space-y-4" aria-labelledby="rend-empleados">
+            <h2 id="rend-empleados" className="flex items-center gap-2 text-section-title">
+              <Users className="h-4 w-4 text-muted-foreground" aria-hidden />
+              Empleados
+            </h2>
             {data.employees.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <Card className="p-6 text-center text-sm text-muted-foreground">
                 Todavía no hay datos suficientes de empleados.
-              </p>
+              </Card>
             ) : (
-              <div className="w-full overflow-auto">
-                <DataTable columns={employeeColumns} data={data.employees} />
-              </div>
+              <DataTable columns={employeeColumns} data={data.employees} />
             )}
-          </div>
+          </section>
 
-          <div className="space-y-3">
-            <h2 className="text-section-title">Áreas</h2>
+          <section className="space-y-4" aria-labelledby="rend-areas">
+            <h2 id="rend-areas" className="flex items-center gap-2 text-section-title">
+              <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
+              Áreas
+            </h2>
             {data.areas.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <Card className="p-6 text-center text-sm text-muted-foreground">
                 Todavía no hay datos suficientes de áreas.
-              </p>
+              </Card>
             ) : (
-              <div className="w-full overflow-auto">
-                <DataTable columns={areaColumns} data={data.areas} />
-              </div>
+              <DataTable columns={areaColumns} data={data.areas} />
             )}
-          </div>
+          </section>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <CardTitle className="flex items-center gap-2.5">
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
+                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                </span>
                 Comparación de score por área
               </CardTitle>
               {lowestAreaInsight && (
@@ -194,7 +198,7 @@ const RendimientoPage = () => {
             <CardContent>
               <div className="h-72 w-full">
                 {chartData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sin datos para graficar.</p>
+                  <p className="grid h-full place-items-center text-sm text-muted-foreground">Sin datos para graficar.</p>
                 ) : (
                   <PerformanceScoreChart
                     data={chartData}
@@ -205,7 +209,7 @@ const RendimientoPage = () => {
               </div>
               <ChartDrillDownPanel
                 activeKey={activeArea}
-                title={`Pedidos del área "${activeArea}" por estado`}
+                title={`Pedidos del área "${getAreaLabel(activeArea)}" por estado`}
                 onClose={() => setActiveArea(null)}
               >
                 {areaOrders.length === 0 ? (
@@ -217,13 +221,13 @@ const RendimientoPage = () => {
                     {areaOrdersByStatus
                       .filter((group) => group.orders.length > 0)
                       .map((group) => (
-                        <div key={group.statusId} className="rounded-lg border p-3">
+                        <div key={group.statusId} className="rounded-xl bg-card p-3.5">
                           <div className="mb-2 flex items-center justify-between gap-2">
                             <StatusBadge
                               statusId={group.statusId}
                               statusName={group.orders[0]?.status?.name}
                             />
-                            <span className="text-xs font-medium text-muted-foreground">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
                               {group.orders.length}
                             </span>
                           </div>

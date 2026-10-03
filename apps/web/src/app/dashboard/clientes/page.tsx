@@ -91,6 +91,7 @@ const ClientesPage = () => {
               <Button
                 size="icon"
                 variant="ghost"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Ver pedidos del cliente"
                 aria-label="Ver pedidos del cliente"
                 onClick={() => setOrdersClientId(row.original.id)}

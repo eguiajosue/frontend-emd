@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/states";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OrderDetailHeader } from "@/components/orders/detail/OrderDetailHeader";
-import { OrderDetailBody, useOrderDetailAccess } from "@/components/orders/detail/OrderDetailBody";
+import {
+  OrderDetailBody,
+  useOrderDetailAccess,
+} from "@/components/orders/detail/OrderDetailBody";
 import { useOrder } from "@/hooks/useOrders";
 import { ApiError } from "@/lib/api";
 
@@ -22,14 +25,23 @@ const OrderDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const orderId = Number(params?.id);
-  const { data: order, isPending, isError, error, refetch } = useOrder(
-    Number.isNaN(orderId) ? undefined : orderId
-  );
+  const {
+    data: order,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useOrder(Number.isNaN(orderId) ? undefined : orderId);
   const { viewer, permissions } = useOrderDetailAccess(order);
   const [editing, setEditing] = useState(false);
 
   const back = (
-    <Button variant="ghost" size="sm" className="-ml-2 gap-1.5 text-muted-foreground" asChild>
+    <Button
+      variant="outline"
+      size="sm"
+      className="gap-1.5 text-muted-foreground"
+      asChild
+    >
       <Link href="/dashboard/orders">
         <ArrowLeft className="h-4 w-4" aria-hidden />
         Pedidos
@@ -38,7 +50,9 @@ const OrderDetailPage = () => {
   );
 
   if (isError) {
-    const forbidden = error instanceof ApiError && (error.status === 403 || error.status === 404);
+    const forbidden =
+      error instanceof ApiError &&
+      (error.status === 403 || error.status === 404);
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         {back}
@@ -70,15 +84,17 @@ const OrderDetailPage = () => {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 text-sm">
-      {back}
-      <OrderDetailHeader
-        order={order}
-        permissions={permissions}
-        onEdit={() => setEditing(true)}
-        onDeleted={() => router.push("/dashboard/orders")}
-        Title="h1"
-      />
+    <div className="mx-auto max-w-3xl space-y-6 pb-10 text-sm">
+      <div className="space-y-3">
+        {back}
+        <OrderDetailHeader
+          order={order}
+          permissions={permissions}
+          onEdit={() => setEditing(true)}
+          onDeleted={() => router.push("/dashboard/orders")}
+          Title="h1"
+        />
+      </div>
       <OrderDetailBody
         order={order}
         viewer={viewer}

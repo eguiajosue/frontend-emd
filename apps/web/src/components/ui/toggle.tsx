@@ -14,9 +14,11 @@ const toggleVariants = cva(
         default: "bg-transparent",
         outline:
           "border border-input bg-transparent hover:bg-muted data-[state=on]:border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground",
-        /** Control segmentado: la opción activa en el color primario. */
+        /** Control segmentado: la opción activa es una píldora gris suave
+         *  dentro del contenedor blanco (como las pestañas Board/Timeline de
+         *  la referencia), no un bloque de color. */
         segmented:
-          "rounded-full px-3.5 text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm",
+          "rounded-full px-3.5 text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-muted data-[state=on]:text-foreground data-[state=on]:font-semibold dark:data-[state=on]:bg-secondary",
       },
       size: {
         default: "h-9 px-2 min-w-9",

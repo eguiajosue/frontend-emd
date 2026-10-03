@@ -27,41 +27,45 @@
     --accent2-800: 189 80% 18%;
     --accent2-900: 189 75% 13%;
 
-    /* Fondo casi blanco (no blanco puro) y texto casi negro (no negro puro),
-       ver protocolo minimalista §3-4. */
-    --background: 330 20% 98%;
-    --foreground: 330 15% 12%;
+    /* Lienzo gris cálido muy claro (no blanco): las tarjetas blancas se
+       separan por contraste de superficie, casi sin borde ni sombra. Texto
+       casi negro. Magenta EMD = acento de marca; "tinta" = acción principal
+       (botón negro), como en la referencia. */
+    --background: 330 6% 95.5%;
+    --foreground: 330 10% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 330 15% 12%;
+    --card-foreground: 330 10% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 330 15% 12%;
+    --popover-foreground: 330 10% 9%;
     --primary: 330 81% 46%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 330 40% 96%;
-    --secondary-foreground: 330 60% 24%;
-    --muted: 330 20% 95.5%;
-    --muted-foreground: 330 8% 42%;
-    --accent: 189 85% 94%;
-    --accent-foreground: 189 85% 18%;
-    --destructive: 0 84.2% 60.2%;
+    --ink: 330 10% 9%;
+    --ink-foreground: 0 0% 100%;
+    --secondary: 330 6% 94.5%;
+    --secondary-foreground: 330 10% 14%;
+    --muted: 330 6% 95.5%;
+    --muted-foreground: 330 4% 40%;
+    --accent: 330 6% 94.5%;
+    --accent-foreground: 330 10% 14%;
+    --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 20% 90%;
-    --input: 330 20% 90%;
+    --border: 330 6% 90%;
+    --input: 330 6% 88%;
     --ring: 330 81% 46%;
     --chart-1: 330 81% 53%;
-    --chart-2: 189 85% 38%;
-    --chart-3: 43 90% 55%;
+    --chart-2: 217 85% 56%;
+    --chart-3: 38 92% 52%;
     --chart-4: 262 70% 60%;
     --chart-5: 150 60% 42%;
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --sidebar-background: 330 25% 95%;
-    --sidebar-foreground: 330 15% 24%;
-    --sidebar-primary: 330 81% 46%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 330 6% 30%;
+    --sidebar-primary: 330 10% 9%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 35% 90%;
-    --sidebar-accent-foreground: 330 70% 30%;
-    --sidebar-border: 330 15% 82%;
+    --sidebar-accent: 330 6% 95%;
+    --sidebar-accent-foreground: 330 10% 9%;
+    --sidebar-border: 330 6% 90%;
     --sidebar-ring: 330 81% 46%;
   }
 
@@ -73,70 +77,70 @@
    */
   .theme-force-light {
     color-scheme: light;
-    --background: 330 20% 98%;
-    --foreground: 330 15% 12%;
+    --background: 330 6% 95.5%;
+    --foreground: 330 10% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 330 15% 12%;
+    --card-foreground: 330 10% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 330 15% 12%;
+    --popover-foreground: 330 10% 9%;
     --primary: 330 81% 46%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 330 40% 96%;
-    --secondary-foreground: 330 60% 24%;
-    --muted: 330 20% 95.5%;
-    --muted-foreground: 330 8% 42%;
-    --accent: 189 85% 94%;
-    --accent-foreground: 189 85% 18%;
-    --destructive: 0 84.2% 60.2%;
+    --ink: 330 10% 9%;
+    --ink-foreground: 0 0% 100%;
+    --secondary: 330 6% 94.5%;
+    --secondary-foreground: 330 10% 14%;
+    --muted: 330 6% 95.5%;
+    --muted-foreground: 330 4% 40%;
+    --accent: 330 6% 94.5%;
+    --accent-foreground: 330 10% 14%;
+    --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 20% 90%;
-    --input: 330 20% 90%;
+    --border: 330 6% 90%;
+    --input: 330 6% 88%;
     --ring: 330 81% 46%;
   }
   .dark {
-    /* Gris oscuro con tinte de marca sutil, nunca negro puro. Texto suavizado,
-       nunca blanco puro (ver protocolo minimalista §3-4). */
-    --background: 330 22% 6%;
-    --foreground: 330 10% 92%;
-    --card: 330 20% 8.5%;
-    --card-foreground: 330 10% 92%;
-    --popover: 330 20% 8.5%;
-    --popover-foreground: 330 10% 92%;
-    /* Acento desaturado ~12% respecto al light (81% -> 70%) para que no vibre
-       sobre fondo oscuro. */
-    --primary: 330 70% 62%;
+    /* Mismo lenguaje que el claro: lienzo casi negro neutro, tarjetas un
+       escalón más claras (la sombra no se ve en oscuro), tinta invertida
+       (botón principal blanco) y magenta suavizado para que no vibre. */
+    --background: 330 5% 6.5%;
+    --foreground: 330 6% 93%;
+    --card: 330 4% 10.5%;
+    --card-foreground: 330 6% 93%;
+    --popover: 330 4% 11.5%;
+    --popover-foreground: 330 6% 93%;
+    --primary: 330 72% 62%;
     --primary-foreground: 330 30% 8%;
-    --secondary: 330 15% 16%;
-    --secondary-foreground: 330 15% 92%;
-    --muted: 330 15% 15%;
-    --muted-foreground: 330 10% 68%;
-    --accent: 189 50% 16%;
-    --accent-foreground: 189 60% 82%;
-    --destructive: 0 62.8% 45%;
+    --ink: 330 6% 94%;
+    --ink-foreground: 330 8% 8%;
+    --secondary: 330 4% 15%;
+    --secondary-foreground: 330 6% 92%;
+    --muted: 330 4% 14.5%;
+    --muted-foreground: 330 4% 64%;
+    --accent: 330 4% 15%;
+    --accent-foreground: 330 6% 92%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 15% 18%;
-    --input: 330 15% 18%;
-    --ring: 330 70% 62%;
-    --chart-1: 330 70% 62%;
-    --chart-2: 189 65% 50%;
-    --chart-3: 43 75% 60%;
+    --border: 330 4% 17%;
+    --input: 330 4% 20%;
+    --ring: 330 72% 62%;
+    --chart-1: 330 72% 62%;
+    --chart-2: 217 80% 64%;
+    --chart-3: 38 85% 60%;
     --chart-4: 262 65% 68%;
     --chart-5: 150 45% 50%;
 
-    --sidebar-background: 330 25% 7%;
-    --sidebar-foreground: 330 10% 90%;
-    --sidebar-primary: 330 70% 62%;
-    --sidebar-primary-foreground: 330 30% 8%;
-    --sidebar-accent: 330 18% 14%;
-    --sidebar-accent-foreground: 330 15% 92%;
-    --sidebar-border: 330 15% 16%;
-    --sidebar-ring: 330 70% 62%;
+    --sidebar-background: 330 4% 10.5%;
+    --sidebar-foreground: 330 4% 70%;
+    --sidebar-primary: 330 6% 94%;
+    --sidebar-primary-foreground: 330 8% 8%;
+    --sidebar-accent: 330 4% 15%;
+    --sidebar-accent-foreground: 330 6% 93%;
+    --sidebar-border: 330 4% 17%;
+    --sidebar-ring: 330 72% 62%;
 
-    /* Iluminación en capas: cada nivel de elevación es un tono de fondo
-       ligeramente más claro que el de abajo (background < card < elevation-2),
-       ya que el box-shadow casi no se nota sobre fondo oscuro. */
-    --elevation-1: 330 18% 8.5%;
-    --elevation-2: 330 16% 12%;
+    --elevation-1: 330 4% 10.5%;
+    --elevation-2: 330 4% 13.5%;
   }
 
   /*
@@ -149,16 +153,12 @@
     --primary: 217 91% 46%;
     --primary-foreground: 0 0% 100%;
     --ring: 217 91% 46%;
-    --sidebar-primary: 217 91% 46%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 217 91% 46%;
   }
   .dark[data-accent="blue"] {
     --primary: 217 91% 64%;
     --primary-foreground: 217 40% 10%;
     --ring: 217 91% 64%;
-    --sidebar-primary: 217 91% 64%;
-    --sidebar-primary-foreground: 217 40% 10%;
     --sidebar-ring: 217 91% 64%;
   }
 
@@ -166,16 +166,12 @@
     --primary: 142 71% 35%;
     --primary-foreground: 0 0% 100%;
     --ring: 142 71% 35%;
-    --sidebar-primary: 142 71% 35%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 142 71% 35%;
   }
   .dark[data-accent="green"] {
     --primary: 142 65% 52%;
     --primary-foreground: 142 40% 8%;
     --ring: 142 65% 52%;
-    --sidebar-primary: 142 65% 52%;
-    --sidebar-primary-foreground: 142 40% 8%;
     --sidebar-ring: 142 65% 52%;
   }
 
@@ -183,16 +179,12 @@
     --primary: 24 90% 45%;
     --primary-foreground: 0 0% 100%;
     --ring: 24 90% 45%;
-    --sidebar-primary: 24 90% 45%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 24 90% 45%;
   }
   .dark[data-accent="orange"] {
     --primary: 24 90% 60%;
     --primary-foreground: 24 45% 10%;
     --ring: 24 90% 60%;
-    --sidebar-primary: 24 90% 60%;
-    --sidebar-primary-foreground: 24 45% 10%;
     --sidebar-ring: 24 90% 60%;
   }
 
@@ -200,16 +192,12 @@
     --primary: 262 70% 50%;
     --primary-foreground: 0 0% 100%;
     --ring: 262 70% 50%;
-    --sidebar-primary: 262 70% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 262 70% 50%;
   }
   .dark[data-accent="purple"] {
     --primary: 262 75% 68%;
     --primary-foreground: 262 40% 10%;
     --ring: 262 75% 68%;
-    --sidebar-primary: 262 75% 68%;
-    --sidebar-primary-foreground: 262 40% 10%;
     --sidebar-ring: 262 75% 68%;
   }
 
@@ -217,16 +205,12 @@
     --primary: 189 85% 32%;
     --primary-foreground: 0 0% 100%;
     --ring: 189 85% 32%;
-    --sidebar-primary: 189 85% 32%;
-    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-ring: 189 85% 32%;
   }
   .dark[data-accent="teal"] {
     --primary: 189 80% 48%;
     --primary-foreground: 189 45% 8%;
     --ring: 189 80% 48%;
-    --sidebar-primary: 189 80% 48%;
-    --sidebar-primary-foreground: 189 45% 8%;
     --sidebar-ring: 189 80% 48%;
   }
 }

@@ -23,7 +23,7 @@ import { getAssignedUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, SlidersHorizontal, X } from "lucide-react";
+import { Archive, CalendarIcon, SlidersHorizontal, X } from "lucide-react";
 import type { Client, User } from "@/types";
 
 export interface OrdersFilters {
@@ -36,6 +36,11 @@ export interface OrdersFilters {
   assignedUserId?: number | null;
   /** Sólo pedidos creados por el usuario de la sesión (`order.userId`). Pensado para Recepción. */
   createdByMe: boolean;
+  /**
+   * Muestra también los pedidos archivados (cancelados). Un cancelado no es
+   * trabajo: por defecto no aparece, pero sigue a mano con un toggle.
+   */
+  showArchived: boolean;
 }
 
 export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
@@ -46,6 +51,7 @@ export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   area: undefined,
   assignedUserId: undefined,
   createdByMe: false,
+  showArchived: false,
 };
 
 function clientLabel(c: Client): string {
@@ -68,6 +74,8 @@ interface OrdersFilterBarProps {
   users: User[];
   filters: OrdersFilters;
   onChange: (filters: OrdersFilters) => void;
+  /** Cuántos pedidos archivados hay (con los filtros actuales). */
+  archivedCount?: number;
 }
 
 /**
@@ -85,7 +93,13 @@ interface OrdersFilterBarProps {
 /** Label uniforme para cada campo del popover. */
 const FIELD_LABEL_CLASS = "text-label";
 
-export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
+export function OrdersFilterBar({
+  clients,
+  users,
+  filters,
+  onChange,
+  archivedCount = 0,
+}: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isAdmin, roles } = usePermissions();
@@ -110,7 +124,8 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
     filters.onlyOverdue ||
     !!filters.area ||
     filters.assignedUserId !== undefined ||
-    filters.createdByMe;
+    filters.createdByMe ||
+    filters.showArchived;
 
   const toggleStatus = (id: number) => {
     const next = filters.statusIds.includes(id)
@@ -209,8 +224,8 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
           <Button
             variant="outline"
             className={cn(
-              "gap-2 rounded-full",
-              hasActiveFilters && "border-primary/50 text-primary"
+              "h-10 gap-2 rounded-full px-4",
+              hasActiveFilters && "border-foreground/25"
             )}
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -388,6 +403,23 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
         </PopoverContent>
       </Popover>
 
+      {/* A la vista, fuera del popover: es la única forma de saber que los
+          cancelados no desaparecieron, sólo se archivaron. */}
+      <Label
+        htmlFor="show-archived"
+        className="flex h-10 cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-card pl-3 pr-4 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[[data-state=checked]]:text-foreground"
+      >
+        <Switch
+          id="show-archived"
+          className="h-4 w-7 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+          checked={filters.showArchived}
+          onCheckedChange={(checked) => onChange({ ...filters, showArchived: checked })}
+        />
+        <Archive className="h-3.5 w-3.5" aria-hidden />
+        Archivados
+        <span className="tabular-nums text-xs opacity-70">{archivedCount}</span>
+      </Label>
+
       {activeChips.map((chip) => (
         <Button
           key={chip.key}
@@ -396,7 +428,7 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
           size="sm"
           onClick={chip.clear}
           aria-label={`Quitar el filtro "${chip.label}"`}
-          className="group h-7 max-w-[14rem] gap-1.5 rounded-full border-primary/30 bg-primary/10 pl-3 pr-2 text-xs capitalize text-primary hover:bg-primary/15 hover:text-primary"
+          className="group h-8 max-w-[14rem] gap-1.5 rounded-full border-transparent bg-muted pl-3 pr-2 text-xs capitalize text-foreground hover:bg-secondary hover:text-foreground"
         >
           <span className="truncate">{chip.label}</span>
           <X className="h-3 w-3 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
@@ -408,7 +440,7 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 text-xs text-muted-foreground"
+          className="h-8 rounded-full text-xs text-muted-foreground"
           onClick={() => onChange(EMPTY_ORDERS_FILTERS)}
         >
           Limpiar

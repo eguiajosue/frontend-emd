@@ -45,9 +45,9 @@ export function OrderNotesSection({ orderId }: { orderId: number }) {
       ) : (
         <div className="space-y-3">
           {notes.length > 0 && (
-            <ul className="space-y-3">
+            <ul className="space-y-2">
               {notes.map((note) => (
-                <li key={note.id} className="space-y-0.5">
+                <li key={note.id} className="space-y-1 rounded-xl bg-muted/50 px-4 py-3">
                   <p className="text-xs text-muted-foreground">
                     <span className="font-medium text-foreground">
                       {getAssignedUserName(note.user) ?? "Usuario"}
@@ -81,7 +81,7 @@ export function OrderNotesSection({ orderId }: { orderId: number }) {
               }}
             />
             {draft.trim() && (
-              <Button type="submit" size="sm" variant="outline" disabled={isAdding}>
+              <Button type="submit" size="sm" disabled={isAdding}>
                 {isAdding && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isAdding ? "Enviando…" : "Agregar nota"}
               </Button>
@@ -119,7 +119,7 @@ export function OrderActivitySection({ orderId }: { orderId: number }) {
     >
       <div className="space-y-5">
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Cambios de estado</p>
+          <p className="text-label">Cambios de estado</p>
           {histories.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin cambios de estado todavía.</p>
           ) : (
@@ -139,7 +139,7 @@ export function OrderActivitySection({ orderId }: { orderId: number }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">Cambios en el pedido</p>
+          <p className="text-label">Cambios en el pedido</p>
           {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />

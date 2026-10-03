@@ -3,6 +3,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useDeliveryProgress, getProgressLevel, PROGRESS_LEVEL_COLORS } from "@/lib/deliveryProgress";
+import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DeliveryProgressBarProps {
@@ -20,7 +21,7 @@ interface DeliveryProgressBarProps {
 }
 
 /**
- * Barra delgada de progreso de vencimiento (tiempo transcurrido entre
+ * Barra de progreso de vencimiento (tiempo transcurrido entre
  * creación y fecha de entrega). No se renderiza si el pedido no tiene
  * `deliveryDate`.
  */
@@ -47,29 +48,38 @@ export function DeliveryProgressBar({
         ? "Vence hoy"
         : `${Math.round(progress)}% del plazo transcurrido`;
 
-  const showLabel = labelMode === "always" || level === "danger" || level === "critical";
+  const atRisk = level === "danger" || level === "critical";
+  const showLabel = labelMode === "always" || atRisk;
 
   return (
-    <div className={className} title={label}>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full transition-[width] duration-500"
-          style={{
-            width: `${clamped}%`,
-            background: `linear-gradient(90deg, ${color}99, ${color})`,
-          }}
-        />
-      </div>
-      {showLabel && (
-        <p
+    <div className={cn("space-y-2", className)} title={label}>
+      {/* Fila "Plazo ··· valor" sobre una barra gruesa: mismo patrón que el
+          progreso de tareas de la tarjeta del muro. */}
+      <div className="flex items-center gap-1.5 text-[0.8125rem]">
+        <Clock className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <span className="text-muted-foreground">Plazo</span>
+        <span
           className={cn(
-            "mt-1 text-xs",
-            level === "critical" ? "font-medium text-destructive" : "text-muted-foreground"
+            "ml-auto truncate tabular-nums",
+            level === "critical" ? "font-medium text-destructive" : atRisk ? "font-medium text-orange-700 dark:text-orange-300" : "font-medium"
           )}
         >
-          {label}
-        </p>
-      )}
+          {showLabel ? label : `${Math.round(clamped)}%`}
+        </span>
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        aria-label="Plazo de entrega transcurrido"
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{ width: `${clamped}%`, backgroundColor: color }}
+        />
+      </div>
     </div>
   );
 }

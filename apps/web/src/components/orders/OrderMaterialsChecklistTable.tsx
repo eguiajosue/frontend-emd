@@ -100,9 +100,9 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">Todavía no se cargó ningún material.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-2xl border border-border/60">
           <Table>
-            <TableHeader className="bg-muted/40">
+            <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="w-10 text-left">Comprado</TableHead>
                 <TableHead className="w-16 text-right">Cant.</TableHead>
@@ -151,7 +151,7 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-muted-foreground"
+                          className="h-8 w-8 rounded-full text-muted-foreground"
                           aria-label={`Editar ${item.description}`}
                           onClick={() => handleEdit(item)}
                         >
@@ -161,7 +161,7 @@ export function OrderMaterialsChecklistTable({ orderId }: OrderMaterialsChecklis
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           aria-label={`Quitar ${item.description}`}
                           onClick={() => setDeletingItem(item)}
                         >

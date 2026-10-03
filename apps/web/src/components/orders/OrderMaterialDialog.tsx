@@ -176,7 +176,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
               min={1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
 
@@ -190,7 +190,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
               }}
               placeholder='Ej. "Hoja de PVC de 6mm"'
               rows={2}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
 
@@ -219,7 +219,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={handleClose} disabled={submitting}>
+          <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>

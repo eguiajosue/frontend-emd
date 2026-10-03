@@ -100,16 +100,16 @@ export function UpcomingEventsSheet({
                       return (
                         <Button
                           key={item.id}
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => handleSelect(dayKey, item.id)}
-                          className="h-auto w-full items-start justify-start gap-2 whitespace-normal p-2.5 text-left font-normal"
+                          className="h-auto w-full items-start justify-start gap-2 whitespace-normal rounded-xl bg-muted/50 p-3 text-left font-normal hover:bg-muted"
                         >
                           <div className="min-w-0 flex-1">
                             {item.kind === "event" && (
                               <Badge
                                 variant="muted"
                                 className={cn(
-                                  "mb-1 px-2 py-0",
+                                  "mb-1.5 border-transparent px-2 py-0",
                                   CATEGORY_META[item.event.category].pillClasses
                                 )}
                               >
@@ -132,13 +132,13 @@ export function UpcomingEventsSheet({
                             CATEGORY_META[item.event.category].tracksStatus && (
                               <Badge
                                 variant="muted"
-                                className={cn("shrink-0 border", EVENT_STATUS_BADGE_CLASS[item.event.status])}
+                                className={cn("shrink-0 rounded-full", EVENT_STATUS_BADGE_CLASS[item.event.status])}
                               >
                                 {EVENT_STATUS_LABEL[item.event.status]}
                               </Badge>
                             )
                           ) : (
-                            <Badge variant="outline" className="shrink-0 border-dashed text-muted-foreground">
+                            <Badge variant="outline" className="shrink-0 rounded-full border-dashed bg-card text-muted-foreground">
                               <Package className="h-3 w-3" aria-hidden />
                               Pedido
                             </Badge>

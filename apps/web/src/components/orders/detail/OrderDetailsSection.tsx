@@ -64,9 +64,9 @@ export function OrderDetailsSection({
         permissions.canEdit && !editing ? (
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
+            className="gap-1.5"
             onClick={() => onEditingChange(true)}
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden />
@@ -90,11 +90,11 @@ export function OrderDetailsSection({
           {products.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-label">Productos</p>
-              <ul className="divide-y rounded-lg border">
+              <ul className="divide-y divide-border/60 rounded-xl bg-muted/50">
                 {products.map((op, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <li key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                     <span className="min-w-0 truncate">{getOrderProductName(op)}</span>
-                    <span className="shrink-0 font-medium tabular-nums">× {op.quantity}</span>
+                    <span className="shrink-0 rounded-full bg-card px-2.5 py-0.5 text-xs font-semibold tabular-nums shadow-soft">× {op.quantity}</span>
                   </li>
                 ))}
               </ul>
@@ -113,7 +113,7 @@ export function OrderDetailsSection({
                     alt={file.filename}
                     onZoom={setLightboxSrc}
                     label="Ampliar archivo del cliente"
-                    className="rounded-lg"
+                    className="rounded-xl"
                     imageClassName="h-24 w-auto max-w-[12rem]"
                   />
                 ) : (
@@ -129,7 +129,7 @@ export function OrderDetailsSection({
             </div>
           )}
 
-          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          <dl className="grid gap-x-6 gap-y-4 border-t border-border/60 pt-5 sm:grid-cols-2">
             <DetailField label="Asignado a">
               <span className="inline-flex items-center gap-1.5">
                 <UserRound className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -243,7 +243,7 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
           {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
           {isMutating ? "Guardando…" : "Guardar"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDone} disabled={isMutating}>
+        <Button type="button" size="sm" variant="outline" onClick={onDone} disabled={isMutating}>
           Cancelar
         </Button>
       </div>

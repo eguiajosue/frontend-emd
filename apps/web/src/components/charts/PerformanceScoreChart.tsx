@@ -10,6 +10,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  AXIS_PROPS,
+  GRID_PROPS,
+  TOOLTIP_CONTENT_STYLE,
+  TOOLTIP_CURSOR,
+  chartColor,
+} from "./chartTheme";
+import { getAreaLabel } from "@/lib/areas";
 
 interface PerformanceScoreChartProps {
   data: Array<{ name: string; score: number | null }>;
@@ -19,8 +27,6 @@ interface PerformanceScoreChartProps {
   onBarClick?: (name: string) => void;
 }
 
-const BASE_FILL = "hsl(var(--chart-2))";
-const ACTIVE_FILL = "hsl(var(--chart-4))";
 
 /**
  * Extraído a su propio componente para cargarlo con next/dynamic (ssr: false),
@@ -39,21 +45,32 @@ export default function PerformanceScoreChart({
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" />
-        <YAxis domain={["auto", "auto"]} />
-        <Tooltip cursor={{ fill: "hsl(var(--muted))", opacity: 0.4 }} />
+        <CartesianGrid {...GRID_PROPS} />
+        <XAxis dataKey="name" {...AXIS_PROPS} interval={0} tickFormatter={(v: string) => getAreaLabel(v)} />
+        <YAxis domain={["auto", "auto"]} {...AXIS_PROPS} width={40} />
+        <Tooltip
+          cursor={TOOLTIP_CURSOR}
+          contentStyle={TOOLTIP_CONTENT_STYLE}
+          labelFormatter={(v) => getAreaLabel(String(v))}
+        />
         <Bar
           dataKey="score"
-          radius={[4, 4, 0, 0]}
+          name="Score"
+          radius={[8, 8, 8, 8]}
+          maxBarSize={56}
           onClick={(entry) => {
             const name = (entry as unknown as { name?: string })?.name;
             if (name) onBarClick?.(name);
           }}
           cursor={onBarClick ? "pointer" : undefined}
         >
-          {chartData.map((d) => (
-            <Cell key={d.name} fill={d.name === activeName ? ACTIVE_FILL : BASE_FILL} />
+          {chartData.map((d, i) => (
+            <Cell
+              key={d.name}
+              fill={chartColor(i)}
+              // Con una barra seleccionada (drill-down) el resto se atenúa.
+              fillOpacity={activeName == null || d.name === activeName ? 1 : 0.3}
+            />
           ))}
         </Bar>
       </BarChart>

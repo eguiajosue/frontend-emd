@@ -132,7 +132,7 @@ export function OrderDetailBody({
       : [areas, details, design];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <OrderProgressPanel
         order={order}
         permissions={permissions}

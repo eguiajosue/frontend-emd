@@ -174,7 +174,7 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
         {/*
           reducedMotion="user": respeta prefers-reduced-motion del sistema para
           TODO lo animado con framer-motion en la app (springs, stagger, hover,

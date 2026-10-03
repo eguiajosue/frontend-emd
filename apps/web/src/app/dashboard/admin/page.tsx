@@ -24,7 +24,21 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDeliveryDate, getClientName, getUserName } from "@/lib/format";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { Order, OrderHistory } from "@/types";
-import { AlertTriangle, ShieldAlert, ListChecks, Gauge, TrendingUp, LayoutDashboard } from "lucide-react";
+import {
+  AlarmClock,
+  AlertTriangle,
+  CircleCheck,
+  CircleDashed,
+  CircleX,
+  Gauge,
+  LayoutDashboard,
+  ListChecks,
+  PackageCheck,
+  ShieldAlert,
+  Timer,
+  TrendingUp,
+  type LucideIcon,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +47,6 @@ import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { DeliveryCalendar } from "@/components/admin/DeliveryCalendar";
 import { UpcomingDeliveries } from "@/components/admin/UpcomingDeliveries";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import { ChartDrillDownPanel } from "@/components/charts/ChartDrillDownPanel";
 import { isOverdue } from "@/lib/deliveryProgress";
 
@@ -63,6 +76,35 @@ function formatDuration(ms: number) {
   const days = Math.floor(totalHours / 24);
   const hours = Math.round(totalHours % 24);
   return `${days}d ${hours}h`;
+}
+
+// Ícono de cada etapa en su tarjeta "carpeta" (ids de statusMap).
+const STAGE_ICONS: { [statusId: number]: LucideIcon } = {
+  1: CircleDashed,
+  3: Timer,
+  4: CircleCheck,
+  5: PackageCheck,
+  10: CircleX,
+};
+
+/** Puntualidad de una etapa: píldora con el color semántico al ~10%. */
+function OnTimePill({ pct }: { pct: number | null }) {
+  const tone =
+    pct == null
+      ? "bg-muted text-muted-foreground"
+      : pct >= 80
+      ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
+      : pct >= 50
+      ? "bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
+      : "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300";
+  return (
+    <span
+      className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums", tone)}
+      title="Pedidos de esta etapa que no están estancados"
+    >
+      {pct != null ? `${pct}% a tiempo` : "Sin pedidos"}
+    </span>
+  );
 }
 
 // recharts es pesado y no crítico para el primer render del panel admin.
@@ -355,13 +397,13 @@ const AdminDashboardPage = () => {
           isStagnant ? (
             <Badge
               variant="muted"
-              className="bg-red-100 font-semibold text-red-700 dark:bg-red-950 dark:text-red-300"
+              className="bg-red-500/10 font-semibold tabular-nums text-red-700 dark:bg-red-400/10 dark:text-red-300"
             >
               <AlertTriangle className="h-3 w-3" aria-hidden />
               {formatDuration(row.original.timeInStatusMs)}
             </Badge>
           ) : (
-            <span className="text-sm">{formatDuration(row.original.timeInStatusMs)}</span>
+            <span className="text-sm tabular-nums">{formatDuration(row.original.timeInStatusMs)}</span>
           )
         );
       },
@@ -389,7 +431,7 @@ const AdminDashboardPage = () => {
       id: "timeInStatus",
       header: "Tiempo estancado",
       cell: ({ row }) => (
-        <span className="font-semibold text-red-700 dark:text-red-400">
+        <span className="font-semibold tabular-nums text-red-700 dark:text-red-400">
           {formatDuration(row.original.timeInStatusMs)}
         </span>
       ),
@@ -418,7 +460,7 @@ const AdminDashboardPage = () => {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <GreetingHeader firstName={session?.user?.first_name} />
 
       {hasError ? (
@@ -429,12 +471,17 @@ const AdminDashboardPage = () => {
           }}
         />
       ) : loading ? (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-64 w-full" />
+        <div className="space-y-6">
+          <Skeleton className="h-20 w-full rounded-2xl" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-2xl" />
+            ))}
           </div>
-          <Skeleton className="h-96 w-full" />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <Skeleton className="h-80 w-full rounded-2xl lg:col-span-2" />
+            <Skeleton className="h-80 w-full rounded-2xl" />
+          </div>
         </div>
       ) : orders.length === 0 ? (
         <EmptyState
@@ -443,264 +490,243 @@ const AdminDashboardPage = () => {
           description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer acá apenas se cargue el primero."
         />
       ) : (
-        // `grid-cols-1` explícito: sin él, por debajo de `lg:` la única columna
-        // implícita se autoancha al max-content del contenido más ancho de
-        // cualquiera de las dos columnas (el gráfico, la tabla de drill-down,
-        // las filas de "Próximas entregas") en vez de ocupar el 100% del
-        // contenedor — y como `<main>` recorta con `overflow-x-hidden`, ese
-        // sobreancho no se ve como scroll sino como tarjetas cortadas a la
-        // derecha en mobile.
-        <div className="grid grid-cols-1 min-w-0 gap-10 lg:grid-cols-3 lg:items-start">
-        <div className="min-w-0 space-y-10 lg:col-span-2">
-          {/* Bento grid de KPIs: la caja de score global es la más grande y
-              lleva el número más importante del panel; el resto son cajas
-              1x1 por etapa. En mobile colapsa a una columna en orden de
-              importancia (score global primero). */}
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-section-title">
-                <Gauge className="h-4 w-4 text-muted-foreground" aria-hidden />
-                Rendimiento por área/etapa
-              </h2>
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" asChild>
-                <Link href="/dashboard/admin/rendimiento">
-                  <TrendingUp className="h-4 w-4" aria-hidden />
-                  Rendimiento de empleados y áreas
-                </Link>
-              </Button>
+        <>
+          {/* Banner del score global: el número más importante del panel,
+              dicho en una frase, con el atajo a Rendimiento a la derecha. */}
+          <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <span
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-primary-foreground"
+                aria-hidden
+              >
+                <Gauge className="h-5 w-5" />
+              </span>
+              <p className="min-w-0 text-sm text-muted-foreground sm:text-[0.95rem]">
+                <span className="font-semibold text-foreground">
+                  {overallScore.onTimePct != null
+                    ? `${overallScore.onTimePct}% de los pedidos activos va a tiempo.`
+                    : "Todavía no hay pedidos activos para medir."}
+                </span>{" "}
+                Score de rendimiento general sobre {overallScore.totalActive} pedido
+                {overallScore.totalActive === 1 ? "" : "s"}
+                {overallScore.totalStagnant > 0 && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <span className="font-medium text-red-600 dark:text-red-400">
+                      {overallScore.totalStagnant} estancado
+                      {overallScore.totalStagnant === 1 ? "" : "s"}
+                    </span>
+                  </>
+                )}
+                .
+              </p>
             </div>
+            <Button variant="secondary" className="shrink-0 self-start sm:self-auto" asChild>
+              <Link href="/dashboard/admin/rendimiento">
+                <TrendingUp aria-hidden />
+                Rendimiento de empleados y áreas
+              </Link>
+            </Button>
+          </Card>
+
+          {/* Una tarjeta "carpeta" por etapa + la de vencimientos próximos:
+              ícono en círculo gris, número y etiqueta, y la puntualidad de la
+              etapa como píldora tintada. */}
+          <section className="space-y-4" aria-labelledby="rendimiento-etapas">
+            <h2 id="rendimiento-etapas" className="text-section-title">
+              Rendimiento por área/etapa
+            </h2>
             <motion.div
-              className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
               variants={staggerContainerVariants}
               initial="hidden"
               animate="show"
             >
-              {/* Hero tile: score global de rendimiento */}
-              <motion.div
-                variants={staggerItemVariants}
-                className="order-1 min-w-0 sm:col-span-2 lg:col-span-2 lg:row-span-2"
-              >
-                <Card className="flex h-full min-w-0 flex-col justify-between p-8">
-                  <div className="flex min-w-0 items-start justify-between gap-4">
-                    <p className="min-w-0 text-sm font-medium text-muted-foreground">
-                      Score de rendimiento general
-                    </p>
-                    <ProgressRing
-                      value={overallScore.onTimePct ?? 0}
-                      size={56}
-                      strokeWidth={5}
-                      label={overallScore.onTimePct != null ? `${overallScore.onTimePct}%` : "-"}
-                      className={cn(
-                        overallScore.onTimePct == null
-                          ? "text-muted-foreground"
-                          : overallScore.onTimePct >= 80
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : overallScore.onTimePct >= 50
-                          ? "text-amber-500"
-                          : "text-red-600 dark:text-red-400"
-                      )}
-                    />
-                  </div>
-                  <div className="mt-6">
-                    <div className="font-heading text-6xl font-semibold leading-none tracking-tight tabular-nums md:text-7xl">
-                      {overallScore.onTimePct != null ? `${overallScore.onTimePct}%` : "—"}
-                    </div>
-                    <p className="mt-3 text-sm text-muted-foreground">
-                      de {overallScore.totalActive} pedidos activos a tiempo
-                      {overallScore.totalStagnant > 0 && (
-                        <>
-                          {" "}
-                          ·{" "}
-                          <span className="font-medium text-red-600 dark:text-red-400">
-                            {overallScore.totalStagnant} estancado
-                            {overallScore.totalStagnant === 1 ? "" : "s"}
+              {performanceByStatus.map((p) => {
+                const Icon = STAGE_ICONS[p.statusId] ?? ListChecks;
+                return (
+                  <motion.div key={p.statusId} variants={staggerItemVariants} className="min-w-0">
+                    <Card className="flex h-full min-w-0 flex-col gap-4 p-5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted" aria-hidden>
+                          <Icon className="h-5 w-5 text-muted-foreground" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-heading text-lg font-semibold leading-tight tabular-nums">
+                            {p.currentCount} pedido{p.currentCount === 1 ? "" : "s"}
+                          </p>
+                          <p className="truncate text-sm text-muted-foreground">{p.label}</p>
+                        </div>
+                        <OnTimePill pct={p.onTimePct} />
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                        <span>
+                          Prom. histórico:{" "}
+                          <span className="font-medium text-foreground">
+                            {p.avgMs != null ? formatDuration(p.avgMs) : "sin datos"}
                           </span>
-                        </>
-                      )}
-                    </p>
+                          {p.samples > 0 && p.samples < MIN_SAMPLES_FOR_AVERAGE && " (poca muestra)"}
+                        </span>
+                        <span>
+                          Estancados:{" "}
+                          <span
+                            className={cn(
+                              "font-medium tabular-nums",
+                              p.stagnantCount > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
+                            )}
+                          >
+                            {p.stagnantCount}
+                          </span>
+                        </span>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+              <motion.div variants={staggerItemVariants} className="min-w-0">
+                <Card className="flex h-full min-w-0 flex-col gap-4 p-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted" aria-hidden>
+                      <AlarmClock className="h-5 w-5 text-muted-foreground" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-heading text-lg font-semibold leading-tight tabular-nums">
+                        {dueSoonCount} pedido{dueSoonCount === 1 ? "" : "s"}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">Por vencer en 24 h</p>
+                    </div>
                   </div>
+                  <p className="border-t border-border/60 pt-3 text-xs text-muted-foreground">
+                    Entregas de las próximas 24 horas que todavía no vencieron.
+                  </p>
                 </Card>
               </motion.div>
-
-              {performanceByStatus.map((p, idx) => (
-                <motion.div
-                  key={p.statusId}
-                  variants={staggerItemVariants}
-                  className={cn("order-2 min-w-0", idx === 0 && "order-2")}
-                >
-                  <Card className="flex h-full min-w-0 flex-col justify-between p-6">
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                      <p className="min-w-0 text-label first-letter:uppercase">
-                        {p.label}
-                      </p>
-                      <ProgressRing
-                        value={p.onTimePct ?? 0}
-                        size={36}
-                        strokeWidth={4}
-                        label={p.onTimePct != null ? `${p.onTimePct}%` : "-"}
-                        className={cn(
-                          p.onTimePct == null
-                            ? "text-muted-foreground"
-                            : p.onTimePct >= 80
-                            ? "text-emerald-600 dark:text-emerald-400"
-                            : p.onTimePct >= 50
-                            ? "text-amber-500"
-                            : "text-red-600 dark:text-red-400"
-                        )}
-                      />
-                    </div>
-                    <div className="mt-4">
-                      <div className="font-heading text-4xl font-semibold leading-none tracking-tight tabular-nums">
-                        {p.currentCount}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">pedidos en esta etapa</p>
-                    </div>
-                    <div className="mt-4 space-y-1 text-xs">
-                      <p>
-                        Prom. histórico:{" "}
-                        <span className="font-medium">
-                          {p.avgMs != null ? formatDuration(p.avgMs) : "sin datos"}
-                        </span>
-                        {p.samples > 0 && p.samples < MIN_SAMPLES_FOR_AVERAGE && (
-                          <span className="text-muted-foreground"> (poca muestra)</span>
-                        )}
-                      </p>
-                      <p>
-                        Estancados:{" "}
-                        <span className={p.stagnantCount > 0 ? "font-medium text-red-600 dark:text-red-400" : "font-medium"}>
-                          {p.stagnantCount}
-                        </span>
-                      </p>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
             </motion.div>
+          </section>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Tiempo promedio por etapa (horas)</CardTitle>
-                {slowestStageInsight && (
-                  <p className="text-sm text-muted-foreground">
-                    La etapa{" "}
-                    <span className="font-medium text-foreground">{slowestStageInsight.label}</span>{" "}
-                    es la que más tiempo promedio toma (
-                    {formatDuration(slowestStageInsight.avgMs!)}).
-                    {dueSoonCount > 0 && (
-                      <> {dueSoonCount} pedido{dueSoonCount === 1 ? "" : "s"} por vencer en las próximas 24h.</>
-                    )}
-                  </p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="h-72 w-full">
-                  <AvgTimeBarChart
-                    data={chartData}
-                    activeEtapa={activeEtapa}
-                    onBarClick={(etapa) => setActiveEtapa((prev) => (prev === etapa ? null : etapa))}
-                  />
-                </div>
-                <ChartDrillDownPanel
-                  activeKey={activeEtapa}
-                  title={`Pedidos en etapa "${activeEtapa}"`}
-                  onClose={() => setActiveEtapa(null)}
-                >
-                  {etapaOrders.length === 0 ? (
+          {/* `grid-cols-1` explícito: sin él, por debajo de `lg:` la única
+              columna implícita se autoancha al max-content del contenido más
+              ancho (el gráfico, la tabla de drill-down, las filas de
+              "Próximas entregas") en vez de ocupar el 100% del contenedor —
+              y como `<main>` recorta con `overflow-x-hidden`, ese sobreancho
+              se vería como tarjetas cortadas a la derecha en mobile. */}
+          <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+            <div className="min-w-0 space-y-8 lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tiempo promedio por etapa (horas)</CardTitle>
+                  {slowestStageInsight && (
                     <p className="text-sm text-muted-foreground">
-                      No hay pedidos actualmente en esta etapa.
+                      La etapa{" "}
+                      <span className="font-medium text-foreground">{slowestStageInsight.label}</span>{" "}
+                      es la que más tiempo promedio toma ({formatDuration(slowestStageInsight.avgMs!)}).
+                      {dueSoonCount > 0 && (
+                        <> {dueSoonCount} pedido{dueSoonCount === 1 ? "" : "s"} por vencer en las próximas 24h.</>
+                      )}
                     </p>
-                  ) : (
-                    <div className="w-full overflow-auto">
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="h-72 w-full">
+                    <AvgTimeBarChart
+                      data={chartData}
+                      activeEtapa={activeEtapa}
+                      onBarClick={(etapa) => setActiveEtapa((prev) => (prev === etapa ? null : etapa))}
+                    />
+                  </div>
+                  <ChartDrillDownPanel
+                    activeKey={activeEtapa}
+                    title={`Pedidos en etapa "${activeEtapa}"`}
+                    onClose={() => setActiveEtapa(null)}
+                  >
+                    {etapaOrders.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No hay pedidos actualmente en esta etapa.
+                      </p>
+                    ) : (
                       <DataTable
                         columns={trackingColumns}
                         data={etapaOrders.map((e) => ({ order: e.order, timeInStatusMs: e.timeInStatusMs }))}
                       />
-                    </div>
-                  )}
-                </ChartDrillDownPanel>
-              </CardContent>
-            </Card>
-          </div>
+                    )}
+                  </ChartDrillDownPanel>
+                </CardContent>
+              </Card>
 
-          {/* Estancamiento */}
-          <Card
-            className={
-              stagnantOrders.length > 0
-                ? "border-red-300 dark:border-red-900"
-                : undefined
-            }
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4 text-red-600" aria-hidden />
-                Pedidos estancados
-              </CardTitle>
-              <Badge
-                variant={stagnantOrders.length > 0 ? "destructive" : "muted"}
-                className="tabular-nums"
-              >
-                {stagnantOrders.length}
-              </Badge>
-            </CardHeader>
-            <CardContent>
-              {stagnantOrders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No hay pedidos estancados actualmente. Buen trabajo.
-                </p>
-              ) : (
-                <div className="w-full overflow-auto">
-                  <DataTable columns={stagnantColumns} data={stagnantOrders} />
+              {/* Estancamiento: la tabla ya es su propia superficie blanca. */}
+              <section className="space-y-4" aria-labelledby="pedidos-estancados">
+                <div className="flex items-center gap-2.5">
+                  <h2 id="pedidos-estancados" className="flex items-center gap-2 text-section-title">
+                    <ShieldAlert className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    Pedidos estancados
+                  </h2>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                      stagnantOrders.length > 0
+                        ? "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {stagnantOrders.length}
+                  </span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                {stagnantOrders.length === 0 ? (
+                  <Card className="p-5 text-sm text-muted-foreground">
+                    No hay pedidos estancados actualmente. Buen trabajo.
+                  </Card>
+                ) : (
+                  <DataTable columns={stagnantColumns} data={stagnantOrders} />
+                )}
+              </section>
 
-          {/* Seguimiento global */}
-          <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="flex items-center gap-2 text-section-title">
-                <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden />
-                Seguimiento global de pedidos
-              </h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full min-w-0 sm:w-[180px]">
-                    <SelectValue placeholder="Filtrar por estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    {Object.entries(statusMap).map(([id, label]) => (
-                      <SelectItem key={id} value={id}>
-                        {label.charAt(0).toUpperCase() + label.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-full min-w-0 sm:w-[220px]">
-                    <SelectValue placeholder="Ordenar por" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="timeInStatus">Tiempo en estado (mayor a menor)</SelectItem>
-                    <SelectItem value="creationDate">Fecha de creación (más reciente)</SelectItem>
-                    <SelectItem value="deliveryDate">Fecha de entrega (más próxima)</SelectItem>
-                    <SelectItem value="status">Estado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Seguimiento global */}
+              <section className="space-y-4" aria-labelledby="seguimiento-global">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 id="seguimiento-global" className="flex items-center gap-2 text-section-title">
+                    <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden />
+                    Seguimiento global de pedidos
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full min-w-0 rounded-full sm:w-[180px]" aria-label="Filtrar por estado">
+                        <SelectValue placeholder="Filtrar por estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        {Object.entries(statusMap).map(([id, label]) => (
+                          <SelectItem key={id} value={id}>
+                            {label.charAt(0).toUpperCase() + label.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-full min-w-0 rounded-full sm:w-[230px]" aria-label="Ordenar por">
+                        <SelectValue placeholder="Ordenar por" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="timeInStatus">Tiempo en estado (mayor a menor)</SelectItem>
+                        <SelectItem value="creationDate">Fecha de creación (más reciente)</SelectItem>
+                        <SelectItem value="deliveryDate">Fecha de entrega (más próxima)</SelectItem>
+                        <SelectItem value="status">Estado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DataTable columns={trackingColumns} data={filteredSortedOrders} />
+              </section>
             </div>
-            <div className="w-full overflow-auto">
-              <DataTable columns={trackingColumns} data={filteredSortedOrders} />
+
+            {/* Columna derecha: calendario de entregas + próximas entregas.
+                En mobile va primero: es lo que se consulta al abrir la home. */}
+            <div className="order-first min-w-0 space-y-6 lg:order-none">
+              <DeliveryCalendar orders={orders} onSelectOrder={setOpenOrderId} />
+              <UpcomingDeliveries orders={orders} onSelectOrder={setOpenOrderId} />
             </div>
           </div>
-        </div>
-
-        {/* Columna derecha: calendario de entregas + próximas entregas */}
-        <div className="space-y-10">
-          <DeliveryCalendar orders={orders} onSelectOrder={setOpenOrderId} />
-          <UpcomingDeliveries orders={orders} onSelectOrder={setOpenOrderId} />
-        </div>
-        </div>
+        </>
       )}
 
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
