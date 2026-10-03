@@ -216,9 +216,9 @@ export const OrderJobCard = memo(function OrderJobCard({
         <div className="text-right">
           <p className="text-muted-foreground">{inDesign ? "Áreas planificadas" : "Tareas de área"}</p>
           <p className="font-heading text-lg font-semibold tabular-nums leading-tight">
-            {tasks.total === 0 ? "—" : `${tasks.done}/${tasks.total}`}
+            {tasks.total === 0 ? "—" : inDesign ? tasks.total : `${tasks.done}/${tasks.total}`}
           </p>
-          {tasks.total > 0 && (
+          {tasks.total > 0 && !inDesign && (
             <div
               className="ml-auto mt-1 h-1 w-16 overflow-hidden rounded-full bg-muted"
               role="progressbar"
