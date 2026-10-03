@@ -35,6 +35,7 @@ vi.mock("@/components/BugReportDialog", () => ({
 
 vi.mock("@/components/ThemeToggle", () => ({
   ThemeToggle: () => null,
+  ThemeRailSwitch: () => null,
 }));
 
 // `SidebarProvider` decide "collapsed" vs. "móvil" con este hook; mockearlo
@@ -56,46 +57,38 @@ function renderSidebar(defaultOpen = true) {
   );
 }
 
-describe("AppSidebar", () => {
-  it("muestra Clientes a un usuario con rol superuser", () => {
+describe("AppSidebar (riel flotante de escritorio)", () => {
+  it("muestra Clientes a un usuario con rol superuser (ícono con nombre accesible)", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: /Clientes/i })).toBeInTheDocument();
   });
 
-  it("en el panel expandido de escritorio muestra la fila de marca EMD HUB", () => {
-    renderSidebar(true);
-    expect(screen.getByText("EMD HUB")).toBeInTheDocument();
+  it("marca el ítem activo con aria-current y su indicador tinta", () => {
+    // Pedidos (/dashboard/orders) coincide con el pathname mockeado arriba.
+    const { container } = renderSidebar();
+    const active = screen.getByRole("link", { name: "Pedidos" });
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(container.querySelector('[class*="bg-sidebar-primary"]')).toBeInTheDocument();
   });
 
-  it("en el rail colapsado, el ítem activo lleva la barra de acento en el borde izquierdo", () => {
-    // Pedidos (/dashboard/orders) es el activo: coincide con el pathname mockeado arriba.
-    const { container } = renderSidebar(false);
-    const accentBar = container.querySelector('[class*="w-[3px]"]');
-    expect(accentBar).toBeInTheDocument();
-  });
-
-  it("el chevron de colapsar/expandir no se renderiza en móvil", () => {
-    useIsMobileMock.mockReturnValue(true);
+  it("separa los grupos del menú en listas con su nombre", () => {
     renderSidebar();
-    expect(
-      screen.queryByRole("button", { name: /Colapsar menú|Expandir menú/ })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Operación" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Administración" })).toBeInTheDocument();
   });
 
-  it("el chevron de colapsar/expandir sí se renderiza en escritorio", () => {
-    renderSidebar(true);
-    expect(
-      screen.getByRole("button", { name: /Colapsar menú|Expandir menú/ })
-    ).toBeInTheDocument();
+  it("tiene Configuración y Cerrar sesión al pie", () => {
+    renderSidebar();
+    expect(screen.getByRole("link", { name: "Configuración" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
   });
 
-  it("no renderiza nada en móvil (el rail/drawer deja de existir; la navegación móvil vive en MobileTabBar/MobileMoreSheet)", () => {
+  it("no renderiza nada en móvil (la navegación móvil vive en MobileTabBar/MobileMoreSheet)", () => {
     useIsMobileMock.mockReturnValue(true);
     const { container } = renderSidebar();
     // El wrapper de `SidebarProvider` siempre se monta (contexto); lo que se
     // verifica es que `AppSidebar` no le agrega nada adentro.
     const providerWrapper = container.querySelector(".group\\/sidebar-wrapper");
     expect(providerWrapper).toBeEmptyDOMElement();
-    expect(screen.queryByText("EMD HUB")).not.toBeInTheDocument();
   });
 });
