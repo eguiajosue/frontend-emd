@@ -64,14 +64,15 @@ describe("MobileMoreSheet", () => {
     mocks.roles = ["superuser"];
     renderSheet();
 
-    // Chat interno, Panel General, Pedidos y Notificaciones son los 4 tabs
+    // Panel General, Inicio, Pedidos y Chat interno son los 4 tabs
     // principales de `MobileTabBar` para este rol — no deben repetirse acá.
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inicio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pedidos" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
 
     // El resto del menú completo sí debe estar disponible acá.
+    expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Rendimiento" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Clientes" })).toBeInTheDocument();
@@ -79,17 +80,18 @@ describe("MobileMoreSheet", () => {
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
   });
 
-  it("para rol operativo (taller): los 4 tabs principales no se repiten acá; Ayuda queda en el sheet", () => {
-    // Menú operativo: Tareas asignadas, Inventario, Chat interno,
-    // Notificaciones, Ayuda. Los 4 primeros por prioridad son los tabs de
-    // `MobileTabBar`; sólo Ayuda queda "remanente" para el sheet.
+  it("para rol operativo (taller): los 4 tabs principales no se repiten acá; Inventario y Ayuda quedan en el sheet", () => {
+    // Menú operativo: Inicio, Tareas asignadas, Inventario, Chat interno,
+    // Notificaciones, Ayuda. Los 4 primeros por prioridad (Inicio, Tareas,
+    // Chat, Notificaciones) son los tabs de `MobileTabBar`; el resto, acá.
     mocks.roles = ["taller"];
     renderSheet();
 
+    expect(screen.queryByRole("link", { name: "Inicio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Tareas asignadas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inventario" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
   });

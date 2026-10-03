@@ -25,6 +25,14 @@ vi.mock("@/hooks/useOrders", () => ({
   }),
 }));
 
+let mockInsights: unknown = null;
+vi.mock("@/hooks/useClientInsights", () => ({
+  useClientInsights: (clientId: number | null) => ({
+    insights: clientId ? mockInsights : null,
+    isLoading: false,
+  }),
+}));
+
 let mockTemplates: unknown[] = [];
 let mockTemplateSource: unknown = undefined;
 const templateCreate = vi.fn();
@@ -90,6 +98,7 @@ beforeEach(() => {
   invalidateQueries.mockReset();
   mockTemplates = [];
   mockTemplateSource = undefined;
+  mockInsights = null;
   templateCreate.mockReset();
   templateUpdate.mockReset();
   templateMarkUsed.mockReset();
@@ -659,5 +668,122 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
     renderDialog({ templateId: 5 });
     expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Aprendizaje por cliente (autocompletado)                                   */
+/* -------------------------------------------------------------------------- */
+
+const at = (hour: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+};
+
+const INSIGHTS = {
+  version: 1,
+  ordersAnalyzed: 6,
+  firstOrderAt: null,
+  lastOrderAt: null,
+  products: [
+    { name: "Figuras", key: "figuras", orders: 6, share: 1, typicalQuantity: 12, lastQuantity: 14, lastOrderedAt: "" },
+    { name: "Lona", key: "lona", orders: 2, share: 0.3, typicalQuantity: 1, lastQuantity: 1, lastOrderedAt: "" },
+    { name: "Gorra", key: "gorra", orders: 1, share: 0.1, typicalQuantity: 30, lastQuantity: 30, lastOrderedAt: "" },
+  ],
+  route: { designShare: 1, requiresDesign: true, areas: [{ area: "impresiones", share: 1 }] },
+  materials: [],
+  leadTime: { days: 7, samples: 6 },
+  recentDeliveries: [at(14), at(14), at(14)],
+  cadence: null,
+  suggestion: {
+    confidence: "alta",
+    basedOn: 6,
+    requiresDesign: false,
+    areas: ["impresiones"],
+    products: [{ customName: "Figuras", quantity: 12 }],
+    materials: [{ materialId: 12, quantity: 6, description: "Vinil impreso sobre coroplast", unitName: "Hoja" }],
+    leadTimeDays: 7,
+  },
+};
+
+describe("CreateOrderDialog: lo aprendido del cliente", () => {
+  it("«Lo habitual» autocompleta el pedido y respeta la descripción ya escrita", async () => {
+    await pickRecentClient();
+    mockInsights = INSIGHTS;
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await userEvent.type(screen.getByLabelText("Descripción"), "Figuras del festival");
+
+    expect(screen.getByText("Lo habitual: Figuras ×12")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" }));
+
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
+    expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
+    expect(screen.getByText("Lo habitual")).toBeInTheDocument();
+    expect(screen.getByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras del festival");
+
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 9,
+        requiresDesign: false,
+        area: "impresiones",
+        orderProducts: [{ customName: "Figuras", quantity: 12 }],
+        description: "Figuras del festival",
+      })
+    );
+    expect(requestMock).toHaveBeenCalledWith(
+      "orders/123/materials",
+      expect.objectContaining({ method: "POST", body: expect.objectContaining({ materialId: 12, quantity: 6 }) })
+    );
+  });
+
+  it("«Quitar» deshace lo habitual", async () => {
+    await pickRecentClient();
+    mockInsights = INSIGHTS;
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await userEvent.click(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" }));
+    await userEvent.click(screen.getByRole("button", { name: /Quitar$/ }));
+    expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
+    expect(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" })).toBeInTheDocument();
+  });
+
+  it("«Suele pedir» agrega con la cantidad habitual (sólo lo que pidió 2+ veces)", async () => {
+    await pickRecentClient();
+    mockInsights = { ...INSIGHTS, suggestion: null };
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    const group = screen.getByRole("group", { name: "Suele pedir" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Figuras×12", "Lona×1"]);
+
+    await userEvent.click(within(group).getByRole("button", { name: /Agregar Figuras, 12/ }));
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
+    expect(within(group).getByRole("button", { name: "Figuras ya está en el pedido (12)" })).toBeInTheDocument();
+  });
+
+  it("un producto que el cliente ya pidió arranca con su cantidad habitual", async () => {
+    await pickRecentClient();
+    mockInsights = { ...INSIGHTS, suggestion: null };
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await addProduct("Gorra");
+    expect(screen.getByLabelText("Cantidad de Gorra")).toHaveValue("30");
+    await addProduct("Mochila");
+    expect(screen.getByLabelText("Cantidad de Mochila")).toHaveValue("1");
+  });
+
+  it("sugiere la fecha según su anticipación habitual (y la hora en que suele recibir)", async () => {
+    await pickRecentClient();
+    mockInsights = INSIGHTS;
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    expect(screen.getByText(/suele pedir con 7 días de anticipación/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^Usar .*, 14:00$/ }));
+    expect(screen.getByRole("radio", { name: "En 1 semana" })).toHaveAttribute("data-state", "on");
+    expect(screen.queryByText(/suele pedir con 7 días/)).toBeNull();
   });
 });

@@ -363,3 +363,64 @@ export function toRepeatMaterials(
       unitName: item.material?.unit?.name ?? undefined,
     }));
 }
+
+/* ------------------------- Aprendizaje por cliente ------------------------ */
+
+/** Misma normalización que el backend (client-insight.engine.ts): sin mayúsculas, acentos ni espacios de más. */
+export function normalizeProductKey(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Cantidad que el cliente suele pedir de ese producto (null si no lo pidió antes). */
+export function learnedQuantityFor(
+  products: Array<{ key: string; typicalQuantity: number }> | undefined,
+  name: string
+): number | null {
+  const key = normalizeProductKey(name);
+  const habit = products?.find((p) => p.key === key);
+  return habit ? Math.min(Math.max(habit.typicalQuantity, 1), MAX_QUANTITY) : null;
+}
+
+/**
+ * Hora local en la que suele recibir sus pedidos ("HH:mm"), si se repite en
+ * al menos 2 entregas y en la mitad o más de las últimas.
+ */
+export function typicalDeliveryTime(isoDates: string[]): string | null {
+  const counts = new Map<string, number>();
+  for (const iso of isoDates) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) continue;
+    const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    counts.set(hhmm, (counts.get(hhmm) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [hhmm, count] of counts) {
+    if (count > bestCount) {
+      best = hhmm;
+      bestCount = count;
+    }
+  }
+  return best && bestCount >= 2 && bestCount * 2 >= isoDates.length ? best : null;
+}
+
+/** Días de anticipación con que suele pedir, si hay datos suficientes. */
+export function learnedLeadDays(
+  insights: { leadTime: { days: number; samples: number } | null; suggestion: { leadTimeDays: number | null } | null } | null
+): number | null {
+  if (!insights) return null;
+  if (insights.suggestion?.leadTimeDays != null) return insights.suggestion.leadTimeDays;
+  return insights.leadTime && insights.leadTime.samples >= 2 ? insights.leadTime.days : null;
+}
+
+/** "en 7 días" / "mañana" / "el mismo día", para el atajo de entrega aprendido. */
+export function leadDaysLabel(days: number): string {
+  if (days <= 0) return "el mismo día";
+  if (days === 1) return "1 día";
+  return `${days} días`;
+}
