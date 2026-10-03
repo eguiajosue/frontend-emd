@@ -1,33 +1,16 @@
 "use client"
 
-import {
-  LogOut,
-  Settings,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { LogOut, Settings, Download } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "./ui/sidebar";
+import { useSidebar } from "./ui/sidebar";
 import { useSession } from "next-auth/react";
 import { logout } from "@/lib/logout";
-import { Separator } from "./ui/separator";
-import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
-import { ThemeToggle } from "./ThemeToggle";
-import { BugReportDialog } from "./BugReportDialog";
+import { SimpleTooltip } from "./ui/tooltip";
+import { ThemeRailSwitch } from "./ThemeToggle";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
@@ -35,19 +18,9 @@ import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { OPERATIONAL_MENU, buildMenuItems, findActiveNavUrl, isNavItemVisible } from "@/lib/navMenu";
-import { formatRoleList } from "@/lib/roles";
-import { SidebarOrderViews, useOrderViewCounts } from "./SidebarOrderViews";
+import { useOrderViewCounts } from "./SidebarOrderViews";
 
 const ORDERS_URL = "/dashboard/orders";
-
-/** Saludo según la hora del día, en vez de un genérico "Bienvenid@" fijo. */
-function getTimeBasedGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 6) return "Buenas noches";
-  if (hour < 12) return "Buenos días";
-  if (hour < 19) return "Buenas tardes";
-  return "Buenas noches";
-}
 
 /** Exportado también para `MobileMoreSheet.tsx`, que reutiliza este botón tal
  *  cual en vez de duplicar su JSX/lógica de "colapsado". */
@@ -102,31 +75,54 @@ export function InstallAppButton() {
   );
 }
 
+/** Segmento flotante del riel: píldora blanca vertical, como en la referencia. */
+function RailSegment({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex w-[3.75rem] shrink-0 flex-col items-center gap-1 rounded-full border border-border/60 bg-sidebar p-2 shadow-soft dark:border-border",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Contador sobre un ícono del riel (no leídos, vencidos). */
+function RailCount({ value, tone = "primary", label }: { value: number; tone?: "primary" | "danger"; label?: string }) {
+  return (
+    <span
+      title={label}
+      className={cn(
+        "pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none ring-2 ring-sidebar",
+        tone === "danger" ? "bg-rose-600 text-white" : "bg-primary text-primary-foreground"
+      )}
+    >
+      {value > 99 ? "99+" : value}
+    </span>
+  );
+}
+
+/**
+ * Riel de escritorio: tres píldoras flotantes sobre el lienzo — tema arriba,
+ * navegación al medio (agrupada, con separadores entre grupos) y cuenta abajo.
+ * Sólo íconos con tooltip: las etiquetas del grupo activo se leen en la barra
+ * superior (`AppTopBar`). En móvil no existe: navega `MobileTabBar` + "Más".
+ */
 export function AppSidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const userRoles = session?.user?.roles || [];
   const operationalOnly = isOperationalOnly(userRoles);
 
-  // El saludo depende de la hora local del navegador; se calcula sólo tras
-  // montar para evitar un mismatch de hidratación entre servidor y cliente
-  // (en el server siempre cae en "Buenas noches" por defecto, invisible al
-  // usuario porque el mount es prácticamente instantáneo).
-  const [greeting, setGreeting] = useState("Bienvenid@");
-  useEffect(() => setGreeting(getTimeBasedGreeting()), []);
-
-  // Badge de mensajes de chat sin leer: se deriva de la misma query que usa
-  // la pantalla del chat, invalidada en vivo por `useSocket`.
+  // Badges de no leídos: misma query que el chat y la campanita, invalidada
+  // en vivo por `useSocket`.
   const chatUnread = useChatUnreadCount();
-  // Mismo criterio para el ítem "Notificaciones": comparte la query con la
-  // campanita del header, así ambos resaltan a la vez.
   const { count: notificationsUnread } = useUnreadNotificationsCount();
   const { reduced: reducedMotion } = useMotionPreset();
 
-  // Definición de grupos/ítems compartida con `useVisibleNavItems` (barra
-  // móvil): una sola fuente para "qué puede ver cada rol".
-  // Grupos sin ningún ítem visible para el rol no se pintan: antes recepción
-  // veía encabezados ("Administración") sin nada debajo.
+  // Grupos sin ningún ítem visible para el rol no se pintan.
   const visibleGroups = (operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
     .map((group) => ({
       ...group,
@@ -138,111 +134,48 @@ export function AppSidebar() {
     pathname
   );
   const showsOrders = visibleGroups.some((group) => group.items.some((item) => item.url === ORDERS_URL));
-  // Rail colapsado: no hay lugar para los accesos guardados, así que los
-  // vencidos se avisan como badge sobre el ícono de Pedidos.
+  // Los vencidos se avisan como badge sobre el ícono de Pedidos.
   const { overdue } = useOrderViewCounts(showsOrders);
-  const { state, isMobile, toggleSidebar } = useSidebar();
-  // Al entrar a una pantalla del fondo del menú (ej. Usuarios), su ítem
-  // activo se trae a la vista en vez de quedar oculto bajo el pie.
+  const { isMobile } = useSidebar();
+  // Al entrar a una pantalla del fondo del menú, su ícono se trae a la vista.
   const navScrollRef = useRef<HTMLDivElement>(null);
-  // Espera a que termine la transición de ancho del rail (200 ms): antes de
-  // eso el pie todavía no tiene su alto final y el cálculo queda corto.
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      navScrollRef.current
-        ?.querySelector<HTMLElement>('[aria-current="page"]')
-        ?.scrollIntoView({ block: "nearest" });
-    }, 260);
-    return () => window.clearTimeout(id);
-  }, [activeUrl, state]);
-  // El estado "collapsed" (rail de sólo íconos) es un modo exclusivo de
-  // escritorio. En móvil el menú vive dentro de una hoja a ancho completo
-  // (ver Sidebar en ui/sidebar.tsx): si se hereda la cookie de escritorio
-  // colapsada, las etiquetas de texto desaparecían aunque hubiera espacio
-  // de sobra para mostrarlas.
-  const collapsed = !isMobile && state === "collapsed";
+    navScrollRef.current
+      ?.querySelector<HTMLElement>('[aria-current="page"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [activeUrl]);
 
-  // En móvil el rail/drawer deja de existir por completo (pedido explícito:
-  // "en la versión de móvil ocupo que no exista el sidebar") — la barra
-  // flotante (`MobileTabBar`) más el bottom sheet de "Más"
-  // (`MobileMoreSheet`) son la única navegación móvil. Todos los hooks de
-  // arriba se llaman siempre (regla de hooks); sólo el JSX del rail/Sheet se
-  // omite acá.
+  // Todos los hooks de arriba se llaman siempre (regla de hooks); en móvil
+  // sólo se omite el JSX.
   if (isMobile) return null;
 
+  const settingsActive = pathname === "/dashboard/configuracion";
+
   return (
-    <Sidebar collapsible="icon">
-      {/* Sólo la lista scrollea; el pie (configuración, cuenta, salir) queda
-          fijo. Colapsado, el primitivo trae `overflow-hidden` y en pantallas
-          bajas los últimos íconos (Rendimiento, Usuarios) quedaban debajo del
-          pie sin forma de alcanzarlos con la rueda. */}
-      <SidebarContent
-        ref={navScrollRef}
-        data-tour="sidebar-nav"
-        className="group-data-[collapsible=icon]:overflow-y-auto group-data-[collapsible=icon]:overflow-x-hidden group-data-[collapsible=icon]:[scrollbar-width:none] [scrollbar-width:thin]"
-      >
-        <SidebarHeader className={cn("p-4 pb-5 md:pb-4", collapsed && "px-2")}>
-          {collapsed ? (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground">
-              E
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Fila de marca: sólo en el panel expandido de escritorio — en
-                  el Sheet móvil competiría con la tarjeta de identidad de
-                  abajo, que ya cumple ese rol de "confirmar dónde estoy". */}
-              {!isMobile && (
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary font-heading text-xs font-bold text-primary-foreground">
-                    E
-                  </div>
-                  <span className="font-heading text-sm font-semibold tracking-tight">
-                    EMD HUB
-                  </span>
-                </div>
+    <aside
+      aria-label="Navegación principal"
+      className="fixed bottom-4 left-4 top-[5.25rem] z-30 hidden flex-col items-center gap-3 md:flex"
+    >
+      <RailSegment>
+        <span data-tour="theme-toggle">
+          <ThemeRailSwitch />
+        </span>
+      </RailSegment>
+
+      <RailSegment className="min-h-0 overflow-hidden px-0 py-0">
+        <nav
+          ref={navScrollRef}
+          data-tour="sidebar-nav"
+          aria-label="Secciones"
+          className="flex min-h-0 w-full flex-col items-center gap-1 overflow-y-auto overflow-x-hidden px-2 py-2 [scrollbar-width:none]"
+        >
+          {visibleGroups.map((group, groupIndex) => (
+            <Fragment key={group.groupLabel}>
+              {groupIndex > 0 && (
+                <span aria-hidden className="my-1 h-px w-6 shrink-0 bg-border" />
               )}
-              <h2 className="font-heading text-lg font-semibold tracking-tight">
-                {greeting},{" "}
-                <span className="text-primary">{session?.user?.first_name}</span>
-              </h2>
-              {/* Identidad + rol arriba: sólo en móvil (el drawer se abre "en
-                  frío" y conviene confirmar de inmediato la cuenta activa).
-                  En escritorio la misma info ya vive al fondo del rail, donde
-                  no compite con la navegación. */}
-              <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/40 p-2.5 md:hidden">
-                <div className="relative shrink-0">
-                  <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                    <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
-                      {session?.user?.username?.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span
-                    aria-hidden
-                    className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar"
-                  />
-                </div>
-                <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-sm font-medium">
-                    {session?.user?.first_name} {session?.user?.last_name}
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {formatRoleList(userRoles)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </SidebarHeader>
-        {visibleGroups.map((group) => (
-          <div key={group.groupLabel}>
-            <SidebarGroupLabel className="text-xs font-medium">
-              {group.groupLabel}
-            </SidebarGroupLabel>
-            <SidebarMenu className="gap-1.5 md:gap-1">
-              {group.items.map((item) => {
-                  // Ítems con contador de pendientes: chat y notificaciones.
-                  // Ambos resaltan el ícono y muestran el número, expandidos o
-                  // en el rail colapsado.
+              <ul aria-label={group.groupLabel} className="flex flex-col items-center gap-1">
+                {group.items.map((item) => {
                   const unread =
                     item.url === "/dashboard/chat"
                       ? chatUnread
@@ -250,183 +183,90 @@ export function AppSidebar() {
                       ? notificationsUnread
                       : 0;
                   const active = activeUrl === item.url;
-                  const highlighted = unread > 0 && !active;
                   return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={active}>
-                      <Link
-                        href={item.url}
-                        aria-current={active ? "page" : undefined}
-                        className={cn("relative", highlighted && "text-primary")}
-                        data-tour={item.title === "Ayuda" ? "help-link" : undefined}
-                      >
-                        {active && (
-                          <motion.span
-                            layoutId="sidebar-active-indicator"
-                            className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary/10"
-                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                          />
-                        )}
-                        {/* Fondo tenue permanente mientras haya pendientes. */}
-                        {highlighted && (
-                          <span
-                            aria-hidden
-                            className="pointer-events-none absolute inset-0 -z-10 rounded-md bg-primary/10"
-                          />
-                        )}
-                        <motion.span
-                          aria-hidden
-                          className="flex"
-                          animate={
-                            unread > 0 && !reducedMotion
-                              ? { rotate: [0, -10, 8, -5, 0] }
-                              : { rotate: 0 }
-                          }
-                          transition={{ duration: 0.6, ease: "easeInOut" }}
+                    <li key={item.url} className="relative">
+                      <SimpleTooltip label={item.title} side="right">
+                        <Link
+                          href={item.url}
+                          aria-label={item.title}
+                          aria-current={active ? "page" : undefined}
+                          data-tour={item.title === "Ayuda" ? "help-link" : undefined}
+                          className={cn(
+                            "relative flex h-11 w-11 items-center justify-center rounded-full text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                            active && "text-sidebar-primary-foreground hover:bg-transparent hover:text-sidebar-primary-foreground",
+                            !active && unread > 0 && "text-primary"
+                          )}
                         >
-                          <item.icon
-                            className={active || highlighted ? "text-primary" : undefined}
-                          />
-                        </motion.span>
-                        {!collapsed && (
-                          <span
-                            className={cn(
-                              active && "font-medium text-primary",
-                              highlighted && "font-medium"
-                            )}
+                          {active && (
+                            <motion.span
+                              layoutId="rail-active-indicator"
+                              className="pointer-events-none absolute inset-0 -z-0 rounded-full bg-sidebar-primary"
+                              transition={
+                                reducedMotion
+                                  ? { duration: 0 }
+                                  : { type: "spring", stiffness: 400, damping: 35 }
+                              }
+                            />
+                          )}
+                          <motion.span
+                            aria-hidden
+                            className="relative flex"
+                            animate={
+                              unread > 0 && !reducedMotion
+                                ? { rotate: [0, -10, 8, -5, 0] }
+                                : { rotate: 0 }
+                            }
+                            transition={{ duration: 0.6, ease: "easeInOut" }}
                           >
-                            {item.title}
-                          </span>
-                        )}
-                        {!collapsed && unread > 0 ? (
-                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
-                            {unread > 99 ? "99+" : unread}
-                          </span>
-                        ) : null}
-                      </Link>
-                    </SidebarMenuButton>
-                    {/* Colapsado el badge va sobre el `li` (relative) y no dentro
-                        del botón, que tiene `overflow-hidden` y lo recortaría. */}
-                    {!collapsed && item.url === ORDERS_URL && (
-                      <Suspense fallback={null}>
-                        <SidebarOrderViews />
-                      </Suspense>
-                    )}
-                    {collapsed && item.url === ORDERS_URL && overdue > 0 ? (
-                      <span
-                        className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar"
-                        title={`${overdue} vencido${overdue === 1 ? "" : "s"}`}
-                      >
-                        {overdue > 99 ? "99+" : overdue}
-                      </span>
-                    ) : null}
-                    {collapsed && unread > 0 ? (
-                      <span className="pointer-events-none absolute -right-0.5 -top-0.5 z-10 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-sidebar">
-                        {unread > 99 ? "99+" : unread}
-                      </span>
-                    ) : null}
-                    {/* Barra de acento sólida en el borde izquierdo del rail,
-                        sólo en el estado colapsado (referencia A) — aditiva al
-                        fondo tenue de `sidebar-active-indicator`, no lo
-                        reemplaza. El `li` no tiene padding propio, así que
-                        `left-0` ya queda a ras del borde real del rail. */}
-                    {collapsed && active ? (
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute left-0 top-1/2 z-10 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary"
-                      />
-                    ) : null}
-                  </SidebarMenuItem>
+                            <item.icon className="h-[1.15rem] w-[1.15rem]" />
+                          </motion.span>
+                        </Link>
+                      </SimpleTooltip>
+                      {item.url === ORDERS_URL && overdue > 0 ? (
+                        <RailCount
+                          value={overdue}
+                          tone="danger"
+                          label={`${overdue} vencido${overdue === 1 ? "" : "s"}`}
+                        />
+                      ) : null}
+                      {unread > 0 ? <RailCount value={unread} /> : null}
+                    </li>
                   );
-              })}
-            </SidebarMenu>
-          </div>
-        ))}
-        {/* Desvanecido al pie de la lista: avisa que hay más abajo. Al llegar
-            al final queda debajo del último ítem, sin taparlo. */}
-        <div
-          aria-hidden
-          className="pointer-events-none sticky bottom-0 -mt-2 h-6 shrink-0 bg-gradient-to-t from-sidebar to-transparent"
-        />
-      </SidebarContent>
-      <div className={cn("mt-auto shrink-0 p-4", collapsed && "px-2")}>
-        {/* Chevron de colapsar/expandir el rail, sólo escritorio (en móvil el
-            menú es el Sheet a ancho completo, no tiene estado colapsado). Es
-            aditivo al `SidebarTrigger` de la barra superior — ambos controles
-            hacen lo mismo, como en la referencia A. */}
-        {!isMobile && (
-          <div className={cn("mb-2 flex", collapsed ? "justify-center" : "justify-end")}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              {collapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
-              <span className="sr-only">
-                {collapsed ? "Expandir menú" : "Colapsar menú"}
-              </span>
-            </Button>
-          </div>
-        )}
-        <Separator className="mb-4" />
-        <InstallAppButton />
-        <ConfiguracionLink pathname={pathname} />
-        {!collapsed && <BugReportDialog />}
-        {/* Ya se muestra arriba, junto al saludo, en móvil (ver
-            SidebarHeader) — repetirla aquí duplicaría avatar+rol en la misma
-            pantalla. En escritorio sigue siendo el único lugar donde aparece. */}
-        <div
-          className={cn(
-            "hidden items-center gap-3 mb-4 mt-2 md:flex",
-            collapsed && "flex-col gap-2"
-          )}
-        >
-          <div className="relative shrink-0">
-            <Avatar className="ring-2 ring-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {session?.user?.username?.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            {/* Punto de estado "en línea": sesión activa ahora mismo. */}
-            <span
-              aria-hidden
-              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-sidebar animate-pulse motion-reduce:animate-none"
-            />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col min-w-0">
-              <span className="text-sm font-medium truncate">{session?.user.first_name} {session?.user.last_name}</span>
-              <div className="flex justify-between items-center w-full gap-2">
-                <span className="text-xs text-muted-foreground truncate">{formatRoleList(userRoles)}</span>
-                <span className="text-xs text-muted-foreground shrink-0">@{session?.user.username}</span>
-              </div>
-            </div>
-          )}
-          <span data-tour="theme-toggle">
-            <ThemeToggle />
-          </span>
-        </div>
-        {/* Salir no es una acción destructiva: un botón rojo permanente
-            competía con la navegación por la atención. */}
-        <Button
-          variant="ghost"
-          className={cn(
-            "text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
-            collapsed ? "mx-auto size-8 p-0" : "w-full justify-start gap-2"
-          )}
-          onClick={() => void logout()}
-          title={collapsed ? "Cerrar sesión" : undefined}
-          aria-label="Cerrar sesión"
-        >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && "Cerrar sesión"}
-        </Button>
-      </div>
-    </Sidebar>
+                })}
+              </ul>
+            </Fragment>
+          ))}
+        </nav>
+      </RailSegment>
+
+      <div className="flex-1" aria-hidden />
+
+      <RailSegment>
+        <SimpleTooltip label="Configuración" side="right">
+          <Link
+            href="/dashboard/configuracion"
+            aria-label="Configuración"
+            aria-current={settingsActive ? "page" : undefined}
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+              settingsActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+            )}
+          >
+            <Settings className="h-[1.15rem] w-[1.15rem]" />
+          </Link>
+        </SimpleTooltip>
+        <SimpleTooltip label="Cerrar sesión" side="right">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Cerrar sesión"
+            onClick={() => void logout()}
+            className="h-10 w-10 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="!size-[1.15rem]" />
+          </Button>
+        </SimpleTooltip>
+      </RailSegment>
+    </aside>
   );
 }

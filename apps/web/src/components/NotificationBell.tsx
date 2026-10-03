@@ -77,11 +77,10 @@ export function NotificationBell() {
           variant="ghost"
           size="icon"
           className={cn(
-            "relative shrink-0 transition-colors",
+            "relative h-11 w-11 shrink-0 border border-border/60 bg-card shadow-soft transition-colors hover:bg-card dark:border-border",
             // Resalte persistente mientras haya no leídas, no sólo un flash al
-            // llegar: la campana queda tintada de marca con un aro suave.
-            count > 0 &&
-              "bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 hover:text-primary"
+            // llegar: la campana queda en color de marca.
+            count > 0 && "text-primary hover:text-primary"
           )}
           aria-label={count > 0 ? `Notificaciones (${count} sin leer)` : "Notificaciones"}
         >
@@ -91,7 +90,7 @@ export function NotificationBell() {
               <motion.span
                 key="ping"
                 aria-hidden
-                className="pointer-events-none absolute inset-0 rounded-md bg-primary/30"
+                className="pointer-events-none absolute inset-0 rounded-full bg-primary/30"
                 initial={{ opacity: 0.7, scale: 0.8 }}
                 animate={{ opacity: 0, scale: 1.6 }}
                 exit={{ opacity: 0 }}

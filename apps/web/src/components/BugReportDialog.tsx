@@ -27,8 +27,21 @@ const MIN_DESCRIPTION_LENGTH = 10;
  * Formulario "Reportar un error", accesible para todos los roles.
  * El backend completa usuario y fecha; acá sólo se manda la descripción.
  */
-export function BugReportDialog() {
-  const [open, setOpen] = useState(false);
+export function BugReportDialog({
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  /** Controlado desde afuera (ej. el menú de usuario): sin botón propio. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+} = {}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [description, setDescription] = useState("");
   const [touched, setTouched] = useState(false);
   const token = useAuthToken();
@@ -66,12 +79,14 @@ export function BugReportDialog() {
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start gap-2">
-          <Bug className="h-4 w-4" />
-          Reportar un error
-        </Button>
-      </DialogTrigger>
+      {!controlled && (
+        <DialogTrigger asChild>
+          <Button variant="ghost" className="w-full justify-start gap-2">
+            <Bug className="h-4 w-4" />
+            Reportar un error
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Reportar un error</DialogTitle>

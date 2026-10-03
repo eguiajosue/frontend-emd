@@ -23,9 +23,11 @@ module.exports = {
   			'soft-lg': '0 4px 8px -4px hsl(var(--foreground) / 0.10), 0 24px 48px -12px hsl(var(--foreground) / 0.18)'
   		},
   		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			'2xl': 'calc(var(--radius) + 4px)',
+  			xl: 'calc(var(--radius) + 0px)',
+  			lg: 'calc(var(--radius) - 4px)',
+  			md: 'calc(var(--radius) - 6px)',
+  			sm: 'calc(var(--radius) - 8px)'
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -41,6 +43,10 @@ module.exports = {
   			primary: {
   				DEFAULT: 'hsl(var(--primary))',
   				foreground: 'hsl(var(--primary-foreground))'
+  			},
+  			ink: {
+  				DEFAULT: 'hsl(var(--ink))',
+  				foreground: 'hsl(var(--ink-foreground))'
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',

@@ -2,7 +2,7 @@
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
@@ -10,8 +10,8 @@ import { useMotionPreset } from "@/lib/motion";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { OnboardingTour } from "@/components/OnboardingTour";
-import { NotificationBell } from "@/components/NotificationBell";
-import { AppBreadcrumbs, SearchButton, useBreadcrumbs } from "@/components/AppHeaderNav";
+import { AppTopBar } from "@/components/AppTopBar";
+import { useBreadcrumbs } from "@/components/AppHeaderNav";
 import { pageTitleFromBreadcrumbs } from "@/lib/navMenu";
 
 import { useEffect } from "react";
@@ -43,26 +43,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <SidebarProvider defaultOpen={false}>
         <AppSidebar />
         <MobileTabBar />
-        <main className="relative w-full min-w-0 overflow-x-hidden">
-          {/*
-           * En móvil es la barra superior de la app: queda fija, despeja el notch
-           * y el contenido pasa por debajo. En escritorio vuelve a ser la fila
-           * suelta de siempre.
-           */}
-          <div className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:px-6 sm:pb-0 sm:pt-6 sm:backdrop-blur-none">
-            {/* En móvil ya no hay nada que este botón pueda abrir: el rail
-                no se monta (ver `AppSidebar`) y "Más" vive en su propio
-                bottom sheet, así que se oculta y sólo queda operativo en
-                escritorio, donde sigue colapsando/expandiendo el rail. */}
-            <div className="flex min-w-0 items-center gap-3">
-              <SidebarTrigger className="hidden shrink-0 md:flex" />
-              <AppBreadcrumbs crumbs={crumbs} />
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <SearchButton />
-              <NotificationBell />
-            </div>
-          </div>
+        {/* Riel fijo a la izquierda (`AppSidebar`, sólo escritorio): el
+            contenido deja su ancho (3.75rem) + márgenes (1rem a cada lado). */}
+        <main className="relative w-full min-w-0 overflow-x-hidden md:pl-[5.75rem]">
+          <AppTopBar />
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -75,7 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               // 0.75rem antes del contenido — de ahí los 5.5rem extra sobre
               // el padding base, hasta el mismo breakpoint `md` en el que la
               // barra desaparece y el padding vuelve al de siempre.
-              className="mt-4 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-6"
+              className="mx-auto mt-4 max-w-[110rem] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:mt-2 md:pb-8 md:pl-0 md:pr-6"
             >
               {children}
             </motion.div>

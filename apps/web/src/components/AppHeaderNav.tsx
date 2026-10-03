@@ -72,7 +72,7 @@ export function SearchButton() {
       variant="outline"
       onClick={openCommandPalette}
       aria-label="Buscar pantalla, pedido o cliente"
-      className="h-9 justify-start gap-2 rounded-full bg-card px-2.5 font-normal text-muted-foreground hover:bg-card hover:text-foreground sm:w-56 sm:px-3"
+      className="h-11 w-11 justify-center gap-2 rounded-full border-border/60 bg-card px-0 font-normal text-muted-foreground shadow-soft hover:bg-card hover:text-foreground dark:border-border sm:w-60 sm:justify-start sm:px-4"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
       <span className="hidden flex-1 text-left sm:inline">Buscar…</span>

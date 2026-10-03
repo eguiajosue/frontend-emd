@@ -17,9 +17,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border bg-card text-card-foreground transition-shadow duration-200",
-        // Borde O sombra, no los dos: la tarjeta base se separa con el borde;
-        // sólo la elevada (popovers, flotantes) suma sombra.
+        "rounded-2xl border border-border/60 bg-card text-card-foreground transition-shadow duration-200 dark:border-border",
+        // Sobre el lienzo gris la tarjeta blanca ya se separa sola: el borde
+        // queda apenas insinuado. Sólo la elevada (flotantes) suma sombra.
         elevation === 2 && "elevation-2 shadow-soft-md",
         className
       )}
