@@ -35,6 +35,8 @@ export const ENDPOINTS = {
   // Catálogos que crecen solos (ver MaterialCategoryService/MaterialUnitService.ensureExists).
   materialCategories: "material-categories",
   materialUnits: "material-units",
+  // Existencias físicas por departamento + kardex (no es el catálogo de materiales).
+  inventory: "inventory",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

@@ -17,6 +17,7 @@ import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
 import { NotificationTypeBadge } from "@/components/notifications/NotificationTypeBadge";
+import { notificationHref } from "@/lib/notifications";
 import { groupByDay } from "@/lib/notificationGrouping";
 
 /** Cuántas notificaciones se muestran en el dropdown de la campanita. */
@@ -60,9 +61,8 @@ export function NotificationBell() {
   const handleSelect = (notification: Notification) => {
     if (!notification.read) markAsRead(notification.id);
     setOpen(false);
-    if (notification.orderId) {
-      router.push(`/dashboard/orders/${notification.orderId}`);
-    }
+    const href = notificationHref(notification);
+    if (href) router.push(href);
   };
 
   const preview = notifications.slice(0, PREVIEW_LIMIT);

@@ -690,6 +690,103 @@ export interface CreateMaterialPayload {
 export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
 
 /* -------------------------------------------------------------------------- */
+/* Inventario por departamento (GET/POST /inventory)                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Departamento con inventario propio: las 6 áreas operativas + Recepción.
+ * Coincide con el nombre del rol del área.
+ */
+export type InventoryArea =
+  | "taller"
+  | "dtf"
+  | "bordado"
+  | "diseno"
+  | "laser"
+  | "impresiones"
+  | "recepcion";
+
+/** Semáforo de existencias: `low` = en o por debajo del mínimo. */
+export type InventoryStockStatus = "ok" | "low" | "out";
+
+/**
+ * Existencia física de un departamento. NO es el catálogo de Materiales: un
+ * artículo puede vincularse a un Material (`materialId`), pero muchos
+ * consumibles (hilos de bordado, tintas de impresión) sólo viven acá.
+ * `quantity` sólo cambia con movimientos (ver `InventoryMovement`).
+ */
+export interface InventoryItem extends BaseEntity {
+  area: InventoryArea;
+  name: string;
+  sku?: string | null;
+  category?: string | null;
+  unit: string;
+  color?: string | null;
+  brand?: string | null;
+  location?: string | null;
+  quantity: number;
+  minStock?: number | null;
+  unitCost?: number | null;
+  notes?: string | null;
+  materialId?: number | null;
+  supplierId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  material?: { id: number; name: string } | null;
+  supplier?: { id: number; name: string } | null;
+  stockStatus: InventoryStockStatus;
+  /** quantity × unitCost; null si no hay costo cargado. */
+  totalValue?: number | null;
+}
+
+export interface CreateInventoryItemPayload {
+  area: InventoryArea;
+  name: string;
+  unit: string;
+  sku?: string;
+  category?: string;
+  color?: string;
+  brand?: string;
+  location?: string;
+  notes?: string;
+  minStock?: number | null;
+  unitCost?: number | null;
+  materialId?: number | null;
+  supplierId?: number | null;
+  /** Sólo en el alta: queda como ENTRADA "Stock inicial" del kardex. */
+  initialQuantity?: number;
+}
+
+export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload, "initialQuantity">>;
+
+/** ENTRADA suma, SALIDA resta, AJUSTE fija el stock al conteo físico. */
+export type InventoryMovementType = "ENTRADA" | "SALIDA" | "AJUSTE";
+
+export interface InventoryMovement extends BaseEntity {
+  itemId: number;
+  type: InventoryMovementType;
+  /** Cambio con signo aplicado al stock. */
+  delta: number;
+  balanceAfter: number;
+  unitCost?: number | null;
+  note?: string | null;
+  orderId?: number | null;
+  createdAt: string;
+  item?: { id: number; name: string; unit: string; area: InventoryArea } | null;
+  order?: { id: number; description: string } | null;
+  createdBy?: { id: number; firstName: string; lastName?: string | null } | null;
+}
+
+export interface CreateInventoryMovementPayload {
+  type: InventoryMovementType;
+  /** ENTRADA/SALIDA: cantidad a sumar/restar. AJUSTE: cantidad contada. */
+  quantity: number;
+  unitCost?: number;
+  note?: string;
+  orderId?: number;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Hoja de materiales de un pedido (GET/POST /orders/:id/materials)           */
 /* -------------------------------------------------------------------------- */
 
