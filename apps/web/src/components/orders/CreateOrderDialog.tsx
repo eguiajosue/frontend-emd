@@ -57,7 +57,7 @@ import {
   UPLOAD_FILE_MAX_BYTES,
 } from "@/lib/fileInput";
 import { AREA_ICONS, PRODUCTION_AREA_OPTIONS, getAreaLabel, type AreaValue } from "@/lib/areas";
-import { combineDateAndTime } from "@/lib/format";
+import { DEFAULT_DELIVERY_TIME, combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { getErrorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -1593,7 +1593,7 @@ export function CreateOrderDialog({
                             <SelectValue placeholder="Hora (opcional)" />
                           </SelectTrigger>
                           <SelectContent className="max-h-72">
-                            <SelectItem value={NONE}>Sin hora</SelectItem>
+                            <SelectItem value={NONE}>Sin hora ({DEFAULT_DELIVERY_TIME})</SelectItem>
                             {DELIVERY_TIME_SLOTS.map((slot) => (
                               <SelectItem key={slot} value={slot}>
                                 {slot}
@@ -1601,10 +1601,9 @@ export function CreateOrderDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                        {activePreset === "today" && !deliveryTime && (
+                        {!deliveryTime && (
                           <p className="basis-full text-meta">
-                            Sin hora, el plazo vence a las 00:00 de hoy y el pedido figura vencido. Elegí
-                            una hora de entrega.
+                            Sin hora, se toma el fin de la jornada ({DEFAULT_DELIVERY_TIME}).
                           </p>
                         )}
                         <Button
