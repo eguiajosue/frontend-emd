@@ -831,14 +831,16 @@ export function MessageThread({
         ) : null}
         <div className="flex items-end gap-2">
           <OrderPicker selected={attachedOrder} onSelect={setAttachedOrder} />
-          <input
+          <Input
             ref={fileInputRef}
             type="file"
             accept={CHAT_ATTACHMENT_ACCEPT}
             onChange={handleFileChange}
             className="hidden"
+            tabIndex={-1}
+            aria-hidden
           />
-          <input
+          <Input
             ref={cameraInputRef}
             type="file"
             accept="image/*"
@@ -848,6 +850,8 @@ export function MessageThread({
               e.target.value = "";
             }}
             className="hidden"
+            tabIndex={-1}
+            aria-hidden
           />
           <Button
             type="button"

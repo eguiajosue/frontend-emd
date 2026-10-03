@@ -173,13 +173,15 @@ export function MobileDayWeekView({
           {strip.map((day, i) => {
             const selected = isSameDay(day, selectedDate);
             return (
-              <button
+              <Button
                 key={day.toISOString()}
                 type="button"
+                variant="bare"
+                size="bare"
                 onClick={() => setSelectedDate(day)}
                 aria-current={selected ? "date" : undefined}
                 aria-label={format(day, "EEEE d 'de' MMMM", { locale: es })}
-                className="flex flex-col items-center gap-1 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                className="flex flex-col items-center gap-1 rounded-lg py-1"
               >
                 <span className="text-xs font-medium text-muted-foreground">
                   {WEEKDAY_LETTERS[i]}
@@ -193,7 +195,7 @@ export function MobileDayWeekView({
                 >
                   {format(day, "d")}
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>

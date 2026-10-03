@@ -151,9 +151,8 @@ function AppearanceSection() {
               );
             })}
 
-            <label
+            <Label
               title="Color personalizado"
-              aria-label="Elegir color de acento personalizado"
               className={cn(
                 "relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-dashed ring-offset-2 ring-offset-background transition-shadow focus-within:ring-2 focus-within:ring-ring",
                 isCustomAccent
@@ -167,13 +166,16 @@ function AppearanceSection() {
               ) : (
                 <span className="text-base leading-none">+</span>
               )}
-              <input
+              {/* shadcn no trae selector de color: Input nativo type="color",
+                  invisible sobre el círculo, abre el picker del sistema. */}
+              <Input
                 type="color"
                 value={isCustomAccent ? accent : "#000000"}
                 onChange={(e) => handleCustomColor(e.target.value)}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                aria-label="Elegir color de acento personalizado"
+                className="absolute inset-0 h-full w-full cursor-pointer rounded-full border-0 p-0 opacity-0"
               />
-            </label>
+            </Label>
           </div>
         </div>
       </CardContent>

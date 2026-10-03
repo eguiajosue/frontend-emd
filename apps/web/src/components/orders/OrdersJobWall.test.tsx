@@ -82,7 +82,7 @@ describe("OrdersJobWall", () => {
     render(<OrdersJobWall orders={orders} timeFormat="24h" onOpenOrder={vi.fn()} />);
 
     await userEvent.click(screen.getByRole("button", { name: /Modo TV/ }));
-    const tv = screen.getByRole("dialog", { name: "Pedidos en modo TV" });
+    const tv = screen.getByRole("dialog", { name: "Pedidos en curso" });
     expect(within(tv).queryByRole("button", { name: /pedido #5/ })).not.toBeInTheDocument();
     expect(within(tv).getByRole("button", { name: /pedido #2/ })).toBeInTheDocument();
 

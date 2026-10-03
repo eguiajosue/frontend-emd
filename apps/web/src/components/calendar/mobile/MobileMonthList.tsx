@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { format, isToday } from "date-fns";
 import { es } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { groupItemsByDay, toCalendarItems } from "../calendarMerge";
 import { CalendarPill } from "../TeamCalendar";
@@ -118,12 +119,14 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
               const today = isToday(day);
 
               return (
-                <button
+                <Button
                   key={key}
                   type="button"
+                  variant="bare"
+                  size="bare"
                   onClick={() => onSelectDay(day)}
                   aria-label={format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}
-                  className="flex min-h-[3.5rem] flex-col items-center gap-0.5 rounded-md px-0.5 pt-1 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  className="flex min-h-[3.5rem] min-w-0 flex-col items-center justify-start gap-0.5 rounded-md px-0.5 pt-1 text-left hover:bg-muted"
                 >
                   <span
                     className={cn(
@@ -138,7 +141,7 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
                       <CalendarPill key={item.id} item={item} />
                     ))}
                   </div>
-                </button>
+                </Button>
               );
             })}
           </div>

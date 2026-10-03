@@ -3,13 +3,13 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { FileText, Loader2, Pencil, UserRound, ZoomIn } from "lucide-react";
+import { FileText, Loader2, Pencil, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ZoomableImage } from "@/components/ui/zoomable-image";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/ui/form-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PreviewImage } from "@/components/ui/preview-image";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import { DetailField, DetailSection } from "@/components/orders/detail/DetailSection";
@@ -108,22 +108,14 @@ export function OrderDetailsSection({
               <p className="text-label">Archivo del cliente</p>
               <div className="flex flex-wrap items-center gap-3">
                 {file.mimeType.startsWith("image/") ? (
-                  <button
-                    type="button"
-                    className="group relative overflow-hidden rounded-lg border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setLightboxSrc(file.dataUrl)}
-                    aria-label="Ampliar archivo del cliente"
-                  >
-                    <PreviewImage
-                      src={file.dataUrl}
-                      alt={file.filename}
-                      loading="lazy"
-                      className="h-24 w-auto max-w-[12rem] object-contain"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-                      <ZoomIn className="h-5 w-5" />
-                    </span>
-                  </button>
+                  <ZoomableImage
+                    src={file.dataUrl}
+                    alt={file.filename}
+                    onZoom={setLightboxSrc}
+                    label="Ampliar archivo del cliente"
+                    className="rounded-lg"
+                    imageClassName="h-24 w-auto max-w-[12rem]"
+                  />
                 ) : (
                   <Button variant="outline" size="sm" asChild>
                     <a href={file.dataUrl} target="_blank" rel="noopener noreferrer">

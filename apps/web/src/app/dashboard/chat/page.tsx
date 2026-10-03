@@ -191,20 +191,23 @@ export default function ChatPage() {
           <div className="flex gap-1">
             <div className="flex shrink-0 flex-col items-center justify-center py-1 text-[10px] font-medium leading-none text-muted-foreground">
               {ALPHABET.map((letter) => (
-                <button
+                <Button
                   key={letter}
                   type="button"
+                  variant="bare"
+                  size="bare"
                   disabled={!availableLetters.has(letter)}
                   onClick={() => scrollToLetter(letter)}
+                  aria-label={`Ir a la letra ${letter}`}
                   className={cn(
-                    "rounded px-1 py-[1px] transition-colors hover:text-primary",
+                    "rounded px-1 py-[1px] text-[10px] font-medium leading-none hover:text-primary disabled:opacity-100",
                     availableLetters.has(letter)
                       ? "text-foreground"
                       : "text-muted-foreground/30"
                   )}
                 >
                   {letter}
-                </button>
+                </Button>
               ))}
             </div>
             <div
