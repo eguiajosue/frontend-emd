@@ -122,13 +122,15 @@ function StatTile({
  * vinculado a un material del catálogo, pero muchos consumibles sólo existen
  * acá.
  *
- * Cada área ve y mueve su propio inventario; admin/superuser/recepción ven
- * todos los departamentos (el backend recorta, ver `GET /inventory/areas`).
+ * Admin/superuser/recepción ven todos los departamentos y son los únicos que
+ * crean, editan, borran y mueven stock; cada área sólo consulta el suyo (el
+ * backend recorta, ver `GET /inventory/areas`).
  */
 export default function InventarioPage() {
   const token = useAuthToken();
-  const { isAdmin, roles } = usePermissions();
-  const canDelete = isAdmin || roles.includes("recepcion");
+  // Crear, editar, borrar y mover stock: admin/superuser/recepción. Las áreas
+  // sólo consultan su inventario (el backend lo hace cumplir igual).
+  const { canManageOperations: canManage } = usePermissions();
 
   const { data: areas = [], isPending: areasPending } = useInventoryAreas();
   const [area, setArea] = useState<InventoryArea | typeof ALL>(ALL);
@@ -196,7 +198,7 @@ export default function InventarioPage() {
 
   const columns = getInventoryColumns({
     showArea: !effectiveArea,
-    canDelete,
+    canManage,
     onMove: (item, type) => setMoving({ item, type }),
     onHistory: setHistoryItem,
     onEdit: (item) => {
@@ -331,9 +333,11 @@ export default function InventarioPage() {
               {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               Exportar CSV
             </Button>
-            <Button className="h-10 px-5" onClick={openCreate} disabled={areas.length === 0}>
-              <Plus className="h-4 w-4" /> Nuevo artículo
-            </Button>
+            {canManage && (
+              <Button className="h-10 px-5" onClick={openCreate}>
+                <Plus className="h-4 w-4" /> Nuevo artículo
+              </Button>
+            )}
           </div>
         </div>
 
@@ -400,8 +404,12 @@ export default function InventarioPage() {
             <EmptyState
               icon={Warehouse}
               title={`Todavía no hay inventario en ${scopeLabel}`}
-              description="Cargá lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
-              action={{ label: "Nuevo artículo", icon: Plus, onClick: openCreate }}
+              description={
+                canManage
+                  ? "Cargá lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
+                  : "Administración o Recepción cargan el inventario del departamento."
+              }
+              action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: openCreate } : undefined}
             />
           ) : filtered.length === 0 ? (
             <EmptyState

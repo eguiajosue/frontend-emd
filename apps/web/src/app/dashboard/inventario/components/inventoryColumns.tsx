@@ -33,7 +33,8 @@ import type { InventoryItem, InventoryMovementType } from "@/types";
 export interface InventoryColumnsArgs {
   /** Muestra la columna Departamento (vista "Todos"). */
   showArea: boolean;
-  canDelete: boolean;
+  /** Admin/superuser/recepción: crear, editar, borrar y mover stock. Las áreas sólo consultan. */
+  canManage: boolean;
   onMove: (item: InventoryItem, type: InventoryMovementType) => void;
   onHistory: (item: InventoryItem) => void;
   onEdit: (item: InventoryItem) => void;
@@ -63,7 +64,7 @@ function StockBar({ item }: { item: InventoryItem }) {
 
 export function getInventoryColumns({
   showArea,
-  canDelete,
+  canManage,
   onMove,
   onHistory,
   onEdit,
@@ -162,6 +163,23 @@ export function getInventoryColumns({
       header: "Acciones",
       cell: ({ row }) => {
         const item = row.original;
+        if (!canManage) {
+          return (
+            <div className="flex items-center justify-end">
+              <SimpleTooltip label="Ver movimientos">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={ROW_ACTION}
+                  aria-label={`Ver movimientos de ${item.name}`}
+                  onClick={() => onHistory(item)}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+              </SimpleTooltip>
+            </div>
+          );
+        }
         return (
           <div className="flex items-center justify-end gap-1">
             <SimpleTooltip label="Registrar entrada">
@@ -203,17 +221,13 @@ export function getInventoryColumns({
                 <DropdownMenuItem onSelect={() => onEdit(item)}>
                   <Pencil className="h-4 w-4" /> Editar
                 </DropdownMenuItem>
-                {canDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() => onDelete(item)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" /> Eliminar
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={() => onDelete(item)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" /> Eliminar
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

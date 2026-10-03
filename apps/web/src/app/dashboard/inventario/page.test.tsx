@@ -31,7 +31,9 @@ vi.mock("@/hooks/useInventory", () => ({
 }));
 
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ isAdmin: roles.includes("admin"), roles }),
+  usePermissions: () => ({
+    canManageOperations: roles.includes("admin") || roles.includes("recepcion"),
+  }),
 }));
 
 vi.mock("@/hooks/useEntity", () => ({
@@ -112,6 +114,28 @@ describe("InventarioPage", () => {
     render(<InventarioPage />);
     expect(screen.queryByRole("tab", { name: "Todos" })).not.toBeInTheDocument();
     expect(requestedAreas.at(-1)).toBe("bordado");
+  });
+
+  it("admin y recepción pueden crear y mover stock", () => {
+    for (const r of [["admin"], ["recepcion"]]) {
+      roles = r;
+      const { unmount } = render(<InventarioPage />);
+      expect(screen.getByRole("button", { name: /Nuevo artículo/ })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Registrar entrada de Hilo rojo/ }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /Más acciones de Hilo rojo/ }).length).toBeGreaterThan(0);
+      unmount();
+    }
+  });
+
+  it("un área sólo consulta: sin alta, movimientos, edición ni borrado", () => {
+    roles = ["bordado"];
+    areas = ["bordado"];
+    render(<InventarioPage />);
+    expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Registrar entrada/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Registrar salida/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Ver movimientos de Hilo rojo/ }).length).toBeGreaterThan(0);
   });
 
   it("sin departamentos asignados avisa en vez de mostrar una tabla vacía", () => {
