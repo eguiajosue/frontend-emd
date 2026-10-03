@@ -12,6 +12,7 @@ import {
   Building2,
   ClipboardList,
   ListChecks,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -156,10 +157,16 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
-          // Catálogo de materiales/insumos + proveedores (tabs adentro).
+          // Catálogo de materiales/insumos.
           title: "Materiales",
           url: "/dashboard/materiales",
           icon: Boxes,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+        {
+          title: "Proveedores",
+          url: "/dashboard/proveedores",
+          icon: Truck,
           roles: ["admin", "recepcion", "superuser"],
         },
         {
@@ -233,6 +240,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/historial",
   "/dashboard/clientes",
   "/dashboard/materiales",
+  "/dashboard/proveedores",
   "/dashboard/calendario",
   "/dashboard/usuarios",
   "/dashboard/ayuda",
