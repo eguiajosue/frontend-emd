@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -145,7 +146,7 @@ export function CalendarTaskDialog({ open, onClose, task }: CalendarTaskDialogPr
                 {activeOrders.map((order) => (
                   <SelectItem key={order.id} value={String(order.id)}>
                     <span className="truncate">
-                      #{order.id} · {order.description}
+                      {formatOrderCode(order.id)} · {order.description}
                     </span>
                   </SelectItem>
                 ))}

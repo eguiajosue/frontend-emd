@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { memo } from "react";
 import {
   Ban,
@@ -193,7 +194,7 @@ export const OrderJobCard = memo(function OrderJobCard({
         variant="bare"
         size="bare"
         onClick={() => onOpen(order.id)}
-        aria-label={`Ver detalle del pedido #${order.id} de ${clientName}`}
+        aria-label={`Ver detalle del pedido ${formatOrderCode(order.id)} de ${clientName}`}
         className="absolute inset-0 z-0 rounded-2xl"
       />
 
@@ -226,7 +227,7 @@ export const OrderJobCard = memo(function OrderJobCard({
               <Checkbox
                 checked={selected}
                 onCheckedChange={(checked) => onSelectedChange?.(order.id, checked === true)}
-                aria-label={`Seleccionar pedido #${order.id}`}
+                aria-label={`Seleccionar pedido ${formatOrderCode(order.id)}`}
               />
             </div>
           )}
@@ -237,7 +238,7 @@ export const OrderJobCard = memo(function OrderJobCard({
             {clientName}
           </p>
           <p className={cn("mt-0.5 truncate text-muted-foreground", wall ? "text-sm" : "text-[0.8125rem]")} title={order.description}>
-            <span className="tabular-nums text-foreground/70">#{order.id}</span>
+            <span className="tabular-nums text-foreground/70">{formatOrderCode(order.id)}</span>
             {order.description ? ` · ${order.description}` : ""}
           </p>
         </div>

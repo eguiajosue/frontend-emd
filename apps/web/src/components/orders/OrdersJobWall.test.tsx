@@ -31,7 +31,7 @@ beforeEach(() => {
 function cardIds() {
   return screen
     .getAllByRole("button", { name: /Ver detalle del pedido/ })
-    .map((b) => b.getAttribute("aria-label")!.match(/#(\d+)/)![1]);
+    .map((b) => b.getAttribute("aria-label")!.match(/EMD-P0*(\d+)/)![1]);
 }
 
 describe("OrdersJobWall", () => {
@@ -56,7 +56,7 @@ describe("OrdersJobWall", () => {
   it("click en la tarjeta abre el detalle", async () => {
     const onOpen = vi.fn();
     render(<OrdersJobWall orders={orders} timeFormat="24h" onOpenOrder={onOpen} />);
-    await userEvent.click(screen.getByRole("button", { name: /pedido #3/ }));
+    await userEvent.click(screen.getByRole("button", { name: /pedido EMD-P0003/ }));
     expect(onOpen).toHaveBeenCalledWith(3);
   });
 
@@ -72,7 +72,7 @@ describe("OrdersJobWall", () => {
         onSelectedChange={onSelected}
       />
     );
-    await userEvent.click(screen.getByRole("checkbox", { name: "Seleccionar pedido #1" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Seleccionar pedido EMD-P0001" }));
     expect(onSelected).toHaveBeenCalledWith(1, true);
     expect(onOpen).not.toHaveBeenCalled();
   });
@@ -83,8 +83,8 @@ describe("OrdersJobWall", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /Modo TV/ }));
     const tv = screen.getByRole("dialog", { name: "Pedidos en curso" });
-    expect(within(tv).queryByRole("button", { name: /pedido #5/ })).not.toBeInTheDocument();
-    expect(within(tv).getByRole("button", { name: /pedido #2/ })).toBeInTheDocument();
+    expect(within(tv).queryByRole("button", { name: /pedido EMD-P0005/ })).not.toBeInTheDocument();
+    expect(within(tv).getByRole("button", { name: /pedido EMD-P0002/ })).toBeInTheDocument();
 
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import {
   startOfMonth,
@@ -406,7 +407,7 @@ function OrderRow({
     >
       <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
         <Package className="h-3 w-3" />
-        Pedido #{order.id} · {client}
+        Pedido {formatOrderCode(order.id)} · {client}
       </div>
       <p className="truncate font-medium">{calendarItemTitle(item)}</p>
       {item.hasTime && <p className="text-xs text-muted-foreground">{formatTime(item.date)}</p>}
