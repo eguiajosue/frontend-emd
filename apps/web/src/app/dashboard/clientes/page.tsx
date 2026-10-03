@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { ColumnDef } from "@tanstack/react-table";
-import { History, Users, Building2 } from "lucide-react";
+import { BookmarkCheck, History, Users, Building2 } from "lucide-react";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import type { Client, Company } from "@/types";
 import { getClientColumns } from "./components/clientColumns";
 import { getCompanyColumns } from "./components/companyColumns";
 import { ClientOrdersDialog } from "@/components/clients/ClientOrdersDialog";
+import { ClientTemplatesDialog } from "@/components/clients/ClientTemplatesDialog";
 
 const clientSchema = z.object({
   first_name: z.string().min(1, "El nombre es requerido"),
@@ -56,6 +57,7 @@ const ClientesPage = () => {
   const { data: companies } = useEntityList<Company>("companies");
   const [tab, setTab] = useState<"clientes" | "empresas">(initialTabFromUrl);
   const [ordersClientId, setOrdersClientId] = useState<number | null>(null);
+  const [templatesClientId, setTemplatesClientId] = useState<number | null>(null);
   // `?new=1` (acción "Nuevo cliente" de la paleta ⌘K) abre el alta. Se
   // limpia al cerrar el formulario y no al leerlo: la transición de ruta
   // puede montar la pantalla dos veces y el segundo montaje ya no lo veía.
@@ -88,22 +90,37 @@ const ClientesPage = () => {
             id: "viewOrders",
             header: "",
             cell: ({ row }) => (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                title="Ver pedidos del cliente"
-                aria-label="Ver pedidos del cliente"
-                onClick={() => setOrdersClientId(row.original.id)}
-              >
-                <History className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Ver pedidos del cliente"
+                  aria-label="Ver pedidos del cliente"
+                  onClick={() => setOrdersClientId(row.original.id)}
+                >
+                  <History className="h-4 w-4" />
+                </Button>
+                {/* Plantillas de pedido: sólo quien da de alta pedidos. */}
+                {canManageOperations && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Plantillas de pedido"
+                    aria-label="Plantillas de pedido del cliente"
+                    onClick={() => setTemplatesClientId(row.original.id)}
+                  >
+                    <BookmarkCheck className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             ),
           },
           ...base.slice(-1),
         ];
       },
-    []
+    [canManageOperations]
   );
 
   const clientFilters: CrudFilterConfig<Client>[] = useMemo(
@@ -221,6 +238,10 @@ const ClientesPage = () => {
       <ClientOrdersDialog
         clientId={ordersClientId}
         onClose={() => setOrdersClientId(null)}
+      />
+      <ClientTemplatesDialog
+        clientId={templatesClientId}
+        onClose={() => setTemplatesClientId(null)}
       />
     </div>
   );

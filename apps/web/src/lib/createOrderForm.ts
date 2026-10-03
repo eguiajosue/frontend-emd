@@ -253,8 +253,26 @@ export function buildRepeatPrefill(order: RepeatSource): RepeatPrefill {
       typeof a === "string" && PRODUCTION_AREA_VALUES.includes(a) && candidates.indexOf(a) === i
   );
 
-  const products: RepeatPrefill["products"] = [];
-  for (const op of order.orderProducts ?? []) {
+  return {
+    sourceOrderId: order.id,
+    requiresDesign,
+    areas,
+    assignedUserId: order.assignedUserId ?? undefined,
+    description: (order.description ?? "").slice(0, MAX_DESCRIPTION_LENGTH),
+    products: normalizeProducts(order.orderProducts),
+  };
+}
+
+/**
+ * Líneas de producto listas para el formulario: nombre recortado, cantidad
+ * dentro de los límites, sin líneas vacías y con los nombres repetidos
+ * fusionados (igual que hace el formulario al agregar).
+ */
+function normalizeProducts(
+  source: Array<{ customName?: string | null; quantity: number }> | undefined
+): Array<{ customName: string; quantity: number }> {
+  const products: Array<{ customName: string; quantity: number }> = [];
+  for (const op of source ?? []) {
     const customName = clampName(op.customName ?? "");
     if (!customName || products.length >= MAX_PRODUCT_LINES) continue;
     const quantity = Math.min(Math.max(Math.trunc(op.quantity) || 1, 1), MAX_QUANTITY);
@@ -262,16 +280,45 @@ export function buildRepeatPrefill(order: RepeatSource): RepeatPrefill {
     if (existing) existing.quantity = Math.min(existing.quantity + quantity, MAX_QUANTITY);
     else products.push({ customName, quantity });
   }
+  return products;
+}
 
+/* ---------------------------- Plantillas por cliente ---------------------- */
+
+export interface TemplateSource {
+  requiresDesign: boolean;
+  productionAreas: string[];
+  description: string;
+  products: Array<{ customName: string; quantity: number }>;
+  materials: Parameters<typeof toRepeatMaterials>[0];
+}
+
+/**
+ * Lo que precarga una plantilla del cliente. Igual que repetir un pedido
+ * pero sin asignado (la plantilla no lo guarda: se elige en cada alta).
+ */
+export function buildTemplatePrefill(template: TemplateSource) {
+  const areas = template.productionAreas.filter(
+    (a, i) => PRODUCTION_AREA_VALUES.includes(a) && template.productionAreas.indexOf(a) === i
+  );
   return {
-    sourceOrderId: order.id,
-    requiresDesign,
+    requiresDesign: template.requiresDesign,
     areas,
-    assignedUserId: order.assignedUserId ?? undefined,
-    description: (order.description ?? "").slice(0, MAX_DESCRIPTION_LENGTH),
-    products,
+    description: (template.description ?? "").slice(0, MAX_DESCRIPTION_LENGTH),
+    products: normalizeProducts(template.products),
+    materials: toRepeatMaterials(template.materials),
   };
 }
+
+/** Nombre sugerido al guardar una plantilla: "Figuras", "Figuras + 2". */
+export function suggestTemplateName(products: Array<{ customName: string }>): string {
+  const named = products.map((p) => p.customName.trim()).filter(Boolean);
+  if (named.length === 0) return "";
+  const name = named.length > 1 ? `${named[0]} + ${named.length - 1}` : named[0];
+  return name.slice(0, MAX_TEMPLATE_NAME_LENGTH);
+}
+
+export const MAX_TEMPLATE_NAME_LENGTH = 80;
 
 /** "Figuras ×20 · Playeras ×10 · +2 más": resumen corto de lo que se pidió. */
 export function describeOrderProducts(

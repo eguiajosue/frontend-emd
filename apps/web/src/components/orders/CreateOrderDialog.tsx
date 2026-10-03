@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  BookmarkPlus,
   CalendarDays,
   FileText,
   Loader2,
@@ -49,8 +50,14 @@ import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
+import { SaveOrderTemplateDialog } from "@/components/orders/SaveOrderTemplateDialog";
 import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useClientOrders, useOrder } from "@/hooks/useOrders";
+import {
+  useClientOrderTemplates,
+  useOrderTemplate,
+  useOrderTemplateMutations,
+} from "@/hooks/useOrderTemplates";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import {
@@ -74,6 +81,7 @@ import {
   MAX_QUANTITY,
   buildOrderSummary,
   buildRepeatPrefill,
+  buildTemplatePrefill,
   clampName,
   describeOrderProducts,
   longDateLabel,
@@ -85,6 +93,7 @@ import {
   readLastOrderDefaults,
   readRecentClientIds,
   shortDateLabel,
+  suggestTemplateName,
   toRepeatMaterials,
   writeLastOrderDefaults,
   type RepeatMaterial,
@@ -97,6 +106,7 @@ import type {
   Order,
   OrderMaterialItem,
   OrderProductPreset,
+  OrderTemplate,
   UploadedFileInput,
   User,
 } from "@/types";
@@ -208,6 +218,19 @@ interface FormSnapshot {
   descriptionTouched: boolean;
 }
 
+/** De dónde salió lo precargado: un pedido anterior o una plantilla del cliente. */
+type BaseSource = { kind: "order"; id: number } | { kind: "template"; id: number; name: string };
+
+/** "el pedido #88" / "la plantilla «Figuras»" (para armar frases). */
+function baseLabel(source: BaseSource): string {
+  return source.kind === "order" ? `el pedido #${source.id}` : `la plantilla «${source.name}»`;
+}
+
+/** Meta de las secciones precargadas. */
+function baseMeta(source: BaseSource): string {
+  return source.kind === "order" ? `Como el pedido #${source.id}` : `Plantilla «${source.name}»`;
+}
+
 /** Pedidos anteriores que se muestran de entrada / al tocar "Ver más". */
 const PREVIOUS_ORDERS_SHOWN = 3;
 const PREVIOUS_ORDERS_LIMIT = 8;
@@ -230,6 +253,8 @@ interface CreateOrderDialogProps {
    * ese id ya cargados como base, sin fecha ni archivo del cliente.
    */
   repeatFromOrderId?: number;
+  /** "Nuevo pedido" desde las plantillas del cliente: abre con esa plantilla aplicada. */
+  templateId?: number;
 }
 
 function clientLabel(c: Client): string {
@@ -335,6 +360,7 @@ export function CreateOrderDialog({
   initialClientNameOverride,
   onCreateAnother,
   repeatFromOrderId,
+  templateId,
 }: CreateOrderDialogProps) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
@@ -390,16 +416,18 @@ export function CreateOrderDialog({
   const focusBeforeConfirmRef = useRef<HTMLElement | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const rowKeySeq = useRef(0);
-  /** Pedido anterior usado como base y el estado previo a aplicarlo. */
-  const [base, setBase] = useState<{ orderId: number; snapshot: FormSnapshot } | null>(null);
+  /** Pedido anterior o plantilla usada como base, y el estado previo a aplicarla. */
+  const [base, setBase] = useState<(BaseSource & { snapshot: FormSnapshot }) | null>(null);
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   /** Hoja de materiales copiada de la base: se carga en el pedido nuevo al crearlo. */
   const [materials, setMaterials] = useState<RepeatMaterial[]>([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [showAllPrevious, setShowAllPrevious] = useState(false);
   /** Invalida la carga de materiales de una base anterior (se cambió o se quitó). */
   const baseRequestRef = useRef(0);
-  /** Id del pedido de `repeatFromOrderId` ya aplicado en esta apertura. */
+  /** Pedido (`repeatFromOrderId`) o plantilla (`templateId`) ya aplicado en esta apertura. */
   const appliedRepeatRef = useRef<number | null>(null);
+  const appliedTemplateRef = useRef<number | null>(null);
 
   const nextRowKey = () => `row-${++rowKeySeq.current}`;
   const markDirty = () => setDirty(true);
@@ -687,14 +715,14 @@ export function CreateOrderDialog({
   const completeRows = rows.filter((r) => r.customName.trim() && r.quantity && r.quantity > 0);
   const unitCount = completeRows.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
 
-  /* ------------------------ Repetir un pedido anterior --------------------- */
+  /* --------------- Repetir un pedido anterior / usar una plantilla ---------- */
 
   // Los clientes suelen repetir el pedido ("Figuras", de vinil sobre
   // coroplast) aunque cambie el detalle (qué figuras) y la fecha. Usar un
-  // pedido anterior como base copia lo que se pide, la descripción, la ruta
-  // de diseño/producción y la hoja de materiales; NUNCA la fecha ni el
-  // archivo del cliente. Siempre es una acción explícita, visible y con
-  // "Quitar base" para volver atrás.
+  // pedido anterior o una plantilla del cliente como base copia lo que se
+  // pide, la descripción, la ruta de diseño/producción y la hoja de
+  // materiales; NUNCA la fecha ni el archivo del cliente. Siempre es una
+  // acción explícita, visible y con "Quitar" para volver atrás.
   const { orders: previousOrders, isLoading: previousLoading } = useClientOrders(
     open && clientId ? clientId : null,
     { limit: PREVIOUS_ORDERS_LIMIT }
@@ -702,9 +730,14 @@ export function CreateOrderDialog({
   const visiblePrevious = showAllPrevious
     ? previousOrders
     : previousOrders.slice(0, PREVIOUS_ORDERS_SHOWN);
+  const { templates } = useClientOrderTemplates(open && clientId ? clientId : null);
+  const templateMutations = useOrderTemplateMutations();
 
   const { data: repeatSource } = useOrder(repeatFromOrderId, {
     enabled: open && repeatFromOrderId !== undefined,
+  });
+  const { data: templateSource } = useOrderTemplate(templateId, {
+    enabled: open && templateId !== undefined,
   });
 
   const takeSnapshot = (): FormSnapshot => ({
@@ -718,6 +751,22 @@ export function CreateOrderDialog({
     routeTouched,
     descriptionTouched,
   });
+
+  /** Formulario recién abierto (con los últimos defaults de diseño/área). */
+  const openingSnapshot = (): FormSnapshot => {
+    const lastDefaults = readLastOrderDefaults();
+    return {
+      requiresDesign: lastDefaults?.requiresDesign ?? true,
+      areas: lastDefaults?.area ? [lastDefaults.area] : [],
+      assignedUserId: undefined,
+      description: "",
+      rows: [],
+      materials: [],
+      defaultsApplied: Boolean(lastDefaults),
+      routeTouched: false,
+      descriptionTouched: false,
+    };
+  };
 
   function restoreSnapshot(snapshot: FormSnapshot) {
     baseRequestRef.current++;
@@ -736,14 +785,25 @@ export function CreateOrderDialog({
   }
 
   /**
-   * Carga `order` como base. `snapshot` es el formulario de ANTES de la
-   * primera base: cambiar de una base a otra no lo pisa, así "Quitar base"
-   * siempre vuelve a lo que había cargado el usuario.
+   * Vuelca lo precargado en el formulario. `snapshot` es el formulario de
+   * ANTES de la primera base: cambiar de una base a otra no lo pisa, así
+   * "Quitar" siempre vuelve a lo que había cargado el usuario.
    */
-  function applyBase(order: Order, snapshot: FormSnapshot) {
-    const prefill = buildRepeatPrefill(order);
+  function loadPrefill(
+    source: BaseSource,
+    prefill: {
+      requiresDesign: boolean;
+      areas: string[];
+      assignedUserId?: number;
+      description: string;
+      products: Array<{ customName: string; quantity: number }>;
+      materials: RepeatMaterial[];
+    },
+    snapshot: FormSnapshot
+  ) {
+    baseRequestRef.current++;
     const nextRows = prefill.products.map((p) => ({ key: nextRowKey(), ...p }));
-    setBase({ orderId: order.id, snapshot });
+    setBase({ ...source, snapshot });
     setRequiresDesign(prefill.requiresDesign);
     setAreas(prefill.areas);
     setAssignedUserId(prefill.assignedUserId);
@@ -753,10 +813,11 @@ export function CreateOrderDialog({
     setDefaultsApplied(false);
     setRouteTouched(false);
     setDescriptionTouched(false);
-    setMaterials([]);
+    setMaterials(prefill.materials);
+    setMaterialsLoading(false);
     markDirty();
     setLiveMessage(
-      `Se cargó el pedido #${order.id} como base: ${nextRows.length} ${
+      `Se cargó ${baseLabel(source)}: ${nextRows.length} ${
         nextRows.length === 1 ? "producto" : "productos"
       }. Revisá cantidades y descripción.`
     );
@@ -768,13 +829,15 @@ export function CreateOrderDialog({
         input?.select();
       });
     }
+  }
 
-    const requestId = ++baseRequestRef.current;
+  /** Pedido anterior como base; su hoja de materiales se pide aparte. */
+  function applyBase(order: Order, snapshot: FormSnapshot) {
+    loadPrefill({ kind: "order", id: order.id }, { ...buildRepeatPrefill(order), materials: [] }, snapshot);
+
+    const requestId = baseRequestRef.current;
     // El listado trae `materialItems` livianos: si viene vacío no hay nada que pedir.
-    if (order.materialItems && order.materialItems.length === 0) {
-      setMaterialsLoading(false);
-      return;
-    }
+    if (order.materialItems && order.materialItems.length === 0) return;
     setMaterialsLoading(true);
     request<OrderMaterialItem[]>(`${ENDPOINTS.orders}/${order.id}/materials`, { token })
       .then((items) => {
@@ -790,13 +853,21 @@ export function CreateOrderDialog({
       });
   }
 
+  function applyTemplate(template: OrderTemplate, snapshot: FormSnapshot) {
+    loadPrefill(
+      { kind: "template", id: template.id, name: template.name },
+      buildTemplatePrefill(template),
+      snapshot
+    );
+  }
+
   const removeBase = () => {
     if (!base) return;
-    const id = base.orderId;
+    const source: BaseSource = base;
     restoreSnapshot(base.snapshot);
     markDirty();
-    setLiveMessage(`Se quitó el pedido #${id} como base`);
-    focusById(`order-previous-${id}`);
+    setLiveMessage(`Se quitó ${baseLabel(source)}`);
+    focusById(source.kind === "order" ? `order-previous-${source.id}` : `order-template-${source.id}`);
   };
 
   const removeMaterial = (key: string) => {
@@ -818,22 +889,50 @@ export function CreateOrderDialog({
     if (!repeatSource || repeatSource.id !== repeatFromOrderId) return;
     if (appliedRepeatRef.current === repeatSource.id) return;
     appliedRepeatRef.current = repeatSource.id;
-    const lastDefaults = readLastOrderDefaults();
     setClientId(repeatSource.clientId ?? undefined);
     setClientNameOverride(repeatSource.clientId ? "" : repeatSource.clientNameOverride?.trim() ?? "");
-    applyBase(repeatSource, {
-      requiresDesign: lastDefaults?.requiresDesign ?? true,
-      areas: lastDefaults?.area ? [lastDefaults.area] : [],
-      assignedUserId: undefined,
-      description: "",
-      rows: [],
-      materials: [],
-      defaultsApplied: Boolean(lastDefaults),
-      routeTouched: false,
-      descriptionTouched: false,
-    });
+    applyBase(repeatSource, openingSnapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, repeatSource, repeatFromOrderId]);
+
+  // "Nuevo pedido" desde las plantillas del cliente (pantalla Clientes).
+  useEffect(() => {
+    if (!open) {
+      appliedTemplateRef.current = null;
+      return;
+    }
+    if (!templateSource || templateSource.id !== templateId) return;
+    if (appliedTemplateRef.current === templateSource.id) return;
+    appliedTemplateRef.current = templateSource.id;
+    setClientId(templateSource.clientId);
+    setClientNameOverride("");
+    applyTemplate(templateSource, openingSnapshot());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, templateSource, templateId]);
+
+  /** Lo que se guarda como plantilla: el pedido tal como está en pantalla. */
+  const templatePayload = () => ({
+    requiresDesign,
+    productionAreas: areas,
+    description: description.trim(),
+    products: completeRows.map((r) => ({ customName: r.customName, quantity: r.quantity! })),
+    materials: materials.map((m) => ({
+      materialId: m.materialId,
+      quantity: m.quantity,
+      description: m.description,
+      supplierId: m.supplierId,
+    })),
+  });
+  const canSaveTemplate = Boolean(clientId) && completeRows.length > 0;
+  const templateContentSummary = [
+    `${completeRows.length} ${completeRows.length === 1 ? "producto" : "productos"}`,
+    description.trim() ? "la descripción" : null,
+    requiresDesign ? "con diseño" : "sin diseño",
+    areas.length > 0 ? areas.map((a) => getAreaLabel(a)).join(", ") : null,
+    materials.length > 0 ? `${materials.length} ${materials.length === 1 ? "material" : "materiales"}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   /* -------------------------------- Archivo ------------------------------- */
 
@@ -1050,6 +1149,7 @@ export function CreateOrderDialog({
         queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       }
       queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
+      if (base?.kind === "template") templateMutations.markUsed.mutate(base.id);
 
       // Se guardan ANTES de cerrar (el estado se limpia en la próxima apertura):
       // chip "Recientes", defaults del próximo pedido y "Crear otro para {cliente}".
@@ -1256,6 +1356,41 @@ export function CreateOrderDialog({
                           </Button>
                         </div>
 
+                        {clientId !== undefined && templates.length > 0 && (
+                          <div className="space-y-1.5 pt-2">
+                            <p className="text-label" id="order-templates-label">
+                              Plantillas
+                            </p>
+                            <div
+                              role="group"
+                              aria-labelledby="order-templates-label"
+                              className="flex flex-wrap gap-2"
+                            >
+                              {templates.map((t) => {
+                                const inUse = base?.kind === "template" && base.id === t.id;
+                                return (
+                                  <Button
+                                    key={t.id}
+                                    id={`order-template-${t.id}`}
+                                    type="button"
+                                    variant="outline"
+                                    aria-pressed={inUse}
+                                    data-state={inUse ? "on" : "off"}
+                                    title={describeOrderProducts(t.products, 3)}
+                                    className={cn(CHIP_CLASS, "max-w-[16rem]")}
+                                    onClick={() =>
+                                      inUse ? removeBase() : applyTemplate(t, base?.snapshot ?? takeSnapshot())
+                                    }
+                                  >
+                                    <span className="truncate">{t.name}</span>
+                                    {inUse && <X className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
                         {clientId !== undefined && (previousLoading || previousOrders.length > 0) && (
                           <div className="space-y-1.5 pt-2">
                             <p className="text-label" id="order-previous-label">
@@ -1269,7 +1404,7 @@ export function CreateOrderDialog({
                             ) : (
                               <ul aria-labelledby="order-previous-label" className="divide-y divide-border/60">
                                 {visiblePrevious.map((o) => {
-                                  const inUse = base?.orderId === o.id;
+                                  const inUse = base?.kind === "order" && base.id === o.id;
                                   const hasProducts = (o.orderProducts ?? []).some((p) => p.customName?.trim());
                                   const route = o.requiresDesign
                                     ? "Con diseño"
@@ -1409,7 +1544,7 @@ export function CreateOrderDialog({
                     title="Diseño y producción"
                     meta={
                       base && !routeTouched
-                        ? `Como el pedido #${base.orderId}`
+                        ? baseMeta(base)
                         : defaultsApplied && !routeTouched
                           ? "Como el último pedido"
                           : undefined
@@ -1738,7 +1873,7 @@ export function CreateOrderDialog({
                           id="order-description"
                           hint={
                             base && !descriptionTouched && description
-                              ? `Copiada del pedido #${base.orderId}: ajustá lo que cambia esta vez.`
+                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : `De la plantilla «${base.name}»`}: ajustá lo que cambia esta vez.`
                               : undefined
                           }
                           error={errors.description}
@@ -1759,7 +1894,7 @@ export function CreateOrderDialog({
                         {materialsLoading ? (
                           <p className="flex items-center gap-1.5 text-meta">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                            Copiando materiales del pedido #{base?.orderId}…
+                            Copiando materiales de {base ? baseLabel(base) : "la base"}…
                           </p>
                         ) : (
                           <ul aria-labelledby="order-materials-label" className="divide-y divide-border/60">
@@ -1786,8 +1921,51 @@ export function CreateOrderDialog({
                           </ul>
                         )}
                         <p className="text-meta">
-                          {base ? `Del pedido #${base.orderId}. ` : ""}Se cargan en la hoja de materiales del pedido nuevo; las cantidades se ajustan ahí.
+                          {base ? `${base.kind === "order" ? `Del pedido #${base.id}` : `De la plantilla «${base.name}»`}. ` : ""}Se cargan en la hoja de materiales del pedido nuevo; las cantidades se ajustan ahí.
                         </p>
+                      </div>
+                    )}
+
+                    {canSaveTemplate && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {base?.kind === "template" && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className={cn("-ml-2 gap-1.5 text-muted-foreground", TAP)}
+                            disabled={templateMutations.update.isPending}
+                            onClick={async () => {
+                              try {
+                                await templateMutations.update.mutateAsync({
+                                  id: base.id,
+                                  payload: templatePayload(),
+                                });
+                                toast.success(`Plantilla «${base.name}» actualizada`);
+                              } catch (error) {
+                                toast.error(getErrorMessage(error, "No se pudo actualizar la plantilla."));
+                              }
+                            }}
+                          >
+                            {templateMutations.update.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            ) : (
+                              <BookmarkPlus className="h-4 w-4" aria-hidden />
+                            )}
+                            Actualizar plantilla «{base.name}»
+                          </Button>
+                        )}
+                        <Button
+                          id="order-save-template"
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className={cn(base?.kind !== "template" && "-ml-2", "gap-1.5 text-muted-foreground", TAP)}
+                          onClick={() => setSaveTemplateOpen(true)}
+                        >
+                          <BookmarkPlus className="h-4 w-4" aria-hidden />
+                          {base?.kind === "template" ? "Guardar como plantilla nueva" : "Guardar como plantilla"}
+                        </Button>
                       </div>
                     )}
 
@@ -2142,6 +2320,40 @@ export function CreateOrderDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SaveOrderTemplateDialog
+        open={saveTemplateOpen}
+        onOpenChange={(next) => {
+          setSaveTemplateOpen(next);
+          if (!next) focusById("order-save-template");
+        }}
+        clientLabel={selectedClientLabel}
+        defaultName={suggestTemplateName(completeRows)}
+        contentSummary={templateContentSummary}
+        blocker={
+          !requiresDesign && areas.length === 0
+            ? "Elegí al menos un área de producción: sin diseño, la plantilla necesita a dónde ir."
+            : undefined
+        }
+        onSave={async (name) => {
+          if (!clientId) return;
+          const template = await templateMutations.create.mutateAsync({
+            clientId,
+            payload: { name, ...templatePayload() },
+          });
+          // Lo que está en pantalla ES la plantilla nueva: queda como base
+          // (y al crear el pedido cuenta como un uso).
+          setBase((prev) => ({
+            kind: "template",
+            id: template.id,
+            name: template.name,
+            snapshot: prev?.snapshot ?? takeSnapshot(),
+          }));
+          setRouteTouched(false);
+          setDescriptionTouched(false);
+          toast.success(`Plantilla «${template.name}» guardada para ${selectedClientLabel}`);
+        }}
+      />
 
       <CreateClientDialog
         open={newClientOpen}

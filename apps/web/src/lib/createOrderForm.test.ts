@@ -2,6 +2,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildRepeatPrefill,
+  buildTemplatePrefill,
+  suggestTemplateName,
   describeOrderProducts,
   toRepeatMaterials,
   DELIVERY_TIME_SLOTS,
@@ -149,5 +151,34 @@ describe("toRepeatMaterials", () => {
     ).toEqual([
       { key: "material-3", materialId: 12, quantity: 4, description: "Coroplast", supplierId: undefined, unitName: "Hoja" },
     ]);
+  });
+});
+
+describe("buildTemplatePrefill", () => {
+  it("copia la plantilla, descarta áreas que ya no existen y arma los materiales", () => {
+    const prefill = buildTemplatePrefill({
+      requiresDesign: false,
+      productionAreas: ["impresiones", "diseno", "impresiones", "vieja"],
+      description: "Figuras",
+      products: [{ customName: "Figuras", quantity: 12 }],
+      materials: [{ id: 1, materialId: 12, quantity: 6, description: "Vinil", supplierId: 3 }],
+    });
+    expect(prefill).toEqual({
+      requiresDesign: false,
+      areas: ["impresiones"],
+      description: "Figuras",
+      products: [{ customName: "Figuras", quantity: 12 }],
+      materials: [
+        { key: "material-1", materialId: 12, quantity: 6, description: "Vinil", supplierId: 3, unitName: undefined },
+      ],
+    });
+  });
+});
+
+describe("suggestTemplateName", () => {
+  it("usa el primer producto y cuenta el resto", () => {
+    expect(suggestTemplateName([{ customName: "Figuras" }])).toBe("Figuras");
+    expect(suggestTemplateName([{ customName: "Figuras" }, { customName: "Lona" }])).toBe("Figuras + 1");
+    expect(suggestTemplateName([])).toBe("");
   });
 });

@@ -25,6 +25,25 @@ vi.mock("@/hooks/useOrders", () => ({
   }),
 }));
 
+let mockTemplates: unknown[] = [];
+let mockTemplateSource: unknown = undefined;
+const templateCreate = vi.fn();
+const templateUpdate = vi.fn();
+const templateMarkUsed = vi.fn();
+vi.mock("@/hooks/useOrderTemplates", () => ({
+  useClientOrderTemplates: (clientId: number | null) => ({
+    templates: clientId ? mockTemplates : [],
+  }),
+  useOrderTemplate: (_id: unknown, options?: { enabled?: boolean }) => ({
+    data: options?.enabled ? mockTemplateSource : undefined,
+  }),
+  useOrderTemplateMutations: () => ({
+    create: { mutateAsync: templateCreate, isPending: false },
+    update: { mutateAsync: templateUpdate, isPending: false },
+    markUsed: { mutate: templateMarkUsed },
+  }),
+}));
+
 const invalidateQueries = vi.fn();
 vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries }),
@@ -69,6 +88,11 @@ beforeEach(() => {
   requestMock.mockReset();
   requestMock.mockResolvedValue([]);
   invalidateQueries.mockReset();
+  mockTemplates = [];
+  mockTemplateSource = undefined;
+  templateCreate.mockReset();
+  templateUpdate.mockReset();
+  templateMarkUsed.mockReset();
   window.localStorage.clear();
 });
 
@@ -491,5 +515,149 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
     expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
     expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Plantillas por cliente                                                     */
+/* -------------------------------------------------------------------------- */
+
+const TEMPLATE = {
+  id: 5,
+  clientId: 9,
+  name: "Figuras de coroplast",
+  requiresDesign: true,
+  productionAreas: ["impresiones"],
+  description: "Figuras para eventos del colegio",
+  useCount: 3,
+  products: [{ customName: "Figuras", quantity: 12 }],
+  materials: [
+    {
+      id: 1,
+      materialId: 12,
+      quantity: 6,
+      description: "Vinil impreso sobre coroplast",
+      supplierId: null,
+      material: { id: 12, name: "Coroplast", unit: { name: "Hoja" } },
+    },
+  ],
+};
+
+describe("CreateOrderDialog: plantillas del cliente", () => {
+  it("tocar una plantilla precarga el pedido y al crear cuenta un uso", async () => {
+    await pickRecentClient();
+    mockTemplates = [TEMPLATE];
+    mockData.users = [DESIGN_SHARED];
+    renderDialog();
+
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    const chip = screen.getByRole("button", { name: "Figuras de coroplast" });
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(chip);
+
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras para eventos del colegio");
+    expect(screen.getByText("Plantilla «Figuras de coroplast»")).toBeInTheDocument();
+    expect(screen.getByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+    // La plantilla ya trae sus materiales: no se pide nada al backend.
+    expect(requestMock).not.toHaveBeenCalled();
+
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 9,
+        requiresDesign: true,
+        productionArea: "impresiones",
+        orderProducts: [{ customName: "Figuras", quantity: 12 }],
+        deliveryDate: undefined,
+      })
+    );
+    expect(templateMarkUsed).toHaveBeenCalledWith(5);
+    expect(requestMock).toHaveBeenCalledWith(
+      "orders/123/materials",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("tocar la plantilla en uso la quita", async () => {
+    await pickRecentClient();
+    mockTemplates = [TEMPLATE];
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
+    await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
+    expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("");
+  });
+
+  it("«Guardar como plantilla» guarda el pedido en pantalla (sin fecha ni archivo)", async () => {
+    await pickRecentClient();
+    templateCreate.mockResolvedValue({ ...TEMPLATE, id: 8, name: "Playera", materials: [] });
+    renderDialog();
+
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseWithoutDesign();
+    await toggleArea("Bordado");
+    await addProduct("Playera");
+    await setQty("Playera", "40");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Logo en el pecho");
+
+    await userEvent.click(screen.getByRole("button", { name: "Guardar como plantilla" }));
+    const name = await screen.findByLabelText("Nombre");
+    expect(name).toHaveValue("Playera");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+
+    expect(templateCreate).toHaveBeenCalledWith({
+      clientId: 9,
+      payload: {
+        name: "Playera",
+        requiresDesign: false,
+        productionAreas: ["bordado"],
+        description: "Logo en el pecho",
+        products: [{ customName: "Playera", quantity: 40 }],
+        materials: [],
+      },
+    });
+    // Lo que está en pantalla pasa a ser esa plantilla.
+    expect(await screen.findByText("Plantilla «Playera»")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Actualizar plantilla «Playera»" })).toBeInTheDocument();
+  });
+
+  it("sin diseño y sin áreas no deja guardar la plantilla", async () => {
+    await pickRecentClient();
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseWithoutDesign();
+    await addProduct("Playera");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar como plantilla" }));
+    expect(await screen.findByText(/sin diseño, la plantilla necesita a dónde ir/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
+  });
+
+  it("«Actualizar plantilla» guarda los cambios en la plantilla en uso", async () => {
+    await pickRecentClient();
+    mockTemplates = [TEMPLATE];
+    templateUpdate.mockResolvedValue(TEMPLATE);
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
+    await setQty("Figuras", "20");
+    await userEvent.click(screen.getByRole("button", { name: "Actualizar plantilla «Figuras de coroplast»" }));
+    expect(templateUpdate).toHaveBeenCalledWith({
+      id: 5,
+      payload: expect.objectContaining({
+        products: [{ customName: "Figuras", quantity: 20 }],
+        materials: [{ materialId: 12, quantity: 6, description: "Vinil impreso sobre coroplast", supplierId: undefined }],
+      }),
+    });
+  });
+
+  it("abre con la plantilla de `templateId` (Nuevo pedido desde Clientes)", async () => {
+    mockData.clients = [CLIENT];
+    mockTemplateSource = TEMPLATE;
+    renderDialog({ templateId: 5 });
+    expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
+    expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
   });
 });

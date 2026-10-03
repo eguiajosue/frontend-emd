@@ -204,6 +204,8 @@ const OrdersPage = () => {
   } | null>(null);
   // "Repetir pedido" (menú del detalle): pedido a usar como base del alta.
   const [repeatFromId, setRepeatFromId] = useState<number | null>(null);
+  // "Nuevo pedido" desde las plantillas de un cliente (pantalla Clientes).
+  const [templateId, setTemplateId] = useState<number | null>(null);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -278,6 +280,7 @@ const OrdersPage = () => {
   //  - ?clientId=<id> fija el filtro de cliente ("Ver sus pedidos").
   //  - ?new=1&repeatFrom=<id> abre "+ Nueva Orden" con ese pedido como base
   //    ("Repetir pedido"); cierra el detalle desde el que se pidió.
+  //  - ?new=1&template=<id> abre "+ Nueva Orden" con esa plantilla del cliente.
   const forcedListRef = useRef(false);
   const handleUrlParams = useCallback((params: URLSearchParams) => {
     const nextTone = parseToneParam(params.get(ORDER_TONE_PARAM));
@@ -293,6 +296,11 @@ const OrdersPage = () => {
     if (repeatFrom) {
       setRepeatFromId(repeatFrom);
       setOpenOrderId(null);
+      setCreateOpen(true);
+    }
+    const template = Number(params.get("template"));
+    if (template) {
+      setTemplateId(template);
       setCreateOpen(true);
     }
     const openId = Number(params.get("openOrderId"));
@@ -881,15 +889,19 @@ const OrdersPage = () => {
           setCreateOpen(false);
           clearUrlParam("new");
           clearUrlParam("repeatFrom");
+          clearUrlParam("template");
           setCreatePrefillClient(null);
           setRepeatFromId(null);
+          setTemplateId(null);
         }}
         onCreated={(order) => openDetail(order.id)}
         initialClientId={createPrefillClient?.id}
         initialClientNameOverride={createPrefillClient?.id ? undefined : createPrefillClient?.label}
         repeatFromOrderId={repeatFromId ?? undefined}
+        templateId={templateId ?? undefined}
         onCreateAnother={(clientId, clientNameOverride) => {
           setRepeatFromId(null);
+          setTemplateId(null);
           setCreatePrefillClient({ id: clientId, label: clientNameOverride });
           setCreateOpen(true);
         }}
