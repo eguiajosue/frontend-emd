@@ -1,8 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useMemo, useState } from "react";
-import { GripVertical, Search } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, GripVertical, Search } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -43,10 +45,19 @@ import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { Order } from "@/types";
 
 /** Pedido a abrir de una (llegando desde "Ver hoja de materiales" del detalle del pedido). */
-function initialOrderFromUrl(): string[] {
-  if (typeof window === "undefined") return [];
-  const order = new URLSearchParams(window.location.search).get("order");
-  return order ? [order] : [];
+/**
+ * Lee `?order=N` (el "Hoja de materiales" del menú de un pedido). Antes se
+ * leía `window.location` durante el render: con navegación del lado del
+ * cliente el pedido no se abría. Va aparte y dentro de `<Suspense>` por
+ * `useSearchParams`, igual que en Pedidos.
+ */
+function OrderParamListener({ onOrder }: { onOrder: (orderId: string) => void }) {
+  const searchParams = useSearchParams();
+  const order = searchParams?.get("order") ?? null;
+  useEffect(() => {
+    if (order) onOrder(order);
+  }, [order, onOrder]);
+  return null;
 }
 
 /**
@@ -131,10 +142,39 @@ export default function HojaMaterialesPage() {
     });
   };
 
+  const [openIds, setOpenIds] = useState<string[]>([]);
+  const [focusedOrderId, setFocusedOrderId] = useState<string | null>(null);
+  const focusOrder = useCallback((orderId: string) => {
+    setFocusedOrderId(orderId);
+    setOpenIds((prev) => (prev.includes(orderId) ? prev : [...prev, orderId]));
+  }, []);
+  // Llevar a la vista el pedido pedido, recién cuando la lista ya cargó.
+  const focusedIsListed = focusedOrderId != null && filteredOrders.some((o) => String(o.id) === focusedOrderId);
+  useEffect(() => {
+    if (!focusedIsListed || !focusedOrderId) return;
+    const frame = requestAnimationFrame(() => {
+      document
+        .getElementById(`materials-order-${focusedOrderId}`)
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusedIsListed, focusedOrderId]);
+
   const draggedOrder = activeDragId != null ? activeOrders.find((o) => o.id === activeDragId) : null;
 
   return (
     <div className="space-y-4">
+      <Suspense fallback={null}>
+        <OrderParamListener onOrder={focusOrder} />
+      </Suspense>
+      {focusedOrderId && (
+        <Button variant="link" size="sm" className="h-auto gap-1.5 px-0" asChild>
+          <Link href={`/dashboard/orders/${focusedOrderId}`}>
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Volver al pedido #{focusedOrderId}
+          </Link>
+        </Button>
+      )}
       <div>
         <Title title="Hoja de Materiales" />
         <p className="text-muted-foreground">
@@ -191,7 +231,7 @@ export default function HojaMaterialesPage() {
             items={filteredOrders.map((o) => o.id)}
             strategy={verticalListSortingStrategy}
           >
-            <Accordion type="multiple" className="space-y-2" defaultValue={initialOrderFromUrl()}>
+            <Accordion type="multiple" className="space-y-2" value={openIds} onValueChange={setOpenIds}>
               {filteredOrders.map((order, index) => (
                 <SortableOrderRow
                   key={order.id}
@@ -242,10 +282,11 @@ function SortableOrderRow({
   return (
     <AccordionItem
       ref={setNodeRef}
+      id={`materials-order-${order.id}`}
       value={String(order.id)}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "rounded-xl border bg-card px-4",
+        "scroll-mt-20 rounded-xl border bg-card px-4",
         isDragging && "opacity-40",
         isBeingDragged && "opacity-40"
       )}

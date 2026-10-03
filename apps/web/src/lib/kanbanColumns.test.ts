@@ -90,13 +90,26 @@ describe("buildDesignColumns", () => {
     // Autorizar ARCHIVA el pedido para Diseño: su trabajo terminó, así que no
     // hay columna "autorizado" en este tablero (sigue visible en la Lista).
     const columns = buildDesignColumns([], STATUSES);
+    // Sin "pendiente" (un pedido con diseño entra directo a "en diseño") y
+    // con lo que volvió con cambios primero.
     expect(columns.map((c) => c.label)).toEqual([
-      "pendiente",
+      "cambios solicitados",
       "en diseño",
       "esperando autorización",
-      "cambios solicitados",
     ]);
-    expect(columns.map((c) => c.statusId)).toEqual([1, 6, 7, 8]);
+    expect(columns.map((c) => c.statusId)).toEqual([8, 6, 7]);
+  });
+
+  it("muestra 'pendiente' sólo si quedó algún pedido viejo ahí", () => {
+    const order = makeOrder({
+      id: 3,
+      statusId: 1,
+      requiresDesign: true,
+      status: { id: 1, name: "pendiente" } as Status,
+    });
+    const columns = buildDesignColumns([order], STATUSES);
+    expect(columns[0].label).toBe("pendiente");
+    expect(columns[0].orders.map((o) => o.id)).toEqual([3]);
   });
 
   it("un pedido autorizado no entra en ninguna columna del tablero de diseño", () => {

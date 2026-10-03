@@ -12,6 +12,8 @@ import {
   isDeliveredStatus,
   isDesignFlowStatusName,
 } from "@/lib/orderStatus";
+import { getDesignStep } from "@/lib/designStep";
+import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
 interface OrderQuickStatusChipProps {
@@ -31,7 +33,7 @@ interface OrderQuickStatusChipProps {
  * estado del flujo de diseño (esos sólo se avanzan desde "Proceso de diseño").
  */
 export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
-  const { roles, canManageOperations } = usePermissions();
+  const { roles, isAdmin, canManageOperations } = usePermissions();
   // Mismo camino que el tablero y el detalle: si el pedido tiene tareas de
   // área, avanzar escribe la tarea, no `Order.statusId`.
   const moveActor = useMemo(
@@ -56,6 +58,23 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
   // aunque el backend lo rechazaba con 403).
   const canMoveToNext = canManageOperations || (!!next && myStageIds.includes(next.value));
   const isChanging = isMoving;
+
+  // En diseño el estado no se mueve desde acá, pero sí se dice de quién es el
+  // turno (antes era un "—" que no decía nada).
+  const designStep = getDesignStep(order, { roles, isAdmin });
+  if (designStep) {
+    return (
+      <span
+        className={cn(
+          "text-xs",
+          designStep.mine ? "font-semibold text-primary" : "text-muted-foreground",
+          designStep.returned && !designStep.mine && "text-orange-700 dark:text-orange-300"
+        )}
+      >
+        {designStep.label}
+      </span>
+    );
+  }
 
   if (!canChange || !next || !canMoveToNext || isDeliveredStatus(order.statusId)) {
     return <span className="text-xs text-muted-foreground">—</span>;

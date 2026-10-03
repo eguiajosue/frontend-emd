@@ -274,7 +274,9 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
 
   const subtitle = awaitingAuthorization
     ? tasks.length === 0
-      ? "Definí acá a qué área pasa el pedido cuando el cliente autorice."
+      ? isManager
+        ? "Definí acá a qué área pasa el pedido cuando el cliente autorice (o elegila al autorizar)."
+        : "Recepción define a qué áreas pasa cuando el cliente autorice."
       : "El pedido pasa a estas áreas en cuanto el cliente autorice."
     : tasks.length === 0
       ? "Todavía no hay áreas asignadas a este pedido."
@@ -339,7 +341,11 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                     )}
                   >
                     <StatusIcon className="h-3.5 w-3.5" />
-                    {meta.label}
+                    {/* Planificada mientras el cliente no autoriza: todavía no
+                        es trabajo del área, así que "Pendiente" confundía. */}
+                    {awaitingAuthorization && task.status === "pendiente"
+                      ? "Espera autorización"
+                      : meta.label}
                   </span>
 
                   <span className="flex min-w-0 flex-col gap-0.5 text-xs text-muted-foreground">

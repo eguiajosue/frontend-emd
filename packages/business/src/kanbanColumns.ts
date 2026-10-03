@@ -1,6 +1,7 @@
 import {
   statusMap,
   isDesignFlowStatusName,
+  DESIGN_BOARD_LEGACY_STATUS_NAME,
   DESIGN_BOARD_STATUS_NAMES,
   PRODUCTION_BOARD_STATUS_IDS,
   DESIGN_FLOW_STATUS_NAMES,
@@ -95,8 +96,8 @@ export function buildProductionColumns(
 }
 
 /**
- * Columnas del tablero de DISEÑO: pendiente + las 4 etapas del circuito de
- * montaje, en orden y siempre visibles.
+ * Columnas del tablero de DISEÑO: las 3 etapas del circuito de montaje,
+ * siempre visibles ("pendiente" sólo si quedó algún pedido viejo ahí).
  *
  * Los ids de los estados de Diseño los siembra el backend y cambian entre
  * entornos, así que se resuelven por NOMBRE contra el catálogo de `GET /status`
@@ -116,13 +117,20 @@ export function buildDesignColumns(
     if (name && !idByName.has(name)) idByName.set(name, order.statusId);
   });
 
-  return DESIGN_BOARD_STATUS_NAMES.map((name) => {
+  const hasLegacyPending = orders.some(
+    (order) => (order.status?.name ?? "").toLowerCase() === DESIGN_BOARD_LEGACY_STATUS_NAME,
+  );
+  const names = hasLegacyPending
+    ? [DESIGN_BOARD_LEGACY_STATUS_NAME, ...DESIGN_BOARD_STATUS_NAMES]
+    : DESIGN_BOARD_STATUS_NAMES;
+
+  return names.map((name) => {
     const statusId = idByName.get(name);
     return {
       // Sin id conocido la columna se muestra igual (vacía) con una clave
       // negativa estable, para no colapsar el tablero por un catálogo que
       // todavía no llegó.
-      statusId: statusId ?? -(DESIGN_BOARD_STATUS_NAMES.indexOf(name) + 1),
+      statusId: statusId ?? -(names.indexOf(name) + 1),
       label: name,
       orders: orders.filter(
         (order) => (order.status?.name ?? "").toLowerCase() === name,

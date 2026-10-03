@@ -118,10 +118,17 @@ export function OrderDetailBody({
     </DetailSection>
   );
 
+  // Diseño arrancando un pedido nuevo necesita primero el brief (qué hay que
+  // hacer y los archivos del cliente); con cambios pedidos, lo primero es
+  // la sección de Diseño, que abre con lo que pidió el cliente.
+  const designerStartsFresh =
+    isDesigner && (order.status?.name ?? "").toLowerCase() === "en diseño";
   const ordered = isManager
     ? [details, design, areas]
     : isDesigner
-      ? [design, details, areas]
+      ? designerStartsFresh
+        ? [details, design, areas]
+        : [design, details, areas]
       : [areas, details, design];
 
   return (
