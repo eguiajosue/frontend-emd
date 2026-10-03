@@ -16,6 +16,7 @@ export const SEQUENCE_TIMEOUT_MS = 1200;
 const GO_KEYS: { key: string; url: string | "home" }[] = [
   { key: "i", url: "home" },
   { key: "p", url: "/dashboard/orders" },
+  { key: "t", url: "/dashboard/tareas" },
   { key: "c", url: "/dashboard/clientes" },
   { key: "a", url: "/dashboard/calendario" },
   { key: "h", url: "/dashboard/historial" },

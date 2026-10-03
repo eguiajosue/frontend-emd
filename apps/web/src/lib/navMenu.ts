@@ -11,9 +11,9 @@ import {
   Boxes,
   Building2,
   ClipboardList,
+  ListChecks,
   type LucideIcon,
 } from "lucide-react";
-import { ordersScreenTitle } from "./orderScreen";
 
 export interface NavItem {
   title: string;
@@ -21,12 +21,20 @@ export interface NavItem {
   icon: LucideIcon;
   /** Roles que pueden ver el ítem; ausente = visible para cualquiera. */
   roles?: string[];
+  /** Sólo esos roles, sin la excepción de admin (ej. una bandeja de trabajo propia). */
+  strictRoles?: boolean;
 }
 
 export interface NavGroup {
   groupLabel: string;
   items: NavItem[];
 }
+
+/** Bandeja de tareas de Diseño y Producción. */
+export const TASKS_URL = "/dashboard/tareas";
+
+/** Roles que ejecutan trabajo (Diseño + áreas de producción). */
+const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
 
 const ALL_ROLES = [
   "admin",
@@ -51,13 +59,13 @@ export const OPERATIONAL_MENU: NavGroup[] = [
   {
     groupLabel: "Producción",
     items: [
-      // Una sola pantalla de trabajo. "Mi trabajo" mostraba lo mismo que
-      // "Pedidos" con otra forma; el nombre cambia según el rol
-      // (`ordersScreenTitle`), no la pantalla.
+      // Diseño y Producción no administran pedidos: trabajan tareas. Su
+      // pantalla es la bandeja de tareas (lo suyo y lo libre de sus áreas);
+      // "Pedidos" queda para Recepción.
       {
         title: "Tareas asignadas",
-        url: "/dashboard/orders",
-        icon: Package,
+        url: TASKS_URL,
+        icon: ListChecks,
       },
     ],
   },
@@ -95,7 +103,7 @@ export const OPERATIONAL_MENU: NavGroup[] = [
  * El trabajo diario (Operación) va primero; la administración, al final.
  * Los grupos que el rol no puede ver se ocultan en el sidebar.
  */
-export function buildMenuItems(userRoles: string[]): NavGroup[] {
+export function buildMenuItems(): NavGroup[] {
   return [
     {
       groupLabel: "Operación",
@@ -107,12 +115,20 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
           roles: ["admin", "superuser"],
         },
         {
-          // "Pedidos" para quien administra, "Tareas asignadas" para quien
-          // sólo ejecuta: es la misma pantalla, no significa lo mismo.
-          title: ordersScreenTitle(userRoles),
+          // Gestión de pedidos de punta a punta: Recepción (y admin).
+          title: "Pedidos",
           url: "/dashboard/orders",
           icon: Package,
-          roles: ALL_ROLES,
+          roles: ["admin", "superuser", "recepcion"],
+        },
+        {
+          // Quien gestiona Y además trabaja un área (ej. Recepción + Taller)
+          // también tiene su bandeja.
+          title: "Tareas asignadas",
+          url: TASKS_URL,
+          icon: ListChecks,
+          roles: WORK_AREA_ROLES,
+          strictRoles: true,
         },
         {
           // Calendario de equipo de Recepción: instalaciones, juntas, visitas.
@@ -209,6 +225,7 @@ export function buildMenuItems(userRoles: string[]): NavGroup[] {
 export const TAB_PRIORITY_URLS = [
   "/dashboard/admin",
   "/dashboard/orders",
+  TASKS_URL,
   "/dashboard/chat",
   "/dashboard/notificaciones",
   "/dashboard/admin/rendimiento",
@@ -232,6 +249,9 @@ export function isNavItemVisible(
   userRoles: string[],
   operationalOnly: boolean
 ): boolean {
+  if (item.strictRoles && item.roles) {
+    return userRoles.some((r) => item.roles!.includes(r));
+  }
   return (
     operationalOnly ||
     userRoles.includes("admin") ||
@@ -258,9 +278,9 @@ export function findActiveNavUrl(urls: string[], pathname: string | null): strin
 
 /** Inicio de cada rol: admin al panel, el resto directo a su trabajo. */
 export function homePathForRoles(roles: string[]): string {
-  return roles.includes("admin") || roles.includes("superuser")
-    ? "/dashboard/admin"
-    : "/dashboard/orders";
+  if (roles.includes("admin") || roles.includes("superuser")) return "/dashboard/admin";
+  if (roles.includes("recepcion")) return "/dashboard/orders";
+  return roles.some((r) => WORK_AREA_ROLES.includes(r)) ? TASKS_URL : "/dashboard/orders";
 }
 
 /** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */

@@ -34,7 +34,8 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 function shortLabel(item: VisibleNavItem): string {
-  if (item.url === "/dashboard/orders") return item.title === "Pedidos" ? "Pedidos" : "Tareas";
+  if (item.url === "/dashboard/orders") return "Pedidos";
+  if (item.url === "/dashboard/tareas") return "Tareas";
   return SHORT_LABELS[item.url] ?? item.title;
 }
 

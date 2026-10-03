@@ -4,6 +4,7 @@ import {
   buildMenuItems,
   findActiveNavUrl,
   homePathForRoles,
+  OPERATIONAL_MENU,
   isNavItemVisible,
   pageTitleFromBreadcrumbs,
 } from "./navMenu";
@@ -34,26 +35,49 @@ describe("homePathForRoles", () => {
     expect(homePathForRoles(["admin"])).toBe("/dashboard/admin");
     expect(homePathForRoles(["superuser"])).toBe("/dashboard/admin");
     expect(homePathForRoles(["recepcion"])).toBe("/dashboard/orders");
-    expect(homePathForRoles(["bordado"])).toBe("/dashboard/orders");
+    // Diseño y Producción van a su bandeja de tareas, no a "Pedidos".
+    expect(homePathForRoles(["bordado"])).toBe("/dashboard/tareas");
+    expect(homePathForRoles(["diseno", "taller"])).toBe("/dashboard/tareas");
+    expect(homePathForRoles(["recepcion", "taller"])).toBe("/dashboard/orders");
     expect(homePathForRoles([])).toBe("/dashboard/orders");
+  });
+});
+
+describe("menú de Diseño y Producción", () => {
+  it("no ven Pedidos: sólo su bandeja de Tareas asignadas", () => {
+    const urls = OPERATIONAL_MENU.flatMap((g) => g.items.map((i) => i.url));
+    expect(urls).toContain("/dashboard/tareas");
+    expect(urls).not.toContain("/dashboard/orders");
+  });
+
+  it("Pedidos sólo para quien gestiona; Tareas para quien además trabaja un área", () => {
+    const items = buildMenuItems().flatMap((g) => g.items);
+    const pedidos = items.find((i) => i.url === "/dashboard/orders")!;
+    const tareas = items.find((i) => i.url === "/dashboard/tareas")!;
+    expect(isNavItemVisible(pedidos, ["taller"], false)).toBe(false);
+    expect(isNavItemVisible(pedidos, ["recepcion"], false)).toBe(true);
+    expect(isNavItemVisible(tareas, ["recepcion"], false)).toBe(false);
+    expect(isNavItemVisible(tareas, ["recepcion", "taller"], false)).toBe(true);
+    // Admin ve todo el menú, pero no tiene bandeja propia.
+    expect(isNavItemVisible(tareas, ["admin"], false)).toBe(false);
   });
 });
 
 describe("buildMenuItems", () => {
   it("Operación va primero y Pedidos está en ella", () => {
-    const groups = buildMenuItems(["admin"]);
+    const groups = buildMenuItems();
     expect(groups[0].groupLabel).toBe("Operación");
     expect(groups[0].items.map((i) => i.url)).toContain("/dashboard/orders");
   });
 
   it("recepción no ve ningún ítem de Administración (el grupo queda vacío y se oculta)", () => {
-    const admin = buildMenuItems(["recepcion"]).find((g) => g.groupLabel === "Administración")!;
+    const admin = buildMenuItems().find((g) => g.groupLabel === "Administración")!;
     expect(admin.items.filter((i) => isNavItemVisible(i, ["recepcion"], false))).toHaveLength(0);
   });
 });
 
 describe("buildBreadcrumbs", () => {
-  const groups = buildMenuItems(["admin"]);
+  const groups = buildMenuItems();
 
   it("página del menú: sección › página", () => {
     expect(buildBreadcrumbs(groups, "/dashboard/orders")).toEqual([

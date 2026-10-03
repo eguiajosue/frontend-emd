@@ -726,3 +726,31 @@ export interface CreateOrderMaterialItemPayload {
 export type UpdateOrderMaterialItemPayload = Partial<CreateOrderMaterialItemPayload> & {
   purchased?: boolean;
 };
+
+/** Una entrada de "Tareas asignadas" (`GET /orders/my-tasks`): una por TAREA. */
+export interface MyTask {
+  key: string;
+  kind: "design" | "production";
+  /** Área de la tarea (diseno, taller, dtf...). */
+  area: string;
+  /** Tarea de área; null en Diseño (el trabajo es el pedido). */
+  taskId: number | null;
+  /** Estado de la tarea de área, o nombre del estado de diseño del pedido. */
+  status: string;
+  /** A nombre del usuario (nunca desde la cuenta compartida). */
+  mine: boolean;
+  assignee: { id: number; firstName?: string | null; lastName?: string | null; username: string } | null;
+  startedAt: string | null;
+  order: {
+    id: number;
+    description: string;
+    deliveryDate: string | null;
+    creationDate: string;
+    statusId: number;
+    clientNameOverride: string | null;
+    designStartedAt: string | null;
+    designStartedByName: string | null;
+    client: { first_name: string; last_name?: string | null } | null;
+    status: { id: number; name: string };
+  };
+}

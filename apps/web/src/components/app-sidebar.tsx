@@ -127,7 +127,7 @@ export function AppSidebar() {
   // móvil): una sola fuente para "qué puede ver cada rol".
   // Grupos sin ningún ítem visible para el rol no se pintan: antes recepción
   // veía encabezados ("Administración") sin nada debajo.
-  const visibleGroups = (operationalOnly ? OPERATIONAL_MENU : buildMenuItems(userRoles))
+  const visibleGroups = (operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => isNavItemVisible(item, userRoles, operationalOnly)),

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ordersScreenCopy } from "@/lib/orderScreen";
+import { TASKS_URL } from "@/lib/navMenu";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 
@@ -161,8 +162,18 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
  * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
+const WORK_AREA_ROLE_SET = new Set(["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]);
+
 const OrdersPage = () => {
   const { roles, canManageOperations, isSessionLoading, session } = usePermissions();
+  // Diseño y Producción no gestionan pedidos: su pantalla es "Tareas
+  // asignadas". Un link viejo (notificación, marcador) los lleva ahí.
+  const ordersRouter = useRouter();
+  const redirectToTasks =
+    !isSessionLoading && !canManageOperations && roles.some((r) => WORK_AREA_ROLE_SET.has(r));
+  useEffect(() => {
+    if (redirectToTasks) ordersRouter.replace(TASKS_URL);
+  }, [redirectToTasks, ordersRouter]);
   const currentUserId = session?.user?.id ? Number(session.user.id) : undefined;
   const { timeFormat } = useTimeFormat();
   const { data: orders, isPending, isError, refetch } = useOrders();
