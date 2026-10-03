@@ -44,7 +44,10 @@ import {
   useDesignRevisionFileContent,
 } from "@/hooks/useDesignRevisions";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
-import { useTakeOrderDesign } from "@/hooks/useOrders";
+import { useStartOrderDesign, useTakeOrderDesign } from "@/hooks/useOrders";
+import { Input } from "@/components/ui/input";
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
@@ -69,6 +72,7 @@ import {
   MessagesSquare,
   Palette,
   Paperclip,
+  Play,
   Plus,
   RotateCcw,
   Upload,
@@ -103,6 +107,8 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const { data: session } = useSession();
   const { timeFormat } = useTimeFormat();
   const { takeDesign, isTakingDesign } = useTakeOrderDesign();
+  const { startDesign, isStartingDesign } = useStartOrderDesign();
+  const [starterName, setStarterName] = useState("");
   const {
     revisions,
     isLoading,
@@ -163,11 +169,45 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
   const isInSharedPool =
     order.assignedUserId == null || order.assignedUser?.isSharedAccount === true;
+  const isDesignerRole = roles.includes("diseno") || roles.includes("superuser");
   const canTakeDesign =
-    (roles.includes("diseno") || roles.includes("superuser")) &&
+    isDesignerRole &&
     currentUserId !== null &&
     isInSharedPool &&
     order.assignedUserId !== currentUserId;
+
+  /**
+   * "Empezar diseño": hasta que alguien lo marca, Recepción no sabe si el
+   * pedido está esperando o ya se está haciendo. Sólo aplica a la primera
+   * ronda (con montaje enviado ya es obvio que se empezó).
+   */
+  const notStarted =
+    !order.designStartedAt &&
+    revisions.length === 0 &&
+    currentStatus === DESIGN_FLOW_STATUS_NAMES.EN_DISENO;
+  // Entró con la cuenta compartida del área: varias personas la usan, así
+  // que se pide el nombre de quien lo empieza.
+  const isSharedLogin =
+    currentUserId !== null &&
+    order.assignedUserId === currentUserId &&
+    order.assignedUser?.isSharedAccount === true;
+  const canStart =
+    notStarted && isDesignerRole && (isInSharedPool || order.assignedUserId === currentUserId);
+  const startedAgo = order.designStartedAt
+    ? formatDistanceToNow(new Date(order.designStartedAt), { addSuffix: true, locale: es })
+    : null;
+
+  const handleStart = async () => {
+    if (isSharedLogin) {
+      if (!starterName.trim()) return;
+      await startDesign(order.id, starterName.trim());
+    } else if (canTakeDesign) {
+      // Una persona con su propio usuario: empezar es tomarlo a su nombre.
+      await takeDesign(order.id);
+    } else {
+      await startDesign(order.id);
+    }
+  };
 
   return (
     <div className={embedded ? "space-y-4" : "space-y-4 rounded-2xl border border-border bg-muted/10 p-4"}>
@@ -191,7 +231,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
           description="El servidor no tiene desplegado este endpoint todavía. Intentar nuevamente más tarde."
           className="mt-0 p-6"
         />
-      ) : revisions.length === 0 && embedded ? (
+      ) : revisions.length === 0 && embedded && notStarted ? null : revisions.length === 0 && embedded ? (
         <p className="text-sm text-muted-foreground">
           {canDesign
             ? "Todavía no hay montaje: subí el primero para que Recepción lo mande al cliente."
@@ -268,7 +308,56 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
         </motion.div>
       )}
 
-      {canTakeDesign && (
+      {canStart ? (
+        <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <p className="text-sm font-medium">Nadie lo empezó todavía</p>
+          <p className="text-xs text-muted-foreground">
+            Marcalo cuando arranques, así Recepción sabe que ya está en curso.
+          </p>
+          <form
+            className="flex flex-col gap-2 sm:flex-row sm:items-center"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleStart();
+            }}
+          >
+            {isSharedLogin && (
+              <Input
+                value={starterName}
+                onChange={(e) => setStarterName(e.target.value)}
+                placeholder="Tu nombre"
+                aria-label="Tu nombre"
+                maxLength={60}
+                className="h-9 sm:max-w-48"
+              />
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isStartingDesign || isTakingDesign || (isSharedLogin && !starterName.trim())}
+              className="gap-1.5"
+            >
+              {isStartingDesign || isTakingDesign ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              Empezar diseño
+            </Button>
+          </form>
+        </div>
+      ) : notStarted ? (
+        <p className="text-sm text-muted-foreground">Diseño todavía no lo empezó.</p>
+      ) : order.designStartedAt && currentStatus === DESIGN_FLOW_STATUS_NAMES.EN_DISENO ? (
+        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Play className="h-3.5 w-3.5" aria-hidden />
+          Lo empezó{" "}
+          <span className="font-medium text-foreground">{order.designStartedByName ?? "Diseño"}</span>{" "}
+          {startedAgo}
+        </p>
+      ) : null}
+
+      {canTakeDesign && !canStart && (
         <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
           <Button
             size="sm"

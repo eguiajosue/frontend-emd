@@ -16,7 +16,7 @@ export interface DesignStep {
  * pedido que volvía con cambios se veía igual que uno nuevo.
  */
 export function getDesignStep(
-  order: Pick<Order, "requiresDesign" | "status">,
+  order: Pick<Order, "requiresDesign" | "status" | "designStartedAt" | "designStartedByName">,
   viewer: { roles: string[]; isAdmin: boolean }
 ): DesignStep | null {
   const name = (order.status?.name ?? "").toLowerCase();
@@ -35,9 +35,19 @@ export function getDesignStep(
       : { label: "Esperando al cliente", mine: false, returned: false };
   }
   if (name === DESIGN_FLOW_STATUS_NAMES.EN_DISENO) {
-    return isDesigner
-      ? { label: "Te toca: montaje", mine: true, returned: false }
-      : { label: "En Diseño", mine: false, returned: false };
+    // `designStartedAt` ausente (servidor viejo) = no se sabe: no decir "sin empezar".
+    const notStarted = order.designStartedAt === null;
+    if (isDesigner) {
+      return notStarted
+        ? { label: "Nuevo: empezalo", mine: true, returned: false }
+        : { label: "Te toca: montaje", mine: true, returned: false };
+    }
+    if (notStarted) return { label: "En Diseño · sin empezar", mine: false, returned: false };
+    return {
+      label: order.designStartedByName ? `En Diseño · ${order.designStartedByName}` : "En Diseño",
+      mine: false,
+      returned: false,
+    };
   }
   return null;
 }

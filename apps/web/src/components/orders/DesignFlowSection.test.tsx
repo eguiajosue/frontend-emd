@@ -33,12 +33,15 @@ vi.mock("@/hooks/useAreaTasks", () => ({
   useAreaTasks: () => ({ tasks: [] }),
 }));
 
+const startDesign = vi.fn();
 vi.mock("@/hooks/useOrders", () => ({
   useTakeOrderDesign: () => ({ takeDesign: vi.fn(), isTakingDesign: false }),
+  useStartOrderDesign: () => ({ startDesign, isStartingDesign: false }),
 }));
 
+let permissions = { roles: ["admin"], isAdmin: true };
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ roles: ["admin"], isAdmin: true }),
+  usePermissions: () => permissions,
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -128,5 +131,44 @@ describe("DesignFlowSection - respuesta del cliente", () => {
     expect(screen.getByText("El cliente pidió estos cambios")).toBeInTheDocument();
     expect(screen.getByText("Agrandar el logo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Corregir y reenviar \(ronda 2\)/ })).toBeInTheDocument();
+  });
+});
+
+describe("DesignFlowSection - Empezar diseño", () => {
+  const fresh = {
+    ...order,
+    area: "diseno",
+    status: { id: 21, name: "en diseño" },
+    designStartedAt: null,
+    assignedUserId: 1,
+    assignedUser: { id: 1, isSharedAccount: true },
+  } as unknown as Order;
+
+  it("desde la cuenta compartida pide el nombre antes de empezar", async () => {
+    revisions = [];
+    permissions = { roles: ["diseno"], isAdmin: false };
+    render(<DesignFlowSection order={fresh} />);
+
+    const button = screen.getByRole("button", { name: /Empezar diseño/ });
+    expect(button).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Tu nombre"), "Dani");
+    await userEvent.click(button);
+    expect(startDesign).toHaveBeenCalledWith(fresh.id, "Dani");
+    permissions = { roles: ["admin"], isAdmin: true };
+  });
+
+  it("Recepción ve que todavía nadie lo empezó, y quién cuando ya arrancó", () => {
+    revisions = [];
+    permissions = { roles: ["recepcion"], isAdmin: false };
+    const { rerender } = render(<DesignFlowSection order={fresh} />);
+    expect(screen.getByText("Diseño todavía no lo empezó.")).toBeInTheDocument();
+
+    rerender(
+      <DesignFlowSection
+        order={{ ...fresh, designStartedAt: new Date().toISOString(), designStartedByName: "Dani" } as Order}
+      />
+    );
+    expect(screen.getByText("Dani")).toBeInTheDocument();
+    permissions = { roles: ["admin"], isAdmin: true };
   });
 });
