@@ -81,3 +81,12 @@ describe("createOrderForm", () => {
     expect(clampName("x".repeat(250))).toHaveLength(200);
   });
 });
+
+describe("combineDateAndTime", () => {
+  it("sin hora usa el fin de la jornada (18:00), no medianoche", async () => {
+    const { combineDateAndTime } = await import("@/lib/format");
+    expect(new Date(combineDateAndTime("2026-10-20")!).getHours()).toBe(18);
+    expect(new Date(combineDateAndTime("2026-10-20", "09:15")!).getHours()).toBe(9);
+    expect(combineDateAndTime("")).toBeUndefined();
+  });
+});

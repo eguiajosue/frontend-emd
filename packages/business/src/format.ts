@@ -65,7 +65,7 @@ export function formatDateTime(
 
 /**
  * Fecha de entrega: muestra solo la fecha cuando la hora es medianoche
- * (00:00, el valor por defecto cuando no se especificó hora), y fecha + hora
+ * (00:00, el default histórico de los pedidos sin hora), y fecha + hora
  * cuando se cargó una hora distinta de medianoche.
  */
 export function formatDeliveryDate(value?: string | null, timeFormat: TimeFormatPreference = "24h"): string {
@@ -79,12 +79,16 @@ export function formatDeliveryDate(value?: string | null, timeFormat: TimeFormat
 
 /**
  * Combina una fecha (`YYYY-MM-DD`) y una hora opcional (`HH:mm`) en un ISO
- * datetime. Sin hora, usa medianoche (comportamiento histórico). Devuelve
+ * datetime. Sin hora, usa el fin de la jornada (`DEFAULT_DELIVERY_TIME`,
+ * 18:00): con medianoche un pedido "para hoy" nacía vencido. Devuelve
  * `undefined` si no hay fecha.
  */
+/** Hora de entrega cuando se elige sólo la fecha: fin de la jornada del taller. */
+export const DEFAULT_DELIVERY_TIME = "18:00";
+
 export function combineDateAndTime(date?: string, time?: string): string | undefined {
   if (!date) return undefined;
-  const timePart = time && time.trim() ? time : "00:00";
+  const timePart = time && time.trim() ? time : DEFAULT_DELIVERY_TIME;
   const parsed = new Date(`${date}T${timePart}`);
   if (Number.isNaN(parsed.getTime())) return undefined;
   return parsed.toISOString();
