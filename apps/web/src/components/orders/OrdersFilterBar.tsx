@@ -23,7 +23,7 @@ import { getAssignedUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, SlidersHorizontal, X } from "lucide-react";
+import { Archive, CalendarIcon, SlidersHorizontal, X } from "lucide-react";
 import type { Client, User } from "@/types";
 
 export interface OrdersFilters {
@@ -36,6 +36,11 @@ export interface OrdersFilters {
   assignedUserId?: number | null;
   /** Sólo pedidos creados por el usuario de la sesión (`order.userId`). Pensado para Recepción. */
   createdByMe: boolean;
+  /**
+   * Muestra también los pedidos archivados (cancelados). Un cancelado no es
+   * trabajo: por defecto no aparece, pero sigue a mano con un toggle.
+   */
+  showArchived: boolean;
 }
 
 export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
@@ -46,6 +51,7 @@ export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   area: undefined,
   assignedUserId: undefined,
   createdByMe: false,
+  showArchived: false,
 };
 
 function clientLabel(c: Client): string {
@@ -68,6 +74,8 @@ interface OrdersFilterBarProps {
   users: User[];
   filters: OrdersFilters;
   onChange: (filters: OrdersFilters) => void;
+  /** Cuántos pedidos archivados hay (con los filtros actuales). */
+  archivedCount?: number;
 }
 
 /**
@@ -85,7 +93,13 @@ interface OrdersFilterBarProps {
 /** Label uniforme para cada campo del popover. */
 const FIELD_LABEL_CLASS = "text-label";
 
-export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFilterBarProps) {
+export function OrdersFilterBar({
+  clients,
+  users,
+  filters,
+  onChange,
+  archivedCount = 0,
+}: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const { isAdmin, roles } = usePermissions();
@@ -110,7 +124,8 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
     filters.onlyOverdue ||
     !!filters.area ||
     filters.assignedUserId !== undefined ||
-    filters.createdByMe;
+    filters.createdByMe ||
+    filters.showArchived;
 
   const toggleStatus = (id: number) => {
     const next = filters.statusIds.includes(id)
@@ -387,6 +402,23 @@ export function OrdersFilterBar({ clients, users, filters, onChange }: OrdersFil
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* A la vista, fuera del popover: es la única forma de saber que los
+          cancelados no desaparecieron, sólo se archivaron. */}
+      <Label
+        htmlFor="show-archived"
+        className="flex h-8 cursor-pointer items-center gap-2 rounded-full border bg-card pl-2.5 pr-3 text-sm font-normal text-muted-foreground has-[[data-state=checked]]:text-foreground"
+      >
+        <Switch
+          id="show-archived"
+          className="h-4 w-7 [&>span]:h-3 [&>span]:w-3 [&>span]:data-[state=checked]:translate-x-3"
+          checked={filters.showArchived}
+          onCheckedChange={(checked) => onChange({ ...filters, showArchived: checked })}
+        />
+        <Archive className="h-3.5 w-3.5" aria-hidden />
+        Archivados
+        <span className="tabular-nums text-xs opacity-70">{archivedCount}</span>
+      </Label>
 
       {activeChips.map((chip) => (
         <Button

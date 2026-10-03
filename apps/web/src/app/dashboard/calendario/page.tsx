@@ -17,6 +17,7 @@ import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useCalendarTasks } from "@/hooks/useCalendarTasks";
 import { useCalendarPrefs } from "@/hooks/useCalendarPrefs";
 import { useOrders } from "@/hooks/useOrders";
+import { isCancelledStatus } from "@/lib/orderStatus";
 import { TeamCalendar } from "@/components/calendar/TeamCalendar";
 import { TimeGridCalendar } from "@/components/calendar/TimeGridCalendar";
 import { MobileMonthList } from "@/components/calendar/mobile/MobileMonthList";
@@ -85,7 +86,8 @@ export default function CalendarioPage() {
   const ordersWithDelivery = useMemo(
     () =>
       orders
-        .filter((o) => Boolean(o.deliveryDate))
+        // Los cancelados están archivados: no ocupan el calendario.
+        .filter((o) => Boolean(o.deliveryDate) && !isCancelledStatus(o.statusId))
         .filter((o) => areaFilter === "todas" || o.area === areaFilter),
     [orders, areaFilter]
   );

@@ -23,6 +23,7 @@ import { useAppSettings } from "@/hooks/useSettings";
 import {
   statusMap,
   statusOptions,
+  isCancelledStatus,
   isDeliveredStatus,
   isFinishedStatus,
 } from "@/lib/orderStatus";
@@ -88,6 +89,7 @@ function filtersFromUrl(): OrdersFilters {
   const area = params.get("area");
   const assignedUserId = params.get("assignedUserId");
   const createdByMe = params.get("createdByMe");
+  const archived = params.get("archivados");
   return {
     clientId: clientId ? Number(clientId) : undefined,
     statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
@@ -100,6 +102,7 @@ function filtersFromUrl(): OrdersFilters {
     assignedUserId:
       assignedUserId === null ? undefined : assignedUserId === "unassigned" ? null : Number(assignedUserId),
     createdByMe: createdByMe === "1",
+    showArchived: archived === "1",
   };
 }
 
@@ -116,6 +119,7 @@ function filtersToUrlParams(filters: OrdersFilters, tone: DeadlineTone | null = 
     params.set("assignedUserId", filters.assignedUserId === null ? "unassigned" : String(filters.assignedUserId));
   }
   if (filters.createdByMe) params.set("createdByMe", "1");
+  if (filters.showArchived) params.set("archivados", "1");
   return params;
 }
 
@@ -365,8 +369,13 @@ const OrdersPage = () => {
   // tablero en vivo (siguen existiendo en la DB y son visibles en Historial).
   const retentionMs = deliveredRetentionHours * 60 * 60 * 1000;
 
+  // Un cancelado queda archivado: fuera de la vista salvo con el toggle
+  // "Archivados", o si se filtra a propósito por el estado "cancelado".
+  const wantsCancelled = filters.showArchived || filters.statusIds.some(isCancelledStatus);
+
   const visibleOrders = useMemo(() => {
     return orders.filter((order) => {
+      if (!wantsCancelled && isCancelledStatus(order.statusId)) return false;
       if (
         isDeliveredStatus(order.statusId) &&
         order.deliveredAt &&
@@ -407,7 +416,12 @@ const OrdersPage = () => {
       }
       return true;
     });
-  }, [orders, filters, retentionMs, currentUserId]);
+  }, [orders, filters, retentionMs, currentUserId, wantsCancelled]);
+
+  const archivedCount = useMemo(
+    () => orders.filter((order) => isCancelledStatus(order.statusId)).length,
+    [orders]
+  );
 
   const handleExport = async () => {
     if (visibleOrders.length === 0) {
@@ -735,6 +749,7 @@ const OrdersPage = () => {
           users={users}
           filters={filters}
           onChange={updateFilters}
+          archivedCount={archivedCount}
         />
       </div>
 

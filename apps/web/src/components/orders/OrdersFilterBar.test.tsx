@@ -64,3 +64,24 @@ describe("OrdersFilterBar - Sólo mis pedidos (Recepción)", () => {
     expect(screen.getByRole("button", { name: /filtros/i })).toHaveTextContent("1");
   });
 });
+
+describe("OrdersFilterBar - Archivados", () => {
+  it("el toggle está a la vista con su conteo y activa showArchived", async () => {
+    mockPermissions(["recepcion"]);
+    const onChange = vi.fn();
+    render(
+      <OrdersFilterBar
+        clients={clients}
+        users={users}
+        filters={EMPTY_ORDERS_FILTERS}
+        onChange={onChange}
+        archivedCount={4}
+      />
+    );
+
+    const toggle = screen.getByRole("switch", { name: /Archivados/ });
+    expect(toggle).toHaveAccessibleName(/4/);
+    await userEvent.click(toggle);
+    expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ORDERS_FILTERS, showArchived: true });
+  });
+});
