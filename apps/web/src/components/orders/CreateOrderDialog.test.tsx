@@ -92,7 +92,7 @@ describe("CreateOrderDialog (una sola vista)", () => {
   it("es una sola vista: no hay pasos ni botón Siguiente, y el CTA vive fuera del área con scroll", () => {
     renderDialog();
     expect(screen.queryByRole("button", { name: /Siguiente/ })).toBeNull();
-    for (const title of ["Cliente", "Diseño y producción", "Qué se pide", "Entrega"]) {
+    for (const title of [/^Cliente$/, /^Diseño y producción$/, /^Qué se pide$/, /^Entrega\s*\(opcional\)$/]) {
       expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     }
     const cta = screen.getByRole("button", { name: /Crear pedido/ });
@@ -278,6 +278,25 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     expect(createMock).toHaveBeenCalledTimes(1);
     await act(async () => resolveCreate({ id: 9 }));
+  });
+
+  it("Ctrl+Enter dentro de un combobox abierto elige la opción y NO crea con datos viejos", async () => {
+    renderDialog();
+    await fillDirectOrder();
+    await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
+    await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), "Taza");
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    expect(createMock).not.toHaveBeenCalled();
+    // Con el popover cerrado, Ctrl+Enter sí crea, y con el producto nuevo incluido.
+    await userEvent.keyboard("{Control>}{Enter}{/Control}");
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderProducts: [
+          { customName: "Playera", quantity: 5 },
+          { customName: "Taza", quantity: 1 },
+        ],
+      })
+    );
   });
 
   it("el toast ofrece crear otro pedido para el mismo cliente", async () => {

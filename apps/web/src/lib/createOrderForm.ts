@@ -139,15 +139,14 @@ export function longDateLabel(date: string): string {
 }
 
 /**
- * Franjas de 30 minutos para la hora de entrega (24 h, "HH:mm"). Cubre la
- * jornada extendida del taller; reemplaza al `input type="time"` nativo, que
- * se muestra en inglés/AM-PM según el navegador.
+ * Horas de entrega cada 15 minutos, las 24 h ("HH:mm"). Reemplaza al
+ * `input type="time"` nativo, que se muestra en inglés/AM-PM según el
+ * navegador; el Select de Radix permite tipear para saltar ("18" → 18:00).
  */
 export const DELIVERY_TIME_SLOTS: string[] = (() => {
   const slots: string[] = [];
-  for (let h = 6; h <= 22; h++) {
-    for (const m of [0, 30]) {
-      if (h === 22 && m === 30) continue;
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
       slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     }
   }

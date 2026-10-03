@@ -32,10 +32,11 @@ describe("createOrderForm", () => {
     expect(presetForDate("", TODAY)).toBeNull();
   });
 
-  it("las franjas de hora van de 06:00 a 22:00 cada 30 minutos", () => {
-    expect(DELIVERY_TIME_SLOTS[0]).toBe("06:00");
-    expect(DELIVERY_TIME_SLOTS.at(-1)).toBe("22:00");
-    expect(DELIVERY_TIME_SLOTS).toContain("18:30");
+  it("las horas de entrega cubren el día entero cada 15 minutos", () => {
+    expect(DELIVERY_TIME_SLOTS).toHaveLength(96);
+    expect(DELIVERY_TIME_SLOTS[0]).toBe("00:00");
+    expect(DELIVERY_TIME_SLOTS.at(-1)).toBe("23:45");
+    expect(DELIVERY_TIME_SLOTS).toEqual(expect.arrayContaining(["10:15", "05:30", "22:30"]));
   });
 
   it("sanea los defaults recordados", () => {

@@ -237,7 +237,7 @@ function Section({
   children,
 }: {
   id: string;
-  title: string;
+  title: React.ReactNode;
   meta?: React.ReactNode;
   first?: boolean;
   children: React.ReactNode;
@@ -332,6 +332,8 @@ export function CreateOrderDialog({
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  /** Cambia en cada intento: remonta el contenido del aviso para que se vuelva a anunciar. */
+  const [attempt, setAttempt] = useState(0);
   /** Datos cargados por el usuario (nunca por efectos ni defaults): decide si cerrar pide confirmación. */
   const [dirty, setDirty] = useState(false);
   const [defaultsApplied, setDefaultsApplied] = useState(false);
@@ -348,6 +350,10 @@ export function CreateOrderDialog({
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
   const [shortcutLabel, setShortcutLabel] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /** URL de la preview vigente, para revocarla al cerrar o desmontar. */
+  const previewUrlRef = useRef<string | null>(null);
+  /** Dónde estaba el foco al pedir confirmación de descarte, para volver ahí. */
+  const focusBeforeConfirmRef = useRef<HTMLElement | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const rowKeySeq = useRef(0);
 
@@ -381,10 +387,27 @@ export function CreateOrderDialog({
     setDescriptionTouched(false);
     setShowFile(false);
     setLiveMessage("");
-    if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
+    revokePreview();
     setClientResourceFile(null);
-    setClientResourceFilePreview(null);
   };
+
+  function revokePreview() {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setClientResourceFilePreview(null);
+  }
+
+  // La preview (hasta 5 MB) no se retiene después de cerrar ni de desmontar.
+  useEffect(() => {
+    if (!open) revokePreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(
+    () => () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    },
+    []
+  );
 
   // Cada apertura arranca limpia, con los últimos defaults de diseño/área a la
   // vista (antes sólo se aplicaban a partir de la segunda apertura) y, si
@@ -410,6 +433,7 @@ export function CreateOrderDialog({
   const handleClose = () => {
     if (submittingRef.current) return;
     if (dirty) {
+      focusBeforeConfirmRef.current = document.activeElement as HTMLElement | null;
       setConfirmDiscardOpen(true);
       return;
     }
@@ -632,11 +656,12 @@ export function CreateOrderDialog({
 
     try {
       const parsedFile = await readFileAsUploadInput(normalized);
-      if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
+      revokePreview();
       setClientResourceFile(parsedFile);
-      setClientResourceFilePreview(
-        normalized.type.startsWith("image/") ? URL.createObjectURL(normalized) : null
-      );
+      if (normalized.type.startsWith("image/")) {
+        previewUrlRef.current = URL.createObjectURL(normalized);
+        setClientResourceFilePreview(previewUrlRef.current);
+      }
       markDirty();
       focusById("order-file-remove");
     } catch {
@@ -647,9 +672,8 @@ export function CreateOrderDialog({
   };
 
   const removeClientResourceFile = () => {
-    if (clientResourceFilePreview) URL.revokeObjectURL(clientResourceFilePreview);
+    revokePreview();
     setClientResourceFile(null);
-    setClientResourceFilePreview(null);
     markDirty();
     focusById("order-file-attach");
   };
@@ -774,6 +798,7 @@ export function CreateOrderDialog({
     setErrors(fieldErrors);
     setSubmitError(null);
     setSubmitAttempted(true);
+    setAttempt((n) => n + 1);
 
     const firstInvalid = FIELD_ORDER.find((f) => fieldErrors[f]);
     if (firstInvalid) {
@@ -816,6 +841,9 @@ export function CreateOrderDialog({
           ? getAreaLabel(parsed.area)
           : undefined;
       toast.success(orderCreatedMessage({ id: order?.id, destination }), {
+        // Al crear se abre el detalle del pedido (modal), que deja el body con
+        // pointer-events:none: sin esto "Crear otro para…" no se podía tocar.
+        style: { pointerEvents: "auto" },
         action: onCreateAnother
           ? {
               label: submittedClientLabel ? `Crear otro para ${submittedClientLabel}` : "Crear otro pedido",
@@ -839,6 +867,10 @@ export function CreateOrderDialog({
 
   /** ⌘/Ctrl+Enter crea el pedido desde cualquier campo (incluida la descripción). */
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    // Un combobox o un select abierto vive en un portal: su keydown sube por
+    // React hasta acá, pero ese Enter es para elegir la opción. Enviar en el
+    // mismo evento mandaría el estado ANTERIOR a esa elección.
+    if (e.defaultPrevented || !e.currentTarget.contains(e.target as Node)) return;
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
       void handleSubmit();
@@ -1002,7 +1034,7 @@ export function CreateOrderDialog({
                             required
                             invalid={Boolean(errors.clientId)}
                             describedBy={errors.clientId ? "order-client-error" : undefined}
-                            className="flex-1"
+                            className="sm:flex-1"
                             items={clients.map((c) => ({ id: c.id, label: clientLabel(c) }))}
                             selectedId={null}
                             customValue=""
@@ -1124,10 +1156,12 @@ export function CreateOrderDialog({
                     </fieldset>
 
                     <div className="space-y-1.5">
-                      <label htmlFor="order-assignee" className="text-sm font-medium">
-                        Asignar a
-                        {!requiresDesign && !sharedAccountForArea && <OptionalTag />}
-                      </label>
+                      {React.createElement(
+                        assignmentArea ? "label" : "p",
+                        { htmlFor: assignmentArea ? "order-assignee" : undefined, className: "text-sm font-medium" },
+                        "Asignar a",
+                        !requiresDesign && !sharedAccountForArea ? <OptionalTag key="opt" /> : null
+                      )}
                       {assignmentArea ? (
                         <Select
                           value={assignedUserId !== undefined ? String(assignedUserId) : ""}
@@ -1166,7 +1200,7 @@ export function CreateOrderDialog({
                           </SelectContent>
                         </Select>
                       ) : (
-                        <p id="order-assignee" tabIndex={-1} className="text-meta outline-none">
+                        <p className="text-meta">
                           Elegí primero un área de producción.
                         </p>
                       )}
@@ -1258,12 +1292,12 @@ export function CreateOrderDialog({
                                     onUseCustom={(text) => renameRow(row.key, text)}
                                   />
                                 </div>
-                                <div className="inline-flex items-center justify-self-start rounded-full border border-border">
+                                <div className="inline-flex items-center justify-self-start rounded-full border border-border focus-within:ring-2 focus-within:ring-ring/60">
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="size-11 rounded-full aria-disabled:opacity-40 sm:size-9"
+                                    className="size-11 rounded-full aria-disabled:opacity-60 sm:size-9"
                                     aria-label={`Restar 1 a ${row.customName}`}
                                     aria-disabled={!qty || qty <= 1}
                                     onClick={() => qty && qty > 1 && setQuantity(row.key, qty - 1)}
@@ -1464,7 +1498,15 @@ export function CreateOrderDialog({
                   </Section>
 
                   {/* ───────────── Entrega ───────────── */}
-                  <Section id="order-section-delivery" title="Entrega" meta="Opcional">
+                  <Section
+                    id="order-section-delivery"
+                    title={
+                      <>
+                        Entrega
+                        <OptionalTag />
+                      </>
+                    }
+                  >
                     <div className="flex flex-wrap gap-2">
                       <ToggleGroup
                         type="single"
@@ -1559,6 +1601,12 @@ export function CreateOrderDialog({
                             ))}
                           </SelectContent>
                         </Select>
+                        {activePreset === "today" && !deliveryTime && (
+                          <p className="basis-full text-meta">
+                            Sin hora, el plazo vence a las 00:00 de hoy y el pedido figura vencido. Elegí
+                            una hora de entrega.
+                          </p>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -1590,7 +1638,7 @@ export function CreateOrderDialog({
                   )}
                 >
                   {showErrorNotice && (
-                    <>
+                    <React.Fragment key={attempt}>
                       <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
                       {submitError ? (
                         <span>No se pudo crear el pedido: {submitError}</span>
@@ -1608,6 +1656,7 @@ export function CreateOrderDialog({
                               variant="link"
                               className={cn(
                                 "h-auto p-0 text-red-700 underline dark:text-red-400",
+                                TAP,
                                 i > 0 && "hidden sm:inline-flex"
                               )}
                               onClick={() => focusField(field)}
@@ -1620,7 +1669,7 @@ export function CreateOrderDialog({
                           )}
                         </>
                       )}
-                    </>
+                    </React.Fragment>
                   )}
                 </div>
 
@@ -1652,8 +1701,9 @@ export function CreateOrderDialog({
                   >
                     Cancelar
                   </Button>
-                  <motion.div {...(submitting ? {} : formButtonMotion)}>
+                  <motion.div tabIndex={-1} {...(submitting ? {} : formButtonMotion)}>
                     <Button
+                      id="order-submit"
                       type="button"
                       className="h-11 gap-2 px-5 sm:h-10"
                       onClick={() => void handleSubmit()}
@@ -1685,7 +1735,19 @@ export function CreateOrderDialog({
 
       {/* Confirmar antes de descartar un pedido con datos cargados (Escape, click afuera, X, Cancelar). */}
       <AlertDialog open={confirmDiscardOpen} onOpenChange={setConfirmDiscardOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onCloseAutoFocus={(e) => {
+            // Sin trigger, Radix no sabe a dónde devolver el foco: vuelve al
+            // campo donde estaba el usuario (o al CTA si ya no existe).
+            e.preventDefault();
+            const previous = focusBeforeConfirmRef.current;
+            const target =
+              previous && previous.isConnected && previous !== document.body
+                ? previous
+                : document.getElementById("order-submit");
+            target?.focus();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>¿Descartar pedido?</AlertDialogTitle>
             <AlertDialogDescription>
