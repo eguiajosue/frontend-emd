@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronRight, CloudOff, Lock } from "lucide-react";
+import { Check, ChevronRight, Circle, CircleDot, CloudOff, Lock } from "lucide-react";
 import {
   type HandoffStageState,
   type OrderHandoff as OrderHandoffData,
@@ -31,8 +31,8 @@ export function HandoffStrip({
     <section
       aria-label="Pase del pedido"
       className={cn(
-        "space-y-3 rounded-2xl border p-4",
-        handoff.cancelled ? "border-destructive/40 bg-destructive/5" : "bg-muted/20"
+        "space-y-3 rounded-2xl border p-5",
+        handoff.cancelled ? "border-destructive/40 bg-destructive/5" : "border-border/60 bg-card shadow-soft"
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -40,7 +40,7 @@ export function HandoffStrip({
 
         {pendingSync && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-amber-500/50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
             title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
           >
             <CloudOff className="h-3 w-3 shrink-0" aria-hidden />
@@ -80,36 +80,47 @@ export function HandoffStrip({
 /** La cadena de etapas (Recepción → … → Entrega) con la actual encendida. */
 export function HandoffStages({ stages }: { stages: OrderHandoffData["stages"] }) {
   return (
-    <ol className="flex flex-wrap items-center gap-y-2" aria-label="Etapas del pedido">
-      {stages.map((stage, index) => (
-        <li key={stage.key} className="flex items-center">
-          {index > 0 && (
-            <ChevronRight aria-hidden className="mx-1 h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
-          )}
-          <span
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-              STAGE_CLASSES[stage.state]
+    <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-2 sm:gap-x-0" aria-label="Etapas del pedido">
+      {stages.map((stage, index) => {
+        const Icon = STAGE_ICONS[stage.state];
+        return (
+          <li key={stage.key} className="flex items-center">
+            {index > 0 && (
+              <ChevronRight aria-hidden className="mx-1 hidden h-3.5 w-3.5 shrink-0 text-muted-foreground/50 sm:block" />
             )}
-            aria-current={stage.state === "current" ? "step" : undefined}
-            // El detalle completo queda a mano sin cargar la tira de texto.
-            title={stage.detail ? `${stage.label}: ${stage.detail}` : stage.label}
-          >
-            {stage.state === "done" && <Check className="h-3 w-3 shrink-0" aria-hidden />}
-            {stage.state === "blocked" && <Lock className="h-3 w-3 shrink-0" aria-hidden />}
-            {stage.label}
-          </span>
-        </li>
-      ))}
+            <span
+              className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                STAGE_CLASSES[stage.state]
+              )}
+              aria-current={stage.state === "current" ? "step" : undefined}
+              // El detalle completo queda a mano sin cargar la tira de texto.
+              title={stage.detail ? `${stage.label}: ${stage.detail}` : stage.label}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {stage.label}
+            </span>
+          </li>
+        );
+      })}
     </ol>
   );
 }
 
+const STAGE_ICONS: Record<HandoffStageState, typeof Check> = {
+  done: Check,
+  current: CircleDot,
+  blocked: Lock,
+  pending: Circle,
+};
+
+// Píldoras tintadas, como los estados del tablero: la actual en tinta (es lo
+// que hay que mirar), lo hecho y lo pendiente en gris, lo bloqueado en ámbar.
 const STAGE_CLASSES: Record<HandoffStageState, string> = {
-  done: "bg-muted text-muted-foreground",
-  current: "bg-primary text-primary-foreground",
+  done: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  current: "bg-ink text-ink-foreground shadow-sm",
   // Bloqueada no es lo mismo que pendiente: el trabajo existe pero no puede
   // empezar todavía, y confundirlas hace que un área crea que se traspapeló.
-  blocked: "border border-dashed border-amber-500/50 text-amber-700 dark:text-amber-400",
-  pending: "border border-dashed text-muted-foreground/70",
+  blocked: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  pending: "bg-muted text-muted-foreground",
 };

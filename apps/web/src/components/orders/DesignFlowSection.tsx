@@ -211,7 +211,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   };
 
   return (
-    <div className={embedded ? "space-y-4" : "space-y-4 rounded-2xl border border-border bg-muted/10 p-4"}>
+    <div className={embedded ? "space-y-4" : "space-y-4 rounded-2xl border border-border/60 bg-card p-5 shadow-soft"}>
       {!embedded && (
         <div className="flex items-center gap-2">
           <Palette className="h-4 w-4 text-primary" />
@@ -264,9 +264,9 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
                 <AccordionItem
                   key={revision.id}
                   value={String(revision.id)}
-                  className="rounded-xl border border-border bg-background/60 px-3"
+                  className="rounded-xl border-0 bg-muted/50 px-4"
                 >
-                  <AccordionTrigger className="py-2.5 text-sm font-semibold hover:no-underline">
+                  <AccordionTrigger className="py-3 text-sm font-semibold hover:no-underline">
                     <span className="flex flex-1 flex-wrap items-center justify-between gap-2 pr-2">
                       <span>Ronda {revision.round}</span>
                       <span className="text-xs font-normal text-muted-foreground">
@@ -310,7 +310,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       )}
 
       {canStart ? (
-        <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+        <div className="space-y-2 rounded-xl bg-primary/5 p-4">
           <p className="text-sm font-medium">Nadie lo empezó todavía</p>
           <p className="text-xs text-muted-foreground">
             Marcalo cuando arranques, así Recepción sabe que ya está en curso.
@@ -359,7 +359,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       ) : null}
 
       {canTakeDesign && !canStart && (
-        <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center">
           <Button
             size="sm"
             variant="outline"
@@ -383,7 +383,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
 
       {/* Acciones contextuales por rol + estado */}
       {canDesign && isDesignTurn && (
-        <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:items-center">
           <Button
             size="sm"
             onClick={() => setMontageDialogOpen(true)}
@@ -410,7 +410,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       )}
 
       {canReception && isWaitingAuthorization && latestRevision && (
-        <div className="space-y-2 border-t border-border pt-3">
+        <div className="space-y-2 border-t border-border/60 pt-4">
           <p className="text-sm font-medium">¿Qué respondió el cliente?</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setApproveOpen(true)} className="gap-1.5">
@@ -434,7 +434,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       )}
 
       {isAuthorized && (
-        <p className="flex items-center gap-1.5 border-t border-border pt-3 text-sm text-emerald-600 dark:text-emerald-400">
+        <p className="flex items-center gap-1.5 border-t border-border/60 pt-4 text-sm text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="h-4 w-4" />
           El cliente autorizó el diseño — el pedido pasa a producción.
         </p>
@@ -544,19 +544,17 @@ function RevisionTimelineItem({
   );
 
   const state: { label: string; classes: string } = revision.approved
-    ? { label: "Aprobada", classes: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" }
+    ? { label: "Aprobada", classes: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" }
     : revision.feedbackText
-    ? { label: "Con cambios", classes: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300" }
-    : { label: "Enviada", classes: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300" };
+    ? { label: "Con cambios", classes: "bg-orange-500/10 text-orange-700 dark:text-orange-300" }
+    : { label: "Enviada", classes: "bg-sky-500/10 text-sky-700 dark:text-sky-300" };
 
   const legacyMontageName = revision.montageFileName ?? `montaje-ronda-${revision.round}`;
   const feedbackBlock = revision.feedbackText ? (
     <div
       className={cn(
-        "rounded-lg border p-2.5 text-sm",
-        feedbackFirst
-          ? "border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40"
-          : "bg-muted/30"
+        "rounded-xl p-3.5 text-sm",
+        feedbackFirst ? "bg-orange-500/10" : "bg-background/70"
       )}
     >
       <p className={cn("mb-1", feedbackFirst ? "text-sm font-semibold" : "text-label")}>
@@ -599,13 +597,13 @@ function RevisionTimelineItem({
       exit={{ opacity: 0 }}
       className={cn(
         "relative space-y-2",
-        !hideHeader && "rounded-xl border border-border bg-background/60 p-3"
+        !hideHeader && "space-y-3 rounded-xl bg-muted/50 p-4"
       )}
     >
       {!hideHeader && (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-semibold">Ronda {revision.round}</span>
-          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${state.classes}`}>
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium", state.classes)}>
             {state.label}
           </span>
         </div>
@@ -734,7 +732,7 @@ function RevisionFileCard({
 
   /** Un error de descarga no puede dejar el skeleton girando para siempre. */
   const retry = (
-    <div className="flex w-32 flex-col items-start gap-1.5 rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+    <div className="flex w-32 flex-col items-start gap-1.5 rounded-xl border border-dashed p-2.5 text-xs text-muted-foreground">
       <span className="truncate" title={file.filename}>
         No se pudo cargar {file.filename}.
       </span>
@@ -1015,13 +1013,13 @@ function StagedFileList({
       {files.map((staged, index) => (
         <li
           key={`${staged.input.filename}-${index}`}
-          className="flex items-center gap-2 rounded-lg border p-2 text-left text-sm"
+          className="flex items-center gap-2 rounded-xl border border-border/60 bg-card p-2 text-left text-sm"
         >
           {staged.previewUrl ? (
             <PreviewImage
               src={staged.previewUrl}
               alt={staged.input.filename}
-              className="h-12 w-12 shrink-0 rounded object-cover"
+              className="h-12 w-12 shrink-0 rounded-lg object-cover"
             />
           ) : (
             <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />

@@ -43,22 +43,22 @@ const TONE_BY_DESIGN_STATUS_NAME: Record<string, StatusTone> = {
   autorizado: "success", // verde: listo para pasar a producción
 };
 
-/** Clases Tailwind (bg + texto + borde) por tono, pensadas para light y dark. */
+/**
+ * Clases Tailwind (bg + texto + borde) por tono, pensadas para light y dark.
+ * Píldora tintada suave: texto del color + fondo del mismo color al ~10%, sin
+ * borde visible (el `border-transparent` mantiene la altura de los call sites
+ * que todavía agregan `border`). El color fuerte queda para el texto y el
+ * punto/barra; nunca un bloque saturado.
+ */
 const CLASSES_BY_TONE: Record<StatusTone, string> = {
-  neutral:
-    "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
-  info: "bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/40 dark:text-sky-300 dark:border-sky-800",
-  warning:
-    "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
-  progress:
-    "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-800",
-  success:
-    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800",
-  done: "bg-primary/10 text-primary border-primary/20",
-  danger:
-    "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800",
-  critical:
-    "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
+  neutral: "border-transparent bg-slate-500/10 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
+  info: "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  warning: "border-transparent bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
+  progress: "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+  success: "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+  done: "border-transparent bg-primary/10 text-primary",
+  danger: "border-transparent bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
+  critical: "border-transparent bg-red-500/10 text-red-700 dark:bg-red-400/15 dark:text-red-300",
 };
 
 /** Punto (indicador) sólido por tono, para usar en leyendas/gráficos. */

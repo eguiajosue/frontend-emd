@@ -68,28 +68,30 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex flex-col items-start gap-2 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
+        <CardTitle className="flex min-w-0 items-center gap-2.5 whitespace-nowrap">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          </span>
           Calendario de entregas
         </CardTitle>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 rounded-full bg-muted p-0.5">
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 hover:bg-card"
             onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
             aria-label="Mes anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[5.5rem] text-center text-sm font-medium capitalize sm:min-w-[7.5rem]">
+          <span className="min-w-[6.25rem] text-center text-xs font-medium capitalize">
             {format(currentMonth, "MMMM yyyy", { locale: es })}
           </span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-7 w-7 hover:bg-card"
             onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
             aria-label="Mes siguiente"
           >
@@ -98,7 +100,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs font-medium text-muted-foreground">
           {WEEKDAY_LABELS.map((d, i) => (
             <div key={i} className="py-1">
               {d}
@@ -117,20 +119,29 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
             const inMonth = isSameMonth(day, currentMonth);
             const today = isToday(day);
 
+            // Acento sutil: los días con entregas llevan un fondo magenta al
+            // ~10% y el conteo en un punto; hoy se marca en tinta. Nada de
+            // celdas enteras en magenta saturado.
+            const hasOrders = dayOrders.length > 0;
             const cell = (
               <div
                 className={cn(
-                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg text-sm transition-colors",
+                  "relative flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-xl text-sm tabular-nums transition-colors",
                   inMonth ? "text-foreground" : "text-muted-foreground/40",
-                  dayOrders.length > 0 &&
-                    "cursor-pointer bg-primary text-primary-foreground font-semibold hover:bg-primary/90",
-                  dayOrders.length === 0 && today && "border border-primary/60 font-semibold",
-                  dayOrders.length === 0 && !today && "hover:bg-muted"
+                  hasOrders && !today && "bg-primary/10 font-semibold hover:bg-primary/15",
+                  today && "bg-ink font-semibold text-ink-foreground",
+                  hasOrders && "cursor-pointer",
+                  !hasOrders && !today && "hover:bg-muted"
                 )}
               >
-                <span>{format(day, "d")}</span>
-                {dayOrders.length > 0 && (
-                  <span className="text-[10px] leading-none tabular-nums opacity-90">
+                <span className="leading-none">{format(day, "d")}</span>
+                {hasOrders && (
+                  <span
+                    className={cn(
+                      "text-[0.6875rem] font-semibold leading-none",
+                      today ? "text-ink-foreground/80" : "text-primary"
+                    )}
+                  >
                     {dayOrders.length}
                   </span>
                 )}
@@ -146,13 +157,13 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                         type="button"
                         variant="bare"
                         size="bare"
-                        className="block w-full rounded-lg"
+                        className="block w-full rounded-xl"
                         aria-label={`${format(day, "d 'de' MMMM", { locale: es })}: ${dayOrders.length} entrega${dayOrders.length === 1 ? "" : "s"}`}
                       >
                         {cell}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80" align="center">
+                    <PopoverContent className="w-80 rounded-2xl" align="center">
                       <p className="mb-2 text-sm font-semibold capitalize">
                         {format(day, "EEEE d 'de' MMMM", { locale: es })}
                       </p>
@@ -160,9 +171,9 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                         {dayOrders.map((order) => (
                           <Button
                             key={order.id}
-                            variant="outline"
+                            variant="ghost"
                             onClick={() => onSelectOrder(order.id)}
-                            className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal p-2.5 text-left font-normal"
+                            className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-xl bg-muted/50 p-3 text-left font-normal"
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">#{order.id} · {getOrderClientName(order)}</span>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Menu } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ import { MobileMoreSheet } from "./MobileMoreSheet";
  * primitive, inerte en móvil) con el resto del menú, config, tema, reporte
  * de error y logout.
  */
-/** Etiqueta de una palabra bajo el ícono: los títulos completos no entran. */
+/** Etiqueta de una palabra junto al ícono activo: los títulos completos no entran. */
 const SHORT_LABELS: Record<string, string> = {
   "/dashboard/admin": "Panel",
   "/dashboard/chat": "Chat",
@@ -43,6 +43,7 @@ export function MobileTabBar() {
   const pathname = usePathname();
   const visibleItems = useVisibleNavItems();
   const [moreOpen, setMoreOpen] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   const primaryTabs = TAB_PRIORITY_URLS.map((url) =>
     visibleItems.find((item) => item.url === url)
@@ -60,7 +61,10 @@ export function MobileTabBar() {
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden"
     >
-      <div className="inline-flex items-center gap-1 rounded-full bg-card p-1.5 shadow-soft-md">
+      {/* Píldora blanca flotante, mismo lenguaje que el riel de escritorio:
+          íconos en círculo y el destino activo en tinta, que además se estira
+          para mostrar su nombre corto. */}
+      <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-card p-1.5 shadow-soft-md dark:border-border">
         {primaryTabs.map((item) => {
           const active = activeUrl === item.url;
           return (
@@ -69,35 +73,34 @@ export function MobileTabBar() {
               href={item.url}
               aria-current={active ? "page" : undefined}
               aria-label={item.title}
-              className="relative flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+              className={cn(
+                "relative flex h-12 items-center justify-center gap-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                active
+                  ? "px-4 text-sidebar-primary-foreground"
+                  : "w-12 text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
             >
               {active && (
                 <motion.span
                   layoutId="mobile-tabbar-highlight"
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-primary/10"
-                  transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                  className="pointer-events-none absolute inset-0 rounded-full bg-sidebar-primary"
+                  transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
                 />
               )}
               <span className="relative">
-                <item.icon
-                  className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")}
-                />
+                <item.icon className="h-5 w-5" />
                 {item.unreadCount > 0 && (
-                  <span className="pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-card">
+                  <span className="pointer-events-none absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-card">
                     {item.unreadCount > 99 ? "99+" : item.unreadCount}
                   </span>
                 )}
               </span>
-              <span
-                aria-hidden
-                className={cn(
-                  "text-[11px] font-medium leading-none",
-                  active ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {shortLabel(item)}
-              </span>
+              {active && (
+                <span aria-hidden className="relative text-[0.8125rem] font-medium leading-none">
+                  {shortLabel(item)}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -105,12 +108,13 @@ export function MobileTabBar() {
           variant="ghost"
           onClick={() => setMoreOpen(true)}
           aria-label="Más opciones"
-          className="relative h-14 w-16 flex-col gap-0.5 rounded-2xl px-0 text-muted-foreground hover:bg-transparent [&_svg]:size-5"
+          aria-expanded={moreOpen}
+          className={cn(
+            "h-12 w-12 rounded-full p-0 text-muted-foreground hover:bg-muted hover:text-foreground [&_svg]:size-5",
+            moreOpen && "bg-muted text-foreground"
+          )}
         >
           <Menu />
-          <span aria-hidden className="text-[11px] font-medium leading-none">
-            Más
-          </span>
         </Button>
       </div>
       <MobileMoreSheet open={moreOpen} onOpenChange={setMoreOpen} />

@@ -6,9 +6,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 
 /**
- * Sección del detalle de pedido. Un solo plano: las secciones se separan con
- * una línea y aire, no con una tarjeta cada una — antes había hasta tres
- * niveles de recuadro anidado y todo pesaba lo mismo.
+ * Superficie de cada bloque del detalle: tarjeta blanca grande, casi sin
+ * borde, sobre el lienzo gris. Un solo nivel — lo de adentro se agrupa con
+ * fondos `bg-muted`, nunca con otra tarjeta.
+ */
+export const DETAIL_BLOCK_CLASS =
+  "rounded-2xl border border-border/60 bg-card p-5 shadow-soft sm:p-6";
+
+/**
+ * Sección del detalle de pedido: un bloque por sección, con título arriba y
+ * mucho aire adentro.
  */
 export function DetailSection({
   id,
@@ -28,7 +35,7 @@ export function DetailSection({
     <section
       id={id}
       aria-labelledby={headingId}
-      className={cn("scroll-mt-28 space-y-3 border-t pt-5", className)}
+      className={cn("scroll-mt-28 space-y-4", DETAIL_BLOCK_CLASS, className)}
     >
       <header className="flex min-h-8 items-center justify-between gap-3">
         <h3 id={headingId} className="text-section-title">
@@ -72,19 +79,21 @@ export function CollapsibleSection({
         setOpen(next);
         onOpenChange?.(next);
       }}
-      className="group scroll-mt-28 border-t pt-5"
+      className={cn("group scroll-mt-28", DETAIL_BLOCK_CLASS)}
     >
-      <CollapsibleTrigger className="flex min-h-8 w-full items-center gap-3 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60">
+      <CollapsibleTrigger className="-m-2 flex min-h-8 w-[calc(100%+1rem)] items-center gap-3 rounded-xl p-2 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/60">
         <h3 className="text-section-title">{title}</h3>
         {summary && !open && (
           <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{summary}</span>
         )}
-        <ChevronDown
-          aria-hidden
-          className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-        />
+        <span className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <ChevronDown
+            aria-hidden
+            className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180"
+          />
+        </span>
       </CollapsibleTrigger>
-      <CollapsibleContent forceMount className="pt-3 data-[state=closed]:hidden">
+      <CollapsibleContent forceMount className="pt-4 data-[state=closed]:hidden">
         {children}
       </CollapsibleContent>
     </Collapsible>
@@ -102,8 +111,8 @@ export function DetailField({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0 space-y-0.5", className)}>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+    <div className={cn("min-w-0 space-y-1", className)}>
+      <dt className="text-label">{label}</dt>
       <dd className="text-sm font-medium">{children}</dd>
     </div>
   );

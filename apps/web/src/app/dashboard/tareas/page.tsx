@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PartyPopper } from "lucide-react";
-import Title from "@/components/Title";
+import { Inbox, PartyPopper, UserRound, type LucideIcon } from "lucide-react";
+import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -20,6 +20,22 @@ import type { MyTask } from "@/types";
 
 const ALL = "all";
 
+/** Cabecera de grupo al estilo kanban: píldora con ícono, nombre y contador. */
+function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: LucideIcon; label: string; count: number }) {
+  return (
+    <div className="flex items-center rounded-2xl border border-border/60 bg-card px-3 py-2.5 dark:border-border">
+      <h2
+        id={id}
+        className="inline-flex items-center gap-2 rounded-full bg-muted py-1 pl-2.5 pr-1 text-sm font-medium"
+      >
+        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+        {label}
+        <span className="rounded-full bg-card px-2 py-0.5 text-xs tabular-nums text-muted-foreground">{count}</span>
+      </h2>
+    </div>
+  );
+}
+
 /**
  * "Tareas asignadas": la pantalla de trabajo de Diseño y Producción. Una
  * tarjeta por TAREA (si un pedido pasa por Taller y DTF y la persona hace las
@@ -27,7 +43,7 @@ const ALL = "all";
  * tomar; la gestión de pedidos completa queda en "Pedidos" (Recepción).
  */
 export default function TareasPage() {
-  const { roles } = usePermissions();
+  const { roles, session } = usePermissions();
   const { tasks, isLoading, isError, refetch } = useMyTasks();
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
@@ -41,15 +57,15 @@ export default function TareasPage() {
 
   const description =
     tasks.length === 0
-      ? `Tu trabajo en ${formatRoleList(roles)}.`
-      : `${mine.length} tuya${mine.length === 1 ? "" : "s"} · ${free.length} libre${
+      ? `Tus tareas asignadas en ${formatRoleList(roles)}.`
+      : `Tus tareas asignadas: ${mine.length} tuya${mine.length === 1 ? "" : "s"} · ${free.length} libre${
           free.length === 1 ? "" : "s"
         } para tomar en ${formatRoleList(roles)}.`;
 
   const renderList = (list: MyTask[]) => (
-    <ul className="space-y-2">
+    <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {list.map((task) => (
-        <li key={task.key}>
+        <li key={task.key} className="min-w-0">
           <TaskCard
             task={task}
             state={taskDeadline(task, now)}
@@ -64,8 +80,8 @@ export default function TareasPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <Title title="Tareas asignadas" description={description} />
+    <div className="space-y-8">
+      <GreetingHeader firstName={session?.user?.first_name} subtitle={description} />
 
       {areas.length > 1 && (
         <ToggleGroup
@@ -93,10 +109,10 @@ export default function TareasPage() {
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isLoading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-28 w-full" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Skeleton className="h-52 w-full rounded-2xl" />
+          <Skeleton className="h-52 w-full rounded-2xl" />
+          <Skeleton className="h-52 w-full rounded-2xl" />
         </div>
       ) : mine.length === 0 && free.length === 0 ? (
         <EmptyState
@@ -106,12 +122,10 @@ export default function TareasPage() {
         />
       ) : (
         <div className="space-y-8">
-          <section className="space-y-3" aria-labelledby="tareas-mias">
-            <h2 id="tareas-mias" className="text-section-title">
-              Tuyas <span className="font-normal tabular-nums text-muted-foreground">{mine.length}</span>
-            </h2>
+          <section className="space-y-4" aria-labelledby="tareas-mias">
+            <ColumnHeader id="tareas-mias" icon={UserRound} label="Tuyas" count={mine.length} />
             {mine.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="px-1 text-sm text-muted-foreground">
                 No tenés tareas a tu nombre. Tomá una de las libres para empezar.
               </p>
             ) : (
@@ -119,11 +133,8 @@ export default function TareasPage() {
             )}
           </section>
           {free.length > 0 && (
-            <section className="space-y-3" aria-labelledby="tareas-libres">
-              <h2 id="tareas-libres" className="text-section-title">
-                Libres para tomar{" "}
-                <span className="font-normal tabular-nums text-muted-foreground">{free.length}</span>
-              </h2>
+            <section className="space-y-4" aria-labelledby="tareas-libres">
+              <ColumnHeader id="tareas-libres" icon={Inbox} label="Libres para tomar" count={free.length} />
               {renderList(free)}
             </section>
           )}

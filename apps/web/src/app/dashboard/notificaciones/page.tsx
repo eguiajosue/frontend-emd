@@ -4,7 +4,16 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { CheckCheck, MailCheck } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  Factory,
+  MailCheck,
+  MessageCircle,
+  Package,
+  Palette,
+  type LucideIcon,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -33,6 +42,29 @@ const GROUP_FILTERS: NotificationGroup[] = [
   "produccion",
   "otras",
 ];
+
+/** Ícono del círculo de cada aviso, por categoría (el chat lleva el suyo). */
+const GROUP_ICONS: Record<NotificationGroup, LucideIcon> = {
+  pedidos: Package,
+  diseno: Palette,
+  produccion: Factory,
+  otras: Bell,
+};
+
+function NotificationIcon({ notification }: { notification: Notification }) {
+  const Icon =
+    notification.type === "chat_message"
+      ? MessageCircle
+      : GROUP_ICONS[notificationGroup(notification.type)];
+  return (
+    <span
+      aria-hidden
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70"
+    >
+      <Icon className="h-[18px] w-[18px]" />
+    </span>
+  );
+}
 
 function relativeTime(value: string): string {
   const date = new Date(value);
@@ -103,7 +135,6 @@ export default function NotificacionesPage() {
         {unreadCount > 0 && (
           <Button
             variant="outline"
-            size="sm"
             disabled={isMarkingAll}
             onClick={() => markAllAsRead()}
             className="gap-2"
@@ -114,7 +145,7 @@ export default function NotificacionesPage() {
         )}
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <ToggleGroup
           type="single"
           variant="segmented"
@@ -135,20 +166,18 @@ export default function NotificacionesPage() {
         {availableGroups.length > 0 && (
           <ToggleGroup
             type="single"
-            variant="outline"
+            variant="segmented"
             size="sm"
             value={group}
             onValueChange={(v) => v && setGroup(v as typeof group)}
             aria-label="Tipo de notificación"
-            className="flex-wrap justify-start"
+            className="flex-wrap justify-start self-start rounded-full border bg-card p-1"
           >
-            <ToggleGroupItem value="all" className="rounded-full px-3 text-xs">
-              Todo
-            </ToggleGroupItem>
+            <ToggleGroupItem value="all">Todo</ToggleGroupItem>
             {availableGroups.map((key) => (
-              <ToggleGroupItem key={key} value={key} className="gap-1.5 rounded-full px-3 text-xs">
+              <ToggleGroupItem key={key} value={key} className="gap-1.5">
                 {NOTIFICATION_GROUP_LABELS[key]}
-                <span className="tabular-nums opacity-70">{countsByGroup.get(key)}</span>
+                <span className="text-xs tabular-nums opacity-70">{countsByGroup.get(key)}</span>
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -184,10 +213,10 @@ export default function NotificacionesPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-8">
           {dayGroups.map((dayGroup) => (
             <section key={dayGroup.key} className="space-y-2">
-              <h2 className="sticky top-0 z-10 bg-background/95 py-1 text-label backdrop-blur first-letter:uppercase">
+              <h2 className="sticky top-0 z-10 bg-background/95 py-1.5 text-section-title backdrop-blur first-letter:uppercase">
                 {dayGroup.label}
               </h2>
               <ul className="space-y-2">
@@ -209,40 +238,38 @@ export default function NotificacionesPage() {
                     <Button
                       variant="outline"
                       onClick={() => handleSelect(notification)}
-                      className={cn(
-                        "h-auto w-full items-start justify-start gap-3 whitespace-normal rounded-xl px-4 py-3 text-left font-normal",
-                        !notification.read && "border-primary/30 bg-primary/5"
-                      )}
+                      className="h-auto w-full items-start justify-start gap-3.5 whitespace-normal rounded-2xl border-border/60 bg-card px-4 py-3.5 text-left font-normal hover:bg-card hover:shadow-soft sm:px-5"
                     >
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "mt-2 h-2 w-2 shrink-0 rounded-full",
-                          notification.read ? "bg-transparent" : "bg-primary"
-                        )}
-                      />
+                      <NotificationIcon notification={notification} />
                       <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <NotificationTypeBadge type={notification.type} />
-                            <span
-                              className={cn(
-                                "font-medium",
-                                !notification.read && "text-foreground"
-                              )}
-                            >
-                              {notification.title}
-                            </span>
+                        <span className="flex items-start justify-between gap-3">
+                          <span
+                            className={cn(
+                              "min-w-0 text-[0.9375rem] leading-snug",
+                              notification.read ? "font-medium text-foreground/80" : "font-semibold text-foreground"
+                            )}
+                          >
+                            {notification.title}
                           </span>
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            {relativeTime(notification.createdAt)}
-                          </span>
+                          {/* Punto magenta = no leída (el texto accesible va en sr-only). */}
+                          {!notification.read && (
+                            <>
+                              <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                              <span className="sr-only">No leída</span>
+                            </>
+                          )}
                         </span>
                         {notification.body && (
-                          <span className="mt-0.5 block text-sm text-muted-foreground">
+                          <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">
                             {notification.body}
                           </span>
                         )}
+                        <span className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                          <NotificationTypeBadge type={notification.type} />
+                          <span className="text-xs text-muted-foreground">
+                            {relativeTime(notification.createdAt)}
+                          </span>
+                        </span>
                       </span>
                     </Button>
                   </motion.li>

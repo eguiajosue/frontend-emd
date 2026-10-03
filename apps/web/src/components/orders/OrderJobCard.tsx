@@ -1,7 +1,21 @@
 "use client";
 
 import { memo } from "react";
-import { ChevronRight } from "lucide-react";
+import {
+  Ban,
+  CalendarDays,
+  CalendarX2,
+  CheckCheck,
+  ChevronRight,
+  Clock,
+  Flame,
+  Hourglass,
+  ListChecks,
+  Package,
+  PackageCheck,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,54 +32,87 @@ import {
   type DeadlineTone,
 } from "@/lib/orderDeadline";
 import { isDesignFlowStatusName } from "@/lib/orderStatus";
+import { getStatusDotClasses } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
 export const TONE_META: Record<
   DeadlineTone,
-  { label: string; block: string; caption: string; dot: string }
+  {
+    label: string;
+    /** Bloque saturado: sólo para la píldora compacta del detalle del pedido. */
+    block: string;
+    caption: string;
+    dot: string;
+    /** Píldora tintada suave (texto del color + fondo al ~10%). */
+    pill: string;
+    /** Color de la cuenta regresiva y del ícono de la tarjeta de métrica. */
+    text: string;
+    icon: LucideIcon;
+  }
 > = {
   overdue: {
     label: "Vencido",
     block: "bg-rose-600 text-white dark:bg-rose-600/90",
     caption: "text-rose-50/85",
     dot: "bg-rose-500",
+    pill: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+    text: "text-rose-600 dark:text-rose-400",
+    icon: Flame,
   },
   at_risk: {
     label: "En riesgo",
     block: "bg-amber-400 text-amber-950 dark:bg-amber-400/90",
     caption: "text-amber-950/70",
     dot: "bg-amber-400",
+    pill: "bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
+    text: "text-amber-700 dark:text-amber-300",
+    icon: Hourglass,
   },
   on_time: {
     label: "A tiempo",
     block: "bg-emerald-600 text-white dark:bg-emerald-600/85",
     caption: "text-emerald-50/85",
     dot: "bg-emerald-500",
+    pill: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+    text: "text-emerald-700 dark:text-emerald-400",
+    icon: Timer,
   },
   no_date: {
     label: "Sin fecha",
     block: "bg-muted text-foreground",
     caption: "text-muted-foreground",
     dot: "bg-muted-foreground/50",
+    pill: "bg-muted text-muted-foreground",
+    text: "text-muted-foreground",
+    icon: CalendarX2,
   },
   finished: {
     label: "Terminado",
     block: "bg-sky-600 text-white dark:bg-sky-600/85",
     caption: "text-sky-50/85",
     dot: "bg-sky-500",
+    pill: "bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+    text: "text-sky-700 dark:text-sky-300",
+    icon: PackageCheck,
   },
   delivered: {
     label: "Entregado",
     block: "bg-muted text-muted-foreground",
     caption: "text-muted-foreground",
     dot: "bg-muted-foreground/40",
+    pill: "bg-muted text-muted-foreground",
+    text: "text-muted-foreground",
+    icon: CheckCheck,
   },
   cancelled: {
     label: "Cancelado",
     block: "bg-muted text-muted-foreground line-through decoration-1",
     caption: "text-muted-foreground",
     dot: "bg-muted-foreground/40",
+    pill: "bg-muted text-muted-foreground line-through decoration-1",
+    text: "text-muted-foreground",
+    icon: Ban,
   },
 };
 
@@ -97,8 +144,9 @@ interface OrderJobCardProps {
 
 /**
  * Tarjeta del muro de pedidos: quién, qué, qué áreas lo tocan y, sobre todo,
- * cuánto falta. El bloque de color es lo primero que se lee desde lejos;
- * todo lo demás es contexto para quien se acerca.
+ * cuánto falta. La píldora de plazo y la cuenta regresiva en su color son lo
+ * primero que se lee desde lejos; todo lo demás es contexto para quien se
+ * acerca.
  */
 export const OrderJobCard = memo(function OrderJobCard({
   order,
@@ -126,10 +174,16 @@ export const OrderJobCard = memo(function OrderJobCard({
   const clientName = getOrderClientName(order);
   const live = state.remainingMs != null;
 
+  const ToneIcon = meta.icon;
+  const pct = tasks.total > 0 ? Math.round((tasks.done / tasks.total) * 100) : 0;
+
   return (
     <article
       className={cn(
-        "group relative flex w-full min-w-0 flex-col rounded-xl border bg-card transition-[box-shadow,border-color] duration-150 hover:border-foreground/15 hover:shadow-soft-md",
+        "group relative flex w-full min-w-0 flex-col rounded-2xl border border-border/60 bg-card shadow-soft transition-[box-shadow,border-color] duration-150 hover:border-border hover:shadow-soft-md",
+        // Vencido: el borde se tiñe apenas; la píldora y la cuenta en rojo ya
+        // lo dicen sin pintar la tarjeta entera.
+        state.tone === "overdue" && "border-rose-500/35 dark:border-rose-400/35",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
     >
@@ -140,21 +194,56 @@ export const OrderJobCard = memo(function OrderJobCard({
         size="bare"
         onClick={() => onOpen(order.id)}
         aria-label={`Ver detalle del pedido #${order.id} de ${clientName}`}
-        className="absolute inset-0 z-0 rounded-xl"
+        className="absolute inset-0 z-0 rounded-2xl"
       />
 
-      <header className="pointer-events-none relative flex items-start gap-3 p-4 pb-3">
-        <div className="min-w-0 flex-1">
-          <p className={cn("font-heading font-semibold tabular-nums leading-none", wall ? "text-xl" : "text-base")}>
-            #{order.id}
+      <div className={cn("pointer-events-none relative flex flex-1 flex-col", wall ? "gap-4 p-5" : "gap-3.5 p-5 pb-4")}>
+        {/* Urgencia: píldora tintada + cuenta regresiva en el mismo color. Es
+            lo primero que se lee desde lejos, sin bloque de fondo saturado. */}
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-medium",
+              wall ? "text-sm" : "text-xs",
+              meta.pill
+            )}
+          >
+            <ToneIcon className={wall ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden />
+            {meta.label}
+            {state.tone === "overdue" && " hace"}
+          </span>
+          <p
+            className={cn(
+              "ml-auto min-w-0 truncate text-right font-heading font-semibold tabular-nums tracking-tight",
+              live ? (wall ? "text-2xl" : "text-lg") : wall ? "text-base" : "text-xs font-medium",
+              meta.text
+            )}
+          >
+            {headline(order, state)}
           </p>
-          <p className={cn("mt-1.5 truncate font-medium", wall ? "text-base" : "text-sm")}>{clientName}</p>
-          <p className="truncate text-xs text-muted-foreground" title={order.description}>
-            {order.description}
+          {selectable && (
+            <div className="pointer-events-auto relative z-10 -my-1 -mr-1 p-1">
+              <Checkbox
+                checked={selected}
+                onCheckedChange={(checked) => onSelectedChange?.(order.id, checked === true)}
+                aria-label={`Seleccionar pedido #${order.id}`}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <p className={cn("truncate font-heading font-semibold leading-snug", wall ? "text-xl" : "text-base")}>
+            {clientName}
+          </p>
+          <p className={cn("mt-0.5 truncate text-muted-foreground", wall ? "text-sm" : "text-[0.8125rem]")} title={order.description}>
+            <span className="tabular-nums text-foreground/70">#{order.id}</span>
+            {order.description ? ` · ${order.description}` : ""}
           </p>
         </div>
+
         {areas.length > 0 && (
-          <ul className="flex shrink-0 flex-wrap justify-end gap-1" aria-label="Áreas" title={allAreas.map(getAreaLabel).join(", ")}>
+          <ul className="flex flex-wrap gap-1.5" aria-label="Áreas" title={allAreas.map(getAreaLabel).join(", ")}>
             {areas.map((area) => {
               const Icon = getAreaIcon(area);
               return (
@@ -173,57 +262,19 @@ export const OrderJobCard = memo(function OrderJobCard({
             )}
           </ul>
         )}
-        {selectable && (
-          <div className="pointer-events-auto relative z-10 -mr-1 -mt-1 p-1">
-            <Checkbox
-              checked={selected}
-              onCheckedChange={(checked) => onSelectedChange?.(order.id, checked === true)}
-              aria-label={`Seleccionar pedido #${order.id}`}
-            />
-          </div>
-        )}
-      </header>
 
-      <div className={cn("pointer-events-none relative mx-3 rounded-lg px-3 py-2.5", meta.block)}>
-        <p className={cn("text-xs font-medium", meta.caption)}>
-          {meta.label}
-          {state.tone === "overdue" && " hace"}
-        </p>
-        <p
-          className={cn(
-            "font-heading font-bold tabular-nums tracking-tight",
-            live ? (wall ? "text-3xl" : "text-2xl") : "text-base",
-          )}
-        >
-          {headline(order, state)}
-        </p>
-        <dl className={cn("mt-1.5 grid grid-cols-2 gap-2 text-xs leading-tight", meta.caption)}>
-          <div>
-            <dt className="opacity-80">Entrega</dt>
-            <dd className="font-medium tabular-nums">
-              {order.deliveryDate ? formatDeliveryDate(order.deliveryDate, timeFormat) : "—"}
-            </dd>
+        {/* Progreso de tareas de área: barra gruesa del color del estado. */}
+        <div className="mt-auto space-y-2">
+          <div className={cn("flex items-center gap-1.5", wall ? "text-sm" : "text-[0.8125rem]")}>
+            <ListChecks className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <span className="text-muted-foreground">{inDesign ? "Áreas planificadas" : "Tareas de área"}</span>
+            <span className="ml-auto font-medium tabular-nums">
+              {tasks.total === 0 ? "—" : inDesign ? tasks.total : `${tasks.done}/${tasks.total}`}
+            </span>
           </div>
-          <div className="text-right">
-            <dt className="opacity-80">Transcurrido</dt>
-            <dd className="font-medium tabular-nums">{formatElapsed(state.elapsedMs)}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="pointer-events-none relative grid grid-cols-2 gap-3 px-4 pb-3 pt-3 text-xs">
-        <div>
-          <p className="text-muted-foreground">Productos</p>
-          <p className="font-heading text-lg font-semibold tabular-nums leading-tight">{productCount}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-muted-foreground">{inDesign ? "Áreas planificadas" : "Tareas de área"}</p>
-          <p className="font-heading text-lg font-semibold tabular-nums leading-tight">
-            {tasks.total === 0 ? "—" : inDesign ? tasks.total : `${tasks.done}/${tasks.total}`}
-          </p>
-          {tasks.total > 0 && !inDesign && (
+          {tasks.total > 0 && !inDesign ? (
             <div
-              className="ml-auto mt-1 h-1 w-16 overflow-hidden rounded-full bg-muted"
+              className="h-2 overflow-hidden rounded-full bg-muted"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={tasks.total}
@@ -231,24 +282,53 @@ export const OrderJobCard = memo(function OrderJobCard({
               aria-label="Tareas de área terminadas"
             >
               <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300"
-                style={{ width: `${(tasks.done / tasks.total) * 100}%` }}
+                className={cn("h-full rounded-full transition-[width] duration-300", getStatusDotClasses(order.statusId, order.status?.name))}
+                style={{ width: `${pct}%` }}
               />
             </div>
+          ) : (
+            <div className="h-2 rounded-full bg-muted" aria-hidden />
           )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 tabular-nums text-muted-foreground",
+              wall ? "text-sm" : "text-xs"
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+            Entrega:{" "}
+            <span className="font-medium text-foreground">
+              {order.deliveryDate ? formatDeliveryDate(order.deliveryDate, timeFormat) : "—"}
+            </span>
+          </span>
+          <span className="ml-auto flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
+            <span className="inline-flex items-center gap-1" title={`${productCount} producto${productCount === 1 ? "" : "s"}`}>
+              <Package className="h-3.5 w-3.5" aria-hidden />
+              <span className="sr-only">Productos:</span>
+              {productCount}
+            </span>
+            <span className="inline-flex items-center gap-1" title="Tiempo transcurrido desde que se creó">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              <span className="sr-only">Transcurrido:</span>
+              {formatElapsed(state.elapsedMs)}
+            </span>
+          </span>
         </div>
       </div>
 
-      <footer className="pointer-events-none relative mt-auto flex items-center gap-2 border-t px-4 py-2.5">
+      <footer className="pointer-events-none relative flex items-center gap-2 border-t border-border/60 px-5 py-3">
         <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
         {!wall && (
-          <div className="pointer-events-auto relative z-10 ml-auto flex items-center">
+          <div className="pointer-events-auto relative z-10 ml-auto flex min-w-0 items-center">
             <OrderQuickStatusChip order={order} />
           </div>
         )}
         <ChevronRight
           className={cn(
-            "pointer-events-none h-4 w-4 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5",
+            "pointer-events-none h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5",
             wall && "ml-auto"
           )}
           aria-hidden

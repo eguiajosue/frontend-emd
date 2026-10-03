@@ -3,6 +3,8 @@
 import { useState, type ElementType } from "react";
 import Link from "next/link";
 import {
+  CalendarClock,
+  CalendarPlus,
   ClipboardList,
   ExternalLink,
   Loader2,
@@ -20,10 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
+import { StatusBadge } from "@/components/StatusBadge";
 import { TONE_META } from "@/components/orders/OrderJobCard";
 import { useDeleteOrder } from "@/hooks/useOrders";
 import { useNow } from "@/hooks/useNow";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
+import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName } from "@/lib/format";
 import { formatElapsed, getDeadlineState, type DeadlineState } from "@/lib/orderDeadline";
 import type { OrderDetailPermissions } from "@/lib/orderDetail";
@@ -87,32 +91,46 @@ export function OrderDetailHeader({
     if (result !== undefined) onDeleted();
   };
 
+  const AreaIcon = getAreaIcon(order.area);
+  const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium";
+
   return (
     <div className="flex items-start gap-3">
-      <div className="min-w-0 flex-1 space-y-1.5 text-left">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <Title className="font-heading text-lg font-semibold leading-tight tracking-tight">
-            <span className="tabular-nums text-muted-foreground">#{order.id}</span>{" "}
-            {getOrderClientName(order)}
-          </Title>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums",
-              tone.block
-            )}
-          >
+      <div className="min-w-0 flex-1 space-y-3 text-left">
+        <Title className="font-heading text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-[1.75rem]">
+          <span className="tabular-nums text-muted-foreground">#{order.id}</span>{" "}
+          {getOrderClientName(order)}
+        </Title>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn(pill, "font-semibold tabular-nums", tone.pill)}>
+            <tone.icon className="h-3.5 w-3.5" aria-hidden />
             {deadlineLabel(order, state)}
           </span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {order.deliveryDate && (
-            <>
-              Entrega <span className="text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
-              {" · "}
-            </>
+          <StatusBadge
+            statusId={order.statusId}
+            statusName={order.status?.name}
+            className="py-1"
+          />
+          {order.area && (
+            <span className={cn(pill, "border border-border/60 bg-card text-foreground")}>
+              {AreaIcon && <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+              {getAreaLabel(order.area)}
+            </span>
           )}
-          Creado el {formatDate(order.creationDate)}
-        </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+          {order.deliveryDate && (
+            <span className={cn(pill, "border border-border/60 bg-card")}>
+              <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+              Entrega:{" "}
+              <span className="text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
+            </span>
+          )}
+          <span className={cn(pill, "border border-border/60 bg-card")}>
+            <CalendarPlus className="h-3.5 w-3.5" aria-hidden />
+            Creado el <span className="text-foreground">{formatDate(order.creationDate)}</span>
+          </span>
+        </div>
       </div>
 
       <DropdownMenu>
@@ -120,9 +138,9 @@ export function OrderDetailHeader({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"
+              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Más acciones del pedido"
             >
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}

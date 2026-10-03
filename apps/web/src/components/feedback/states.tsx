@@ -14,14 +14,31 @@ import { cn } from "@/lib/utils";
 
 export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="space-y-3 mt-4" role="status" aria-busy="true" aria-label="Cargando">
-      <Skeleton className="w-full h-10" />
+    // Misma superficie que `DataTable`: panel blanco con encabezado chico y
+    // filas separadas por línea suave, así el salto a los datos no mueve nada.
+    <div
+      className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft"
+      role="status"
+      aria-busy="true"
+      aria-label="Cargando"
+    >
+      <div className="flex h-11 items-center gap-6 border-b border-border/60 px-5">
+        <Skeleton className="bg-muted h-3 w-20 rounded-full" />
+        <Skeleton className="bg-muted h-3 w-16 rounded-full" />
+        <Skeleton className="bg-muted hidden h-3 w-24 rounded-full sm:block" />
+      </div>
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton
+        <div
           key={i}
-          className="w-full h-10"
-          style={{ animationDelay: `${i * 60}ms` }}
-        />
+          className="flex h-14 items-center gap-6 border-b border-border/60 px-5 last:border-b-0"
+        >
+          <Skeleton className="bg-muted h-4 w-1/4 rounded-full" style={{ animationDelay: `${i * 60}ms` }} />
+          <Skeleton className="bg-muted h-4 w-1/5 rounded-full" style={{ animationDelay: `${i * 60}ms` }} />
+          <Skeleton
+            className="bg-muted hidden h-4 w-1/3 rounded-full sm:block"
+            style={{ animationDelay: `${i * 60}ms` }}
+          />
+        </div>
       ))}
     </div>
   );
@@ -38,7 +55,7 @@ export function CardsSkeleton({ count = 4 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton
           key={i}
-          className="h-28 w-full"
+          className="bg-muted h-28 w-full rounded-2xl"
           style={{ animationDelay: `${i * 80}ms` }}
         />
       ))}
@@ -55,7 +72,7 @@ export function MessageThreadSkeleton() {
           className={cn("flex", i % 2 === 0 ? "justify-start" : "justify-end")}
         >
           <Skeleton
-            className="h-10 rounded-2xl"
+            className="bg-muted h-10 rounded-2xl"
             style={{ width: `${width}%`, animationDelay: `${i * 60}ms` }}
           />
         </div>
@@ -70,10 +87,12 @@ export function EmptyState({ message }: { message: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground"
+      className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground shadow-soft"
     >
-      <Inbox className="h-8 w-8 text-muted-foreground/60" />
-      <p>{message}</p>
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+        <Inbox className="h-5 w-5" aria-hidden />
+      </span>
+      <p className="max-w-sm">{message}</p>
     </motion.div>
   );
 }
@@ -94,16 +113,21 @@ export function ErrorState({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-10 text-center"
+      role="alert"
+      className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center shadow-soft"
     >
-      <AlertTriangle className="h-8 w-8 text-destructive" />
+      {/* El color va sólo en el círculo del ícono: la tarjeta sigue siendo
+          blanca, como cualquier otra superficie. */}
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+        <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />
+      </span>
       <div>
-        <p className="font-medium">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className="font-semibold">{title}</p>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
       </div>
       {onRetry && (
-        <Button variant="outline" onClick={onRetry}>
-          <RefreshCw className="mr-2 h-4 w-4" /> Reintentar
+        <Button variant="secondary" className="mt-1" onClick={onRetry}>
+          <RefreshCw className="h-4 w-4" /> Reintentar
         </Button>
       )}
     </motion.div>

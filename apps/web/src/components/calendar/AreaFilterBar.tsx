@@ -26,7 +26,7 @@ interface AreaFilterBarProps {
 export function AreaFilterBar({ value, onChange, compact }: AreaFilterBarProps) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as AreaFilter)}>
-      <SelectTrigger className={cn("w-full", !compact && "sm:w-48")} aria-label="Filtrar por área">
+      <SelectTrigger className={cn("w-full rounded-full", compact ? "px-3" : "px-4 sm:w-48")} aria-label="Filtrar por área">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

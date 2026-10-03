@@ -23,9 +23,9 @@ export function scoreTier(score: number | null): "high" | "mid" | "low" | "unkno
 }
 
 const TIER_STYLES: Record<ReturnType<typeof scoreTier>, string> = {
-  high: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  mid: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  low: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+  high: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300",
+  mid: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
+  low: "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300",
   unknown: "bg-muted text-muted-foreground",
 };
 
@@ -47,32 +47,16 @@ export function ScoreBadge({ score }: { score: number | null }) {
       // micro-efecto de "logro" ocurre una única vez cuando el badge aparece
       // en pantalla (primera carga o primera vez que entra a la vista tras un
       // filtro/orden) y no se repite en re-renders posteriores del mismo nodo.
-      initial={celebrate ? { scale: 0.85, opacity: 0, boxShadow: "0 0 0 0 rgba(16,185,129,0)" } : false}
-      animate={
-        celebrate
-          ? {
-              scale: 1,
-              opacity: 1,
-              boxShadow: [
-                "0 0 0 0 rgba(16,185,129,0)",
-                "0 0 12px 2px rgba(16,185,129,0.45)",
-                "0 0 0 0 rgba(16,185,129,0)",
-              ],
-            }
-          : undefined
-      }
-      transition={
-        celebrate
-          ? { scale: { type: "spring", bounce: 0.35, duration: 0.4 }, boxShadow: { duration: 0.9, ease: "easeOut" } }
-          : undefined
-      }
+      initial={celebrate ? { scale: 0.85, opacity: 0 } : false}
+      animate={celebrate ? { scale: 1, opacity: 1 } : undefined}
+      transition={celebrate ? { type: "spring", bounce: 0.35, duration: 0.4 } : undefined}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
         TIER_STYLES[tier]
       )}
     >
       {TIER_LABELS[tier]}
-      {score != null && <span className="font-semibold">{score.toFixed(2)}</span>}
+      {score != null && <span className="font-semibold tabular-nums">{score.toFixed(2)}</span>}
     </motion.span>
   );
 }

@@ -65,59 +65,59 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
   order_status_changed: {
     label: "Cambio de estado",
     className:
-      "border-transparent bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200",
+      "border-transparent bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
   },
   area_user_updated_order: {
     label: "Edición de pedido",
     className:
-      "border-transparent bg-blue-100 text-blue-900 dark:bg-blue-500/20 dark:text-blue-200",
+      "border-transparent bg-blue-500/10 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300",
   },
   order_assigned: {
     label: "Asignación",
     className:
-      "border-transparent bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-200",
+      "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
   },
   order_note_added: {
     label: "Nota",
     className:
-      "border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200",
+      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
   },
   order_ready: {
     label: "Listo para entregar",
     className:
-      "border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-200",
+      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
   },
   // Circuito de Diseño: montaje enviado -> comentarios del cliente -> autorizado.
   design_montage_sent: {
     label: "Montaje enviado",
     className:
-      "border-transparent bg-sky-100 text-sky-900 dark:bg-sky-500/20 dark:text-sky-200",
+      "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
   },
   design_feedback_added: {
     label: "Cambios solicitados",
     className:
-      "border-transparent bg-orange-100 text-orange-900 dark:bg-orange-500/20 dark:text-orange-200",
+      "border-transparent bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
   },
   design_approved: {
     label: "Diseño autorizado",
     className:
-      "border-transparent bg-teal-100 text-teal-900 dark:bg-teal-500/20 dark:text-teal-200",
+      "border-transparent bg-teal-500/10 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
   },
   // Trabajo por área de producción.
   area_task_created: {
     label: "Trabajo asignado al área",
     className:
-      "border-transparent bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-200",
+      "border-transparent bg-indigo-500/10 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300",
   },
   area_task_completed: {
     label: "Área terminada",
     className:
-      "border-transparent bg-lime-100 text-lime-900 dark:bg-lime-500/20 dark:text-lime-200",
+      "border-transparent bg-lime-500/10 text-lime-700 dark:bg-lime-400/15 dark:text-lime-300",
   },
   chat_message: {
     label: "Chat",
     className:
-      "border-transparent bg-cyan-100 text-cyan-900 dark:bg-cyan-500/20 dark:text-cyan-200",
+      "border-transparent bg-cyan-500/10 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300",
   },
 };
 

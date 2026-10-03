@@ -158,21 +158,22 @@ export function OnboardingTour() {
         exit={{ opacity: 0 }}
         transition={{ duration: reduced ? 0.01 : 0.2 }}
       >
-        {/* Overlay con "recorte" (spotlight) sobre el elemento actual vía box-shadow. */}
+        {/* Overlay con "recorte" (spotlight) sobre el elemento actual vía box-shadow.
+            Radio grande: los objetivos (riel, botones) son píldoras y círculos. */}
         <div
-          className="pointer-events-none absolute rounded-lg ring-2 ring-primary transition-[top,left,width,height] duration-300"
+          className="pointer-events-none absolute rounded-[1.75rem] ring-2 ring-primary transition-[top,left,width,height] duration-300"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
             width: rect.width + 12,
             height: rect.height + 12,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.55)",
+            boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)",
           }}
         />
 
         <motion.div
           key={stepIndex}
-          className={cn("elevation-2 bg-popover fixed w-80 max-w-[calc(100vw-24px)] rounded-xl border border-border p-4 shadow-2xl")}
+          className={cn("elevation-2 fixed w-80 max-w-[calc(100vw-24px)] rounded-2xl border border-border/60 bg-popover p-5 shadow-soft-lg")}
           style={tooltipStyle}
           initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
           animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -186,15 +187,15 @@ export function OnboardingTour() {
                 size="icon"
                 aria-label="Cerrar tour"
                 onClick={finish}
-                className="-mr-1 -mt-1 h-7 w-7 text-muted-foreground"
+                className="-mr-1.5 -mt-1.5 h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
               >
                 <X className="h-4 w-4" />
               </Button>
             </SimpleTooltip>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs tabular-nums text-muted-foreground">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
               {stepIndex + 1} / {STEPS.length}
             </span>
             <div className="flex gap-2">

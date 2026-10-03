@@ -15,7 +15,6 @@ import { FormField } from "@/components/ui/form-field";
 import {
   AlertCircle,
   CheckCircle2,
-  Circle,
   ClipboardCheck,
   FileText,
   Loader2,
@@ -835,7 +834,7 @@ export function CreateOrderDialog({
       ref={errorSummaryRef}
       role="alert"
       tabIndex={-1}
-      className="mb-4 space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 outline-none"
+      className="mb-5 space-y-2 rounded-2xl bg-destructive/10 p-4 outline-none"
     >
       <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
         <AlertCircle className="h-4 w-4" />
@@ -885,7 +884,7 @@ export function CreateOrderDialog({
               // el chat, ver dashboard/chat/page.tsx).
               "inset-0 h-[100dvh] w-full data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
               // Escritorio: panel lateral de altura completa, desliza desde la derecha.
-              "sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:w-full sm:max-w-3xl sm:border-l sm:border-border sm:data-[state=closed]:slide-out-to-right sm:data-[state=open]:slide-in-from-right"
+              "sm:inset-y-0 sm:left-auto sm:right-0 sm:h-full sm:w-full sm:max-w-3xl sm:border-l sm:border-border/60 sm:data-[state=closed]:slide-out-to-right sm:data-[state=open]:slide-in-from-right"
             )}
           >
             <DialogPrimitive.Title className="sr-only">Nuevo pedido</DialogPrimitive.Title>
@@ -907,10 +906,10 @@ export function CreateOrderDialog({
               onKeyDown={handleFormKeyDown}
             >
             {/* Cabecera: título + progreso + cerrar. Fija arriba. */}
-            <div className="shrink-0 border-b border-border px-4 pb-3 pt-[calc(0.875rem+env(safe-area-inset-top))] sm:px-8 sm:pb-4 sm:pt-6">
+            <div className="shrink-0 border-b border-border/60 px-4 pb-4 pt-[calc(0.875rem+env(safe-area-inset-top))] sm:px-8 sm:pb-5 sm:pt-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold leading-tight sm:text-lg">Nuevo pedido</p>
+                  <p className="font-heading text-xl font-semibold leading-tight tracking-tight sm:text-2xl">Nuevo pedido</p>
                   {/*
                     `sm:sr-only`, no `sm:hidden`: en escritorio la lista de
                     pasos ya lo muestra visualmente, pero el anuncio en vivo
@@ -925,18 +924,18 @@ export function CreateOrderDialog({
                 <DialogPrimitive.Close
                   type="button"
                   aria-label="Cerrar"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   <X className="h-4 w-4" />
                 </DialogPrimitive.Close>
               </div>
               {/* Progreso segmentado, sólo en móvil (en escritorio la lista lateral ya lo muestra). */}
-              <div className="mt-3 flex gap-1 sm:hidden">
+              <div className="mt-3 flex gap-1.5 sm:hidden">
                 {STEPS.map((s, i) => (
                   <div
                     key={s.key}
                     className={cn(
-                      "h-1 flex-1 rounded-full transition-colors",
+                      "h-1.5 flex-1 rounded-full transition-colors",
                       i <= step ? "bg-primary" : "bg-muted"
                     )}
                   />
@@ -946,8 +945,8 @@ export function CreateOrderDialog({
 
             <div className="flex min-h-0 flex-1 sm:flex-row">
               {/* Lista de pasos, sólo escritorio — indicador de progreso, no clicable. */}
-              <div className="hidden w-64 shrink-0 border-r border-border p-6 sm:block">
-                <ol className="space-y-1">
+              <div className="hidden w-64 shrink-0 border-r border-border/60 bg-background p-5 sm:block">
+                <ol className="space-y-1.5">
                   {STEPS.map((s, i) => {
                     const StepIcon = s.icon;
                     const isDone = i < step;
@@ -957,19 +956,31 @@ export function CreateOrderDialog({
                         key={s.key}
                         aria-current={isCurrent ? "step" : undefined}
                         className={cn(
-                          "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm",
-                          isCurrent && "bg-primary/10 font-medium text-primary",
+                          "flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-3 text-sm transition-colors",
+                          isCurrent && "bg-card font-semibold text-foreground shadow-soft",
                           !isCurrent && isDone && "text-foreground",
                           !isCurrent && !isDone && "text-muted-foreground"
                         )}
                       >
-                        {isDone ? (
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
-                        ) : isCurrent ? (
-                          <StepIcon className="h-4 w-4 shrink-0" />
-                        ) : (
-                          <Circle className="h-4 w-4 shrink-0 opacity-40" />
-                        )}
+                        {/* Número o tilde en círculo: el paso actual en tinta,
+                            lo hecho en verde, lo que falta en gris. */}
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                            isCurrent && "bg-ink text-ink-foreground",
+                            isDone && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                            !isCurrent && !isDone && "border border-border/60 bg-card text-muted-foreground"
+                          )}
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : isCurrent ? (
+                            <StepIcon className="h-4 w-4" />
+                          ) : (
+                            i + 1
+                          )}
+                        </span>
                         <span className="truncate">{s.label}</span>
                       </li>
                     );
@@ -987,9 +998,9 @@ export function CreateOrderDialog({
 
                 {step === 0 && (
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold">Cliente</h3>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <h3 className="font-heading text-lg font-semibold tracking-tight">Cliente</h3>
+                      <p className="text-sm text-muted-foreground">
                         A quién se le factura y entrega este pedido.
                       </p>
                     </div>
@@ -1090,14 +1101,14 @@ export function CreateOrderDialog({
 
                 {step === 1 && (
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-semibold">Detalles del pedido</h3>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <h3 className="font-heading text-lg font-semibold tracking-tight">Detalles del pedido</h3>
+                      <p className="text-sm text-muted-foreground">
                         Área, quién lo trabaja y qué se pide.
                       </p>
                     </div>
 
-                    <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/20 p-4">
+                    <div className="flex items-start gap-3 rounded-2xl bg-muted/50 p-4">
                       <Switch
                         id="requires-design"
                         checked={requiresDesign}
@@ -1266,7 +1277,7 @@ export function CreateOrderDialog({
                         + Agregar otra área
                       </Button>
                     ) : (
-                      <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-4">
+                      <div className="space-y-2 rounded-2xl bg-muted/50 p-4">
                         <p className="text-sm font-medium">¿Necesita más de un área?</p>
                         <p className="text-xs text-muted-foreground">
                           Marcar las áreas extra que van a trabajar el pedido. Cada una avanza por
@@ -1318,7 +1329,7 @@ export function CreateOrderDialog({
                         aria-required
                         aria-invalid={Boolean(errors.description)}
                         aria-describedby={errors.description ? "order-description-error" : undefined}
-                        className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+                        
                       />
                     </FormField>
 
@@ -1329,7 +1340,7 @@ export function CreateOrderDialog({
                           type="date"
                           value={deliveryDate}
                           onChange={(e) => setDeliveryDate(e.target.value)}
-                          className="h-11 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                          className="h-11 sm:h-9"
                         />
                       </FormField>
                       <FormField
@@ -1343,7 +1354,7 @@ export function CreateOrderDialog({
                           value={deliveryTime}
                           onChange={(e) => setDeliveryTime(e.target.value)}
                           disabled={!deliveryDate}
-                          className="h-11 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                          className="h-11 sm:h-9"
                         />
                       </FormField>
                     </div>
@@ -1352,9 +1363,9 @@ export function CreateOrderDialog({
 
                 {step === 2 && (
                   <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold">Productos</h3>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <h3 className="font-heading text-lg font-semibold tracking-tight">Productos</h3>
+                      <p className="text-sm text-muted-foreground">
                         Una línea por cada producto del pedido.
                       </p>
                     </div>
@@ -1416,7 +1427,7 @@ export function CreateOrderDialog({
                               inputMode="numeric"
                               min={1}
                               aria-invalid={Boolean(rowErrors[index])}
-                              className="h-11 w-24 focus-visible:ring-0 focus-visible:border-primary transition-colors sm:h-9"
+                              className="h-11 w-24 sm:h-9"
                               placeholder="Cant."
                               value={row.quantity ?? ""}
                               onChange={(e) =>
@@ -1451,14 +1462,14 @@ export function CreateOrderDialog({
 
                 {step === 3 && (
                   <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm font-semibold">Revisar y confirmar</h3>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="space-y-1">
+                      <h3 className="font-heading text-lg font-semibold tracking-tight">Revisar y confirmar</h3>
+                      <p className="text-sm text-muted-foreground">
                         Un último vistazo antes de crear el pedido.
                       </p>
                     </div>
 
-                    <div className="divide-y divide-border/60 rounded-xl border border-border">
+                    <div className="divide-y divide-border/60 rounded-2xl bg-muted/50">
                       <SummaryRow label="Cliente" value={selectedClientLabel || "—"} />
                       <SummaryRow label="¿Requiere diseño?" value={requiresDesign ? "Sí" : "No"} />
                       <SummaryRow
@@ -1507,18 +1518,18 @@ export function CreateOrderDialog({
                           type="file"
                           accept="image/png,image/jpeg,application/pdf"
                           onChange={handleClientResourceFileChange}
-                          className="h-auto min-w-[12rem] flex-1 cursor-pointer py-1.5 text-muted-foreground file:mr-3 file:rounded-md file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
+                          className="h-auto min-w-[12rem] flex-1 cursor-pointer py-1.5 text-muted-foreground file:mr-3 file:rounded-full file:bg-secondary file:px-3 file:py-1 file:text-secondary-foreground"
                         />
                         <CameraCaptureButton onChange={handleClientResourceFileChange} />
                       </div>
 
                       {clientResourceFile && (
-                        <div className="flex items-center gap-3 rounded-lg border p-2">
+                        <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-2.5">
                           {clientResourceFilePreview ? (
                             <PreviewImage
                               src={clientResourceFilePreview}
                               alt={clientResourceFile.filename}
-                              className="h-14 w-14 rounded object-cover"
+                              className="h-14 w-14 rounded-lg object-cover"
                             />
                           ) : (
                             <FileText className="h-8 w-8 text-muted-foreground" />
@@ -1549,13 +1560,13 @@ export function CreateOrderDialog({
             {/* Navegación: fija abajo. Los botones son `type="submit"`: el
                 `<form>` de arriba decide avanzar o crear según `isLastStep`
                 (ver `handleFormSubmit`), lo que además habilita Enter/Ctrl+Enter. */}
-            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-between sm:px-8 sm:py-4">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border/60 px-4 pb-[calc(0.875rem+env(safe-area-inset-bottom))] pt-3 sm:flex-row sm:justify-between sm:px-8 sm:py-4">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={goBack}
                 disabled={submitting}
-                className="h-11 w-full sm:h-9 sm:w-auto"
+                className="h-11 w-full sm:h-10 sm:w-auto"
               >
                 {isFirstStep ? "Cancelar" : "Atrás"}
               </Button>
@@ -1564,14 +1575,14 @@ export function CreateOrderDialog({
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="h-11 w-full sm:h-9 sm:w-auto"
+                    className="h-11 w-full sm:h-10 sm:w-auto sm:px-6"
                   >
                     {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                     {submitting ? "Guardando..." : "Crear Pedido"}
                   </Button>
                 </motion.div>
               ) : (
-                <Button type="submit" className="h-11 w-full sm:h-9 sm:w-auto">
+                <Button type="submit" className="h-11 w-full sm:h-10 sm:w-auto sm:px-6">
                   Siguiente
                 </Button>
               )}
@@ -1620,7 +1631,7 @@ export function CreateOrderDialog({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 px-4 py-2.5 text-sm">
+    <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <span className="min-w-0 text-right font-medium break-words">{value}</span>
     </div>

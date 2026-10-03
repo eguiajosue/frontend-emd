@@ -131,7 +131,7 @@ export function CreateClientDialog({
               onChange={(e) => setFirstName(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, first_name: true }))}
               autoFocus
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
           <FormField label="Apellido" htmlFor="cc-last-name" icon={User}>
@@ -139,7 +139,7 @@ export function CreateClientDialog({
               id="cc-last-name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
           <FormField label="Teléfono" htmlFor="cc-phone" icon={Phone}>
@@ -147,7 +147,7 @@ export function CreateClientDialog({
               id="cc-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
           <FormField label="Email" htmlFor="cc-email" icon={Mail} error={err("email")}>
@@ -157,12 +157,12 @@ export function CreateClientDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-              className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+              
             />
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={handleClose} disabled={submitting}>
+          <Button variant="outline" onClick={handleClose} disabled={submitting}>
             Cancelar
           </Button>
           <motion.div {...(submitting ? {} : formButtonMotion)}>

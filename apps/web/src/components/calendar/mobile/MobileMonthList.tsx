@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { format, isToday } from "date-fns";
+import { format, isSameMonth, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,19 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
     }
   }, [range]);
 
+  // La lista arranca con meses de margen hacia atrás: al montar, se lleva el
+  // mes actual al tope. Sin esto se abría mostrando dos meses atrás.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const current = container?.querySelector<HTMLElement>('[data-current-month="true"]');
+    if (container && current) {
+      // Medido contra el contenedor (no `offsetTop`, que es relativo a la
+      // página) y dejando lugar para la fila fija de días de la semana.
+      const offset = current.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      container.scrollTop += offset - 40;
+    }
+  }, []);
+
   useEffect(() => {
     const container = containerRef.current;
     const topEl = topSentinelRef.current;
@@ -96,9 +109,9 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
       // TODO: altura estimada sin verificación visual en navegador real —
       // ajustar contra el alto real del header de la página + la barra de
       // tabs móvil una vez se pueda probar en dispositivo.
-      className="h-[calc(100dvh-16rem)] overflow-y-auto"
+      className="h-[calc(100dvh-16rem)] overflow-y-auto rounded-2xl border border-border/60 bg-card px-2 pb-2"
     >
-      <div className="sticky top-0 z-10 grid grid-cols-7 gap-0.5 bg-background py-1 text-center text-xs font-medium text-muted-foreground">
+      <div className="sticky top-0 z-10 grid grid-cols-7 gap-0.5 border-b border-border/60 bg-card py-2 text-center text-xs font-medium text-muted-foreground">
         {WEEKDAY_LABELS.map((label, i) => (
           <div key={i}>{label}</div>
         ))}
@@ -107,11 +120,19 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
       <div ref={topSentinelRef} className="h-px" aria-hidden />
 
       {weeks.map((week) => (
-        <div key={week.weekStart.toISOString()}>
+        <div
+          key={week.weekStart.toISOString()}
+          data-current-month={
+            week.monthLabel !== null &&
+            isSameMonth(week.days[week.days.length - 1], new Date())
+              ? "true"
+              : undefined
+          }
+        >
           {week.monthLabel && (
-            <p className="px-1 pb-1 pt-3 text-sm font-semibold capitalize">{week.monthLabel}</p>
+            <p className="px-1 pb-1 pt-4 text-section-title capitalize">{week.monthLabel}</p>
           )}
-          <div className="grid grid-cols-7 gap-0.5 border-b py-1">
+          <div className="grid grid-cols-7 gap-0.5 border-b border-border/60 py-1">
             {week.days.map((day) => {
               const key = format(day, "yyyy-MM-dd");
               const dayItems = itemsByDay.get(key) ?? [];
@@ -126,12 +147,12 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
                   size="bare"
                   onClick={() => onSelectDay(day)}
                   aria-label={format(day, "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}
-                  className="flex min-h-[3.5rem] min-w-0 flex-col items-center justify-start gap-0.5 rounded-md px-0.5 pt-1 text-left hover:bg-muted"
+                  className="flex min-h-[3.5rem] min-w-0 flex-col items-center justify-start gap-0.5 rounded-lg px-0.5 pt-1 text-left hover:bg-muted"
                 >
                   <span
                     className={cn(
                       "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                      today && "bg-foreground text-background"
+                      today && "bg-ink text-ink-foreground"
                     )}
                   >
                     {format(day, "d")}

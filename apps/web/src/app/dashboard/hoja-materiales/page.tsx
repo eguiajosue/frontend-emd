@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, GripVertical, Search } from "lucide-react";
+import { ArrowLeft, CalendarDays, GripVertical, Search } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -177,7 +177,7 @@ export default function HojaMaterialesPage() {
       )}
       <div>
         <Title title="Hoja de Materiales" />
-        <p className="text-muted-foreground">
+        <p className="max-w-prose text-sm text-muted-foreground">
           Elegí un pedido para ver y marcar los materiales que hay que comprar.
           {canManageOperations && (
             <>
@@ -189,13 +189,14 @@ export default function HojaMaterialesPage() {
         </p>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative w-full sm:w-80">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por pedido o cliente..."
-          className="pl-9"
+          aria-label="Buscar por pedido o cliente"
+          className="h-10 rounded-full border-border/60 pl-10 shadow-soft"
         />
       </div>
       {canManageOperations && query && activeOrders.length > 1 && (
@@ -207,10 +208,10 @@ export default function HojaMaterialesPage() {
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
       ) : isPending ? (
-        <div className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
+        <div className="space-y-3" role="status" aria-busy="true" aria-label="Cargando">
+          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
+          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
+          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
         </div>
       ) : filteredOrders.length === 0 ? (
         <EmptyState
@@ -231,7 +232,7 @@ export default function HojaMaterialesPage() {
             items={filteredOrders.map((o) => o.id)}
             strategy={verticalListSortingStrategy}
           >
-            <Accordion type="multiple" className="space-y-2" value={openIds} onValueChange={setOpenIds}>
+            <Accordion type="multiple" className="space-y-3" value={openIds} onValueChange={setOpenIds}>
               {filteredOrders.map((order, index) => (
                 <SortableOrderRow
                   key={order.id}
@@ -249,7 +250,7 @@ export default function HojaMaterialesPage() {
               // `elevation-2` (no sólo `shadow-soft-md`): en dark mode una sombra
               // casi no se ve sobre fondo oscuro, así que la elevación real la da
               // el tono más claro (mismo patrón que diálogos/popovers).
-              <div className="elevation-2 flex -rotate-1 items-center gap-2 rounded-xl border bg-card px-4 py-3 shadow-soft-md">
+              <div className="elevation-2 flex -rotate-1 items-center gap-2 rounded-2xl border border-border/60 bg-card px-4 py-4 shadow-soft-md">
                 <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden />
                 <OrderRowSummary order={draggedOrder} timeFormat={timeFormat} />
               </div>
@@ -286,18 +287,20 @@ function SortableOrderRow({
       value={String(order.id)}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "scroll-mt-20 rounded-xl border bg-card px-4",
+        "scroll-mt-24 rounded-2xl border border-border/60 bg-card px-3 shadow-soft transition-shadow sm:px-4",
         isDragging && "opacity-40",
         isBeingDragged && "opacity-40"
       )}
     >
-      <div className="flex items-center gap-1">
+      {/* El header del acordeón (h3) ocupa el resto: así la fecha y el estado
+          quedan alineados a la derecha en todas las filas. */}
+      <div className="flex items-center gap-1 [&>h3]:min-w-0 [&>h3]:flex-1">
         {draggable && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="-ml-1 h-8 w-8 shrink-0 cursor-grab touch-none text-muted-foreground/70 active:cursor-grabbing"
+            className="h-8 w-8 shrink-0 cursor-grab touch-none rounded-full text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
             aria-label={`Arrastrar para cambiar la prioridad del pedido #${order.id}`}
             {...attributes}
             {...listeners}
@@ -307,17 +310,17 @@ function SortableOrderRow({
         )}
         {draggable && (
           <span
-            className="w-5 shrink-0 text-center text-xs font-medium tabular-nums text-muted-foreground/70"
+            className="mr-1 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold tabular-nums text-muted-foreground"
             aria-hidden
           >
             {priorityRank}
           </span>
         )}
-        <AccordionTrigger className="py-3 hover:no-underline">
+        <AccordionTrigger className="py-4 hover:no-underline">
           <OrderRowSummary order={order} timeFormat={timeFormat} />
         </AccordionTrigger>
       </div>
-      <AccordionContent className="border-t">
+      <AccordionContent className="border-t border-border/60">
         <OrderMaterialsChecklistTable orderId={order.id} />
       </AccordionContent>
     </AccordionItem>
@@ -337,8 +340,11 @@ function OrderRowSummary({
         <span className="font-semibold">Pedido #{order.id}</span>
         <span className="text-muted-foreground"> · {getOrderClientName(order)}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-        Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}
+      <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium">
+          <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+          Entrega: {formatDeliveryDate(order.deliveryDate, timeFormat)}
+        </span>
         <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
       </span>
     </span>

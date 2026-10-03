@@ -567,10 +567,14 @@ const OrdersPage = () => {
       designBoard: { orders: design, columns: buildDesignColumns(design, statuses) },
       productionBoard: {
         orders: production,
-        columns: buildProductionColumns(production, viewerAreas),
+        // La columna "Cancelado" es el archivo: sólo aparece con el toggle
+        // "Archivados" (o filtrando a propósito por ese estado).
+        columns: buildProductionColumns(production, viewerAreas).filter(
+          (column) => wantsCancelled || !isCancelledStatus(column.statusId)
+        ),
       },
     };
-  }, [visibleOrders, statuses, viewerAreas]);
+  }, [visibleOrders, statuses, viewerAreas, wantsCancelled]);
 
   // Drag & drop: soltar una tarjeta en otra columna cambia el estado del
   // pedido. Se permite sólo hacia estados que ese rol puede fijar (mismo
@@ -701,7 +705,7 @@ const OrdersPage = () => {
           value={viewMode}
           onValueChange={(v) => v && updateViewMode(v as ViewMode)}
           aria-label="Vista"
-          className="shrink-0 rounded-full border bg-card p-1"
+          className="shrink-0 rounded-full border border-border/60 bg-card p-1"
         >
           <ToggleGroupItem value="list" className="gap-1.5">
             <List aria-hidden /> Lista
@@ -726,7 +730,7 @@ const OrdersPage = () => {
               value={circuit}
               onValueChange={(v) => v && updateCircuit(v as Circuit)}
               aria-label="Circuito"
-              className="inline-flex rounded-full border bg-card p-1"
+              className="inline-flex rounded-full border border-border/60 bg-card p-1"
             >
               {CIRCUITS.map((option) => (
                 <ToggleGroupItem key={option.value} value={option.value} className="group gap-1.5">
@@ -797,7 +801,7 @@ const OrdersPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-3 rounded-2xl border bg-background/95 p-3 shadow-soft-md backdrop-blur"
+              className="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-soft-md"
             >
               <span className="text-sm font-medium">
                 {selectedCount} pedido{selectedCount === 1 ? "" : "s"} seleccionado

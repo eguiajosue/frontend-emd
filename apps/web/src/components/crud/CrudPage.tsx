@@ -26,6 +26,7 @@ import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import type { EntityKey } from "@/lib/queryKeys";
 import type { BaseEntity } from "@/types";
+import { cn } from "@/lib/utils";
 
 /**
  * Matcher de búsqueda genérico por defecto: compara el texto tipeado contra
@@ -228,55 +229,65 @@ export function CrudPage<T extends BaseEntity>({
     canEdit,
   });
 
-  return (
-    <div className="p-0 w-full">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {!hideTitle && <Title title={title} />}
-        {canEdit && (
-          <Button onClick={handleCreate}>
-            <Plus className="mr-2 h-4 w-4" /> {createLabel}
-          </Button>
-        )}
-      </div>
+  const showToolbarFilters =
+    (hasSearch || hasFilters) && !isPending && !isError && data.length > 0;
 
-      {(hasSearch || hasFilters) && !isPending && !isError && data.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {hasSearch && (
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={searchConfig?.placeholder ?? "Buscar..."}
-                aria-label={searchConfig?.placeholder ?? "Buscar"}
-                className="h-9 rounded-full pl-8 text-sm"
-              />
-            </div>
+  return (
+    <div className="w-full">
+      {!hideTitle && <Title title={title} />}
+
+      {/* Barra de herramientas sobre el lienzo: buscador y filtros en píldora a
+          la izquierda, la acción principal ("Nuevo …", en tinta) a la derecha. */}
+      {(showToolbarFilters || canEdit) && (
+        <div className={cn("flex flex-wrap items-center gap-2", !hideTitle && "mt-2")}>
+          {showToolbarFilters && (
+            <>
+              {hasSearch && (
+                <div className="relative w-full sm:w-72">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={searchConfig?.placeholder ?? "Buscar..."}
+                    aria-label={searchConfig?.placeholder ?? "Buscar"}
+                    className="h-10 rounded-full border-border/60 pl-10 text-sm shadow-soft"
+                  />
+                </div>
+              )}
+              {filters?.map((filter) => (
+                <Select
+                  key={filter.key}
+                  value={filterValues[filter.key] || "__all__"}
+                  onValueChange={(v) =>
+                    setFilterValues((prev) => ({ ...prev, [filter.key]: v === "__all__" ? "" : v }))
+                  }
+                >
+                  <SelectTrigger
+                    className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
+                    aria-label={filter.label}
+                  >
+                    <SelectValue placeholder={filter.allLabel} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">{filter.allLabel}</SelectItem>
+                    {filter.options.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ))}
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              )}
+            </>
           )}
-          {filters?.map((filter) => (
-            <Select
-              key={filter.key}
-              value={filterValues[filter.key] || "__all__"}
-              onValueChange={(v) =>
-                setFilterValues((prev) => ({ ...prev, [filter.key]: v === "__all__" ? "" : v }))
-              }
-            >
-              <SelectTrigger className="h-9 w-auto min-w-[9rem] rounded-full text-sm" aria-label={filter.label}>
-                <SelectValue placeholder={filter.allLabel} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">{filter.allLabel}</SelectItem>
-                {filter.options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ))}
-          {activeFilterCount > 0 && (
-            <Button variant="ghost" size="sm" className="h-9 rounded-full" onClick={clearFilters}>
-              Limpiar filtros
+          {canEdit && (
+            <Button onClick={handleCreate} className="h-10 px-5 sm:ml-auto">
+              <Plus className="h-4 w-4" /> {createLabel}
             </Button>
           )}
         </div>
@@ -300,8 +311,8 @@ export function CrudPage<T extends BaseEntity>({
           secondaryAction={{ label: "Limpiar filtros", onClick: clearFilters }}
         />
       ) : (
-        <div className="w-full overflow-auto mt-4">
-          <DataTable columns={tableColumns} data={filteredData} />
+        <div className="mt-4 w-full">
+          <DataTable columns={tableColumns} data={filteredData} className="shadow-soft" />
         </div>
       )}
 

@@ -77,10 +77,13 @@ async function openDay15Popover() {
 }
 
 describe("TeamCalendar", () => {
-  it("un día con actividad se pinta con el rosa tenue de marca (fijo, no el acento del usuario)", () => {
+  it("un día con actividad queda marcado y lleva la píldora tintada de su categoría (sin bloque de color de marca)", () => {
     renderCalendar({ events: [baseEvent] });
     const cell = screen.getByText("15").closest("div");
-    expect(cell).toHaveClass("bg-brand-50");
+    expect(cell).toHaveAttribute("data-has-items", "true");
+    expect(cell).toHaveClass("bg-card");
+    expect(cell?.className).not.toMatch(/bg-brand/);
+    expect(cell?.querySelector(".rounded-full.bg-orange-500\\/10")).not.toBeNull();
   });
 
   it("las bolitas de estado usan rojo/naranja/verde según pendiente/en_proceso/terminado", () => {

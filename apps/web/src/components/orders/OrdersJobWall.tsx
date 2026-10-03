@@ -67,33 +67,51 @@ function KpiStrip({
         large
           ? "grid grid-cols-5 gap-3"
           : // En teléfono, fila con scroll horizontal: cinco tiles apilados empujaban las tarjetas fuera de vista.
-            "-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-5 sm:overflow-visible sm:px-0 sm:pb-0"
+            "-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-5 [&::-webkit-scrollbar]:hidden"
       )}
     >
       {KPI_TONES.map((tone) => {
         const meta = TONE_META[tone];
+        const Icon = meta.icon;
         const pressed = activeTone === tone;
         const share = LIVE_TONES.includes(tone) && active > 0 ? Math.round((counts[tone] / active) * 100) : null;
         return (
+          // Tarjeta "de carpeta": ícono en círculo, número fuerte y etiqueta
+          // muted. El color del plazo vive sólo en el ícono.
           <ToggleGroupItem
             key={tone}
             value={tone}
             aria-label={`${meta.label}: ${counts[tone]}`}
             className={cn(
-              "h-auto min-w-[8.5rem] shrink-0 snap-start flex-col items-start gap-0.5 rounded-xl border bg-card px-3.5 py-2.5 text-left font-normal hover:border-foreground/20 hover:bg-card sm:min-w-0",
-              "data-[state=on]:border-primary data-[state=on]:bg-primary/5 data-[state=on]:ring-1 data-[state=on]:ring-primary",
+              "h-auto min-w-[10.5rem] shrink-0 snap-start justify-start gap-3 rounded-2xl border border-border/60 bg-card text-left font-normal shadow-soft hover:border-border hover:bg-card sm:min-w-0",
+              large ? "px-5 py-4 [&_svg]:size-6" : "px-4 py-3.5 [&_svg]:size-[1.125rem]",
+              "data-[state=on]:border-transparent data-[state=on]:bg-card data-[state=on]:ring-2 data-[state=on]:ring-primary",
               counts[tone] === 0 && !pressed && "opacity-60"
             )}
           >
-            <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <span className={cn("h-2 w-2 rounded-full", meta.dot)} aria-hidden />
-              {meta.label}
+            <span
+              className={cn(
+                "flex shrink-0 items-center justify-center rounded-full bg-muted",
+                large ? "h-12 w-12" : "h-10 w-10",
+                meta.text
+              )}
+              aria-hidden
+            >
+              <Icon />
             </span>
-            <span className={cn("font-heading font-semibold leading-tight", large ? "text-4xl" : "text-2xl")}>
-              {counts[tone]}
-            </span>
-            <span className="text-meta">
-              {share != null ? `${share}% de activos` : tone === "finished" ? "Por entregar" : " "}
+            <span className="min-w-0">
+              <span
+                className={cn(
+                  "block font-heading font-semibold leading-tight tabular-nums",
+                  large ? "text-4xl" : "text-xl"
+                )}
+              >
+                {counts[tone]}
+              </span>
+              <span className={cn("block text-muted-foreground", large ? "text-base leading-snug" : "truncate text-[0.8125rem]")}>
+                {meta.label}
+                {share != null ? ` · ${share}%` : tone === "finished" ? " · por entregar" : ""}
+              </span>
             </span>
           </ToggleGroupItem>
         );
@@ -159,27 +177,28 @@ export function OrdersJobWall({
   const shown = tone ? entries.filter((e) => e.state.tone === tone) : entries;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1">
-          <KpiStrip entries={entries} activeTone={tone} onToneChange={setTone} />
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h2 className="text-section-title">Por plazo de entrega</h2>
+          {/* Modo TV no tiene sentido en un teléfono. */}
+          <Button variant="outline" size="sm" className="ml-auto hidden gap-2 sm:inline-flex" onClick={() => setTvOpen(true)}>
+            <Maximize2 className="h-4 w-4" />
+            Modo TV
+          </Button>
         </div>
-        {/* Modo TV no tiene sentido en un teléfono. */}
-        <Button variant="outline" className="hidden gap-2 sm:inline-flex" onClick={() => setTvOpen(true)}>
-          <Maximize2 className="h-4 w-4" />
-          Modo TV
-        </Button>
+        <KpiStrip entries={entries} activeTone={tone} onToneChange={setTone} />
       </div>
 
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-sm text-muted-foreground">
           Ningún pedido en &ldquo;{tone ? TONE_META[tone].label : ""}&rdquo;.{" "}
           <Button variant="link" className="h-auto p-0 text-foreground" onClick={() => setTone(null)}>
             Ver todos
           </Button>
         </p>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-3">
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-4">
           {shown.map(({ order, state }) => (
             <li key={order.id} className="flex min-w-0">
               <div className="flex w-full min-w-0">
@@ -270,7 +289,7 @@ function OrdersTvWall({
           (e.currentTarget as HTMLElement).focus();
         }}
       >
-        <div className="mx-auto max-w-[120rem] space-y-4 p-6">
+        <div className="mx-auto max-w-[120rem] space-y-5 p-8">
           <div className="flex items-center gap-4">
             <DialogTitle className="text-3xl">Pedidos en curso</DialogTitle>
             <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
@@ -310,7 +329,7 @@ function OrdersTvWall({
             </ToggleGroup>
           )}
 
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4">
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(21rem,1fr))] gap-5">
             {shown.map(({ order, state }) => (
               <li key={order.id} className="flex min-w-0">
                 <div className="flex w-full min-w-0">

@@ -52,29 +52,31 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="flex max-h-[85dvh] flex-col gap-0 rounded-t-xl border-t-0 p-0 pb-[env(safe-area-inset-bottom)] shadow-soft-lg"
+        className="flex max-h-[85dvh] flex-col gap-0 rounded-t-[1.75rem] border-t-0 bg-card p-0 pb-[env(safe-area-inset-bottom)] shadow-soft-lg"
       >
-        <SheetHeader className="space-y-0 p-4 pb-3 text-left">
+        {/* Asa del sheet: indica que la hoja se descarta deslizando/tocando afuera. */}
+        <span aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-muted" />
+        <SheetHeader className="space-y-0 px-4 pb-3 pt-3 text-left">
           {/* Título sólo para lectores de pantalla: la tarjeta de identidad de
               abajo ya cumple el rol visual de encabezado. */}
           <SheetTitle className="sr-only">Más opciones</SheetTitle>
           {/* Misma tarjeta de identidad que llevaba el Sheet del rail en
               móvil, para que la superficie se sienta continua con lo que
               existía antes. */}
-          <div className="flex items-center gap-3 rounded-xl bg-sidebar-accent/40 p-2.5">
+          <div className="flex items-center gap-3 rounded-2xl bg-muted/70 p-3">
             <div className="relative shrink-0">
-              <Avatar className="h-9 w-9 ring-2 ring-primary/20">
-                <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-sm font-semibold text-primary-foreground">
                   {session?.user?.username?.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span
                 aria-hidden
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-muted"
               />
             </div>
             <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm font-medium">
+              <span className="truncate text-sm font-semibold">
                 {session?.user?.first_name} {session?.user?.last_name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
@@ -87,7 +89,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
 
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {remainingItems.length > 0 && (
-            <nav aria-label="Más opciones de navegación" className="mb-3 flex flex-col gap-1">
+            <nav aria-label="Más opciones de navegación" className="mb-3 flex flex-col gap-0.5">
               {remainingItems.map((item) => {
                 const active = activeUrl === item.url;
                 return (
@@ -97,13 +99,21 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                     aria-current={active ? "page" : undefined}
                     onClick={() => onOpenChange(false)}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm",
-                      active
-                        ? "bg-primary/10 font-medium text-primary"
-                        : "text-foreground hover:bg-accent"
+                      "flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                      active ? "bg-muted font-medium text-foreground" : "text-foreground hover:bg-muted/70"
                     )}
                   >
-                    <item.icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+                    {/* Ícono en círculo, como el riel: tinta si es la pantalla actual. */}
+                    <span
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                        active
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </span>
                     <span className="flex-1">{item.title}</span>
                     {item.unreadCount > 0 && (
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
@@ -116,20 +126,20 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
             </nav>
           )}
 
-          <Separator className="mb-2" />
+          <Separator className="mb-2 bg-border/60" />
 
           <InstallAppButton />
           <ConfiguracionLink pathname={pathname} />
           <BugReportDialog />
 
-          <div className="my-2 flex items-center justify-between rounded-lg px-3 py-2">
+          <div className="my-2 flex items-center justify-between rounded-full bg-muted/70 py-1.5 pl-4 pr-1.5">
             <span className="text-sm">Tema</span>
             <ThemeToggle />
           </div>
 
           <Button
             variant="ghost"
-            className="mt-2 w-full justify-start gap-3 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="mt-1 w-full justify-start gap-3 px-4 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={() => void logout()}
           >
             <LogOut className="h-4 w-4" />

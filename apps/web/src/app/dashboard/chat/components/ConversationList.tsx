@@ -44,14 +44,14 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
         className={cn(
           "group relative flex w-full items-center justify-start gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
           active
-            ? "bg-primary/10 text-foreground"
-            : "text-foreground/90 hover:bg-accent"
+            ? "text-foreground"
+            : "text-foreground/90 hover:bg-muted/70"
         )}
       >
         {active ? (
           <motion.span
             layoutId="chat-conversation-active"
-            className="absolute inset-0 rounded-xl bg-primary/10"
+            className="absolute inset-0 rounded-xl bg-muted"
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           />
         ) : null}
@@ -61,7 +61,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-full",
                 active
-                  ? "bg-primary text-primary-foreground"
+                  ? "bg-ink text-ink-foreground"
                   : "bg-muted text-muted-foreground"
               )}
             >
@@ -72,7 +72,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
               <AvatarFallback
                 className={cn(
                   "text-xs font-semibold",
-                  active && "bg-primary text-primary-foreground"
+                  active && "bg-ink text-ink-foreground"
                 )}
               >
                 {chatInitials({
@@ -90,7 +90,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
             <span
               aria-hidden
               data-testid={`presence-badge-${conversation.id}`}
-              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+              className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
             />
           ) : null}
         </span>
@@ -99,7 +99,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
             <span
               className={cn(
                 "block min-w-0 flex-1 truncate font-medium",
-                active && "text-primary"
+                active && "font-semibold"
               )}
             >
               {conversation.title}
@@ -155,7 +155,7 @@ export function ConversationList({
 
   const renderGroup = (label: string, items: ChatConversation[]) => (
     <div className="mb-4">
-      <p className="px-3 pb-1.5 text-label">
+      <p className="px-2.5 pb-1.5 text-label">
         {label}
       </p>
       {items.length === 0 ? (
@@ -184,29 +184,29 @@ export function ConversationList({
         // mobile (de ahí el max-h-[45vh] + border-b) — ahora en mobile son
         // pantallas separadas (ver mobileView en page.tsx), así que la lista
         // ocupa el alto completo igual que el hilo.
-        "flex h-full w-full min-w-0 flex-col bg-card/40 md:w-80 md:border-r",
+        "flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card md:w-80 md:shrink-0",
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2 border-b p-3.5">
-        <h2 className="text-sm font-semibold tracking-tight">Conversaciones</h2>
+      <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
+        <h2 className="text-section-title">Conversaciones</h2>
         <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>
           <MessageSquarePlus className="h-3.5 w-3.5" />
           Nuevo
         </Button>
       </div>
-      <div className="border-b p-2.5">
+      <div className="px-3 pb-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar…"
-            className="h-9 rounded-full pl-8 text-sm"
+            className="h-9 rounded-full border-transparent bg-muted pl-8 text-sm"
           />
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-2.5">
+      <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 pt-2">
         {isLoading && conversations.length === 0 ? (
           <div className="space-y-2 p-1" role="status" aria-busy="true" aria-label="Cargando conversaciones">
             <Skeleton className="h-12 w-full rounded-xl" />

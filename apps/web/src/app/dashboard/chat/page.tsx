@@ -148,7 +148,9 @@ export default function ChatPage() {
           extra el contenedor del layout por la barra de tabs flotante
           (`MobileTabBar`), para que el composer del hilo no quede detrás. En
           `md+` la barra no existe y la altura vuelve a ser la de siempre. */}
-      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col overflow-hidden rounded-2xl border bg-card md:h-[calc(100dvh-11rem)] md:flex-row">
+      {/* Lista, hilo y archivos son tres tarjetas blancas separadas (en
+          mobile se ve una sola a la vez, ver `mobileView`). */}
+      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col md:h-[calc(100dvh-11rem)] md:flex-row md:gap-4">
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}

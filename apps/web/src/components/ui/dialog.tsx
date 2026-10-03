@@ -127,9 +127,9 @@ const DialogContent = React.forwardRef<
           {body}
         </div>
         {footer}
-        <DialogPrimitive.Close className="absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top))] z-30 flex h-9 w-9 items-center justify-center rounded-full opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-4 sm:top-4 sm:h-auto sm:w-auto sm:rounded-sm">
+        <DialogPrimitive.Close className="absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top))] z-30 flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none sm:right-4 sm:top-4">
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">Cerrar</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPortal>

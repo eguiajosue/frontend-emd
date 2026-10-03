@@ -9,23 +9,25 @@ automatically.
 
 ## Palette
 
-Brand accent is EMD's Instagram magenta (~`#E6007E`), stored as HSL `330 81%
-46%` and used as `--primary` (buttons, active nav state, focus ring, links).
-Light mode is an off-white surface (`330 20% 98%` background, pure-white
-cards) with near-black text; dark mode inverts to a near-black surface with a
-softened magenta (`330 70% 62%`) so it doesn't vibrate on dark backgrounds.
+Light-first (default theme = light; dark mirrors the same language).
 
-| token | light | dark |
-|---|---|---|
-| `--background` | `330 20% 98%` (off-white) | `330 22% 6%` (near-black) |
-| `--card` | `0 0% 100%` | `330 20% 8.5%` |
-| `--primary` (brand pink) | `330 81% 46%` ≈ `#E6007E` | `330 70% 62%` |
-| `--border` | `330 20% 90%` | `330 15% 18%` |
-| `--muted-foreground` | `330 8% 42%` | `330 10% 68%` |
+| token | light | dark | use |
+|---|---|---|---|
+| `--background` | `330 6% 95.5%` warm light gray canvas | `330 5% 6.5%` | page canvas |
+| `--card` | white | `330 4% 10.5%` | every surface (cards, panels, rail, top bar pills) |
+| `--ink` | `330 10% 9%` near-black | `330 6% 94%` near-white | **primary action** (`Button` default), active rail item, today markers |
+| `--primary` | EMD magenta `330 81% 46%` | `330 72% 62%` | brand accent only: logo monogram, unread dots/badges, focus ring, `Button variant="brand"` (magenta gradient) |
+| `--muted` | `330 6% 95.5%` | `330 4% 14.5%` | gray pills (dates, active segmented tab, chips) |
+| `--border` | `330 6% 90%` (used at /60) | `330 4% 17%` | hairlines; cards barely bordered |
 
-Users may also override `--primary` via Configuración → Apariencia
-(`data-accent="blue|green|orange|purple|teal"`) — this only remaps the accent,
-never the base surface/text tokens, so brand pink stays the shipped default.
+Semantic color lives ONLY in small tinted pills (`bg-X-500/10 text-X-700`,
+dark `bg-X-400/15 text-X-300`): status (`packages/business/src/statusColors.ts`,
+`StatusBadge` with icon + optional count), deadline tone (`TONE_META.pill`),
+calendar categories, notification types. Never paint whole cards in saturated
+color. Accent picker (`data-accent`) still remaps `--primary` only.
+
+Radii: `rounded-2xl` (20px) cards, `rounded-full` buttons/pills/inputs-as-pills,
+`rounded-xl` inner blocks. Buttons are pills by default.
 
 ## Typography
 
@@ -65,40 +67,18 @@ groups (`space-y-5`–`space-y-8`), more space above a section title than
 below it. Separate sections with space and a hairline (`border-t pt-5`),
 not with a card per section — never nest cards.
 
-## Sidebar
+## Shell (desktop)
 
-`src/components/app-sidebar.tsx` now renders `<Sidebar collapsible="icon">`
-from the shadcn `ui/sidebar` primitive. Default state is the icon-only rail
-(`SidebarProvider defaultOpen={false}` in `src/app/dashboard/layout.tsx`);
-clicking `SidebarTrigger` (top bar) expands it to the full labeled nav. The
-expand/collapse choice persists automatically via the primitive's own cookie
-(`sidebar:state`, 7-day max-age) so it's remembered per browser. All existing
-nav groups, per-role visibility (`isOperationalOnly`, per-item `roles`
-arrays), the chat unread badge, active-route indicator, greeting, avatar,
-theme toggle and logout are unchanged in logic — only the collapsed-state
-rendering (icon-only header/footer, tooltips via `title=`, hidden labels) is
-new.
-
-The role-filtered group/item definitions live in `src/lib/navMenu.ts`
-(`OPERATIONAL_MENU`, `buildMenuItems`, `isNavItemVisible`) rather than inline
-in the component, so the mobile tab bar can read the exact same source of
-truth — see "Mobile navigation" below.
-
-Collapsed rail, active item: the soft `sidebar-active-indicator` tint
-(`layoutId`-animated) stays, plus a solid `bg-primary` bar (3px, rounded,
-`h-5`, vertically centered) flush against the rail's own left edge —
-additive, not a replacement. Expanded panel, active item: the soft tinted
-rounded-rectangle background only (no left bar — the reference's expanded
-state doesn't show one). Expanded panel also gets a compact brand row (logo
-tile + "EMD Bordados" wordmark, `font-heading`) above the greeting,
-desktop-only — the mobile Sheet already leads with its own identity card, so
-duplicating the row there would crowd it.
-
-A small chevron button (`ChevronRight`/`ChevronLeft`, flips with state) sits
-in its own row above the footer separator, desktop-only (`!isMobile`), and
-calls the same `toggleSidebar()` as the top-bar `SidebarTrigger` — both
-controls coexist and do the same thing, matching the reference's own
-bottom-of-rail affordance without removing the existing top-bar one.
+- `AppTopBar` (`components/AppTopBar.tsx`): brand pill (magenta gradient "E" +
+  "EMD HUB"), center pill with the active nav group's pages (labels for what
+  the rail only shows as icons), right cluster: search pill (⌘K), bell circle,
+  account pill (avatar → menu: Configuración, Instalar app, Reportar un error,
+  Cerrar sesión).
+- `AppSidebar` (`components/app-sidebar.tsx`): floating icon rail of three
+  white pills — theme (sun/moon radio), navigation (groups separated by
+  hairlines, active = ink circle, tooltips with labels, unread/overdue
+  badges), footer (Configuración, Cerrar sesión). No expanded state.
+- Content: `md:pl-[5.75rem]`, max width 110rem.
 
 ## Mobile navigation
 

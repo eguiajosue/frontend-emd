@@ -1,6 +1,5 @@
 "use client"
 
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
@@ -10,8 +9,19 @@ import { signIn } from 'next-auth/react'
 import { Loader2, User, Lock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMotionPreset } from '@/lib/motion'
-import { GradientBlobs } from '@/components/decor/GradientBlobs'
-import { ParticleField } from '@/components/three/ParticleField'
+
+/** Marca EMD HUB: misma píldora con monograma que la barra superior del panel. */
+const BrandMark = () => (
+  <div className="inline-flex h-12 items-center gap-2.5 self-start rounded-full border border-border/60 bg-card py-1.5 pl-1.5 pr-5 shadow-soft">
+    <span
+      aria-hidden
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] font-heading text-base font-bold text-primary-foreground shadow-sm shadow-primary/30"
+    >
+      E
+    </span>
+    <span className="font-heading text-base font-semibold tracking-tight text-foreground">EMD HUB</span>
+  </div>
+)
 
 const LoginForm = () => {
   const [errors, setErrors] = useState<string[]>([])
@@ -62,64 +72,56 @@ const LoginForm = () => {
   };
 
   return (
-    // El login queda fijo en claro (theme-force-light) más allá del tema
-    // elegido en Configuración: es la puerta de entrada de la marca, no una
-    // pantalla operativa donde el modo oscuro aporte.
-    <div className="theme-force-light grid min-h-dvh w-full grid-cols-1 bg-background md:grid-cols-2">
-      {/* Panel de marca: ocupa toda la altura de la pantalla, sólo escritorio.
-          Sin asset de ilustración con licencia disponible, reutiliza los
-          blobs + campo de partículas ya existentes en vez de una imagen
-          inventada. Curva pronunciada + margen para que se lea como un
-          bloque flotando dentro del full-bleed, igual que la referencia. */}
-      <div className="relative hidden overflow-hidden bg-gradient-to-br from-neutral-950 via-brand-950 to-neutral-950 p-10 text-white md:m-4 md:flex md:flex-col md:justify-center md:rounded-[2.5rem] lg:p-14">
-        <GradientBlobs variant="login" />
-        <ParticleField className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" />
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="relative"
-        >
-          <h1 className="font-heading text-6xl font-semibold leading-[0.95] tracking-tight text-white lg:text-7xl">
-            EMD
-            <br />
-            <span className="text-brand-300">HUB</span>
+    // Lienzo gris + tarjetas blancas, el mismo lenguaje que el panel. Sigue el
+    // tema guardado (claro por defecto): el oscuro usa los mismos tokens.
+    <div className="grid min-h-dvh w-full grid-cols-1 gap-4 bg-background p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      {/* Panel de marca: sólo escritorio. Tarjeta blanca grande con el
+          monograma y la propuesta de la herramienta; nada de bloques de color. */}
+      <motion.section
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="relative hidden flex-col justify-between overflow-hidden rounded-[2rem] border border-border/60 bg-card p-10 shadow-soft lg:flex xl:p-14"
+      >
+        <BrandMark />
+        <div>
+          <h1 className="font-heading text-6xl font-semibold leading-[0.95] tracking-tight text-foreground xl:text-7xl">
+            EMD HUB
           </h1>
-          <p className="mt-6 max-w-sm text-lg font-medium leading-snug text-neutral-200">
+          <p className="mt-6 max-w-md text-xl font-medium leading-snug text-foreground/90">
             Imprenta, bordado y marketing: todo tu equipo creativo en un solo lugar.
           </p>
-          <p className="mt-3 max-w-sm text-sm font-medium text-neutral-400">
+          <p className="mt-3 max-w-md text-base text-muted-foreground">
             De la idea a la entrega, sin perder ningún pedido en el camino.
           </p>
-        </motion.div>
-      </div>
+        </div>
+        <ul aria-label="Áreas" className="flex flex-wrap gap-2">
+          {['Imprenta', 'Bordado', 'Marketing'].map((area) => (
+            <li
+              key={area}
+              className="rounded-full bg-muted px-4 py-2 text-sm font-medium text-muted-foreground"
+            >
+              {area}
+            </li>
+          ))}
+        </ul>
+      </motion.section>
 
-      {/* Panel de formulario: sin card propia, vive directo sobre el fondo
-          claro de la página — igual que la referencia. */}
-      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 md:px-16 lg:px-24">
+      {/* Formulario: tarjeta blanca centrada sobre el lienzo. */}
+      <div className="flex flex-col items-center justify-center py-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
-          className="mx-auto w-full max-w-sm"
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+          className="w-full max-w-md"
         >
-          <div className="mb-10 flex items-center gap-3">
-            <Image
-              src="/icons/icon.svg"
-              alt="EMD"
-              width={44}
-              height={44}
-              className="shrink-0"
-              priority
-            />
-            <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-              EMD HUB
-            </span>
+          <div className="mb-6 flex justify-center lg:hidden">
+            <BrandMark />
           </div>
 
+          <div className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-soft sm:p-9">
           <div className="space-y-2">
-            <h2 className="font-heading text-4xl font-semibold leading-tight tracking-tight text-foreground">
+            <h2 className="font-heading text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
               Bienvenido de vuelta
             </h2>
             <p className="text-muted-foreground">
@@ -128,7 +130,7 @@ const LoginForm = () => {
           </div>
 
           {sessionMessage && (
-            <div className="mt-6 rounded-2xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center text-sm text-brand-700">
+            <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-center text-sm text-foreground">
               {sessionMessage}
             </div>
           )}
@@ -141,7 +143,7 @@ const LoginForm = () => {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-                className="h-12 w-full rounded-2xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
+                className="h-12 w-full rounded-full border border-transparent bg-muted px-5 transition-colors focus-visible:border-ring focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/20"
               />
             </FormField>
 
@@ -153,7 +155,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                className="h-12 w-full rounded-2xl border border-transparent bg-muted px-4 transition-colors focus-visible:border-primary focus-visible:bg-card focus-visible:ring-0"
+                className="h-12 w-full rounded-full border border-transparent bg-muted px-5 transition-colors focus-visible:border-ring focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/20"
               />
             </FormField>
 
@@ -186,7 +188,8 @@ const LoginForm = () => {
               <Button
                 type="submit"
                 disabled={submitting}
-                className="h-12 w-full rounded-full bg-primary text-primary-foreground transition-colors hover:bg-brand-700"
+                size="lg"
+                className="h-12 w-full"
               >
                 {submitting ? (
                   <>
@@ -199,14 +202,15 @@ const LoginForm = () => {
             </motion.div>
           </form>
 
-          <p className="mt-6 text-center text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             ¿No tienes una cuenta?{' '}
-            <span className="font-medium text-primary">
+            <span className="font-medium text-foreground">
               Consulta con un administrador para dar la alta de su usuario
             </span>
           </p>
+          </div>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground/70">
+          <p className="mt-5 text-center text-xs text-muted-foreground">
             v{process.env.NEXT_PUBLIC_APP_VERSION} · {process.env.NEXT_PUBLIC_GIT_COMMIT}
           </p>
         </motion.div>

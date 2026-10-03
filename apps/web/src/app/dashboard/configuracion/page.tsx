@@ -14,6 +14,7 @@ import {
   Laptop,
   Loader2,
   Moon,
+  Plus,
   Sun,
   Volume2,
   VolumeX,
@@ -100,21 +101,25 @@ function AppearanceSection() {
         <CardTitle>Apariencia</CardTitle>
         <CardDescription>Personalizar cómo se ve la app.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
+      <CardContent className="space-y-7">
+        <div className="space-y-2.5">
           <p className="text-sm font-medium" id="theme-label">Tema</p>
+          <p className="text-xs text-muted-foreground" id="theme-hint">
+            Por defecto la app usa el tema claro. &quot;Sistema&quot; sigue la configuración de tu dispositivo.
+          </p>
           <ToggleGroup
             type="single"
-            variant="outline"
+            variant="segmented"
             value={mounted ? theme ?? "" : ""}
             onValueChange={(v) => v && handleThemeSelect(v)}
             aria-labelledby="theme-label"
-            className="flex-wrap justify-start"
+            aria-describedby="theme-hint"
+            className="w-fit flex-wrap justify-start rounded-full border bg-card p-1"
           >
             {THEME_OPTIONS.map((opt) => {
               const Icon = opt.icon;
               return (
-                <ToggleGroupItem key={opt.id} value={opt.id} className="gap-2 px-3">
+                <ToggleGroupItem key={opt.id} value={opt.id} className="gap-2">
                   <Icon aria-hidden />
                   {opt.label}
                 </ToggleGroupItem>
@@ -123,7 +128,7 @@ function AppearanceSection() {
           </ToggleGroup>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <p className="text-sm font-medium" id="accent-label">Color de acento</p>
           <p className="text-xs text-muted-foreground">
             Cambia el color principal usado en botones, enlaces y resaltados.
@@ -164,7 +169,7 @@ function AppearanceSection() {
               {isCustomAccent ? (
                 <Check className="h-4 w-4 text-white drop-shadow" />
               ) : (
-                <span className="text-base leading-none">+</span>
+                <Plus className="h-4 w-4 text-muted-foreground" aria-hidden />
               )}
               {/* shadcn no trae selector de color: Input nativo type="color",
                   invisible sobre el círculo, abre el picker del sistema. */}
@@ -223,20 +228,20 @@ function LanguageSection() {
       <CardContent>
         <ToggleGroup
           type="single"
-          variant="outline"
+          variant="segmented"
           value={mounted ? language : ""}
           onValueChange={(v) => {
             const opt = LANGUAGE_OPTIONS.find((o) => o.id === v);
             if (opt) handleSelect(opt.id, opt.available);
           }}
           aria-label="Idioma"
-          className="flex-wrap justify-start"
+          className="w-fit flex-wrap justify-start rounded-full border bg-card p-1"
         >
           {LANGUAGE_OPTIONS.map((opt) => (
             <ToggleGroupItem
               key={opt.id}
               value={opt.id}
-              className={cn("gap-2 px-3", !opt.available && "text-muted-foreground")}
+              className={cn("gap-2", !opt.available && "text-muted-foreground")}
             >
               {opt.label}
               {!opt.available && <Badge variant="muted">Próximamente</Badge>}
@@ -268,7 +273,7 @@ function DensitySection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
           <Label htmlFor="pref-compact">Usar vista compacta</Label>
           <Switch
             id="pref-compact"
@@ -316,7 +321,7 @@ function TimeFormatSection() {
             <ToggleGroupItem
               key={opt.id}
               value={opt.id}
-              className="h-auto min-w-[7rem] flex-col items-start gap-0.5 px-3 py-2"
+              className="h-auto min-w-[8rem] flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 data-[state=on]:border-foreground/60 data-[state=on]:bg-muted"
             >
               {opt.label}
               <span className="text-xs font-normal text-muted-foreground">{opt.example}</span>
@@ -348,7 +353,7 @@ function SoundSection() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
           <Label htmlFor="pref-sound" className="flex items-center gap-2">
             {mounted && soundEnabled ? (
               <Volume2 className="h-4 w-4 text-muted-foreground" />
@@ -488,7 +493,7 @@ function NotificationsSection() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4 rounded-lg border bg-muted/40 px-4 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
               <div>
                 <Label htmlFor="notify-muted">Modo silencio</Label>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -498,7 +503,7 @@ function NotificationsSection() {
               <Switch id="notify-muted" checked={muted} onCheckedChange={handleMuteToggle} />
             </div>
 
-            <div className="divide-y">
+            <div className="divide-y divide-border/60">
               <NotificationToggleRow
                 id="notify-mentions"
                 icon={AtSign}
@@ -530,7 +535,7 @@ function NotificationsSection() {
               />
             </div>
 
-            <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
                 Activá el push para recibir avisos aunque tengas la pestaña cerrada.
               </p>
@@ -605,7 +610,7 @@ function AreaVisibilitySection() {
             No se pudo cargar la configuración de visibilidad por área.
           </p>
         ) : (
-          <div className="divide-y">
+          <div className="divide-y divide-border/60">
             {OPERATIONAL_ROLE_LABELS.map(({ role, label }) => {
               const row = rowsByRole.get(role);
               const enabled = row?.generalViewEnabled ?? true;
@@ -704,7 +709,9 @@ export default function ConfiguracionPage() {
   return (
     <div className="space-y-6">
       <Title title="Configuración" description="Tus preferencias en este dispositivo y, si sos administrador, las de la empresa." />
-      <div className="grid gap-6 lg:max-w-2xl">
+      {/* Dos columnas en pantallas anchas (flujo tipo masonry con `columns`,
+          así tarjetas de alto distinto no dejan huecos); una sola en el resto. */}
+      <div className="max-w-6xl gap-6 xl:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
         <AppearanceSection />
         <DensitySection />
         <TimeFormatSection />

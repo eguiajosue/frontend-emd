@@ -22,7 +22,7 @@ import {
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded border bg-muted px-1.5 font-sans text-xs font-medium text-foreground">
+    <kbd className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-border/60 bg-card px-2 font-sans text-xs font-medium text-foreground shadow-soft">
       {children}
     </kbd>
   );
@@ -132,9 +132,9 @@ export function KeyboardShortcuts() {
               <h3 className="mb-2 text-label">
                 {section.title}
               </h3>
-              <ul className="divide-y rounded-lg border">
+              <ul className="divide-y divide-border/60 rounded-2xl bg-muted/60">
                 {section.rows.map((row) => (
-                  <li key={row.label} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <li key={row.label} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
                     <span className="min-w-0 truncate">{row.label}</span>
                     {row.keys.length === 2 && row.keys[0] === "G" ? (
                       <Keys keys={row.keys} />

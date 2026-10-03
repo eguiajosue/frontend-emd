@@ -34,7 +34,7 @@ export function ConfiguracionLink({ pathname }: { pathname: string }) {
       className={cn(
         "gap-2 mb-2",
         collapsed ? "mx-auto size-8 justify-center p-0" : "w-full justify-start",
-        active && "bg-primary/10 text-primary"
+        active && "bg-muted font-medium text-foreground"
       )}
       asChild
     >
