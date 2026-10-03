@@ -200,12 +200,9 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
               <motion.div key={key} variants={staggerItemVariants}>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                    >
+                    <Button type="button" variant="bare" size="bare" className="block w-full rounded-lg text-left">
                       {cell}
-                    </button>
+                    </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80" align="center">
                     <div className="mb-2 flex items-center justify-between gap-2">

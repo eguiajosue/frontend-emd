@@ -36,11 +36,13 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
 
   return (
     <li>
-      <button
+      <Button
         type="button"
+        variant="bare"
+        size="bare"
         onClick={() => onSelect(conversation)}
         className={cn(
-          "group relative flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+          "group relative flex w-full items-center justify-start gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
           active
             ? "bg-primary/10 text-foreground"
             : "text-foreground/90 hover:bg-accent"
@@ -127,7 +129,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
           </Badge>
         ) : null}
-      </button>
+      </Button>
     </li>
   );
 }

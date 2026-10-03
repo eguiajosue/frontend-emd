@@ -70,8 +70,31 @@ DialogFooter.displayName = "DialogFooter"
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /**
+     * Pantalla completa en todos los tamaños (Modo TV): sin hoja móvil ni
+     * botón de cerrar propio; el contenido trae los suyos.
+     */
+    fullscreen?: boolean
+  }
+>(({ className, children, fullscreen = false, ...props }, ref) => {
+  if (fullscreen) {
+    return (
+      <DialogPortal>
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            "fixed inset-0 z-[60] h-dvh w-screen overflow-y-auto bg-background text-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            className
+          )}
+          {...props}
+        >
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    )
+  }
+
   // Separar cabecera y pie del cuerpo permite que en móvil sólo scrollee el
   // cuerpo, con las dos barras ancladas: el gesto de una hoja nativa.
   const items = React.Children.toArray(children)

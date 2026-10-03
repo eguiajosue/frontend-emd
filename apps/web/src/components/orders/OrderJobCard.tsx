@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
@@ -133,11 +134,13 @@ export const OrderJobCard = memo(function OrderJobCard({
       )}
     >
       {/* Botón que cubre toda la tarjeta: un solo destino de click, con nombre accesible. */}
-      <button
+      <Button
         type="button"
+        variant="bare"
+        size="bare"
         onClick={() => onOpen(order.id)}
         aria-label={`Ver detalle del pedido #${order.id} de ${clientName}`}
-        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="absolute inset-0 z-0 rounded-xl"
       />
 
       <header className="pointer-events-none relative flex items-start gap-3 p-4 pb-3">

@@ -19,12 +19,15 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        /** Ver `BARE_BUTTON_CLASS`: no pasa por las clases base. */
+        bare: "",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-[0.8125rem]",
         lg: "h-10 px-6",
         icon: "h-9 w-9",
+        bare: "",
       },
     },
     defaultVariants: {
@@ -33,6 +36,15 @@ const buttonVariants = cva(
     },
   }
 )
+
+/**
+ * `variant="bare"`: superficie clicable sin aspecto de botón (celda de
+ * calendario, tarjeta entera, miniatura). Mantiene foco visible, teclado y
+ * semántica de Button, pero NO hereda las clases base (tamaño forzado de
+ * íconos, nowrap, alto fijo): el contenido define cómo se ve.
+ */
+const BARE_BUTTON_CLASS =
+  "rounded-md text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50"
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -45,7 +57,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={
+          variant === "bare"
+            ? cn(BARE_BUTTON_CLASS, className)
+            : cn(buttonVariants({ variant, size, className }))
+        }
         ref={ref}
         {...props}
       />

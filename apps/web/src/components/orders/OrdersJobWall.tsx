@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { Maximize2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderJobCard, TONE_META } from "@/components/orders/OrderJobCard";
 import { useNow } from "@/hooks/useNow";
@@ -230,23 +230,16 @@ function OrdersTvWall({
   const [tone, setTone] = useState<DeadlineTone | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [accent, setAccent] = useState<string | undefined>();
-  const onCloseRef = useRef(onClose);
   const onRefreshRef = useRef(onRefresh);
-  onCloseRef.current = onClose;
   onRefreshRef.current = onRefresh;
 
   useEffect(() => {
     setAccent(document.documentElement.dataset.accent);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current();
-    };
-    window.addEventListener("keydown", onKey);
     const refresh = setInterval(() => onRefreshRef.current?.(), TV_REFRESH_MS);
     document.documentElement.requestFullscreen?.().catch(() => {
       // Sin permiso de pantalla completa: el overlay igual tapa toda la app.
     });
     return () => {
-      window.removeEventListener("keydown", onKey);
       clearInterval(refresh);
       if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => {});
     };
@@ -260,76 +253,83 @@ function OrdersTvWall({
   );
   const clock = new Date(now);
 
-  return createPortal(
+  return (
     // Siempre oscuro: una tele en el taller se mira de lejos y con luz de
     // fábrica; el fondo claro encandila y lava los colores del semáforo.
-    <div
-      className="dark fixed inset-0 z-[60] overflow-y-auto bg-background text-foreground"
-      data-accent={accent}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pedidos en modo TV"
-    >
-      <div className="mx-auto max-w-[120rem] space-y-4 p-6">
-        <div className="flex items-center gap-4">
-          <h2 className="font-heading text-3xl font-semibold">Pedidos en curso</h2>
-          <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden />
-            En vivo
-          </span>
-          <p className="ml-auto font-heading text-3xl font-bold tabular-nums">
-            {clock.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-          </p>
-          <SimpleTooltip label="Salir (Esc)" side="bottom">
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Salir del modo TV (Esc)">
-              <X className="h-5 w-5" />
-            </Button>
-          </SimpleTooltip>
+    // Dialog de shadcn a pantalla completa: trae foco atrapado y Esc.
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        fullscreen
+        className="dark"
+        data-accent={accent}
+        aria-describedby={undefined}
+        // Sin esto el foco cae en "Salir", se abre su tooltip y el primer Esc
+        // sólo cierra el tooltip en vez del Modo TV.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement).focus();
+        }}
+      >
+        <div className="mx-auto max-w-[120rem] space-y-4 p-6">
+          <div className="flex items-center gap-4">
+            <DialogTitle className="text-3xl">Pedidos en curso</DialogTitle>
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" aria-hidden />
+              En vivo
+            </span>
+            <p className="ml-auto font-heading text-3xl font-bold tabular-nums">
+              {clock.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            <SimpleTooltip label="Salir (Esc)" side="bottom">
+              <Button variant="ghost" size="icon" onClick={onClose} aria-label="Salir del modo TV (Esc)">
+                <X className="h-5 w-5" />
+              </Button>
+            </SimpleTooltip>
+          </div>
+
+          <KpiStrip entries={live} activeTone={tone} onToneChange={setTone} large />
+
+          {presentAreas.length > 1 && (
+            <ToggleGroup
+              type="single"
+              variant="segmented"
+              value={area ?? ALL_AREAS}
+              onValueChange={(v) => v && setArea(v === ALL_AREAS ? null : v)}
+              aria-label="Filtrar por área"
+              className="flex-wrap justify-start gap-2"
+            >
+              {[{ value: ALL_AREAS, label: "Todas" }, ...presentAreas].map((option) => {
+                const Icon = option.value !== ALL_AREAS ? getAreaIcon(option.value) : null;
+                return (
+                  <ToggleGroupItem key={option.value} value={option.value} className="gap-1.5 border bg-card">
+                    {Icon && <Icon aria-hidden />}
+                    {option.label}
+                  </ToggleGroupItem>
+                );
+              })}
+            </ToggleGroup>
+          )}
+
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4">
+            {shown.map(({ order, state }) => (
+              <li key={order.id} className="flex min-w-0">
+                <div className="flex w-full min-w-0">
+                  <OrderJobCard
+                    order={order}
+                    state={state}
+                    timeFormat={timeFormat}
+                    onOpen={(id) => {
+                      onClose();
+                      onOpenOrder(id);
+                    }}
+                    wall
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        <KpiStrip entries={live} activeTone={tone} onToneChange={setTone} large />
-
-        {presentAreas.length > 1 && (
-          <ToggleGroup
-            type="single"
-            variant="segmented"
-            value={area ?? ALL_AREAS}
-            onValueChange={(v) => v && setArea(v === ALL_AREAS ? null : v)}
-            aria-label="Filtrar por área"
-            className="flex-wrap justify-start gap-2"
-          >
-            {[{ value: ALL_AREAS, label: "Todas" }, ...presentAreas].map((option) => {
-              const Icon = option.value !== ALL_AREAS ? getAreaIcon(option.value) : null;
-              return (
-                <ToggleGroupItem key={option.value} value={option.value} className="gap-1.5 border bg-card">
-                  {Icon && <Icon aria-hidden />}
-                  {option.label}
-                </ToggleGroupItem>
-              );
-            })}
-          </ToggleGroup>
-        )}
-
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(20rem,1fr))] gap-4">
-          {shown.map(({ order, state }) => (
-            <li key={order.id} className="flex min-w-0">
-              <div className="flex w-full min-w-0">
-                <OrderJobCard
-                  order={order}
-                  state={state}
-                  timeFormat={timeFormat}
-                  onOpen={(id) => {
-                    onClose();
-                    onOpenOrder(id);
-                  }}
-                  wall
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>,
-    document.body
+      </DialogContent>
+    </Dialog>
   );
 }

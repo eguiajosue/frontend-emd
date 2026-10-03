@@ -83,6 +83,7 @@ import {
 import type { DesignRevisionFile, Order } from "@/types";
 import type { UploadFileInput } from "@/lib/fileInput";
 import { PreviewImage } from "@/components/ui/preview-image";
+import { ZoomableImage } from "@/components/ui/zoomable-image";
 
 const ImageLightbox = dynamic(() => import("./ImageLightbox"), { ssr: false });
 
@@ -639,21 +640,7 @@ function RevisionTimelineItem({
         (isImageMontage ? (
           montageQuery.data ? (
             <div className="space-y-2">
-              <button
-                type="button"
-                className="group relative inline-block overflow-hidden rounded-md border"
-                onClick={() => onZoom(montageQuery.data!.url)}
-              >
-                <PreviewImage
-                  src={montageQuery.data.url}
-                  alt={legacyMontageName}
-                  loading="lazy"
-                  className="max-h-48 max-w-full object-contain"
-                />
-                <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-                  <ZoomIn className="h-5 w-5" />
-                </span>
-              </button>
+              <ZoomableImage src={montageQuery.data.url} alt={legacyMontageName} onZoom={onZoom} />
               <div>
                 <DownloadFileButton
                   href={montageQuery.data.url}
@@ -793,21 +780,7 @@ function RevisionFileCard({
     }
     return (
       <div className="space-y-1.5">
-        <button
-          type="button"
-          className="group relative block overflow-hidden rounded-md border"
-          onClick={() => onZoom(query.data!.dataUrl)}
-        >
-          <PreviewImage
-            src={query.data.dataUrl}
-            alt={file.filename}
-            loading="lazy"
-            className="max-h-48 max-w-full object-contain"
-          />
-          <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
-            <ZoomIn className="h-5 w-5" />
-          </span>
-        </button>
+        <ZoomableImage src={query.data.dataUrl} alt={file.filename} onZoom={onZoom} className="flex" />
         <DownloadFileButton href={query.data.dataUrl} filename={file.filename} />
       </div>
     );
@@ -1134,13 +1107,15 @@ function FileDropzone({
       tabIndex={0}
       aria-label="Zona para soltar o pegar archivos"
     >
-      <input
+      <Input
         ref={fileInputRef}
         type="file"
         multiple
         accept={ALLOWED_UPLOAD_MIME_TYPES.join(",")}
         className="hidden"
         onChange={handleInputChange}
+        tabIndex={-1}
+        aria-hidden
       />
       {files.length > 0 && <StagedFileList files={files} onRemove={onRemove} disabled={disabled} />}
       <div className="space-y-3 py-1">
