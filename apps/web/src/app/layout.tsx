@@ -56,6 +56,10 @@ export const viewport: Viewport = {
   // Sin esto, env(safe-area-inset-*) siempre vale 0 en iOS y las hojas a
   // pantalla completa quedan por debajo del notch y del home indicator.
   viewportFit: "cover",
+  // Android: el teclado virtual achica el layout (no sólo el visual
+  // viewport), así los footers fijos de las hojas a pantalla completa (ej.
+  // "Crear pedido") quedan por encima del teclado en vez de tapados.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
