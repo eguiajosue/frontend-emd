@@ -6,6 +6,7 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { toast } from "sonner";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   CalendarDays,
@@ -14,6 +15,7 @@ import {
   Minus,
   Paperclip,
   Plus,
+  RotateCcw,
   Trash2,
   UserPlus,
   X,
@@ -47,7 +49,8 @@ import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
-import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { useClientOrders, useOrder } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import {
@@ -59,7 +62,8 @@ import {
 import { AREA_ICONS, PRODUCTION_AREA_OPTIONS, getAreaLabel, type AreaValue } from "@/lib/areas";
 import { DEFAULT_DELIVERY_TIME, combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
-import { getErrorMessage } from "@/lib/api";
+import { getErrorMessage, request } from "@/lib/api";
+import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 import {
   DATE_FORMAT,
@@ -69,7 +73,9 @@ import {
   MAX_PRODUCT_LINES,
   MAX_QUANTITY,
   buildOrderSummary,
+  buildRepeatPrefill,
   clampName,
+  describeOrderProducts,
   longDateLabel,
   mergeAreaSelection,
   parseDeliveryDate,
@@ -79,14 +85,17 @@ import {
   readLastOrderDefaults,
   readRecentClientIds,
   shortDateLabel,
+  toRepeatMaterials,
   writeLastOrderDefaults,
+  type RepeatMaterial,
 } from "@/lib/createOrderForm";
-import { format } from "date-fns";
+import { format, formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
 import type {
   Client,
   CreateOrderPayload,
   Order,
+  OrderMaterialItem,
   OrderProductPreset,
   UploadedFileInput,
   User,
@@ -186,6 +195,23 @@ interface OrderProductRow {
   quantity?: number;
 }
 
+/** Estado del formulario antes de aplicar una base, para "Quitar base". */
+interface FormSnapshot {
+  requiresDesign: boolean;
+  areas: string[];
+  assignedUserId?: number;
+  description: string;
+  rows: OrderProductRow[];
+  materials: RepeatMaterial[];
+  defaultsApplied: boolean;
+  routeTouched: boolean;
+  descriptionTouched: boolean;
+}
+
+/** Pedidos anteriores que se muestran de entrada / al tocar "Ver más". */
+const PREVIOUS_ORDERS_SHOWN = 3;
+const PREVIOUS_ORDERS_LIMIT = 8;
+
 interface CreateOrderDialogProps {
   open: boolean;
   onClose: () => void;
@@ -199,6 +225,11 @@ interface CreateOrderDialogProps {
    * éxito — el padre decide cómo reabrir el diálogo (ver `orders/page.tsx`).
    */
   onCreateAnother?: (clientId: number | undefined, clientNameOverride: string) => void;
+  /**
+   * "Repetir pedido" (menú del detalle): abre con el cliente y el pedido de
+   * ese id ya cargados como base, sin fecha ni archivo del cliente.
+   */
+  repeatFromOrderId?: number;
 }
 
 function clientLabel(c: Client): string {
@@ -303,7 +334,10 @@ export function CreateOrderDialog({
   initialClientId,
   initialClientNameOverride,
   onCreateAnother,
+  repeatFromOrderId,
 }: CreateOrderDialogProps) {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
   const { session } = usePermissions();
   const { formButtonMotion, reduced } = useMotionPreset();
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
@@ -356,6 +390,16 @@ export function CreateOrderDialog({
   const focusBeforeConfirmRef = useRef<HTMLElement | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const rowKeySeq = useRef(0);
+  /** Pedido anterior usado como base y el estado previo a aplicarlo. */
+  const [base, setBase] = useState<{ orderId: number; snapshot: FormSnapshot } | null>(null);
+  /** Hoja de materiales copiada de la base: se carga en el pedido nuevo al crearlo. */
+  const [materials, setMaterials] = useState<RepeatMaterial[]>([]);
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  const [showAllPrevious, setShowAllPrevious] = useState(false);
+  /** Invalida la carga de materiales de una base anterior (se cambió o se quitó). */
+  const baseRequestRef = useRef(0);
+  /** Id del pedido de `repeatFromOrderId` ya aplicado en esta apertura. */
+  const appliedRepeatRef = useRef<number | null>(null);
 
   const nextRowKey = () => `row-${++rowKeySeq.current}`;
   const markDirty = () => setDirty(true);
@@ -387,6 +431,11 @@ export function CreateOrderDialog({
     setDescriptionTouched(false);
     setShowFile(false);
     setLiveMessage("");
+    setBase(null);
+    setMaterials([]);
+    setMaterialsLoading(false);
+    setShowAllPrevious(false);
+    baseRequestRef.current++;
     revokePreview();
     setClientResourceFile(null);
   };
@@ -468,6 +517,8 @@ export function CreateOrderDialog({
   };
 
   const clearClient = () => {
+    // La base era de ese cliente: al cambiarlo se vuelve a lo que había antes.
+    if (base) restoreSnapshot(base.snapshot);
     setClientId(undefined);
     setClientNameOverride("");
     setCreatedClient(null);
@@ -635,6 +686,154 @@ export function CreateOrderDialog({
 
   const completeRows = rows.filter((r) => r.customName.trim() && r.quantity && r.quantity > 0);
   const unitCount = completeRows.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
+
+  /* ------------------------ Repetir un pedido anterior --------------------- */
+
+  // Los clientes suelen repetir el pedido ("Figuras", de vinil sobre
+  // coroplast) aunque cambie el detalle (qué figuras) y la fecha. Usar un
+  // pedido anterior como base copia lo que se pide, la descripción, la ruta
+  // de diseño/producción y la hoja de materiales; NUNCA la fecha ni el
+  // archivo del cliente. Siempre es una acción explícita, visible y con
+  // "Quitar base" para volver atrás.
+  const { orders: previousOrders, isLoading: previousLoading } = useClientOrders(
+    open && clientId ? clientId : null,
+    { limit: PREVIOUS_ORDERS_LIMIT }
+  );
+  const visiblePrevious = showAllPrevious
+    ? previousOrders
+    : previousOrders.slice(0, PREVIOUS_ORDERS_SHOWN);
+
+  const { data: repeatSource } = useOrder(repeatFromOrderId, {
+    enabled: open && repeatFromOrderId !== undefined,
+  });
+
+  const takeSnapshot = (): FormSnapshot => ({
+    requiresDesign,
+    areas,
+    assignedUserId,
+    description,
+    rows,
+    materials,
+    defaultsApplied,
+    routeTouched,
+    descriptionTouched,
+  });
+
+  function restoreSnapshot(snapshot: FormSnapshot) {
+    baseRequestRef.current++;
+    setRequiresDesign(snapshot.requiresDesign);
+    setAreas(snapshot.areas);
+    setAssignedUserId(snapshot.assignedUserId);
+    setDescription(snapshot.description);
+    setRows(snapshot.rows);
+    setRowErrors({});
+    setMaterials(snapshot.materials);
+    setMaterialsLoading(false);
+    setDefaultsApplied(snapshot.defaultsApplied);
+    setRouteTouched(snapshot.routeTouched);
+    setDescriptionTouched(snapshot.descriptionTouched);
+    setBase(null);
+  }
+
+  /**
+   * Carga `order` como base. `snapshot` es el formulario de ANTES de la
+   * primera base: cambiar de una base a otra no lo pisa, así "Quitar base"
+   * siempre vuelve a lo que había cargado el usuario.
+   */
+  function applyBase(order: Order, snapshot: FormSnapshot) {
+    const prefill = buildRepeatPrefill(order);
+    const nextRows = prefill.products.map((p) => ({ key: nextRowKey(), ...p }));
+    setBase({ orderId: order.id, snapshot });
+    setRequiresDesign(prefill.requiresDesign);
+    setAreas(prefill.areas);
+    setAssignedUserId(prefill.assignedUserId);
+    setDescription(prefill.description);
+    setRows(nextRows);
+    setRowErrors({});
+    setDefaultsApplied(false);
+    setRouteTouched(false);
+    setDescriptionTouched(false);
+    setMaterials([]);
+    markDirty();
+    setLiveMessage(
+      `Se cargó el pedido #${order.id} como base: ${nextRows.length} ${
+        nextRows.length === 1 ? "producto" : "productos"
+      }. Revisá cantidades y descripción.`
+    );
+    // Lo que más cambia de una vez a otra es la cantidad: el foco va ahí.
+    if (nextRows[0]) {
+      requestAnimationFrame(() => {
+        const input = document.getElementById(`order-qty-${nextRows[0].key}`) as HTMLInputElement | null;
+        input?.focus();
+        input?.select();
+      });
+    }
+
+    const requestId = ++baseRequestRef.current;
+    // El listado trae `materialItems` livianos: si viene vacío no hay nada que pedir.
+    if (order.materialItems && order.materialItems.length === 0) {
+      setMaterialsLoading(false);
+      return;
+    }
+    setMaterialsLoading(true);
+    request<OrderMaterialItem[]>(`${ENDPOINTS.orders}/${order.id}/materials`, { token })
+      .then((items) => {
+        if (requestId === baseRequestRef.current) setMaterials(toRepeatMaterials(items ?? []));
+      })
+      .catch(() => {
+        if (requestId === baseRequestRef.current) {
+          toast.error(`No se pudo copiar la hoja de materiales del pedido #${order.id}.`);
+        }
+      })
+      .finally(() => {
+        if (requestId === baseRequestRef.current) setMaterialsLoading(false);
+      });
+  }
+
+  const removeBase = () => {
+    if (!base) return;
+    const id = base.orderId;
+    restoreSnapshot(base.snapshot);
+    markDirty();
+    setLiveMessage(`Se quitó el pedido #${id} como base`);
+    focusById(`order-previous-${id}`);
+  };
+
+  const removeMaterial = (key: string) => {
+    const index = materials.findIndex((m) => m.key === key);
+    const remaining = materials.filter((m) => m.key !== key);
+    setMaterials(remaining);
+    markDirty();
+    const neighbour = remaining[index] ?? remaining[index - 1];
+    focusById(neighbour ? `order-material-remove-${neighbour.key}` : "order-description");
+  };
+
+  // "Repetir pedido" desde el detalle: cliente + base apenas llega el pedido.
+  // Corre después del efecto de apertura (que limpia el formulario).
+  useEffect(() => {
+    if (!open) {
+      appliedRepeatRef.current = null;
+      return;
+    }
+    if (!repeatSource || repeatSource.id !== repeatFromOrderId) return;
+    if (appliedRepeatRef.current === repeatSource.id) return;
+    appliedRepeatRef.current = repeatSource.id;
+    const lastDefaults = readLastOrderDefaults();
+    setClientId(repeatSource.clientId ?? undefined);
+    setClientNameOverride(repeatSource.clientId ? "" : repeatSource.clientNameOverride?.trim() ?? "");
+    applyBase(repeatSource, {
+      requiresDesign: lastDefaults?.requiresDesign ?? true,
+      areas: lastDefaults?.area ? [lastDefaults.area] : [],
+      assignedUserId: undefined,
+      description: "",
+      rows: [],
+      materials: [],
+      defaultsApplied: Boolean(lastDefaults),
+      routeTouched: false,
+      descriptionTouched: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, repeatSource, repeatFromOrderId]);
 
   /* -------------------------------- Archivo ------------------------------- */
 
@@ -828,6 +1027,30 @@ export function CreateOrderDialog({
         clientResourceFile: clientResourceFile ?? undefined,
       });
 
+      // Hoja de materiales copiada de la base: una línea a la vez (la primera
+      // dispara el evento "Compra de materiales"; en paralelo podían correr dos).
+      let materialsFailed = 0;
+      if (order?.id && materials.length > 0) {
+        for (const m of materials) {
+          try {
+            await request(`${ENDPOINTS.orders}/${order.id}/materials`, {
+              token,
+              method: "POST",
+              body: {
+                materialId: m.materialId,
+                quantity: m.quantity,
+                description: m.description,
+                supplierId: m.supplierId,
+              },
+            });
+          } catch {
+            materialsFailed++;
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      }
+      queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
+
       // Se guardan ANTES de cerrar (el estado se limpia en la próxima apertura):
       // chip "Recientes", defaults del próximo pedido y "Crear otro para {cliente}".
       const submittedClientId = parsed.clientId;
@@ -851,6 +1074,13 @@ export function CreateOrderDialog({
             }
           : undefined,
       });
+      if (materialsFailed > 0) {
+        toast.warning(
+          materialsFailed === 1
+            ? "El pedido se creó, pero no se pudo copiar 1 material. Cargalo desde la hoja de materiales."
+            : `El pedido se creó, pero no se pudieron copiar ${materialsFailed} materiales. Cargalos desde la hoja de materiales.`
+        );
+      }
       setDirty(false);
       onClose();
       onCreated?.(order);
@@ -932,7 +1162,10 @@ export function CreateOrderDialog({
               // Foco al primer campo real (nunca a la X): el cliente, o
               // "Agregar producto" si el cliente ya viene precargado.
               e.preventDefault();
-              const prefilled = initialClientId !== undefined || Boolean(initialClientNameOverride);
+              const prefilled =
+                initialClientId !== undefined ||
+                Boolean(initialClientNameOverride) ||
+                repeatFromOrderId !== undefined;
               focusById(prefilled ? "order-product-add" : "order-client");
             }}
             className={cn(
@@ -1022,6 +1255,93 @@ export function CreateOrderDialog({
                             Cambiar
                           </Button>
                         </div>
+
+                        {clientId !== undefined && (previousLoading || previousOrders.length > 0) && (
+                          <div className="space-y-1.5 pt-2">
+                            <p className="text-label" id="order-previous-label">
+                              Pedidos anteriores
+                            </p>
+                            {previousLoading ? (
+                              <p className="flex items-center gap-1.5 text-meta">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                                Buscando sus pedidos…
+                              </p>
+                            ) : (
+                              <ul aria-labelledby="order-previous-label" className="divide-y divide-border/60">
+                                {visiblePrevious.map((o) => {
+                                  const inUse = base?.orderId === o.id;
+                                  const hasProducts = (o.orderProducts ?? []).some((p) => p.customName?.trim());
+                                  const route = o.requiresDesign
+                                    ? "Con diseño"
+                                    : o.productionArea || o.area
+                                      ? getAreaLabel((o.productionArea || o.area) ?? "")
+                                      : null;
+                                  const when = o.creationDate
+                                    ? formatDistanceToNowStrict(new Date(o.creationDate), { locale: es, addSuffix: true })
+                                    : null;
+                                  return (
+                                    <li
+                                      key={o.id}
+                                      className={cn(
+                                        "flex items-center gap-3 rounded-lg py-2",
+                                        inUse && "-mx-2 bg-muted/60 px-2"
+                                      )}
+                                    >
+                                      <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm">{describeOrderProducts(o.orderProducts)}</p>
+                                        <p className="truncate text-meta tabular-nums">
+                                          {[`#${o.id}`, when, route].filter(Boolean).join(" · ")}
+                                        </p>
+                                      </div>
+                                      {inUse ? (
+                                        <Button
+                                          id={`order-previous-${o.id}`}
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className={cn("shrink-0 gap-1.5", TAP)}
+                                          onClick={removeBase}
+                                        >
+                                          <X className="h-3.5 w-3.5" aria-hidden />
+                                          Quitar base
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          id={`order-previous-${o.id}`}
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className={cn("shrink-0 gap-1.5", TAP)}
+                                          disabled={!hasProducts}
+                                          aria-label={`Usar el pedido #${o.id} como base`}
+                                          onClick={() => applyBase(o, base?.snapshot ?? takeSnapshot())}
+                                        >
+                                          <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                                          Usar como base
+                                        </Button>
+                                      )}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                            {!previousLoading && !showAllPrevious && previousOrders.length > PREVIOUS_ORDERS_SHOWN && (
+                              <Button
+                                type="button"
+                                variant="link"
+                                className={cn("h-auto p-0 text-xs text-foreground underline", TAP)}
+                                onClick={() => setShowAllPrevious(true)}
+                              >
+                                Ver más pedidos
+                              </Button>
+                            )}
+                            {!previousLoading && !base && (
+                              <p className="text-meta">
+                                Copia lo que se pide, la descripción y los materiales. La fecha y el archivo se cargan de nuevo.
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -1087,7 +1407,13 @@ export function CreateOrderDialog({
                   <Section
                     id="order-section-route"
                     title="Diseño y producción"
-                    meta={defaultsApplied && !routeTouched ? "Como el último pedido" : undefined}
+                    meta={
+                      base && !routeTouched
+                        ? `Como el pedido #${base.orderId}`
+                        : defaultsApplied && !routeTouched
+                          ? "Como el último pedido"
+                          : undefined
+                    }
                   >
                     <div className="space-y-2">
                       <RadioGroupPrimitive.Root
@@ -1408,7 +1734,15 @@ export function CreateOrderDialog({
                         aria-describedby={describedBy("order-description", false, errors.description)}
                       />
                       <div className="flex items-start justify-between gap-3">
-                        <FieldMessages id="order-description" error={errors.description} />
+                        <FieldMessages
+                          id="order-description"
+                          hint={
+                            base && !descriptionTouched && description
+                              ? `Copiada del pedido #${base.orderId}: ajustá lo que cambia esta vez.`
+                              : undefined
+                          }
+                          error={errors.description}
+                        />
                         {description.length >= 900 && (
                           <span className="ml-auto text-meta tabular-nums">
                             {description.length}/{MAX_DESCRIPTION_LENGTH}
@@ -1416,6 +1750,46 @@ export function CreateOrderDialog({
                         )}
                       </div>
                     </div>
+
+                    {(materialsLoading || materials.length > 0) && (
+                      <div className="space-y-1.5">
+                        <p className="text-sm font-medium" id="order-materials-label">
+                          Hoja de materiales
+                        </p>
+                        {materialsLoading ? (
+                          <p className="flex items-center gap-1.5 text-meta">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                            Copiando materiales del pedido #{base?.orderId}…
+                          </p>
+                        ) : (
+                          <ul aria-labelledby="order-materials-label" className="divide-y divide-border/60">
+                            {materials.map((m) => (
+                              <li key={m.key} className="flex items-center gap-3 py-1.5">
+                                <span className="min-w-0 flex-1 truncate text-sm">{m.description}</span>
+                                <span className="shrink-0 text-meta tabular-nums">
+                                  {m.quantity}
+                                  {m.unitName ? ` ${m.unitName}` : ""}
+                                </span>
+                                <Button
+                                  id={`order-material-remove-${m.key}`}
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-11 shrink-0 text-muted-foreground hover:text-destructive focus-visible:text-destructive sm:size-9"
+                                  aria-label={`Quitar ${m.description}`}
+                                  onClick={() => removeMaterial(m.key)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <p className="text-meta">
+                          {base ? `Del pedido #${base.orderId}. ` : ""}Se cargan en la hoja de materiales del pedido nuevo; las cantidades se ajustan ahí.
+                        </p>
+                      </div>
+                    )}
 
                     {fileExpanded ? (
                       <div className="space-y-1.5">

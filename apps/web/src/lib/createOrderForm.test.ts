@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  buildRepeatPrefill,
+  describeOrderProducts,
+  toRepeatMaterials,
   DELIVERY_TIME_SLOTS,
   LAST_DEFAULTS_KEY,
   buildOrderSummary,
@@ -88,5 +91,63 @@ describe("combineDateAndTime", () => {
     expect(new Date(combineDateAndTime("2026-10-20")!).getHours()).toBe(18);
     expect(new Date(combineDateAndTime("2026-10-20", "09:15")!).getHours()).toBe(9);
     expect(combineDateAndTime("")).toBeUndefined();
+  });
+});
+
+describe("buildRepeatPrefill", () => {
+  it("copia el pedido (productos, ruta, descripción) y deja afuera Diseño y áreas inexistentes", () => {
+    const prefill = buildRepeatPrefill({
+      id: 41,
+      requiresDesign: true,
+      area: "diseno",
+      productionArea: "impresiones",
+      areaTasks: [{ area: "taller" }, { area: "impresiones" }, { area: "vieja" }],
+      assignedUserId: 5,
+      description: "Figuras para el festival",
+      orderProducts: [
+        { customName: " Figuras ", quantity: 20 },
+        { customName: "figuras", quantity: 5 },
+        { customName: "", quantity: 3 },
+      ],
+    });
+    expect(prefill).toEqual({
+      sourceOrderId: 41,
+      requiresDesign: true,
+      areas: ["impresiones", "taller"],
+      assignedUserId: 5,
+      description: "Figuras para el festival",
+      products: [{ customName: "Figuras", quantity: 25 }],
+    });
+  });
+
+  it("sin diseño, el área en la que arrancó cuenta como principal", () => {
+    const prefill = buildRepeatPrefill({ id: 1, requiresDesign: false, area: "bordado", orderProducts: [] });
+    expect(prefill.areas).toEqual(["bordado"]);
+    expect(prefill.requiresDesign).toBe(false);
+  });
+});
+
+describe("describeOrderProducts", () => {
+  it("resume los primeros productos y cuenta el resto", () => {
+    expect(
+      describeOrderProducts([
+        { customName: "Figuras", quantity: 20 },
+        { customName: "Playeras", quantity: 10 },
+        { customName: "Gorras", quantity: 5 },
+      ])
+    ).toBe("Figuras ×20 · Playeras ×10 · +1 más");
+    expect(describeOrderProducts([])).toBe("Sin productos");
+  });
+});
+
+describe("toRepeatMaterials", () => {
+  it("usa el nombre del material si la línea no tiene descripción", () => {
+    expect(
+      toRepeatMaterials([
+        { id: 3, materialId: 12, quantity: 4, description: " ", supplierId: null, material: { name: "Coroplast", unit: { name: "Hoja" } } },
+      ])
+    ).toEqual([
+      { key: "material-3", materialId: 12, quantity: 4, description: "Coroplast", supplierId: undefined, unitName: "Hoja" },
+    ]);
   });
 });
