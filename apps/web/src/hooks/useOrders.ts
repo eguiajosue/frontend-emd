@@ -273,6 +273,7 @@ export function useTakeOrderReception() {
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
     },
+    meta: { ownErrorToast: true },
   });
 
   return {
@@ -353,7 +354,7 @@ export function useTakeOrderDesign() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Tomaste el pedido #${order.id}`);
+      toast.success(`Tomaste el pedido #${order.id}: queda a tu nombre`);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
@@ -364,6 +365,39 @@ export function useTakeOrderDesign() {
     takeDesign: (orderId: number) =>
       mutation.mutateAsync(orderId).then(() => true).catch(() => false),
     isTakingDesign: mutation.isPending,
+  };
+}
+
+/**
+ * "Empezar diseño" (`POST /orders/:id/start-design`): marca que Diseño ya
+ * está trabajando el pedido, sin cambiar responsable ni estado. Desde la
+ * cuenta compartida del área hay que mandar el nombre de quien lo empieza.
+ */
+export function useStartOrderDesign() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ orderId, name }: { orderId: number; name?: string }) =>
+      request<Order>(`${ENDPOINTS.orders}/${orderId}/start-design`, {
+        method: "POST",
+        token,
+        body: name ? { name } : {},
+      }),
+    onSuccess: (order) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      toast.success(`Empezaste el pedido #${order.id}: Recepción ya lo ve en curso`);
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "No se pudo marcar el pedido como empezado."));
+    },
+    meta: { ownErrorToast: true },
+  });
+
+  return {
+    startDesign: (orderId: number, name?: string) =>
+      mutation.mutateAsync({ orderId, name }).then(() => true).catch(() => false),
+    isStartingDesign: mutation.isPending,
   };
 }
 

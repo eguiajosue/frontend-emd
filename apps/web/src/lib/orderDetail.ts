@@ -117,7 +117,11 @@ export function getOrderNextAction(
     return {
       kind: "section",
       section: "design",
-      label: changesRequested ? "Ver cambios y corregir" : "Subir montaje",
+      label: changesRequested
+        ? "Ver cambios y corregir"
+        : order.designStartedAt === null
+        ? "Empezar diseño"
+        : "Subir montaje",
     };
   }
   if (stage === "autorizacion") {
