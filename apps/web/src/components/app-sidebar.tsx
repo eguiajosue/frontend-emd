@@ -162,7 +162,7 @@ export function AppSidebar() {
         </span>
       </RailSegment>
 
-      <RailSegment className="min-h-0 overflow-hidden px-0 py-0">
+      <RailSegment className="min-h-0 shrink overflow-hidden px-0 py-0">
         <nav
           ref={navScrollRef}
           data-tour="sidebar-nav"
