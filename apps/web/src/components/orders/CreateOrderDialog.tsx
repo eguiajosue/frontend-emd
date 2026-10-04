@@ -11,6 +11,8 @@ import {
   AlertCircle,
   BookmarkPlus,
   CalendarDays,
+  Check,
+  Sparkles,
   FileText,
   Loader2,
   Minus,
@@ -58,6 +60,7 @@ import {
   useOrderTemplate,
   useOrderTemplateMutations,
 } from "@/hooks/useOrderTemplates";
+import { useClientInsights } from "@/hooks/useClientInsights";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import {
@@ -84,6 +87,11 @@ import {
   buildTemplatePrefill,
   clampName,
   describeOrderProducts,
+  leadDaysLabel,
+  learnedLeadDays,
+  learnedQuantityFor,
+  normalizeProductKey,
+  typicalDeliveryTime,
   longDateLabel,
   mergeAreaSelection,
   parseDeliveryDate,
@@ -218,18 +226,38 @@ interface FormSnapshot {
   descriptionTouched: boolean;
 }
 
-/** De dónde salió lo precargado: un pedido anterior o una plantilla del cliente. */
-type BaseSource = { kind: "order"; id: number } | { kind: "template"; id: number; name: string };
+/**
+ * De dónde salió lo precargado: un pedido anterior, una plantilla del
+ * cliente o "lo habitual" que el sistema aprendió de sus pedidos.
+ */
+type BaseSource =
+  | { kind: "order"; id: number }
+  | { kind: "template"; id: number; name: string }
+  | { kind: "suggestion"; id: number; name: string };
 
-/** "el pedido #88" / "la plantilla «Figuras»" (para armar frases). */
+/** "el pedido #88" / "la plantilla «Figuras»" / "lo habitual de Luis" (para armar frases). */
 function baseLabel(source: BaseSource): string {
-  return source.kind === "order" ? `el pedido #${source.id}` : `la plantilla «${source.name}»`;
+  if (source.kind === "order") return `el pedido #${source.id}`;
+  if (source.kind === "template") return `la plantilla «${source.name}»`;
+  return `lo habitual de ${source.name}`;
 }
 
 /** Meta de las secciones precargadas. */
 function baseMeta(source: BaseSource): string {
-  return source.kind === "order" ? `Como el pedido #${source.id}` : `Plantilla «${source.name}»`;
+  if (source.kind === "order") return `Como el pedido #${source.id}`;
+  if (source.kind === "template") return `Plantilla «${source.name}»`;
+  return "Lo habitual";
 }
+
+/** "Del pedido #88" / "De la plantilla «X»" / "De lo habitual de Luis" (comienzo de frase). */
+function baseOrigin(source: BaseSource): string {
+  if (source.kind === "order") return `Del pedido #${source.id}`;
+  if (source.kind === "template") return `De la plantilla «${source.name}»`;
+  return `De lo habitual de ${source.name}`;
+}
+
+/** Productos que se muestran como "Suele pedir" (aparecen en 2+ pedidos suyos). */
+const LEARNED_CHIPS_LIMIT = 6;
 
 /** Pedidos anteriores que se muestran de entrada / al tocar "Ver más". */
 const PREVIOUS_ORDERS_SHOWN = 3;
@@ -428,6 +456,24 @@ export function CreateOrderDialog({
   /** Pedido (`repeatFromOrderId`) o plantilla (`templateId`) ya aplicado en esta apertura. */
   const appliedRepeatRef = useRef<number | null>(null);
   const appliedTemplateRef = useRef<number | null>(null);
+
+  /**
+   * Lo que el sistema aprendió del cliente elegido (backend:
+   * client-insight.engine.ts): qué suele pedir y cuánto, por dónde va y con
+   * cuánta anticipación. Alimenta "Lo habitual", los chips "Suele pedir", la
+   * cantidad habitual al agregar un producto y la fecha sugerida.
+   */
+  const { insights } = useClientInsights(open && clientId ? clientId : null);
+  const learnedProducts = useMemo(
+    () => (insights?.products ?? []).filter((p) => p.orders >= 2).slice(0, LEARNED_CHIPS_LIMIT),
+    [insights]
+  );
+  const learnedKeys = useMemo(() => new Set(learnedProducts.map((p) => p.key)), [learnedProducts]);
+  const leadDays = learnedLeadDays(insights);
+  const learnedTime = useMemo(() => {
+    const time = typicalDeliveryTime(insights?.recentDeliveries ?? []);
+    return time && DELIVERY_TIME_SLOTS.includes(time) ? time : null;
+  }, [insights]);
 
   const nextRowKey = () => `row-${++rowKeySeq.current}`;
   const markDirty = () => setDirty(true);
@@ -632,9 +678,10 @@ export function CreateOrderDialog({
 
   /**
    * Agrega un producto (chip frecuente o "Agregar producto…"): si ya está en
-   * la lista suma 1 en vez de duplicar la línea.
+   * la lista suma 1 en vez de duplicar la línea. Si el cliente ya lo pidió
+   * antes, arranca con su cantidad habitual (visible y editable).
    */
-  const addProduct = (rawName: string) => {
+  const addProduct = (rawName: string, quantityOverride?: number) => {
     const name = clampName(rawName);
     if (!name) return;
     const existing = rows.find((r) => sameName(r.customName, name));
@@ -651,8 +698,9 @@ export function CreateOrderDialog({
       return;
     }
     const key = nextRowKey();
-    setRows((prev) => [...prev, { key, customName: name, quantity: 1 }]);
-    setLiveMessage(`${name} agregado`);
+    const learned = quantityOverride ?? learnedQuantityFor(insights?.products, name);
+    setRows((prev) => [...prev, { key, customName: name, quantity: learned ?? 1 }]);
+    setLiveMessage(learned ? `${name} agregado con su cantidad habitual: ${learned}` : `${name} agregado`);
     // Con mouse/teclado se salta a la cantidad (escribir "50" la reemplaza).
     // En táctil no: abriría el teclado en cada toque de un chip.
     if (typeof window !== "undefined" && window.matchMedia?.("(pointer: fine)").matches) {
@@ -861,13 +909,47 @@ export function CreateOrderDialog({
     );
   }
 
+  /**
+   * "Lo habitual": el pedido que el sistema aprendió de este cliente. No trae
+   * descripción ni fecha (cambian cada vez): se respeta lo ya escrito.
+   */
+  function applySuggestion() {
+    const suggestion = insights?.suggestion;
+    if (!suggestion || !clientId) return;
+    loadPrefill(
+      { kind: "suggestion", id: clientId, name: selectedClientLabel || "el cliente" },
+      {
+        requiresDesign: suggestion.requiresDesign,
+        areas: suggestion.areas.filter((a) => PRODUCTION_AREA_OPTIONS.some((o) => o.value === a)),
+        assignedUserId: undefined,
+        description,
+        products: suggestion.products,
+        materials: suggestion.materials.map((m) => ({
+          key: `learned-${m.materialId}`,
+          materialId: m.materialId,
+          quantity: m.quantity,
+          description: m.description,
+          supplierId: m.supplierId,
+          unitName: m.unitName,
+        })),
+      },
+      base?.snapshot ?? takeSnapshot()
+    );
+  }
+
   const removeBase = () => {
     if (!base) return;
     const source: BaseSource = base;
     restoreSnapshot(base.snapshot);
     markDirty();
     setLiveMessage(`Se quitó ${baseLabel(source)}`);
-    focusById(source.kind === "order" ? `order-previous-${source.id}` : `order-template-${source.id}`);
+    focusById(
+      source.kind === "order"
+        ? `order-previous-${source.id}`
+        : source.kind === "template"
+          ? `order-template-${source.id}`
+          : "order-use-habitual"
+    );
   };
 
   const removeMaterial = (key: string) => {
@@ -1356,6 +1438,54 @@ export function CreateOrderDialog({
                           </Button>
                         </div>
 
+                        {clientId !== undefined && insights?.suggestion && (
+                          <div className="flex items-center gap-3 rounded-xl border border-border/60 px-3 py-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                              <Sparkles className="h-4 w-4" aria-hidden />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                Lo habitual: {describeOrderProducts(insights.suggestion.products, 3)}
+                              </p>
+                              <p className="truncate text-meta">
+                                {insights.suggestion.requiresDesign ? "Con diseño" : "Sin diseño"}
+                                {insights.suggestion.areas.length > 0
+                                  ? ` → ${insights.suggestion.areas.map((a) => getAreaLabel(a)).join(", ")}`
+                                  : ""}
+                                {insights.suggestion.materials.length > 0
+                                  ? ` · ${insights.suggestion.materials.length} ${insights.suggestion.materials.length === 1 ? "material" : "materiales"}`
+                                  : ""}
+                                {` · aprendido de ${insights.suggestion.basedOn} pedidos`}
+                              </p>
+                            </div>
+                            {base?.kind === "suggestion" ? (
+                              <Button
+                                id="order-use-habitual"
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className={cn("shrink-0 gap-1.5", TAP)}
+                                onClick={removeBase}
+                              >
+                                <X className="h-3.5 w-3.5" aria-hidden />
+                                Quitar
+                              </Button>
+                            ) : (
+                              <Button
+                                id="order-use-habitual"
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className={cn("shrink-0", TAP)}
+                                aria-label={`Usar lo habitual de ${selectedClientLabel}`}
+                                onClick={applySuggestion}
+                              >
+                                Usar
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
                         {clientId !== undefined && templates.length > 0 && (
                           <div className="space-y-1.5 pt-2">
                             <p className="text-label" id="order-templates-label">
@@ -1688,11 +1818,49 @@ export function CreateOrderDialog({
                         Productos
                       </p>
 
+                      {learnedProducts.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-label" id="order-learned-label">
+                            Suele pedir
+                          </p>
+                          <div role="group" aria-labelledby="order-learned-label" className="flex flex-wrap gap-2">
+                            {learnedProducts.map((habit) => {
+                              const row = rows.find((r) => sameName(r.customName, habit.name));
+                              return (
+                                <Button
+                                  key={habit.key}
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() =>
+                                    row ? focusById(`order-qty-${row.key}`) : addProduct(habit.name, habit.typicalQuantity)
+                                  }
+                                  aria-label={
+                                    row
+                                      ? `${habit.name} ya está en el pedido (${row.quantity ?? 0})`
+                                      : `Agregar ${habit.name}, ${habit.typicalQuantity} (cantidad habitual)`
+                                  }
+                                  className={cn(CHIP_CLASS, row && "border-foreground/40")}
+                                >
+                                  {row ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Plus className="h-3.5 w-3.5" aria-hidden />}
+                                  {habit.name}
+                                  <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums text-foreground">
+                                    ×{row?.quantity ?? habit.typicalQuantity}
+                                  </span>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {productPresets.length > 0 && (
                         <div className="space-y-1.5">
                           <p className="text-label">Frecuentes</p>
                           <div className="flex flex-wrap gap-2">
-                            {productPresets.slice(0, 10).map((preset) => {
+                            {productPresets
+                              .filter((preset) => !learnedKeys.has(normalizeProductKey(preset.name)))
+                              .slice(0, 10)
+                              .map((preset) => {
                               const row = rows.find((r) => sameName(r.customName, preset.name));
                               return (
                                 <Button
@@ -1872,8 +2040,8 @@ export function CreateOrderDialog({
                         <FieldMessages
                           id="order-description"
                           hint={
-                            base && !descriptionTouched && description
-                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : `De la plantilla «${base.name}»`}: ajustá lo que cambia esta vez.`
+                            base && base.kind !== "suggestion" && !descriptionTouched && description
+                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : baseOrigin(base)}: ajustá lo que cambia esta vez.`
                               : undefined
                           }
                           error={errors.description}
@@ -1921,7 +2089,7 @@ export function CreateOrderDialog({
                           </ul>
                         )}
                         <p className="text-meta">
-                          {base ? `${base.kind === "order" ? `Del pedido #${base.id}` : `De la plantilla «${base.name}»`}. ` : ""}Se cargan en la hoja de materiales del pedido nuevo; las cantidades se ajustan ahí.
+                          {base ? `${baseOrigin(base)}. ` : ""}Se cargan en la hoja de materiales del pedido nuevo; las cantidades se ajustan ahí.
                         </p>
                       </div>
                     )}
@@ -2125,6 +2293,29 @@ export function CreateOrderDialog({
                         </PopoverContent>
                       </Popover>
                     </div>
+
+                    {leadDays !== null && !deliveryDate && (
+                      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-meta">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        <span>
+                          {selectedClientLabel || "Este cliente"} suele pedir con {leadDaysLabel(leadDays)} de anticipación.
+                        </span>
+                        <Button
+                          type="button"
+                          variant="link"
+                          className={cn("h-auto p-0 text-xs text-foreground underline", TAP)}
+                          onClick={() => {
+                            changeDeliveryDate(presetDate(leadDays, today));
+                            if (learnedTime) setDeliveryTime(learnedTime);
+                            // El atajo desaparece al elegir la fecha: el foco pasa a la hora.
+                            focusById("order-delivery-time");
+                          }}
+                        >
+                          Usar {shortDateLabel(presetDate(leadDays, today))}
+                          {learnedTime ? `, ${learnedTime}` : ""}
+                        </Button>
+                      </p>
+                    )}
 
                     {deliveryDate && (
                       <div className="flex flex-wrap items-center gap-3">

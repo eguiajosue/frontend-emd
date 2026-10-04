@@ -13,6 +13,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { playNotificationSound } from "@/lib/sound";
 import { markUserTyping, markUserStoppedTyping } from "@/hooks/useChatTyping";
 import { getAreaLabel } from "@/lib/areas";
+import { DASHBOARD_KEY } from "@/hooks/useDashboard";
 
 /** Payload de "chatMessage" (ver ChatService.sendMessage en el backend). */
 interface ChatMessagePayload {
@@ -233,6 +234,21 @@ export function useSocket() {
     const handleChatDelivered = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };
+    // "Cambiaron datos" (backend: RealtimeService). Sin toast: refresca sólo
+    // lo que esté en pantalla (Inicio, listas de pedidos, tareas, inventario,
+    // calendario). El backend ya agrupa las ráfagas de escrituras.
+    const handleDataChanged = (payload?: { models?: string[] }) => {
+      const models = new Set(payload?.models ?? []);
+      const touches = (...names: string[]) => names.some((name) => models.has(name));
+      if (touches("Order", "OrderAreaTask", "OrderProduct", "OrderMaterialItem", "OrderHistory", "DesignRevision")) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+        queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
+      }
+      if (touches("InventoryItem")) queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
+      if (touches("CalendarEvent")) queryClient.invalidateQueries({ queryKey: queryKeys.all("calendarEvents") });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+    };
+
     const handlePresenceChanged = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };
@@ -250,6 +266,7 @@ export function useSocket() {
     socket.on("chatRead", handleChatRead);
     socket.on("chatDelivered", handleChatDelivered);
     socket.on("presenceChanged", handlePresenceChanged);
+    socket.on("dataChanged", handleDataChanged);
     socket.on("chatTyping", handleChatTyping);
     socket.on("chatStopTyping", handleChatStopTyping);
 
@@ -268,6 +285,7 @@ export function useSocket() {
       socket.off("chatRead", handleChatRead);
       socket.off("chatDelivered", handleChatDelivered);
       socket.off("presenceChanged", handlePresenceChanged);
+      socket.off("dataChanged", handleDataChanged);
       socket.off("chatTyping", handleChatTyping);
       socket.off("chatStopTyping", handleChatStopTyping);
       socket.disconnect();

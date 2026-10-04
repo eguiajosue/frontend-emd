@@ -2,6 +2,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   buildRepeatPrefill,
+  learnedLeadDays,
+  learnedQuantityFor,
+  normalizeProductKey,
+  typicalDeliveryTime,
   buildTemplatePrefill,
   suggestTemplateName,
   describeOrderProducts,
@@ -180,5 +184,33 @@ describe("suggestTemplateName", () => {
     expect(suggestTemplateName([{ customName: "Figuras" }])).toBe("Figuras");
     expect(suggestTemplateName([{ customName: "Figuras" }, { customName: "Lona" }])).toBe("Figuras + 1");
     expect(suggestTemplateName([])).toBe("");
+  });
+});
+
+describe("aprendizaje por cliente", () => {
+  it("normaliza igual que el backend", () => {
+    expect(normalizeProductKey("  Lonas   Impresas ")).toBe("lonas impresas");
+    expect(normalizeProductKey("Diseño")).toBe("diseno");
+  });
+
+  it("cantidad habitual por producto (sin distinguir mayúsculas ni acentos)", () => {
+    const products = [{ key: "figuras", typicalQuantity: 12 }];
+    expect(learnedQuantityFor(products, "FIGURAS ")).toBe(12);
+    expect(learnedQuantityFor(products, "Lona")).toBeNull();
+    expect(learnedQuantityFor(undefined, "Figuras")).toBeNull();
+  });
+
+  it("hora habitual de entrega: se repite y es mayoría", () => {
+    const at = (h: number, m = 0) => new Date(2026, 9, 1 + h, h, m).toISOString();
+    expect(typicalDeliveryTime([at(14), at(14), at(9)])).toBe("14:00");
+    expect(typicalDeliveryTime([at(14), at(9), at(10), at(11)])).toBeNull();
+    expect(typicalDeliveryTime([at(14)])).toBeNull();
+  });
+
+  it("anticipación aprendida: la de la sugerencia, o la del perfil con 2+ muestras", () => {
+    expect(learnedLeadDays(null)).toBeNull();
+    expect(learnedLeadDays({ leadTime: { days: 5, samples: 3 }, suggestion: { leadTimeDays: 7 } })).toBe(7);
+    expect(learnedLeadDays({ leadTime: { days: 5, samples: 3 }, suggestion: null })).toBe(5);
+    expect(learnedLeadDays({ leadTime: { days: 5, samples: 1 }, suggestion: null })).toBeNull();
   });
 });

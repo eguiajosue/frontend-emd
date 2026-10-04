@@ -31,15 +31,18 @@ describe("findActiveNavUrl", () => {
 });
 
 describe("homePathForRoles", () => {
-  it("admin y superuser al panel; el resto a su trabajo", () => {
+  it("admin y superuser al panel; Recepción, Diseño y Producción a su Inicio en vivo", () => {
     expect(homePathForRoles(["admin"])).toBe("/dashboard/admin");
     expect(homePathForRoles(["superuser"])).toBe("/dashboard/admin");
-    expect(homePathForRoles(["recepcion"])).toBe("/dashboard/orders");
-    // Diseño y Producción van a su bandeja de tareas, no a "Pedidos".
-    expect(homePathForRoles(["bordado"])).toBe("/dashboard/tareas");
-    expect(homePathForRoles(["diseno", "taller"])).toBe("/dashboard/tareas");
-    expect(homePathForRoles(["recepcion", "taller"])).toBe("/dashboard/orders");
+    expect(homePathForRoles(["recepcion"])).toBe("/dashboard/inicio");
+    expect(homePathForRoles(["bordado"])).toBe("/dashboard/inicio");
+    expect(homePathForRoles(["diseno", "taller"])).toBe("/dashboard/inicio");
+    expect(homePathForRoles(["recepcion", "taller"])).toBe("/dashboard/inicio");
     expect(homePathForRoles([])).toBe("/dashboard/orders");
+  });
+
+  it("Inicio está en el menú de todos los roles", () => {
+    expect(OPERATIONAL_MENU[0].items[0].url).toBe("/dashboard/inicio");
   });
 });
 

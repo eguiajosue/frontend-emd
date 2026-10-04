@@ -71,7 +71,12 @@ function createQueryClient() {
       },
     },
     queryCache: new QueryCache({
-      onError: (error) => notifyError(error, "No se pudo cargar la información."),
+      // `meta.silentError`: datos de apoyo (ej. sugerencias aprendidas) cuyo
+      // fallo no debe interrumpir con un toast; la pantalla sigue sin ellos.
+      onError: (error, query) => {
+        if (query.meta?.silentError) return;
+        notifyError(error, "No se pudo cargar la información.");
+      },
     }),
     mutationCache: new MutationCache({
       // Una mutación que ya avisa su propio error (con un mensaje más
