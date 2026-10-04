@@ -1084,7 +1084,6 @@ export interface ProductionDashboard {
   items: ProductionWorkItem[];
   upcoming: Array<DashboardOrderRef & { area: string; designStatus: string }>;
   team: Array<{ name: string; inProgress: number }>;
-  lowStock: DashboardLowStockItem[];
   events: Array<{
     id: number;
     title: string;

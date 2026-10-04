@@ -128,9 +128,10 @@ function StatTile({
  */
 export default function InventarioPage() {
   const token = useAuthToken();
-  // Crear, editar, borrar y mover stock: admin/superuser/recepción. Las áreas
-  // sólo consultan su inventario (el backend lo hace cumplir igual).
-  const { canManageOperations: canManage } = usePermissions();
+  // El inventario es sólo de Recepción y administración (el backend lo hace
+  // cumplir igual); las áreas de producción y Diseño no entran.
+  const { canManageOperations: canManage, isSessionLoading, roles } = usePermissions();
+  const noAccess = !isSessionLoading && roles.length > 0 && !canManage;
 
   const { data: areas = [], isPending: areasPending } = useInventoryAreas();
   const [area, setArea] = useState<InventoryArea | typeof ALL>(ALL);
@@ -243,6 +244,15 @@ export default function InventarioPage() {
           description="El inventario se lleva por área. Pedí a administración que te asigne a un departamento."
         />
       </div>
+    );
+  }
+
+  if (noAccess) {
+    return (
+      <EmptyState
+        title="Sin acceso al inventario"
+        description="El inventario lo manejan Recepción y administración."
+      />
     );
   }
 

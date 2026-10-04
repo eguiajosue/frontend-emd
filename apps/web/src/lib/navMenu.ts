@@ -83,12 +83,6 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         url: TASKS_URL,
         icon: ListChecks,
       },
-      {
-        // Cada área lleva las existencias de su estante (hilos, tintas...).
-        title: "Inventario",
-        url: INVENTORY_URL,
-        icon: Warehouse,
-      },
     ],
   },
   {
@@ -192,11 +186,11 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
-          // Existencias por departamento; cada área ve sólo la suya.
+          // Existencias por departamento: sólo Recepción y administración.
           title: "Inventario",
           url: INVENTORY_URL,
           icon: Warehouse,
-          roles: ALL_ROLES,
+          roles: ["admin", "recepcion", "superuser"],
         },
         {
           title: "Clientes",

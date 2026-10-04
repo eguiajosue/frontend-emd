@@ -33,6 +33,8 @@ vi.mock("@/hooks/useInventory", () => ({
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
     canManageOperations: roles.includes("admin") || roles.includes("recepcion"),
+    isSessionLoading: false,
+    roles,
   }),
 }));
 
@@ -108,14 +110,6 @@ describe("InventarioPage", () => {
     expect(within(table).queryByText("Hilo rojo")).not.toBeInTheDocument();
   });
 
-  it("un área con un solo departamento va directo al suyo, sin pestañas", () => {
-    roles = ["bordado"];
-    areas = ["bordado"];
-    render(<InventarioPage />);
-    expect(screen.queryByRole("tab", { name: "Todos" })).not.toBeInTheDocument();
-    expect(requestedAreas.at(-1)).toBe("bordado");
-  });
-
   it("admin y recepción pueden crear y mover stock", () => {
     for (const r of [["admin"], ["recepcion"]]) {
       roles = r;
@@ -127,19 +121,19 @@ describe("InventarioPage", () => {
     }
   });
 
-  it("un área sólo consulta: sin alta, movimientos, edición ni borrado", () => {
-    roles = ["bordado"];
-    areas = ["bordado"];
-    render(<InventarioPage />);
-    expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Registrar entrada/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Registrar salida/ })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Ver movimientos de Hilo rojo/ }).length).toBeGreaterThan(0);
+  it("un área de producción o Diseño no tiene acceso: el inventario es de Recepción y administración", () => {
+    for (const r of [["bordado"], ["diseno", "dtf", "bordado"], ["taller"]]) {
+      roles = r;
+      areas = ["bordado"];
+      const { unmount } = render(<InventarioPage />);
+      expect(screen.getByText("Sin acceso al inventario")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
+      unmount();
+    }
   });
 
   it("sin departamentos asignados avisa en vez de mostrar una tabla vacía", () => {
-    roles = [];
+    roles = ["recepcion"];
     areas = [];
     render(<InventarioPage />);
     expect(screen.getByText("No tenés un departamento con inventario")).toBeInTheDocument();

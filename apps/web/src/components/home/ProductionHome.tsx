@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import {
-  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   CircleCheckBig,
@@ -348,32 +346,6 @@ export function ProductionHome({
                   </SideList>
                 )}
               </HomeSection>
-
-              {data.lowStock.length > 0 && (
-                <HomeSection id="home-stock" title="Stock bajo en tu área" count={data.lowStock.length} action={{ label: "Inventario", href: "/dashboard/inventario" }}>
-                  <SideList>
-                    {data.lowStock.map((item) => (
-                      <li key={item.id}>
-                        <Link
-                          href="/dashboard/inventario"
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
-                        >
-                          <AlertTriangle
-                            className={cn("h-4 w-4 shrink-0", item.stockStatus === "out" ? "text-rose-600" : "text-amber-600")}
-                            aria-hidden
-                          />
-                          <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                          <span className="shrink-0 text-meta">
-                            {item.stockStatus === "out"
-                              ? "Agotado"
-                              : `Quedan ${item.quantity}${item.minStock !== null ? ` (mín. ${item.minStock})` : ""}`}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </SideList>
-                </HomeSection>
-              )}
 
               {data.team.length > 0 && (
                 <HomeSection id="home-team" title="En el área ahora">
