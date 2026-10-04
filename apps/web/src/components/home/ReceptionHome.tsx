@@ -229,7 +229,6 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
                 id="home-attention"
                 title="Requiere atención"
                 count={data.attentionTotal}
-                description="Lo más grave primero, con lo que conviene hacer."
                 action={{ label: "Ver pedidos", href: "/dashboard/orders" }}
               >
                 {data.attention.length === 0 ? (
@@ -273,7 +272,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
                 )}
               </HomeSection>
 
-              <HomeSection id="home-areas" title="Áreas en vivo" description="Qué espera, qué se está haciendo y quién está trabajando.">
+              <HomeSection id="home-areas" title="Áreas en vivo">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {data.areas.map((load) => (
                     <AreaCard key={load.area} load={load} now={now} />
@@ -300,7 +299,6 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
                 id="home-clients-due"
                 title="Clientes por pedir"
                 count={data.clientsDue.length}
-                description="Aprendido de su ritmo de pedidos: ya es su fecha habitual."
               >
                 {data.clientsDue.length === 0 ? (
                   <Panel className="px-4 py-4 text-sm text-muted-foreground">

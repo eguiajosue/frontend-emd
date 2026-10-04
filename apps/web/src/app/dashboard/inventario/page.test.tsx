@@ -68,12 +68,6 @@ beforeEach(() => {
 });
 
 describe("InventarioPage", () => {
-  it("explica que no es el catálogo de Materiales", () => {
-    render(<InventarioPage />);
-    expect(screen.getByText(/No es el catálogo de/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Materiales" })).toHaveAttribute("href", "/dashboard/materiales");
-  });
-
   it("muestra indicadores de bajo stock, agotados y valor", () => {
     render(<InventarioPage />);
     expect(screen.getByRole("button", { name: /Bajo stock\s*1/ })).toBeInTheDocument();

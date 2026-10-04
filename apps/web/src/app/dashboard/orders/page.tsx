@@ -673,7 +673,7 @@ const OrdersPage = () => {
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
               quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
               Antes eran dos pantallas distintas para el mismo trabajo. */}
-          <Title title={screenCopy.title} description={screenCopy.description} />
+          <Title title={screenCopy.title} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

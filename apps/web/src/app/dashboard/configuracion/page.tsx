@@ -708,7 +708,7 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="space-y-6">
-      <Title title="Configuración" description="Tus preferencias en este dispositivo y, si sos administrador, las de la empresa." />
+      <Title title="Configuración" />
       {/* Dos columnas en pantallas anchas (flujo tipo masonry con `columns`,
           así tarjetas de alto distinto no dejan huecos); una sola en el resto. */}
       <div className="max-w-6xl gap-6 xl:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">

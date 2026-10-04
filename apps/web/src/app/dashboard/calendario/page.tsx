@@ -133,10 +133,7 @@ export default function CalendarioPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Title
-          title="Calendario"
-          description="Instalaciones, juntas, visitas a clientes y pedidos con entrega: compartido por todo el equipo."
-        />
+        <Title title="Calendario" />
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="outline"

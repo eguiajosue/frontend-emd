@@ -145,10 +145,7 @@ const HistorialPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <Title
-          title="Historial de pedidos"
-          description="Todos los pedidos de la empresa, incluidos los entregados hace tiempo que ya no aparecen en el tablero."
-        />
+        <Title title="Historial de pedidos" />
         {canManageOperations && (
           <Button variant="outline" onClick={handleExportCsv} disabled={isExportingCsv}>
             <FileDown className="h-4 w-4" />

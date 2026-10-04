@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -258,19 +257,7 @@ export default function InventarioPage() {
 
   return (
     <div className="space-y-5">
-      <Title
-        title="Inventario"
-        description={
-          <>
-            Existencias físicas de cada departamento: hilos, tintas, consumibles y materiales en estante. No es
-            el catálogo de{" "}
-            <Link href="/dashboard/materiales" className="underline underline-offset-2 hover:text-foreground">
-              Materiales
-            </Link>
-            , que se usa para armar la hoja de materiales de un pedido.
-          </>
-        }
-      />
+      <Title title="Inventario" />
 
       {/* Departamentos */}
       {areas.length > 1 && (
