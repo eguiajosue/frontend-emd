@@ -53,6 +53,8 @@ import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { SaveOrderTemplateDialog } from "@/components/orders/SaveOrderTemplateDialog";
+import { CustomizeFrequentsDialog, resolveFrequents } from "@/components/orders/CustomizeFrequentsDialog";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useClientOrders, useOrder } from "@/hooks/useOrders";
 import {
@@ -400,6 +402,12 @@ export function CreateOrderDialog({
     staleTime: CATALOG_STALE_TIME,
   });
   const { data: users, isPending: usersPending } = useEntityList<User>("users", { enabled: open });
+  const { preferences, updatePreferences } = useUserPreferences();
+  const [frequentsOpen, setFrequentsOpen] = useState(false);
+  const myFrequents = useMemo(
+    () => resolveFrequents(productPresets, preferences?.frequentProductIds),
+    [productPresets, preferences?.frequentProductIds]
+  );
   const { create } = useEntityMutations<Order, CreateOrderPayload>("orders");
 
   const [clientId, setClientId] = useState<number | undefined>(undefined);
@@ -1855,11 +1863,21 @@ export function CreateOrderDialog({
 
                       {productPresets.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-label">Frecuentes</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-label">Frecuentes</p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-muted-foreground"
+                              onClick={() => setFrequentsOpen(true)}
+                            >
+                              Personalizar
+                            </Button>
+                          </div>
                           <div className="flex flex-wrap gap-2">
-                            {productPresets
+                            {myFrequents
                               .filter((preset) => !learnedKeys.has(normalizeProductKey(preset.name)))
-                              .slice(0, 10)
                               .map((preset) => {
                               const row = rows.find((r) => sameName(r.customName, preset.name));
                               return (
@@ -2512,6 +2530,13 @@ export function CreateOrderDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      <CustomizeFrequentsDialog
+        open={frequentsOpen}
+        onOpenChange={setFrequentsOpen}
+        presets={productPresets}
+        current={myFrequents}
+        onSave={(ids) => updatePreferences({ frequentProductIds: ids })}
+      />
       <SaveOrderTemplateDialog
         open={saveTemplateOpen}
         onOpenChange={(next) => {

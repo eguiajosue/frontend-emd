@@ -13,6 +13,15 @@ vi.mock("@/hooks/useEntity", () => ({
   CATALOG_STALE_TIME: 5 * 60_000,
 }));
 
+let mockFrequentIds: number[] | null = null;
+const updatePreferencesMock = vi.fn();
+vi.mock("@/hooks/useUserPreferences", () => ({
+  useUserPreferences: () => ({
+    preferences: { frequentProductIds: mockFrequentIds },
+    updatePreferences: updatePreferencesMock,
+  }),
+}));
+
 let mockClientOrders: unknown[] = [];
 let mockRepeatSource: unknown = undefined;
 vi.mock("@/hooks/useOrders", () => ({
@@ -92,6 +101,9 @@ beforeEach(() => {
   toastError.mockReset();
   mockData = {};
   mockClientOrders = [];
+  mockFrequentIds = null;
+  updatePreferencesMock.mockReset();
+  updatePreferencesMock.mockResolvedValue({});
   mockRepeatSource = undefined;
   requestMock.mockReset();
   requestMock.mockResolvedValue([]);
@@ -316,6 +328,31 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Agregar Playera bordada" }));
     await userEvent.click(screen.getByRole("button", { name: "Agregar Playera bordada, 1 en el pedido" }));
     expect(screen.getByLabelText("Cantidad de Playera bordada")).toHaveValue("2");
+  });
+
+  it("muestra los frecuentes propios del usuario, en su orden", () => {
+    mockData.orderProductPresets = [
+      { id: 1, name: "Playera" },
+      { id: 2, name: "Gorra" },
+      { id: 3, name: "Taza" },
+    ];
+    mockFrequentIds = [3, 1];
+    renderDialog();
+    const chips = screen.getAllByRole("button", { name: /^Agregar (Playera|Gorra|Taza)$/ });
+    expect(chips.map((c) => c.textContent)).toEqual(["Taza", "Playera"]);
+  });
+
+  it("personalizar guarda la lista en las preferencias del usuario", async () => {
+    mockData.orderProductPresets = [
+      { id: 1, name: "Playera" },
+      { id: 2, name: "Gorra" },
+    ];
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Quitar Playera" }));
+    await userEvent.click(screen.getByRole("button", { name: "Agregar Playera a frecuentes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(updatePreferencesMock).toHaveBeenCalledWith({ frequentProductIds: [2, 1] });
   });
 
   it("el stepper suma y resta sin bajar de 1", async () => {
