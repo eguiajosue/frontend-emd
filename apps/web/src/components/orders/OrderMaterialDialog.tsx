@@ -95,7 +95,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
 
   const handleSubmit = async () => {
     if (!materialId) {
-      setMaterialError("Elegí un material");
+      setMaterialError("Elige un material");
       return;
     }
     const qty = Number(quantity);
@@ -156,7 +156,7 @@ export function OrderMaterialDialog({ open, onClose, orderId, item }: OrderMater
               disabled={isEditing}
             >
               <SelectTrigger id="om-material" className="h-11 sm:h-9" aria-invalid={Boolean(materialError)}>
-                <SelectValue placeholder="Elegí un material..." />
+                <SelectValue placeholder="Elige un material..." />
               </SelectTrigger>
               <SelectContent>
                 {materials.map((material) => (

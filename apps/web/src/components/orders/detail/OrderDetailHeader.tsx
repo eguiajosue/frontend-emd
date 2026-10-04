@@ -11,6 +11,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,16 @@ export function OrderDetailHeader({
             <DropdownMenuItem onSelect={onEdit}>
               <Pencil aria-hidden />
               Editar datos
+            </DropdownMenuItem>
+          )}
+          {permissions.canEdit && (
+            // Mismo cliente, mismo pedido: abre el alta con este como base
+            // (productos, descripción, ruta y materiales; sin fecha ni archivo).
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/orders?new=1&repeatFrom=${order.id}`}>
+                <RotateCcw aria-hidden />
+                Repetir pedido
+              </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>

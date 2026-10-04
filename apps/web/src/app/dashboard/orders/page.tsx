@@ -184,7 +184,7 @@ const OrdersPage = () => {
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
-  // Precargado acá (igual que clients/users) para que los chips "Frecuentes"
+  // Precargado aquí (igual que clients/users) para que los chips "Frecuentes"
   // del paso Productos del wizard no arranquen fríos la primera vez que se
   // abre en la sesión.
   useEntityList<OrderProductPreset>("orderProductPresets", { staleTime: CATALOG_STALE_TIME });
@@ -203,6 +203,10 @@ const OrdersPage = () => {
     id?: number;
     label: string;
   } | null>(null);
+  // "Repetir pedido" (menú del detalle): pedido a usar como base del alta.
+  const [repeatFromId, setRepeatFromId] = useState<number | null>(null);
+  // "Nuevo pedido" desde las plantillas de un cliente (pantalla Clientes).
+  const [templateId, setTemplateId] = useState<number | null>(null);
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -275,6 +279,11 @@ const OrdersPage = () => {
   //    página dos veces, y si se limpiaban al leerlos el segundo montaje ya no
   //    los veía (el modo TV o el detalle se abrían y se cerraban solos).
   //  - ?clientId=<id> fija el filtro de cliente ("Ver sus pedidos").
+  //  - ?new=1&repeatFrom=<id> abre "+ Nueva Orden" con ese pedido como base
+  //    ("Repetir pedido"); cierra el detalle desde el que se pidió.
+  //  - ?new=1&template=<id> abre "+ Nueva Orden" con esa plantilla del cliente.
+  //  - ?new=1&newFor=<clientId> abre "+ Nueva Orden" con ese cliente elegido
+  //    (ej. "Clientes por pedir" del Inicio de Recepción).
   const forcedListRef = useRef(false);
   const handleUrlParams = useCallback((params: URLSearchParams) => {
     const nextTone = parseToneParam(params.get(ORDER_TONE_PARAM));
@@ -286,6 +295,22 @@ const OrdersPage = () => {
     }
     if (tv) setTvOpen(true);
     if (params.get("new") === "1") setCreateOpen(true);
+    const repeatFrom = Number(params.get("repeatFrom"));
+    if (repeatFrom) {
+      setRepeatFromId(repeatFrom);
+      setOpenOrderId(null);
+      setCreateOpen(true);
+    }
+    const template = Number(params.get("template"));
+    if (template) {
+      setTemplateId(template);
+      setCreateOpen(true);
+    }
+    const newFor = Number(params.get("newFor"));
+    if (newFor) {
+      setCreatePrefillClient({ id: newFor, label: "" });
+      setCreateOpen(true);
+    }
     const openId = Number(params.get("openOrderId"));
     if (openId) setOpenOrderId(openId);
     const clientId = Number(params.get("clientId"));
@@ -363,7 +388,7 @@ const OrdersPage = () => {
   // El backend (GET /orders) ya devuelve, para roles operativos, sólo los pedidos
   // que ese usuario debe ver (según su rol, la config. de visibilidad por área y si
   // el pedido está asignado a él). El resto de los filtros (cliente, estatus, fecha
-  // de entrega, caducados) se aplican acá encima, sobre ese mismo array.
+  // de entrega, caducados) se aplican aquí encima, sobre ese mismo array.
   const isOperationalRole = !canManageOperations;
 
   // Pedidos entregados hace más de `deliveredRetentionHours`: se ocultan del
@@ -454,7 +479,7 @@ const OrdersPage = () => {
     } catch {
       // Import dinámico: puede fallar por red (chunk viejo tras un deploy,
       // conexión inestable). Antes era un import estático, siempre disponible.
-      toast.error("No se pudo generar el Excel. Probá de nuevo.");
+      toast.error("No se pudo generar el Excel. Prueba de nuevo.");
     }
   };
 
@@ -649,7 +674,7 @@ const OrdersPage = () => {
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
               quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
               Antes eran dos pantallas distintas para el mismo trabajo. */}
-          <Title title={screenCopy.title} description={screenCopy.description} />
+          <Title title={screenCopy.title} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -778,7 +803,7 @@ const OrdersPage = () => {
           <EmptyState
             icon={PartyPopper}
             title="Sin pendientes por ahora — buen trabajo"
-            description="No hay pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer acá."
+            description="No hay pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer aquí."
           />
         ) : (
           <EmptyState
@@ -871,12 +896,21 @@ const OrdersPage = () => {
         onClose={() => {
           setCreateOpen(false);
           clearUrlParam("new");
+          clearUrlParam("repeatFrom");
+          clearUrlParam("template");
+          clearUrlParam("newFor");
           setCreatePrefillClient(null);
+          setRepeatFromId(null);
+          setTemplateId(null);
         }}
         onCreated={(order) => openDetail(order.id)}
         initialClientId={createPrefillClient?.id}
         initialClientNameOverride={createPrefillClient?.id ? undefined : createPrefillClient?.label}
+        repeatFromOrderId={repeatFromId ?? undefined}
+        templateId={templateId ?? undefined}
         onCreateAnother={(clientId, clientNameOverride) => {
+          setRepeatFromId(null);
+          setTemplateId(null);
           setCreatePrefillClient({ id: clientId, label: clientNameOverride });
           setCreateOpen(true);
         }}

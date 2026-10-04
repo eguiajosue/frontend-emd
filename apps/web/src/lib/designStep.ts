@@ -39,7 +39,7 @@ export function getDesignStep(
     const notStarted = order.designStartedAt === null;
     if (isDesigner) {
       return notStarted
-        ? { label: "Nuevo: empezalo", mine: true, returned: false }
+        ? { label: "Nuevo: empiézalo", mine: true, returned: false }
         : { label: "Te toca: montaje", mine: true, returned: false };
     }
     if (notStarted) return { label: "En Diseño · sin empezar", mine: false, returned: false };

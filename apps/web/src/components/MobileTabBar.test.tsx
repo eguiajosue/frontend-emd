@@ -46,7 +46,7 @@ vi.mock("@/components/ThemeToggle", () => ({
 /**
  * `MobileMoreSheet` (montado dentro de `MobileTabBar`) reutiliza
  * `ConfiguracionLink`/`InstallAppButton` de `app-sidebar.tsx`, que llaman a
- * `useSidebar()` de verdad — de ahí el `SidebarProvider` real acá en vez de
+ * `useSidebar()` de verdad — de ahí el `SidebarProvider` real aquí en vez de
  * mockear `@/components/ui/sidebar` como antes (ese mock desapareció junto
  * con `setOpenMobile`, que `MobileTabBar` ya no usa).
  */
@@ -59,43 +59,47 @@ function renderBar() {
 }
 
 describe("MobileTabBar", () => {
-  it("admin/superuser: Panel General, Pedidos, Chat interno, Notificaciones + Más", () => {
+  it("admin/superuser: Panel General, Inicio, Pedidos, Chat interno + Más", () => {
     mocks.roles = ["superuser"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
     expect(screen.getByRole("link", { name: "Panel General" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inicio" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
     // Ni Historial ni Rendimiento entran en los primeros 4 para este rol.
     expect(screen.queryByRole("link", { name: "Historial" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Rendimiento" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });
 
-  it("recepción: Pedidos, Chat interno, Notificaciones, Hoja de Materiales + Más", () => {
+  it("recepción: Inicio, Pedidos, Chat interno, Notificaciones + Más", () => {
     mocks.roles = ["recepcion"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
+    expect(screen.getByRole("link", { name: "Inicio" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Hoja de Materiales" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Hoja de Materiales" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });
 
-  it("rol operativo (taller): Tareas asignadas, Chat interno, Notificaciones, Ayuda + Más", () => {
+  it("rol operativo (taller): Inicio, Tareas asignadas, Chat interno, Notificaciones + Más", () => {
     mocks.roles = ["taller"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
+    expect(screen.getByRole("link", { name: "Inicio" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Tareas asignadas" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Chat interno" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ayuda" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Más opciones" })).toBeInTheDocument();
   });

@@ -64,14 +64,15 @@ describe("MobileMoreSheet", () => {
     mocks.roles = ["superuser"];
     renderSheet();
 
-    // Chat interno, Panel General, Pedidos y Notificaciones son los 4 tabs
-    // principales de `MobileTabBar` para este rol — no deben repetirse acá.
+    // Panel General, Inicio, Pedidos y Chat interno son los 4 tabs
+    // principales de `MobileTabBar` para este rol — no deben repetirse aquí.
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Panel General" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inicio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Pedidos" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
 
-    // El resto del menú completo sí debe estar disponible acá.
+    // El resto del menú completo sí debe estar disponible aquí.
+    expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Rendimiento" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Historial" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Clientes" })).toBeInTheDocument();
@@ -79,18 +80,18 @@ describe("MobileMoreSheet", () => {
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
   });
 
-  it("para rol operativo (taller): los 4 ítems visibles caben todos como tabs principales, así que no repite ninguno acá", () => {
-    // El menú operativo completo (Tareas asignadas, Chat interno,
-    // Notificaciones, Ayuda) son exactamente los 4 tabs principales de
-    // `MobileTabBar` para este rol — no queda nada "remanente" para el sheet,
-    // más allá de identidad/config/tema/logout.
+  it("para rol operativo (taller): los 4 tabs principales no se repiten aquí; Ayuda queda en el sheet y no hay Inventario", () => {
+    // Menú operativo: Inicio, Tareas asignadas, Chat interno, Notificaciones,
+    // Ayuda. El inventario es sólo de Recepción y administración.
     mocks.roles = ["taller"];
     renderSheet();
 
+    expect(screen.queryByRole("link", { name: "Inicio" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Tareas asignadas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Ayuda" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
   });
 

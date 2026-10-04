@@ -28,7 +28,7 @@ export default function DashboardError({
         <p className="text-lg font-semibold">No pudimos mostrar esta sección</p>
         <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           Ocurrió un error al cargar la pantalla. Intentar de nuevo; si el
-          problema persiste, avisá a un administrador.
+          problema persiste, avisa a un administrador.
         </p>
       </div>
       {error.digest && (

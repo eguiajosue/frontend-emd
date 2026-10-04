@@ -6,7 +6,7 @@
  * status y orderProducts.product; `client` incluye company; `user` incluye roles).
  *
  * Regla: ningún componente/pantalla define tipos de entidad propios. Si el
- * backend cambia un shape, se actualiza acá y TypeScript marca los usos rotos.
+ * backend cambia un shape, se actualiza aquí y TypeScript marca los usos rotos.
  */
 
 /** Toda entidad del backend tiene id numérico autoincremental. */
@@ -67,6 +67,45 @@ export interface OrderProduct {
 /** Preset de nombre de producto frecuente (GET /order-product-presets). */
 export interface OrderProductPreset extends BaseEntity {
   name: string;
+  /** Líneas de pedido del último año con este producto (los frecuentes vienen del más pedido al menos). */
+  uses?: number;
+}
+
+/**
+ * Plantilla de pedido de un cliente (GET /clients/:id/order-templates): lo
+ * que suele pedir, con nombre ("Figuras de coroplast"). Precarga el alta;
+ * no guarda fecha, archivo del cliente ni asignado.
+ */
+export interface OrderTemplate extends BaseEntity {
+  clientId: number;
+  name: string;
+  requiresDesign: boolean;
+  /** Áreas de producción, la principal primero. */
+  productionAreas: string[];
+  description: string;
+  /** Pedidos creados con la plantilla (las más usadas van primero). */
+  useCount: number;
+  lastUsedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  products: Array<{ customName: string; quantity: number }>;
+  materials: Array<{
+    id: number;
+    materialId: number;
+    quantity: number;
+    description: string;
+    supplierId?: number | null;
+    material?: { id: number; name: string; unit?: { name: string } | null } | null;
+  }>;
+}
+
+export interface OrderTemplatePayload {
+  name: string;
+  requiresDesign: boolean;
+  productionAreas?: string[];
+  description?: string;
+  products: Array<{ customName: string; quantity: number }>;
+  materials?: Array<{ materialId: number; quantity: number; description: string; supplierId?: number }>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -329,7 +368,7 @@ export type DesignRevisionFileInput = UploadedFileInput;
 /**
  * Metadata de UN archivo de una ronda de diseño. Una hoja de autorización
  * puede ser varias imágenes o un PDF, así que tanto el montaje como el
- * feedback son listas. El contenido no viaja acá: se pide aparte con
+ * feedback son listas. El contenido no viaja aquí: se pide aparte con
  * `GET /orders/:id/design-revisions/:revisionId/files/:fileId`.
  */
 export interface DesignRevisionFile {
@@ -690,6 +729,103 @@ export interface CreateMaterialPayload {
 export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
 
 /* -------------------------------------------------------------------------- */
+/* Inventario por departamento (GET/POST /inventory)                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Departamento con inventario propio: las 6 áreas operativas + Recepción.
+ * Coincide con el nombre del rol del área.
+ */
+export type InventoryArea =
+  | "taller"
+  | "dtf"
+  | "bordado"
+  | "diseno"
+  | "laser"
+  | "impresiones"
+  | "recepcion";
+
+/** Semáforo de existencias: `low` = en o por debajo del mínimo. */
+export type InventoryStockStatus = "ok" | "low" | "out";
+
+/**
+ * Existencia física de un departamento. NO es el catálogo de Materiales: un
+ * artículo puede vincularse a un Material (`materialId`), pero muchos
+ * consumibles (hilos de bordado, tintas de impresión) sólo viven aquí.
+ * `quantity` sólo cambia con movimientos (ver `InventoryMovement`).
+ */
+export interface InventoryItem extends BaseEntity {
+  area: InventoryArea;
+  name: string;
+  sku?: string | null;
+  category?: string | null;
+  unit: string;
+  color?: string | null;
+  brand?: string | null;
+  location?: string | null;
+  quantity: number;
+  minStock?: number | null;
+  unitCost?: number | null;
+  notes?: string | null;
+  materialId?: number | null;
+  supplierId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  material?: { id: number; name: string } | null;
+  supplier?: { id: number; name: string } | null;
+  stockStatus: InventoryStockStatus;
+  /** quantity × unitCost; null si no hay costo cargado. */
+  totalValue?: number | null;
+}
+
+export interface CreateInventoryItemPayload {
+  area: InventoryArea;
+  name: string;
+  unit: string;
+  sku?: string;
+  category?: string;
+  color?: string;
+  brand?: string;
+  location?: string;
+  notes?: string;
+  minStock?: number | null;
+  unitCost?: number | null;
+  materialId?: number | null;
+  supplierId?: number | null;
+  /** Sólo en el alta: queda como ENTRADA "Stock inicial" del kardex. */
+  initialQuantity?: number;
+}
+
+export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload, "initialQuantity">>;
+
+/** ENTRADA suma, SALIDA resta, AJUSTE fija el stock al conteo físico. */
+export type InventoryMovementType = "ENTRADA" | "SALIDA" | "AJUSTE";
+
+export interface InventoryMovement extends BaseEntity {
+  itemId: number;
+  type: InventoryMovementType;
+  /** Cambio con signo aplicado al stock. */
+  delta: number;
+  balanceAfter: number;
+  unitCost?: number | null;
+  note?: string | null;
+  orderId?: number | null;
+  createdAt: string;
+  item?: { id: number; name: string; unit: string; area: InventoryArea } | null;
+  order?: { id: number; description: string } | null;
+  createdBy?: { id: number; firstName: string; lastName?: string | null } | null;
+}
+
+export interface CreateInventoryMovementPayload {
+  type: InventoryMovementType;
+  /** ENTRADA/SALIDA: cantidad a sumar/restar. AJUSTE: cantidad contada. */
+  quantity: number;
+  unitCost?: number;
+  note?: string;
+  orderId?: number;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Hoja de materiales de un pedido (GET/POST /orders/:id/materials)           */
 /* -------------------------------------------------------------------------- */
 
@@ -754,3 +890,242 @@ export interface MyTask {
     status: { id: number; name: string };
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Aprendizaje por cliente (GET /clients/:id/insights)                        */
+/* -------------------------------------------------------------------------- */
+
+/** Producto que el cliente suele pedir, con la cantidad típica aprendida. */
+export interface ClientProductHabit {
+  name: string;
+  key: string;
+  /** En cuántos de sus pedidos aparece. */
+  orders: number;
+  /** Proporción (0..1, ponderada por recencia) de sus pedidos que lo incluyen. */
+  share: number;
+  typicalQuantity: number;
+  lastQuantity: number;
+  lastOrderedAt: string;
+}
+
+/** "Lo habitual" de un cliente: un pedido sugerido para autocompletar el alta. */
+export interface ClientSuggestedOrder {
+  confidence: "alta" | "media";
+  /** Pedidos que respaldan la sugerencia. */
+  basedOn: number;
+  requiresDesign: boolean;
+  areas: string[];
+  products: Array<{ customName: string; quantity: number }>;
+  materials: Array<{
+    materialId: number;
+    quantity: number;
+    description: string;
+    supplierId?: number;
+    unitName?: string;
+  }>;
+  /** Días de anticipación con que suele pedir (null si no hay datos suficientes). */
+  leadTimeDays: number | null;
+}
+
+/**
+ * Perfil de hábitos que el sistema aprende del historial de pedidos de un
+ * cliente (backend: client-insight.engine.ts). Se re-aprende solo con cada
+ * pedido nuevo, borrado o cambio de su hoja de materiales.
+ */
+export interface ClientInsights {
+  version: number;
+  ordersAnalyzed: number;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  products: ClientProductHabit[];
+  route: {
+    designShare: number;
+    requiresDesign: boolean;
+    areas: Array<{ area: string; share: number }>;
+  };
+  materials: Array<{
+    materialId: number;
+    description: string;
+    unitName?: string;
+    supplierId?: number;
+    orders: number;
+    share: number;
+    typicalQuantity: number;
+  }>;
+  leadTime: { days: number; samples: number } | null;
+  /** Últimas fechas de entrega (ISO): de aquí sale la hora habitual, en hora local. */
+  recentDeliveries: string[];
+  cadence: { medianDays: number; samples: number; regular: boolean; nextExpectedAt: string } | null;
+  suggestion: ClientSuggestedOrder | null;
+}
+
+/** Cliente que, por su ritmo habitual, debería estar por pedir (GET /client-insights/due). */
+export interface DueClient {
+  clientId: number;
+  clientName: string;
+  lastOrderAt: string | null;
+  nextExpectedAt: string;
+  medianDays: number;
+  topProduct: string | null;
+  ordersAnalyzed: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inicio por rol (GET /dashboard/reception | design | production)            */
+/* -------------------------------------------------------------------------- */
+
+export interface DashboardOrderRef {
+  id: number;
+  clientName: string;
+  description: string;
+  products: Array<{ customName: string; quantity: number }>;
+  deliveryDate: string | null;
+  creationDate: string;
+  statusName: string;
+}
+
+export interface DashboardPerson {
+  id: number;
+  name: string;
+}
+
+export type AreaHealth = "ok" | "warning" | "critical";
+
+export interface DashboardAreaLoad {
+  area: string;
+  pending: number;
+  inProgress: number;
+  doneToday: number;
+  overdue: number;
+  atRisk: number;
+  oldestWaitingSince: string | null;
+  upcoming: number;
+  changesRequested?: number;
+  waitingClient?: number;
+  people: string[];
+  health: AreaHealth;
+}
+
+export type AttentionReason =
+  | "overdue"
+  | "ready_not_delivered"
+  | "at_risk_not_started"
+  | "waiting_client"
+  | "changes_requested"
+  | "design_not_started"
+  | "no_date";
+
+export interface DashboardAttentionItem extends DashboardOrderRef {
+  reason: AttentionReason;
+  since: string | null;
+  area: string | null;
+}
+
+export interface DashboardLowStockItem {
+  id: number;
+  name: string;
+  area: string;
+  unit: string;
+  quantity: number;
+  minStock: number | null;
+  stockStatus: "low" | "out";
+}
+
+export interface ReceptionDashboard {
+  generatedAt: string;
+  dayStart: string;
+  totals: {
+    active: number;
+    inDesign: number;
+    waitingClient: number;
+    inProduction: number;
+    ready: number;
+    noDate: number;
+  };
+  deadlines: { overdue: number; atRisk: number; onTime: number; noDate: number };
+  today: { created: number; delivered: number; tasksCompleted: number; designsApproved: number };
+  areas: DashboardAreaLoad[];
+  attention: DashboardAttentionItem[];
+  attentionTotal: number;
+  throughput: Array<{ day: string; created: number; delivered: number }>;
+  clientsDue: DueClient[];
+  alerts: {
+    lowStock: number;
+    outOfStock: number;
+    lowStockItems: DashboardLowStockItem[];
+    purchasesDue: number;
+  };
+}
+
+export interface ProductionWorkItem extends DashboardOrderRef {
+  key: string;
+  taskId: number;
+  area: string;
+  status: "pendiente" | "en_proceso";
+  mine: boolean;
+  assignee: DashboardPerson | null;
+  startedAt: string | null;
+  /** Desde cuándo el área lo puede trabajar. */
+  availableSince: string;
+}
+
+export interface ProductionDashboard {
+  generatedAt: string;
+  dayStart: string;
+  areas: string[];
+  counters: {
+    overdue: number;
+    atRisk: number;
+    notStarted: number;
+    inProgress: number;
+    doneToday: number;
+    upcoming: number;
+  };
+  items: ProductionWorkItem[];
+  upcoming: Array<DashboardOrderRef & { area: string; designStatus: string }>;
+  team: Array<{ name: string; inProgress: number }>;
+  events: Array<{
+    id: number;
+    title: string;
+    eventDate: string;
+    hasTime: boolean;
+    category: string;
+    area: string | null;
+    clientName: string | null;
+    orderId: number | null;
+  }>;
+}
+
+export interface DesignWorkItem extends DashboardOrderRef {
+  key: string;
+  status: string;
+  mine: boolean;
+  assignee: DashboardPerson | null;
+  designStartedAt: string | null;
+  designStartedByName: string | null;
+  round: number;
+  lastSentAt: string | null;
+  lastFeedbackAt: string | null;
+  availableSince: string;
+  areas: string[];
+}
+
+export interface DesignDashboard {
+  generatedAt: string;
+  dayStart: string;
+  counters: {
+    changesRequested: number;
+    notStarted: number;
+    inProgress: number;
+    waitingClient: number;
+    overdue: number;
+    atRisk: number;
+    approvedToday: number;
+    approvedWeek: number;
+  };
+  items: DesignWorkItem[];
+  waitingClient: DesignWorkItem[];
+  team: Array<{ userId: number | null; name: string; active: number; inProgress: number }>;
+  rounds: { avgToApproval: number | null; approvedLast30: number; manyRounds: number };
+}
+

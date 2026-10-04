@@ -29,7 +29,7 @@ function isNotFound(error: unknown): boolean {
  * Respuesta de `GET /notifications/unread-count`.
  *
  * El backend responde `{ unreadCount }` (ver NotificationService.unreadCount),
- * pero acá se aceptan ambas claves: durante un tiempo el frontend leyó `count`
+ * pero aquí se aceptan ambas claves: durante un tiempo el frontend leyó `count`
  * y el badge quedaba siempre en 0 porque esa clave nunca venía. Tolerar las dos
  * evita que un backend viejo/nuevo desplegado a destiempo vuelva a romperlo.
  */

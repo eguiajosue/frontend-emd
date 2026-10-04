@@ -2,7 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 /**
  * Entra como Recepción. El login pega contra el backend de mentira, así que
- * cualquier contraseña sirve: lo que se prueba acá no es la autenticación sino
+ * cualquier contraseña sirve: lo que se prueba aquí no es la autenticación sino
  * lo que pasa después de entrar.
  */
 export async function login(page: Page) {

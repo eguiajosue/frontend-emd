@@ -25,7 +25,7 @@ const MIN_DESCRIPTION_LENGTH = 10;
 
 /**
  * Formulario "Reportar un error", accesible para todos los roles.
- * El backend completa usuario y fecha; acá sólo se manda la descripción.
+ * El backend completa usuario y fecha; aquí sólo se manda la descripción.
  */
 export function BugReportDialog({
   open: controlledOpen,

@@ -118,7 +118,7 @@ export function EntityFormDialog({
       onClose();
     } catch {
       // El feedback de error es global y uniforme (ver src/app/providers.tsx):
-      // acá sólo se evita cerrar el diálogo para no perder lo que el usuario cargó.
+      // aquí sólo se evita cerrar el diálogo para no perder lo que el usuario cargó.
     } finally {
       setSubmitting(false);
     }

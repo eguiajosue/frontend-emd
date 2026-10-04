@@ -9,7 +9,7 @@
  *  - iOS Safari IGNORA el atributo `download` sobre una `data:` URL (abre el
  *    archivo o no hace nada) y además corta las URLs muy largas, que es
  *    exactamente el caso de un montaje de varios MB en base64.
- *  - una `blob:` URL cacheada por React Query NO se puede revocar acá
+ *  - una `blob:` URL cacheada por React Query NO se puede revocar aquí
  *    (rompería la vista previa que sigue en pantalla).
  * En los dos casos se copia el contenido a una blob URL propia, se dispara la
  * descarga y se revoca esa copia.

@@ -19,7 +19,7 @@ import { statusMap } from "@/lib/orderStatus";
 import { getOrderClientName } from "@/lib/format";
 import { getAreaLabel } from "@/lib/areas";
 import type { AreaPerformance, EmployeePerformance } from "@/types";
-import { EyeOff, Gauge, Layers, Users } from "lucide-react";
+import { Gauge, Layers, Users } from "lucide-react";
 
 // recharts es pesado y no crítico para el primer render de la página.
 const PerformanceScoreChart = dynamic(
@@ -132,16 +132,7 @@ const RendimientoPage = () => {
 
   return (
     <div className="space-y-8">
-      <Title
-        title="Rendimiento"
-        description={
-          <span className="flex items-start gap-1.5">
-            <EyeOff className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            Información interna, sólo visible para administración: desempeño por empleado y por
-            área a partir del histórico de pedidos.
-          </span>
-        }
-      />
+      <Title title="Rendimiento" />
 
       {isError ? (
         <ErrorState onRetry={() => refetch()} />

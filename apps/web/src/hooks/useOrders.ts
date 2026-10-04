@@ -44,7 +44,7 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
 /**
  * `GET /orders/history`: TODOS los pedidos de la empresa (sin filtro de
  * antigüedad de entrega), paginado por el backend. A diferencia de `useOrders`
- * (que trae el array plano completo), acá se pagina explícitamente porque el
+ * (que trae el array plano completo), aquí se pagina explícitamente porque el
  * historial puede crecer indefinidamente.
  */
 /** Búsqueda y filtros del Historial (se resuelven en el backend, paginados). */
@@ -52,21 +52,33 @@ export interface OrderHistoryFilters {
   /** Código ("EMD-P0042", "42"), cliente, empresa o descripción. */
   q?: string;
   statusId?: number;
+  clientId?: number;
+  /** Área actual del pedido o de alguna de sus tareas. */
   area?: string;
-  /** Fecha de creación desde/hasta, `YYYY-MM-DD`. */
+  /** Fecha de creación desde/hasta, `YYYY-MM-DD` (día local). */
   dateFrom?: string;
   dateTo?: string;
+  /** Fecha de entrega desde/hasta, `YYYY-MM-DD` (día local). */
+  deliveryFrom?: string;
+  deliveryTo?: string;
 }
+
+/** Inicio o fin del día local `YYYY-MM-DD`, como instante ISO. */
+const dayStart = (day: string) => new Date(`${day}T00:00:00`).toISOString();
+const dayEnd = (day: string) => new Date(`${day}T23:59:59.999`).toISOString();
 
 /** Sólo los filtros con valor, como parámetros de query. */
 export function historyFilterParams(filters: OrderHistoryFilters): Record<string, string> {
   const params: Record<string, string> = {};
   if (filters.q?.trim()) params.q = filters.q.trim();
   if (filters.statusId !== undefined) params.statusId = String(filters.statusId);
+  if (filters.clientId !== undefined) params.clientId = String(filters.clientId);
   if (filters.area) params.area = filters.area;
-  // Fin de día inclusivo: "hasta el 31" incluye lo creado ese día.
-  if (filters.dateFrom) params.dateFrom = `${filters.dateFrom}T00:00:00`;
-  if (filters.dateTo) params.dateTo = `${filters.dateTo}T23:59:59.999`;
+  // Rangos inclusivos: "hasta el 31" incluye todo ese día.
+  if (filters.dateFrom) params.dateFrom = dayStart(filters.dateFrom);
+  if (filters.dateTo) params.dateTo = dayEnd(filters.dateTo);
+  if (filters.deliveryFrom) params.deliveryFrom = dayStart(filters.deliveryFrom);
+  if (filters.deliveryTo) params.deliveryTo = dayEnd(filters.deliveryTo);
   return params;
 }
 
@@ -291,7 +303,7 @@ export function useTakeOrderReception() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Atendés el pedido ${formatOrderCode(order.id)}: las notificaciones te llegan a vos.`);
+      toast.success(`Atiendes el pedido ${formatOrderCode(order.id)}: las notificaciones te llegan a ti.`);
     },
     // El backend explica el rechazo en español (rol sin permiso, pedido
     // inexistente): mostrar SU mensaje, no uno genérico.
@@ -472,7 +484,7 @@ export function useDeleteOrder() {
  * Mientras el backend no exponga `POST /orders/bulk-actions`, se sigue
  * disparando una request PATCH + POST de historial por pedido en paralelo
  * (`Promise.allSettled`); si ese endpoint dedicado aparece más adelante,
- * alcanza con reemplazar el cuerpo de `run` acá sin tocar el resto de la
+ * alcanza con reemplazar el cuerpo de `run` aquí sin tocar el resto de la
  * pantalla (la UI ya asume una function async que puede fallar parcial).
  */
 export function useBulkChangeOrderStatus() {
@@ -557,7 +569,7 @@ function isNotFound(error: unknown): boolean {
  * Notas internas de un pedido (`GET/POST /orders/:id/notes`).
  *
  * Endpoint nuevo, desplegado en paralelo por el equipo de backend: si todavía
- * no existe, el 404 se absorbe acá y la pantalla muestra "sin notas" en vez
+ * no existe, el 404 se absorbe aquí y la pantalla muestra "sin notas" en vez
  * de romper.
  */
 export function useOrderNotes(orderId: number | null) {
@@ -655,17 +667,22 @@ export function useOrderAuditLog(orderId: number | null, options?: { enabled?: b
  * Endpoint nuevo: si aún no existe, cae a array vacío (404 defensivo) en vez
  * de romper la ficha del cliente.
  */
-export function useClientOrders(clientId: number | null) {
+/**
+ * Pedidos de un cliente, del más nuevo al más viejo. Con `limit` pide sólo
+ * esa primera página (ej. "Pedidos anteriores" del alta); sin él, todos.
+ */
+export function useClientOrders(clientId: number | null, options?: { limit?: number }) {
   const token = useAuthToken();
   const enabled = Boolean(token) && clientId !== null;
+  const limit = options?.limit;
 
   const query = useQuery<Order[]>({
-    queryKey: ["clientOrders", clientId],
+    queryKey: ["clientOrders", clientId, limit ?? "all"],
     enabled,
     queryFn: async () => {
       try {
         const payload = await request<Order[] | Paginated<Order>>(
-          `${ENDPOINTS.clients}/${clientId}/orders`,
+          `${ENDPOINTS.clients}/${clientId}/orders${limit ? `?page=1&limit=${limit}` : ""}`,
           { token }
         );
         return Array.isArray(payload) ? payload : payload?.data ?? [];
@@ -691,11 +708,7 @@ export function useClientOrders(clientId: number | null) {
  * de `GET /orders/export`.
  */
 export interface OrdersExportFilters extends OrderHistoryFilters {
-  clientId?: number;
   statusIds?: number[];
-  deliveryFrom?: string;
-  deliveryTo?: string;
-  area?: string;
   assignedUserId?: number | null;
 }
 
@@ -709,13 +722,9 @@ export async function downloadOrdersExport(
   filters: OrdersExportFilters
 ): Promise<void> {
   const params: Record<string, string> = historyFilterParams(filters);
-  if (filters.clientId !== undefined) params.clientId = String(filters.clientId);
   if (filters.statusIds && filters.statusIds.length > 0) {
     params.statusIds = filters.statusIds.join(",");
   }
-  if (filters.deliveryFrom) params.deliveryFrom = filters.deliveryFrom;
-  if (filters.deliveryTo) params.deliveryTo = filters.deliveryTo;
-  if (filters.area) params.area = filters.area;
   if (filters.assignedUserId !== undefined && filters.assignedUserId !== null) {
     params.assignedUserId = String(filters.assignedUserId);
   }

@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Package,
   Palette,
+  Warehouse,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -29,6 +30,7 @@ import { NotificationTypeBadge } from "@/components/notifications/NotificationTy
 import {
   NOTIFICATION_GROUP_LABELS,
   notificationGroup,
+  notificationHref,
   type NotificationGroup,
 } from "@/lib/notifications";
 import { groupByDay } from "@/lib/notificationGrouping";
@@ -40,6 +42,7 @@ const GROUP_FILTERS: NotificationGroup[] = [
   "pedidos",
   "diseno",
   "produccion",
+  "inventario",
   "otras",
 ];
 
@@ -48,6 +51,7 @@ const GROUP_ICONS: Record<NotificationGroup, LucideIcon> = {
   pedidos: Package,
   diseno: Palette,
   produccion: Factory,
+  inventario: Warehouse,
   otras: Bell,
 };
 
@@ -123,9 +127,8 @@ export default function NotificacionesPage() {
 
   const handleSelect = (notification: Notification) => {
     if (!notification.read) markAsRead(notification.id);
-    if (notification.orderId) {
-      router.push(`/dashboard/orders/${notification.orderId}`);
-    }
+    const href = notificationHref(notification);
+    if (href) router.push(href);
   };
 
   return (
@@ -202,13 +205,13 @@ export default function NotificacionesPage() {
               ? "Ni una notificación pendiente. Buen trabajo."
               : filter === "read"
               ? "Todavía no leíste ninguna notificación"
-              : "Acá aparecen las notificaciones"
+              : "Aquí aparecen las notificaciones"
           }
           description={
             isUnavailable
               ? "Esta función se está desplegando del lado del servidor. Intentar nuevamente en un rato."
               : filter === "all"
-              ? "Cuando Recepción asigne un pedido o algo cambie, el aviso aparece acá."
+              ? "Cuando Recepción asigne un pedido o algo cambie, el aviso aparece aquí."
               : undefined
           }
         />

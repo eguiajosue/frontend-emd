@@ -4,7 +4,7 @@ import type { AreaTaskStatus, CalendarEvent, Order } from "@/types";
 
 /**
  * Un ítem del calendario de equipo: o un evento propio (editable) o un
- * pedido con fecha de entrega (sólo lectura desde acá — se edita en
+ * pedido con fecha de entrega (sólo lectura desde aquí — se edita en
  * "Pedidos"). Se homogeneízan a esta forma para poder mezclarlos en la
  * misma grilla/lista sin que cada consumidor tenga que distinguir el tipo
  * en cada paso.
@@ -66,7 +66,7 @@ export function calendarItemClientLabel(item: CalendarItem): string | null {
 /**
  * Colores semáforo (rojo/naranja/verde) para el ciclo pendiente → en_proceso
  * → terminado de un evento — distinto, a propósito, del ámbar/azul/esmeralda
- * que usan las tareas de área de un pedido (ver AreaTasksSection): acá el
+ * que usan las tareas de área de un pedido (ver AreaTasksSection): aquí el
  * calendario necesita leerse de un vistazo, con la misma semántica de
  * semáforo que ya usaban a mano por WhatsApp (❌ 🟠 ✅).
  */

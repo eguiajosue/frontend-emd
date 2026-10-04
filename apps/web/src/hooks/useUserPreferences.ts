@@ -33,6 +33,8 @@ export interface UserPreferences {
   areaViewMode?: "unified" | "split" | null;
   /** Formato de hora en toda la app: 24h o 12h con AM/PM. */
   timeFormatPreference?: "24h" | "12h" | null;
+  /** Productos frecuentes del alta de pedido elegidos y ordenados por este usuario (null = por defecto). */
+  frequentProductIds?: number[] | null;
   /**
    * Notificaciones (Fase 4). Modo silencio general: si está activo, el
    * backend no persiste ni pushea notificaciones (salvo menciones directas,
@@ -81,7 +83,7 @@ export function useUserPreferences() {
   return {
     preferences: query.data,
     isLoading: query.isPending,
-    // Silencia el rechazo acá: el toast de error ya lo dispara el manejo
+    // Silencia el rechazo aquí: el toast de error ya lo dispara el manejo
     // global de mutaciones (mutationCache.onError en providers.tsx).
     updatePreferences: (partial: Partial<UserPreferences>) =>
       mutation.mutateAsync(partial).catch(() => undefined),

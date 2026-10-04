@@ -21,7 +21,7 @@ import { es } from "date-fns/locale";
 export const MONTH_LOAD_STEP = 3;
 
 /**
- * Techo de meses cargados en total (a cada lado se puede extender hasta acá).
+ * Techo de meses cargados en total (a cada lado se puede extender hasta aquí).
  * El scroll "se siente" infinito en el uso normal; esto sólo evita que una
  * sesión larga sin cerrar la pestaña acumule DOM sin límite.
  */
@@ -91,7 +91,7 @@ export function buildContinuousWeeks(range: MonthRange): CompactWeek[] {
   // Las semanas de borde se completan hasta lunes/domingo y pueden colarse
   // días de un mes fuera del rango pedido (ej. el 1 de julio en la última
   // semana de un rango que termina en junio): no cuenta como "el mes empieza
-  // acá", así que se descarta si su propio mes cae fuera de `range`.
+  // aquí", así que se descarta si su propio mes cae fuera de `range`.
   const rangeStartMonth = startOfMonth(range.start);
   const rangeEndMonth = startOfMonth(range.end);
   const isMonthInRange = (date: Date) => {

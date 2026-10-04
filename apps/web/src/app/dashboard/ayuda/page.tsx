@@ -1,10 +1,10 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { motion } from "framer-motion";
 import Title from "@/components/Title";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Accordion,
   AccordionContent,
@@ -14,39 +14,11 @@ import {
 import { getStatusBadgeClasses } from "@/lib/statusColors";
 import { statusOptions } from "@/lib/orderStatus";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useMotionPreset } from "@/lib/motion";
-import {
-  BarChart3,
-  Bell,
-  CheckCircle2,
-  ClipboardList,
-  History,
-  LayoutDashboard,
-  LifeBuoy,
-  ListChecks,
-  MessagesSquare,
-  PackagePlus,
-  Palette,
-  Send,
-  Split,
-  Users,
-} from "lucide-react";
+import { GuideStepper } from "@/components/help/GuideStepper";
+import { GUIDES, resolveGuideKeys } from "@/components/help/guides";
+import { BarChart3, LifeBuoy, ListChecks } from "lucide-react";
 
-/** Un paso de la guía: ícono, título, descripción y una mini "captura" opcional. */
-interface GuideStep {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  mockup?: ReactNode;
-}
-
-interface GuideProfile {
-  roleLabel: string;
-  intro: string;
-  steps: GuideStep[];
-}
-
-/** Círculo de ícono reutilizado en pasos y encabezados de sección. */
+/** Círculo de ícono reutilizado en encabezados de sección. */
 function IconBadge({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
@@ -54,239 +26,6 @@ function IconBadge({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-/**
- * Un paso de la línea de tiempo. Anima su entrada al hacer scroll (fade +
- * leve desplazamiento en Y), respetando reduced-motion vía useMotionPreset.
- */
-function TimelineStep({ step, index }: { step: GuideStep; index: number }) {
-  const { staggerItemVariants } = useMotionPreset();
-
-  return (
-    <motion.li
-      className="relative flex gap-4 pb-9 last:pb-0"
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.4 }}
-      variants={staggerItemVariants}
-    >
-      {/* Conector vertical sutil entre pasos */}
-      <span
-        aria-hidden
-        className="absolute bottom-0 left-[17px] top-11 w-px bg-border/70 last:hidden"
-      />
-      <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums text-foreground/70">
-        {index + 1}
-      </div>
-      <div className="min-w-0 flex-1 space-y-2 pt-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground">{step.icon}</span>
-          <h3 className="text-section-title leading-none">{step.title}</h3>
-        </div>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          {step.description}
-        </p>
-        {step.mockup && <div className="pt-1">{step.mockup}</div>}
-      </div>
-    </motion.li>
-  );
-}
-
-/** Mini "captura" conceptual de una fila de pedido con badge de estado. */
-function OrderRowMockup({ statusValue, label }: { statusValue: number; label: string }) {
-  return (
-    <div className="flex max-w-sm items-center justify-between rounded-xl bg-muted/60 px-3.5 py-2.5 text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <Badge variant="muted" className={`capitalize ${getStatusBadgeClasses(statusValue)}`}>
-        {statusOptions.find((o) => o.value === statusValue)?.label}
-      </Badge>
-    </div>
-  );
-}
-
-/** Mini "captura" conceptual de un mensaje de chat entre dos áreas. */
-function ChatMockup() {
-  return (
-    <div className="max-w-sm space-y-1.5 rounded-xl bg-muted/60 p-3 text-xs">
-      <div className="flex justify-start">
-        <span className="rounded-2xl rounded-bl-md bg-card px-3 py-1.5 shadow-soft">
-          ¿En cuánto va el pedido EMD-P0128?
-        </span>
-      </div>
-      <div className="flex justify-end">
-        <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-ink-foreground">
-          Sale hoy, ya está en bordado.
-        </span>
-      </div>
-    </div>
-  );
-}
-
-const ADMIN_PROFILE: GuideProfile = {
-  roleLabel: "administrador",
-  intro:
-    "Visibilidad total de la operación: todos los pedidos, todas las áreas, usuarios y métricas.",
-  steps: [
-    {
-      icon: <LayoutDashboard className="h-4 w-4" />,
-      title: "Panel General",
-      description:
-        "Vista global de todos los pedidos de la empresa: filtrá por estado, ordená la lista y detectá pedidos estancados (los que tardan más que el promedio histórico de su etapa).",
-      mockup: <OrderRowMockup statusValue={3} label="Pedido EMD-P0128 · Bordados SA" />,
-    },
-    {
-      icon: <BarChart3 className="h-4 w-4" />,
-      title: "Rendimiento por área",
-      description:
-        "En \"Rendimiento\" ves cuántos pedidos tiene cada área (bordado, DTF, diseño, láser, impresiones, taller) en este momento y el tiempo promedio que le toma completar su parte.",
-    },
-    {
-      icon: <Users className="h-4 w-4" />,
-      title: "Usuarios, roles, clientes y empresas",
-      description:
-        "Desde el menú lateral creás, editás o eliminás usuarios y roles, y gestionás clientes y empresas. Los roles determinan qué secciones puede ver y modificar cada persona.",
-    },
-    {
-      icon: <MessagesSquare className="h-4 w-4" />,
-      title: "Chat entre áreas",
-      description:
-        "Se puede participar o monitorear las conversaciones entre recepción y cada área de producción para destrabar dudas sin salir de la plataforma.",
-      mockup: <ChatMockup />,
-    },
-    {
-      icon: <Bell className="h-4 w-4" />,
-      title: "Notificaciones",
-      description:
-        "Recibís avisos de asignaciones nuevas, cambios de estado y mensajes sin leer desde la campana de notificaciones.",
-    },
-    {
-      icon: <History className="h-4 w-4" />,
-      title: "Historial de pedidos",
-      description:
-        "El historial guarda cada cambio de estado con fecha y hora, para auditar cómo avanzó cualquier pedido de punta a punta.",
-    },
-  ],
-};
-
-const RECEPCION_PROFILE: GuideProfile = {
-  roleLabel: "recepción",
-  intro:
-    "Recepción es la entrada y salida de cada pedido: lo carga, lo deriva al área correcta y coordina con el cliente.",
-  steps: [
-    {
-      icon: <PackagePlus className="h-4 w-4" />,
-      title: "Crear un pedido nuevo",
-      description:
-        "En \"Pedidos\" tocá \"+ Nuevo Pedido\" (o la tecla N), elegí el cliente, completá la descripción y la fecha de entrega, y guardá. Arranca en estado \"pendiente\".",
-      mockup: <OrderRowMockup statusValue={1} label="Pedido EMD-P0131 · Nuevo" />,
-    },
-    {
-      icon: <Split className="h-4 w-4" />,
-      title: "Asignar el área",
-      description:
-        "Si el pedido requiere diseño, se deriva a Diseño antes de producción; si no, va directo al área que corresponda (taller, DTF, bordado, láser o impresiones).",
-    },
-    {
-      icon: <Palette className="h-4 w-4" />,
-      title: "Seguir el flujo de diseño",
-      description:
-        "Cuando hay diseño de por medio, seguís el ida y vuelta de montajes en el detalle del pedido hasta que el cliente autoriza y el pedido pasa a producción.",
-    },
-    {
-      icon: <ListChecks className="h-4 w-4" />,
-      title: "Pendientes y entregas",
-      description:
-        "En \"Estatus de Pedidos\" ves los pedidos \"pendientes\" (recién cargados) y \"entregados\" (para cerrar la logística de entrega).",
-    },
-    {
-      icon: <MessagesSquare className="h-4 w-4" />,
-      title: "Chat con cada área",
-      description:
-        "Usá el chat para coordinar con diseño o producción sin salir del sistema: adjuntá un pedido como contexto directamente desde el mensaje.",
-      mockup: <ChatMockup />,
-    },
-    {
-      icon: <History className="h-4 w-4" />,
-      title: "Historial de auditoría",
-      description:
-        "El historial muestra cada cambio de estado de un pedido, con fecha y hora, para reconstruir qué pasó.",
-    },
-  ],
-};
-
-const DISENO_PROFILE: GuideProfile = {
-  roleLabel: "diseño",
-  intro:
-    "Trabajás la etapa previa a producción: armás el montaje y gestionás el ida y vuelta hasta la autorización del cliente.",
-  steps: [
-    {
-      icon: <ClipboardList className="h-4 w-4" />,
-      title: "Pedidos que requieren diseño",
-      description:
-        "En \"Estatus de Pedidos\" aparecen los pedidos que Recepción marcó como \"requiere diseño\" y que están esperando la parte de Diseño.",
-      mockup: <OrderRowMockup statusValue={2} label="Pedido EMD-P0129 · En pruebas" />,
-    },
-    {
-      icon: <Palette className="h-4 w-4" />,
-      title: "Subir el montaje",
-      description:
-        "Desde el detalle del pedido, en \"Proceso de diseño\", subís el montaje para que Recepción se lo envíe al cliente.",
-    },
-    {
-      icon: <Send className="h-4 w-4" />,
-      title: "Feedback del cliente",
-      description:
-        "Si el cliente pide cambios, el pedido vuelve a Diseño con el detalle de lo solicitado; se sube una nueva versión y se repite el ciclo.",
-    },
-    {
-      icon: <CheckCircle2 className="h-4 w-4" />,
-      title: "Autorización y pase a producción",
-      description:
-        "Cuando el cliente autoriza el montaje, el pedido pasa automáticamente al área de producción elegida — el trabajo queda registrado en el historial de montajes.",
-    },
-    {
-      icon: <MessagesSquare className="h-4 w-4" />,
-      title: "Chat con Recepción",
-      description:
-        "Resolvé dudas puntuales sobre un pedido por chat, con el pedido adjunto como contexto del mensaje.",
-      mockup: <ChatMockup />,
-    },
-  ],
-};
-
-const PRODUCCION_PROFILE: GuideProfile = {
-  roleLabel: "producción",
-  intro:
-    "Se ven sólo los pedidos que están en la etapa del área y su estado avanza cuando el trabajo termina.",
-  steps: [
-    {
-      icon: <ClipboardList className="h-4 w-4" />,
-      title: "Pedidos asignados",
-      description:
-        "\"Estatus de Pedidos\" muestra únicamente los pedidos \"en proceso\" que le corresponden al área — nada de otras etapas, para no generar confusión.",
-      mockup: <OrderRowMockup statusValue={3} label="Pedido EMD-P0124 · En proceso" />,
-    },
-    {
-      icon: <CheckCircle2 className="h-4 w-4" />,
-      title: "Avanzar el estado",
-      description:
-        "Cuando termines, abrí el pedido y usá el selector de estado para pasarlo a la siguiente etapa. Queda registrado en el historial con fecha y hora.",
-    },
-    {
-      icon: <MessagesSquare className="h-4 w-4" />,
-      title: "Chat con Recepción",
-      description:
-        "Para aclarar algo de un pedido, conviene escribir a Recepción por chat en vez de interrumpir por otro medio.",
-      mockup: <ChatMockup />,
-    },
-    {
-      icon: <Bell className="h-4 w-4" />,
-      title: "Notificaciones de asignación",
-      description:
-        "La campana de notificaciones avisa apenas llega un pedido nuevo o cambia algo relevante para el área.",
-    },
-  ],
-};
 
 /** Preview interactivo de los botones de estado (colores compartidos en toda la app). */
 function StatusButtonsPreview() {
@@ -305,59 +44,45 @@ function StatusButtonsPreview() {
   );
 }
 
-function pickProfile(roles: string[], isAdmin: boolean): GuideProfile {
-  if (isAdmin) return ADMIN_PROFILE;
-  if (roles.includes("diseno")) return DISENO_PROFILE;
-  if (roles.includes("recepcion")) return RECEPCION_PROFILE;
-  return PRODUCCION_PROFILE;
-}
-
 const AyudaPage = () => {
   const { roles, isAdmin } = usePermissions();
-  const hasKnownRole = isAdmin || roles.length > 0;
-  const profile = pickProfile(roles, isAdmin);
+  const guides = resolveGuideKeys(roles, isAdmin).map((key) => GUIDES[key]);
 
   return (
     <div className="space-y-6 pb-10">
       <Title title="Ayuda" />
 
-      {/* Banner del rol: tarjeta ancha con ícono en círculo, como el aviso
-          informativo del panel. */}
-      <Card className="flex items-start gap-4 p-5 sm:items-center sm:p-6">
-        <span
-          aria-hidden
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-primary-foreground shadow-sm shadow-primary/25"
-        >
-          <LifeBuoy className="h-5 w-5" />
-        </span>
-        {hasKnownRole ? (
-          <div className="min-w-0 space-y-1">
-            <p className="flex flex-wrap items-center gap-2 text-[0.9375rem] font-semibold">
-              Guía para el rol
-              <Badge variant="muted" className="capitalize text-foreground">{profile.roleLabel}</Badge>
-            </p>
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              {profile.intro}
-            </p>
-          </div>
-        ) : (
+      {guides.length === 0 ? (
+        <Card className="flex items-center gap-4 p-5 sm:p-6">
+          <IconBadge>
+            <LifeBuoy className="h-5 w-5" />
+          </IconBadge>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Tu usuario todavía no tiene un rol asignado. Pedile a un
-            administrador que te asigne uno para ver tus tareas acá.
+            Tu usuario todavía no tiene un rol asignado. Pide a un administrador que te asigne uno para ver aquí
+            cómo usar la app.
           </p>
-        )}
-      </Card>
-
-      {hasKnownRole && (
-        <Card>
-          <CardContent className="p-5 sm:p-8">
-            <ol className="relative">
-              {profile.steps.map((step, index) => (
-                <TimelineStep key={step.title} step={step} index={index} />
-              ))}
-            </ol>
-          </CardContent>
         </Card>
+      ) : guides.length === 1 ? (
+        <section className="space-y-3">
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{guides[0].intro}</p>
+          <GuideStepper guide={guides[0]} />
+        </section>
+      ) : (
+        <Tabs defaultValue={guides[0].key} className="space-y-3">
+          <TabsList aria-label="Tus formas de usar la app">
+            {guides.map((g) => (
+              <TabsTrigger key={g.key} value={g.key}>
+                {g.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {guides.map((g) => (
+            <TabsContent key={g.key} value={g.key} className="space-y-3">
+              <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{g.intro}</p>
+              <GuideStepper guide={g} />
+            </TabsContent>
+          ))}
+        </Tabs>
       )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -370,7 +95,7 @@ const AyudaPage = () => {
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             En toda la app un mismo estado siempre tiene el mismo color, así lo
-            identificás de un vistazo sin importar en qué pantalla estés.
+            identificas de un vistazo sin importar en qué pantalla estés.
           </p>
           <StatusButtonsPreview />
         </Card>
@@ -402,6 +127,12 @@ const AyudaPage = () => {
                     <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">Esc</kbd>{" "}
                     cierra cualquier ventana o diálogo abierto.
                   </li>
+                  <li>
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">G</kbd>{" "}
+                    y luego una letra te lleva a una sección (por ejemplo G y P abre Pedidos).{" "}
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">?</kbd>{" "}
+                    muestra la lista completa.
+                  </li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
@@ -421,7 +152,7 @@ const AyudaPage = () => {
               <AccordionTrigger>¿Hace falta más ayuda?</AccordionTrigger>
               <AccordionContent>
                 Si algo no funciona como se espera o hace falta un permiso que
-                no está habilitado, contactar a un administrador de EMD HUB.
+                no está habilitado, contacta a un administrador de EMD HUB.
               </AccordionContent>
             </AccordionItem>
           </Accordion>

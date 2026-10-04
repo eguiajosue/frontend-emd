@@ -124,7 +124,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   // A qué áreas va el pedido: las tareas de área son la fuente de verdad
   // (misma queryKey que "Áreas de producción", que vive en el mismo detalle,
   // así que React Query dedupe). Antes esto se preguntaba TRES veces en la
-  // misma tarjeta —acá, en "Áreas de producción" y otra vez al confirmar la
+  // misma tarjeta —aquí, en "Áreas de producción" y otra vez al confirmar la
   // autorización—, y las dos primeras escribían campos distintos.
   const { tasks: areaTasks } = useAreaTasks(order.id);
 
@@ -235,7 +235,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       ) : revisions.length === 0 && embedded && notStarted ? null : revisions.length === 0 && embedded ? (
         <p className="text-sm text-muted-foreground">
           {canDesign
-            ? "Todavía no hay montaje: subí el primero para que Recepción lo mande al cliente."
+            ? "Todavía no hay montaje: sube el primero para que Recepción lo mande al cliente."
             : "Diseño todavía no subió el primer montaje."}
         </p>
       ) : revisions.length === 0 ? (
@@ -313,7 +313,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
         <div className="space-y-2 rounded-xl bg-primary/5 p-4">
           <p className="text-sm font-medium">Nadie lo empezó todavía</p>
           <p className="text-xs text-muted-foreground">
-            Marcalo cuando arranques, así Recepción sabe que ya está en curso.
+            Márcalo cuando arranques, así Recepción sabe que ya está en curso.
           </p>
           <form
             className="flex flex-col gap-2 sm:flex-row sm:items-center"
@@ -375,7 +375,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
             {isTakingDesign ? "Tomando..." : "Tomar pedido"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Está a nombre del área, no de una persona. Tomalo para que quede a
+            Está a nombre del área, no de una persona. Tómalo para que quede a
             tu nombre.
           </p>
         </div>
@@ -403,7 +403,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
           </Button>
           <p className="text-xs text-muted-foreground">
             {isChangesRequested
-              ? "Subí el montaje corregido: vuelve a Recepción para que lo vea el cliente."
+              ? "Sube el montaje corregido: vuelve a Recepción para que lo vea el cliente."
               : "La hoja de autorización: imágenes o PDF. Recepción se la muestra al cliente."}
           </p>
         </div>
@@ -913,7 +913,7 @@ const MAX_UPLOAD_FILES = 10;
  * el JSON viaja en base64 (~+34% sobre los bytes del archivo), así que más de
  * ~7MB de archivos devuelve un 413 con HTML — no el `{message}` de Nest —, y
  * el usuario veía el toast genérico "No se pudo completar la acción" DESPUÉS
- * de haber perdido los archivos. Se corta acá, antes de mandar.
+ * de haber perdido los archivos. Se corta aquí, antes de mandar.
  */
 const MAX_UPLOAD_TOTAL_BYTES = 7 * 1024 * 1024;
 
@@ -988,7 +988,7 @@ async function stageIncomingFiles(
     if (total + size > MAX_UPLOAD_TOTAL_BYTES) {
       if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
       toast.error(
-        `No entra: entre todos los archivos no se pueden superar los ${MAX_UPLOAD_TOTAL_LABEL}. Quitá alguno o mandalos en dos rondas.`
+        `No entra: entre todos los archivos no se pueden superar los ${MAX_UPLOAD_TOTAL_LABEL}. Quita alguno o mandalos en dos rondas.`
       );
       break;
     }
@@ -1219,7 +1219,7 @@ function MontageDialog({
           onRemove={removeFile}
           onClear={reset}
           disabled={isSubmitting}
-          emptyHint="Arrastrá la hoja de autorización acá, pegala con Ctrl+V o adjuntala."
+          emptyHint="Arrastra la hoja de autorización aquí, pégala con Ctrl+V o adjúntala."
         />
         <DialogFooter>
           <Button variant="secondary" onClick={() => (onClose(), reset())} disabled={isSubmitting}>
@@ -1299,7 +1299,7 @@ function FeedbackDialog({
 
   const handleSubmit = async () => {
     if (!text.trim()) {
-      setError("Contá qué cambios pidió el cliente");
+      setError("Cuenta qué cambios pidió el cliente");
       return;
     }
     setError("");
@@ -1338,7 +1338,7 @@ function FeedbackDialog({
               onRemove={removeFile}
               onClear={clearFiles}
               disabled={isSubmitting}
-              emptyHint="Pegá con Ctrl+V la captura de WhatsApp, o arrastrala acá."
+              emptyHint="Pega con Ctrl+V la captura de WhatsApp, o arrástrala aquí."
             />
           </div>
         </div>
@@ -1366,7 +1366,7 @@ function FeedbackDialog({
  * Autorizar tiene dos requisitos (al menos un material y saber a qué áreas
  * va). Antes ninguno se veía hasta apretar "Confirmar": el backend devolvía
  * el error en un toast y el diálogo quedaba abierto sin decir cómo seguir.
- * Ahora se muestran como checklist y se resuelven acá mismo.
+ * Ahora se muestran como checklist y se resuelven aquí mismo.
  */
 function ApproveDialog({
   open,
@@ -1383,7 +1383,7 @@ function ApproveDialog({
   isSubmitting: boolean;
   orderId: number;
   round: number;
-  /** Áreas ya definidas en "Áreas de producción". Vacío = se eligen acá. */
+  /** Áreas ya definidas en "Áreas de producción". Vacío = se eligen aquí. */
   plannedAreas: string[];
 }) {
   const { formButtonMotion } = useMotionPreset();
@@ -1424,7 +1424,7 @@ function ApproveDialog({
               ) : (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Cargá al menos un material: producción tiene que saber qué va a usar.
+                    Carga al menos un material: producción tiene que saber qué va a usar.
                   </p>
                   <Button
                     type="button"

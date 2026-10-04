@@ -22,12 +22,12 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="sidebar-nav"]',
     title: "Navegación",
-    description: "Desde acá se accede a Pedidos, Historial, Clientes y más, según el rol.",
+    description: "Desde aquí se accede a Pedidos, Historial, Clientes y más, según el rol.",
   },
   {
     selector: '[data-tour="new-order-button"]',
     title: "Nueva orden",
-    description: "Creá un pedido nuevo con este botón, desde la pantalla de Pedidos.",
+    description: "Crea un pedido nuevo con este botón, desde la pantalla de Pedidos.",
   },
   {
     selector: '[data-tour="theme-toggle"]',
@@ -37,7 +37,7 @@ const STEPS: TourStep[] = [
   {
     selector: '[data-tour="help-link"]',
     title: "Ayuda",
-    description: "Si algo no queda claro, acá hay guías y soporte.",
+    description: "Si algo no queda claro, aquí hay guías y soporte.",
   },
 ];
 

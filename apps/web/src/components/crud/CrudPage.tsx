@@ -67,11 +67,11 @@ export interface CrudFilterConfig<T> {
 /**
  * Entidades de bajo cambio que pasan por esta pantalla genérica (roles en
  * Usuarios, proveedores en Materiales): mismo criterio que `CATALOG_STALE_TIME`
- * (ver `hooks/useEntity`), pero aplicado acá porque `CrudPage` no expone hoy
+ * (ver `hooks/useEntity`), pero aplicado aquí porque `CrudPage` no expone hoy
  * un `staleTime` por prop y cada pantalla que la usa pasa sólo `entity`. Las
  * mutaciones ya invalidan la query key en `onSuccess`, así que un alta/edición
  * se sigue viendo al toque; esto sólo evita refetches de background en cada
- * mount de la pestaña. `clients`/`companies`/`users`/`materials` no entran acá:
+ * mount de la pestaña. `clients`/`companies`/`users`/`materials` no entran aquí:
  * cambian más seguido y deben seguir con el staleTime global de 30s.
  */
 const CATALOG_ENTITIES = new Set<EntityKey>(["roles", "suppliers"]);

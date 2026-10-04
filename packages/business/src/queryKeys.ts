@@ -22,7 +22,7 @@ export const ENDPOINTS = {
   chat: "chat",
   // Catálogo de estados (`GET /status`): los 4 del circuito de Diseño se
   // siembran con ids que cambian entre entornos, así que el tablero los
-  // resuelve por nombre desde acá en vez de hardcodearlos.
+  // resuelve por nombre desde aquí en vez de hardcodearlos.
   statuses: "status",
   // Calendario de equipo de Recepción (instalaciones, juntas, visitas).
   calendarEvents: "calendar-events",
@@ -35,6 +35,8 @@ export const ENDPOINTS = {
   // Catálogos que crecen solos (ver MaterialCategoryService/MaterialUnitService.ensureExists).
   materialCategories: "material-categories",
   materialUnits: "material-units",
+  // Existencias físicas por departamento + kardex (no es el catálogo de materiales).
+  inventory: "inventory",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;

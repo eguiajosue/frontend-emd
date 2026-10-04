@@ -69,7 +69,7 @@ export function OrderNotesSection({ orderId }: { orderId: number }) {
             <Textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={notes.length === 0 ? "Dejá la primera nota para el equipo…" : "Agregar una nota…"}
+              placeholder={notes.length === 0 ? "Deja la primera nota para el equipo…" : "Agregar una nota…"}
               aria-label="Nueva nota interna"
               rows={2}
               onKeyDown={(e) => {

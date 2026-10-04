@@ -96,7 +96,7 @@ export function OrderAttendance({ order }: { order: Order }) {
             {isTakingReception ? "Tomando…" : "Atender este pedido"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            Pasás a recibir vos los avisos de este pedido.
+            Pasas a recibir tú los avisos de este pedido.
           </p>
         </div>
       )}

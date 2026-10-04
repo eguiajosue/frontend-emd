@@ -73,7 +73,7 @@ interface CalendarEventDialogProps {
 /**
  * Alta/edición de un evento del calendario de equipo de Recepción
  * (instalaciones, juntas, visitas a clientes). Formulario simple de un solo
- * paso: a diferencia del wizard de pedidos, acá no hay pasos que dependan
+ * paso: a diferencia del wizard de pedidos, aquí no hay pasos que dependan
  * unos de otros.
  */
 export function CalendarEventDialog({
@@ -162,7 +162,7 @@ export function CalendarEventDialog({
       return;
     }
     if (!date) {
-      toast.error("Elegí una fecha para el evento");
+      toast.error("Elige una fecha para el evento");
       return;
     }
     setTitleError(undefined);
@@ -274,7 +274,7 @@ export function CalendarEventDialog({
               customValue={clientNameOverride}
               placeholder="Buscar cliente o escribir nombre libre..."
               createLabel={(value) => `Usar "${value}" como nombre de cliente`}
-              emptyLabel="No hay clientes registrados. Escribí un nombre para usarlo directamente."
+              emptyLabel="No hay clientes registrados. Escribe un nombre para usarlo directamente."
               onSelectItem={(item) => {
                 setClientId(Number(item.id));
                 setClientNameOverride("");
@@ -364,7 +364,7 @@ export function CalendarEventDialog({
                   Recordatorio adicional
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Siempre avisamos 1 hora antes; acá podés pedir uno con más anticipación.
+                  Siempre avisamos 1 hora antes; aquí puedes pedir uno con más anticipación.
                 </p>
               </div>
               <Switch id="ce-reminder" checked={reminderEnabled} onCheckedChange={setReminderEnabled} />

@@ -488,7 +488,7 @@ const AdminDashboardPage = () => {
         <EmptyState
           icon={LayoutDashboard}
           title="El panel está esperando su primer pedido"
-          description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer acá apenas se cargue el primero."
+          description="Las métricas de rendimiento, tiempos por etapa y alertas van a aparecer aquí apenas se cargue el primero."
         />
       ) : (
         <>

@@ -13,6 +13,8 @@ import {
   ClipboardList,
   ListChecks,
   Truck,
+  Warehouse,
+  House,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +35,18 @@ export interface NavGroup {
 
 /** Bandeja de tareas de Diseño y Producción. */
 export const TASKS_URL = "/dashboard/tareas";
+
+/**
+ * Inicio de cada rol (tablero en vivo): Recepción ve el control de todas las
+ * áreas; Diseño y Producción, su trabajo por prioridad. Ruta propia (no
+ * `/dashboard`) para que no "coincida" como prefijo de todas las pantallas.
+ */
+export const HOME_URL = "/dashboard/inicio";
+
+const HOME_ITEM: NavItem = { title: "Inicio", url: HOME_URL, icon: House };
+
+/** Existencias físicas por departamento (no es el catálogo de Materiales). */
+export const INVENTORY_URL = "/dashboard/inventario";
 
 /** Roles que ejecutan trabajo (Diseño + áreas de producción). */
 const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
@@ -60,6 +74,7 @@ export const OPERATIONAL_MENU: NavGroup[] = [
   {
     groupLabel: "Producción",
     items: [
+      HOME_ITEM,
       // Diseño y Producción no administran pedidos: trabajan tareas. Su
       // pantalla es la bandeja de tareas (lo suyo y lo libre de sus áreas);
       // "Pedidos" queda para Recepción.
@@ -109,6 +124,7 @@ export function buildMenuItems(): NavGroup[] {
     {
       groupLabel: "Operación",
       items: [
+        HOME_ITEM,
         {
           title: "Panel General",
           url: "/dashboard/admin",
@@ -170,6 +186,13 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
+          // Existencias por departamento: sólo Recepción y administración.
+          title: "Inventario",
+          url: INVENTORY_URL,
+          icon: Warehouse,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+        {
           title: "Clientes",
           url: "/dashboard/clientes",
           icon: Building2,
@@ -224,13 +247,14 @@ export function buildMenuItems(): NavGroup[] {
 /**
  * Orden de prioridad para elegir los tabs principales de la barra móvil: se
  * recorre esta lista y se toman los primeros `MAX_PRIMARY_TABS` ítems que el
- * rol actual puede ver. Vive acá (no en `MobileTabBar.tsx`) para que
+ * rol actual puede ver. Vive aquí (no en `MobileTabBar.tsx`) para que
  * `MobileMoreSheet.tsx` pueda derivar el resto de la lista ("Más") a partir
  * de la misma fuente y ambas superficies nunca diverjan sobre qué ítem es
  * "principal" y cuál queda detrás de "Más".
  */
 export const TAB_PRIORITY_URLS = [
   "/dashboard/admin",
+  HOME_URL,
   "/dashboard/orders",
   TASKS_URL,
   "/dashboard/chat",
@@ -241,6 +265,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/clientes",
   "/dashboard/materiales",
   "/dashboard/proveedores",
+  INVENTORY_URL,
   "/dashboard/calendario",
   "/dashboard/usuarios",
   "/dashboard/ayuda",
@@ -284,11 +309,11 @@ export function findActiveNavUrl(urls: string[], pathname: string | null): strin
   return best;
 }
 
-/** Inicio de cada rol: admin al panel, el resto directo a su trabajo. */
+/** Inicio de cada rol: admin al panel general; Recepción, Diseño y Producción a su tablero en vivo. */
 export function homePathForRoles(roles: string[]): string {
   if (roles.includes("admin") || roles.includes("superuser")) return "/dashboard/admin";
-  if (roles.includes("recepcion")) return "/dashboard/orders";
-  return roles.some((r) => WORK_AREA_ROLES.includes(r)) ? TASKS_URL : "/dashboard/orders";
+  if (roles.includes("recepcion") || roles.some((r) => WORK_AREA_ROLES.includes(r))) return HOME_URL;
+  return "/dashboard/orders";
 }
 
 /** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */

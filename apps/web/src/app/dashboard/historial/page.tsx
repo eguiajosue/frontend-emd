@@ -157,10 +157,7 @@ const HistorialPage = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <Title
-          title="Historial de pedidos"
-          description="Todos los pedidos de la empresa, incluidos los entregados hace tiempo que ya no aparecen en el tablero."
-        />
+        <Title title="Historial de pedidos" />
         {canManageOperations && (
           <Button variant="outline" onClick={handleExportCsv} disabled={isExportingCsv}>
             <FileDown className="h-4 w-4" />
@@ -187,14 +184,14 @@ const HistorialPage = () => {
         <EmptyState
           icon={FilterX}
           title="Ningún pedido coincide con la búsqueda"
-          description="Probá con otro código, cliente o rango de fechas."
+          description="Prueba con otro código, cliente, área o rango de fechas."
           action={{ label: "Limpiar filtros", icon: FilterX, onClick: () => updateFilters({}) }}
         />
       ) : orders.length === 0 ? (
         <EmptyState
           icon={Archive}
           title="El historial todavía está en blanco"
-          description="En cuanto se entregue el primer pedido, va a quedar registrado acá para siempre."
+          description="En cuanto se entregue el primer pedido, va a quedar registrado aquí para siempre."
         />
       ) : (
         <>

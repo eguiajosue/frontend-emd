@@ -2,7 +2,7 @@
  * Lectura de un `File` del navegador a `{ data, filename, mimeType }` (base64
  * sin el prefijo `data:...;base64,`), con las mismas reglas (tipo/tamaño) que
  * usan los archivos del cliente del alta (`CreateOrderDialog`) — reutilizado
- * acá por el flujo de diseño (montaje / adjunto de feedback), mismo límite del
+ * aquí por el flujo de diseño (montaje / adjunto de feedback), mismo límite del
  * backend.
  */
 

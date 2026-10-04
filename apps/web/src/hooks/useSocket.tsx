@@ -14,6 +14,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { playNotificationSound } from "@/lib/sound";
 import { markUserTyping, markUserStoppedTyping } from "@/hooks/useChatTyping";
 import { getAreaLabel } from "@/lib/areas";
+import { DASHBOARD_KEY } from "@/hooks/useDashboard";
 
 /** Payload de "chatMessage" (ver ChatService.sendMessage en el backend). */
 interface ChatMessagePayload {
@@ -70,7 +71,7 @@ const HIGHLIGHT_TOAST_DURATION_MS = 9000;
  *   usuario no está mirando la pantalla del chat.
  *
  * Esta es la ÚNICA conexión de Socket.io de la app (se monta una vez en el
- * layout del dashboard): cualquier feature nueva debe engancharse acá en vez
+ * layout del dashboard): cualquier feature nueva debe engancharse aquí en vez
  * de abrir un segundo socket.
  */
 
@@ -183,7 +184,7 @@ export function useSocket() {
       const title =
         order.reason === "design_montage_sent"
           ? `Hoja de autorización lista: pedido ${formatOrderCode(order.orderId)}`
-          : `Nuevo pedido asignado: #${order.orderId}`;
+          : `Nuevo pedido asignado: ${formatOrderCode(order.orderId)}`;
       showHighlightedOrderToast(
         title,
         {
@@ -227,13 +228,28 @@ export function useSocket() {
     // chatRead/chatDelivered/presenceChanged sólo invalidan la cache del
     // chat: el dato en sí (lastReadAt/deliveredAt/isOnline/lastSeenAt) se
     // vuelve a pedir a GET /chat/conversations/:id/members, no se aplica a
-    // mano acá — mantiene una sola fuente de verdad.
+    // mano aquí — mantiene una sola fuente de verdad.
     const handleChatRead = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };
     const handleChatDelivered = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };
+    // "Cambiaron datos" (backend: RealtimeService). Sin toast: refresca sólo
+    // lo que esté en pantalla (Inicio, listas de pedidos, tareas, inventario,
+    // calendario). El backend ya agrupa las ráfagas de escrituras.
+    const handleDataChanged = (payload?: { models?: string[] }) => {
+      const models = new Set(payload?.models ?? []);
+      const touches = (...names: string[]) => names.some((name) => models.has(name));
+      if (touches("Order", "OrderAreaTask", "OrderProduct", "OrderMaterialItem", "OrderHistory", "DesignRevision")) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+        queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
+      }
+      if (touches("InventoryItem")) queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
+      if (touches("CalendarEvent")) queryClient.invalidateQueries({ queryKey: queryKeys.all("calendarEvents") });
+      queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
+    };
+
     const handlePresenceChanged = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };
@@ -251,6 +267,7 @@ export function useSocket() {
     socket.on("chatRead", handleChatRead);
     socket.on("chatDelivered", handleChatDelivered);
     socket.on("presenceChanged", handlePresenceChanged);
+    socket.on("dataChanged", handleDataChanged);
     socket.on("chatTyping", handleChatTyping);
     socket.on("chatStopTyping", handleChatStopTyping);
 
@@ -269,6 +286,7 @@ export function useSocket() {
       socket.off("chatRead", handleChatRead);
       socket.off("chatDelivered", handleChatDelivered);
       socket.off("presenceChanged", handlePresenceChanged);
+      socket.off("dataChanged", handleDataChanged);
       socket.off("chatTyping", handleChatTyping);
       socket.off("chatStopTyping", handleChatStopTyping);
       socket.disconnect();

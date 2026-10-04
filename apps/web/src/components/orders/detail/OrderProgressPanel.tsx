@@ -160,7 +160,7 @@ export function OrderProgressPanel({
           {canUseStatusMenu ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {/* El estado ya se ve en la cabecera: acá sólo el control. */}
+                {/* El estado ya se ve en la cabecera: aquí sólo el control. */}
                 <Button
                   type="button"
                   variant="outline"

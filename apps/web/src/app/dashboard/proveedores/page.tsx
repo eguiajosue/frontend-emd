@@ -21,7 +21,7 @@ const supplierSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   website: z.string().optional().or(z.literal("")),
   location: z.enum(["nacional", "local", "internacional"], {
-    errorMap: () => ({ message: "Elegí un alcance para el proveedor" }),
+    errorMap: () => ({ message: "Elige un alcance para el proveedor" }),
   }),
 });
 

@@ -1,7 +1,7 @@
 /**
  * Punto único de acceso a la configuración pública del frontend.
  *
- * Envuelve `@emd/api-client` (compartido con la futura app Mobile): acá sólo
+ * Envuelve `@emd/api-client` (compartido con la futura app Mobile): aquí sólo
  * se hace la inyección de la URL del backend desde la env var propia de
  * Next.js y se reexpone la misma API que antes para no tocar cada pantalla.
  */

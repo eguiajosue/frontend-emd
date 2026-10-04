@@ -14,7 +14,7 @@ type PreviewImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "alt"> & {
  * servidor, así que sobre estas no hace nada — sólo agrega peso y un dominio
  * que configurar. `next/image` sigue siendo lo correcto para assets estáticos.
  *
- * Centralizado acá para tener un único lugar donde silenciar la regla, con el
+ * Centralizado aquí para tener un único lugar donde silenciar la regla, con el
  * motivo escrito, en vez de siete `eslint-disable` sueltos.
  */
 export function PreviewImage({ alt, ...props }: PreviewImageProps) {

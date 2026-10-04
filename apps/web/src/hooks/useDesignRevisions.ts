@@ -9,7 +9,7 @@
  * Endpoints nuevos, desplegados en paralelo por el equipo de backend
  * (`GET/POST /orders/:id/design-revisions`, `PATCH .../feedback`,
  * `PATCH .../approve`): si todavía no existen, un 404 en el listado se
- * absorbe acá y la UI muestra el empty state en vez de romper.
+ * absorbe aquí y la UI muestra el empty state en vez de romper.
  */
 
 import { useCallback, useEffect } from "react";

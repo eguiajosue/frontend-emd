@@ -140,7 +140,7 @@ export default function HojaMaterialesPage() {
     if (oldIndex === -1 || newIndex === -1) return;
 
     reorder(arrayMove(ids, oldIndex, newIndex)).catch(() => {
-      // El error ya se avisa por toast dentro del hook; no hay nada más que hacer acá.
+      // El error ya se avisa por toast dentro del hook; no hay nada más que hacer aquí.
     });
   };
 
@@ -180,11 +180,11 @@ export default function HojaMaterialesPage() {
       <div>
         <Title title="Hoja de Materiales" />
         <p className="max-w-prose text-sm text-muted-foreground">
-          Elegí un pedido para ver y marcar los materiales que hay que comprar.
+          Elige un pedido para ver y marcar los materiales que hay que comprar.
           {canManageOperations && (
             <>
               {" "}
-              Arrastrá <GripVertical className="mb-0.5 inline h-3.5 w-3.5" aria-hidden /> para
+              Arrastra <GripVertical className="mb-0.5 inline h-3.5 w-3.5" aria-hidden /> para
               definir el orden de prioridad de compra.
             </>
           )}
@@ -203,7 +203,7 @@ export default function HojaMaterialesPage() {
       </div>
       {canManageOperations && query && activeOrders.length > 1 && (
         <p className="text-xs text-muted-foreground">
-          Limpiá la búsqueda para poder reordenar la prioridad de compra.
+          Limpia la búsqueda para poder reordenar la prioridad de compra.
         </p>
       )}
 
