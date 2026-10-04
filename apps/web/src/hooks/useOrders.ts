@@ -46,16 +46,24 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
  * (que trae el array plano completo), aquí se pagina explícitamente porque el
  * historial puede crecer indefinidamente.
  */
-export function useOrderHistoryList(page: number, limit = 20) {
+/** Filtros del historial; las fechas son instantes ISO (inicio/fin de día local). */
+export interface OrderHistoryFilters {
+  clientId?: number;
+  area?: string;
+  deliveryFrom?: string;
+  deliveryTo?: string;
+}
+
+export function useOrderHistoryList(page: number, limit = 20, filters: OrderHistoryFilters = {}) {
   const token = useAuthToken();
 
   const query = useQuery<Paginated<Order>>({
-    queryKey: [...queryKeys.all("orderHistory"), page, limit],
+    queryKey: [...queryKeys.all("orderHistory"), page, limit, filters],
     enabled: Boolean(token),
     queryFn: () =>
       request<Paginated<Order>>(ENDPOINTS.orderHistory, {
         token,
-        params: { page, limit },
+        params: { page, limit, ...filters },
       }),
     placeholderData: (previous) => previous,
   });

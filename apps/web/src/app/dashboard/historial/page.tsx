@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -9,21 +9,121 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
-import { useOrderHistoryList, downloadOrdersExport } from "@/hooks/useOrders";
-import { useAuthToken } from "@/hooks/useEntity";
+import { useOrderHistoryList, downloadOrdersExport, type OrderHistoryFilters } from "@/hooks/useOrders";
+import { useAuthToken, useEntityList } from "@/hooks/useEntity";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
-import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { formatDeliveryDate, getAssignedUserName, getClientName, getOrderClientName } from "@/lib/format";
+import { AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { orderAreaTags } from "@/lib/orderAreas";
 import { useDeliveryProgress } from "@/lib/deliveryProgress";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { cn } from "@/lib/utils";
-import { CalendarDays, ChevronLeft, ChevronRight, FileDown, Archive, ListChecks, Paperclip, UserRound } from "lucide-react";
-import type { Order } from "@/types";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsUpDown,
+  FileDown,
+  Archive,
+  ListChecks,
+  Paperclip,
+  SearchX,
+  UserRound,
+  X,
+} from "lucide-react";
+import type { Client, Order } from "@/types";
 import { EmptyState } from "@/components/ui/empty-state";
 
 const PAGE_SIZE = 20;
+const ALL = "all";
+
+/** Filtros tal como los edita la pantalla (fechas "yyyy-MM-dd" del input). */
+interface HistoryFilterState {
+  clientId?: number;
+  area?: string;
+  from: string;
+  to: string;
+}
+
+const EMPTY_FILTERS: HistoryFilterState = { clientId: undefined, area: undefined, from: "", to: "" };
+
+/** Pasa las fechas del input a instantes: desde el inicio del día hasta su final, en hora local. */
+function toHistoryQuery(f: HistoryFilterState): OrderHistoryFilters {
+  return {
+    clientId: f.clientId,
+    area: f.area,
+    deliveryFrom: f.from ? new Date(`${f.from}T00:00:00`).toISOString() : undefined,
+    deliveryTo: f.to ? new Date(`${f.to}T23:59:59.999`).toISOString() : undefined,
+  };
+}
+
+function ClientFilter({
+  clients,
+  value,
+  onChange,
+}: {
+  clients: Client[];
+  value?: number;
+  onChange: (id?: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = clients.find((c) => c.id === value);
+  const sorted = useMemo(
+    () => [...clients].sort((a, b) => getClientName(a).localeCompare(getClientName(b), "es")),
+    [clients]
+  );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          aria-label="Filtrar por cliente"
+          className="w-full justify-between font-normal sm:w-56"
+        >
+          <span className="truncate">{selected ? getClientName(selected) : "Todos los clientes"}</span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Buscar cliente…" />
+          <CommandList>
+            <CommandEmpty>Sin coincidencias.</CommandEmpty>
+            <CommandItem
+              value="Todos los clientes"
+              onSelect={() => {
+                onChange(undefined);
+                setOpen(false);
+              }}
+            >
+              Todos los clientes
+            </CommandItem>
+            {sorted.map((client) => (
+              <CommandItem
+                key={client.id}
+                value={`${getClientName(client)} ${client.id}`}
+                onSelect={() => {
+                  onChange(client.id);
+                  setOpen(false);
+                }}
+              >
+                {getClientName(client)}
+              </CommandItem>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /**
  * Una fila del historial: número, cliente y descripción, áreas, entrega
@@ -120,10 +220,19 @@ const HistorialPage = () => {
   const [page, setPage] = useState(1);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [filters, setFilters] = useState<HistoryFilterState>(EMPTY_FILTERS);
+  const query = useMemo(() => toHistoryQuery(filters), [filters]);
   const { orders, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
     page,
-    PAGE_SIZE
+    PAGE_SIZE,
+    query
   );
+  const { data: clients } = useEntityList<Client>("clients");
+  const hasFilters = Boolean(filters.clientId || filters.area || filters.from || filters.to);
+  const updateFilters = (patch: Partial<HistoryFilterState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setPage(1);
+  };
   const { canManageOperations } = usePermissions();
   const token = useAuthToken();
 
@@ -154,6 +263,52 @@ const HistorialPage = () => {
         )}
       </div>
 
+      <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filtros del historial">
+        <ClientFilter clients={clients} value={filters.clientId} onChange={(clientId) => updateFilters({ clientId })} />
+        <Select
+          value={filters.area ?? ALL}
+          onValueChange={(v) => updateFilters({ area: v === ALL ? undefined : v })}
+        >
+          <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por área">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas las áreas</SelectItem>
+            {AREA_OPTIONS.map((a) => (
+              <SelectItem key={a.value} value={a.value}>
+                {a.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Entrega desde
+          <Input
+            type="date"
+            className="w-40"
+            value={filters.from}
+            max={filters.to || undefined}
+            onChange={(e) => updateFilters({ from: e.target.value })}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+          Entrega hasta
+          <Input
+            type="date"
+            className="w-40"
+            value={filters.to}
+            min={filters.from || undefined}
+            onChange={(e) => updateFilters({ to: e.target.value })}
+          />
+        </label>
+        {hasFilters && (
+          <Button type="button" variant="ghost" onClick={() => updateFilters(EMPTY_FILTERS)}>
+            <X className="h-4 w-4" aria-hidden />
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
+
       {isPending ? (
         <Card className="divide-y divide-border/60">
           {Array.from({ length: 6 }, (_, i) => (
@@ -166,6 +321,12 @@ const HistorialPage = () => {
         </Card>
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
+      ) : orders.length === 0 && hasFilters ? (
+        <EmptyState
+          icon={SearchX}
+          title="Sin pedidos con estos filtros"
+          description="Prueba con otro cliente, área o rango de fechas."
+        />
       ) : orders.length === 0 ? (
         <EmptyState
           icon={Archive}
