@@ -55,7 +55,7 @@ export function SaveOrderTemplateDialog({
   const submit = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Poné un nombre a la plantilla");
+      setError("Pon un nombre a la plantilla");
       return;
     }
     if (blocker || saving) return;

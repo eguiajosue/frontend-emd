@@ -131,7 +131,7 @@ const ADMIN_PROFILE: GuideProfile = {
       icon: <LayoutDashboard className="h-4 w-4" />,
       title: "Panel General",
       description:
-        "Vista global de todos los pedidos de la empresa: filtrá por estado, ordená la lista y detectá pedidos estancados (los que tardan más que el promedio histórico de su etapa).",
+        "Vista global de todos los pedidos de la empresa: filtra por estado, ordena la lista y detecta pedidos estancados (los que tardan más que el promedio histórico de su etapa).",
       mockup: <OrderRowMockup statusValue={3} label="Pedido #128 · Bordados SA" />,
     },
     {
@@ -144,7 +144,7 @@ const ADMIN_PROFILE: GuideProfile = {
       icon: <Users className="h-4 w-4" />,
       title: "Usuarios, roles, clientes y empresas",
       description:
-        "Desde el menú lateral creás, editás o eliminás usuarios y roles, y gestionás clientes y empresas. Los roles determinan qué secciones puede ver y modificar cada persona.",
+        "Desde el menú lateral creas, editas o eliminas usuarios y roles, y gestionas clientes y empresas. Los roles determinan qué secciones puede ver y modificar cada persona.",
     },
     {
       icon: <MessagesSquare className="h-4 w-4" />,
@@ -157,7 +157,7 @@ const ADMIN_PROFILE: GuideProfile = {
       icon: <Bell className="h-4 w-4" />,
       title: "Notificaciones",
       description:
-        "Recibís avisos de asignaciones nuevas, cambios de estado y mensajes sin leer desde la campana de notificaciones.",
+        "Recibes avisos de asignaciones nuevas, cambios de estado y mensajes sin leer desde la campana de notificaciones.",
     },
     {
       icon: <History className="h-4 w-4" />,
@@ -177,7 +177,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       icon: <PackagePlus className="h-4 w-4" />,
       title: "Crear un pedido nuevo",
       description:
-        "En \"Pedidos\" tocá \"+ Nuevo Pedido\" (o la tecla N), elegí el cliente, completá la descripción y la fecha de entrega, y guardá. Arranca en estado \"pendiente\".",
+        "En \"Pedidos\" toca \"+ Nuevo Pedido\" (o la tecla N), elige el cliente, completa la descripción y la fecha de entrega, y guarda. Arranca en estado \"pendiente\".",
       mockup: <OrderRowMockup statusValue={1} label="Pedido #131 · Nuevo" />,
     },
     {
@@ -190,7 +190,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       icon: <Palette className="h-4 w-4" />,
       title: "Seguir el flujo de diseño",
       description:
-        "Cuando hay diseño de por medio, seguís el ida y vuelta de montajes en el detalle del pedido hasta que el cliente autoriza y el pedido pasa a producción.",
+        "Cuando hay diseño de por medio, sigues el ida y vuelta de montajes en el detalle del pedido hasta que el cliente autoriza y el pedido pasa a producción.",
     },
     {
       icon: <ListChecks className="h-4 w-4" />,
@@ -202,7 +202,7 @@ const RECEPCION_PROFILE: GuideProfile = {
       icon: <MessagesSquare className="h-4 w-4" />,
       title: "Chat con cada área",
       description:
-        "Usá el chat para coordinar con diseño o producción sin salir del sistema: adjuntá un pedido como contexto directamente desde el mensaje.",
+        "Usa el chat para coordinar con diseño o producción sin salir del sistema: adjunta un pedido como contexto directamente desde el mensaje.",
       mockup: <ChatMockup />,
     },
     {
@@ -217,7 +217,7 @@ const RECEPCION_PROFILE: GuideProfile = {
 const DISENO_PROFILE: GuideProfile = {
   roleLabel: "diseño",
   intro:
-    "Trabajás la etapa previa a producción: armás el montaje y gestionás el ida y vuelta hasta la autorización del cliente.",
+    "Trabajas la etapa previa a producción: armas el montaje y gestionas el ida y vuelta hasta la autorización del cliente.",
   steps: [
     {
       icon: <ClipboardList className="h-4 w-4" />,
@@ -230,7 +230,7 @@ const DISENO_PROFILE: GuideProfile = {
       icon: <Palette className="h-4 w-4" />,
       title: "Subir el montaje",
       description:
-        "Desde el detalle del pedido, en \"Proceso de diseño\", subís el montaje para que Recepción se lo envíe al cliente.",
+        "Desde el detalle del pedido, en \"Proceso de diseño\", subes el montaje para que Recepción se lo envíe al cliente.",
     },
     {
       icon: <Send className="h-4 w-4" />,
@@ -248,7 +248,7 @@ const DISENO_PROFILE: GuideProfile = {
       icon: <MessagesSquare className="h-4 w-4" />,
       title: "Chat con Recepción",
       description:
-        "Resolvé dudas puntuales sobre un pedido por chat, con el pedido adjunto como contexto del mensaje.",
+        "Resuelve dudas puntuales sobre un pedido por chat, con el pedido adjunto como contexto del mensaje.",
       mockup: <ChatMockup />,
     },
   ],
@@ -270,7 +270,7 @@ const PRODUCCION_PROFILE: GuideProfile = {
       icon: <CheckCircle2 className="h-4 w-4" />,
       title: "Avanzar el estado",
       description:
-        "Cuando termines, abrí el pedido y usá el selector de estado para pasarlo a la siguiente etapa. Queda registrado en el historial con fecha y hora.",
+        "Cuando termines, abre el pedido y usa el selector de estado para pasarlo a la siguiente etapa. Queda registrado en el historial con fecha y hora.",
     },
     {
       icon: <MessagesSquare className="h-4 w-4" />,
@@ -343,7 +343,7 @@ const AyudaPage = () => {
         ) : (
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             Tu usuario todavía no tiene un rol asignado. Pedile a un
-            administrador que te asigne uno para ver tus tareas acá.
+            administrador que te asigne uno para ver tus tareas aquí.
           </p>
         )}
       </Card>
@@ -370,7 +370,7 @@ const AyudaPage = () => {
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             En toda la app un mismo estado siempre tiene el mismo color, así lo
-            identificás de un vistazo sin importar en qué pantalla estés.
+            identificas de un vistazo sin importar en qué pantalla estés.
           </p>
           <StatusButtonsPreview />
         </Card>

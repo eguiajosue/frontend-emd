@@ -63,7 +63,7 @@ export function useChatUnreadCount(): number {
 
 /**
  * `GET /chat/conversations/:id/messages` paginado. El backend devuelve del
- * más nuevo al más viejo; acá se invierte para renderizar el hilo en orden
+ * más nuevo al más viejo; aquí se invierte para renderizar el hilo en orden
  * cronológico.
  */
 export function useChatMessages(conversationId: number | null, limit = 50) {

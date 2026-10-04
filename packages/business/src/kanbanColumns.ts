@@ -68,7 +68,7 @@ export function effectiveProductionStatusId(
  * proceso, terminado, entregado, cancelado), estén vacías o no, para que el
  * tablero no cambie de forma según haya trabajo o no en cada etapa.
  *
- * Los 4 estados del circuito de Diseño NO aparecen acá: son otro flujo, con
+ * Los 4 estados del circuito de Diseño NO aparecen aquí: son otro flujo, con
  * otro tablero. Mezclarlos era exactamente lo que hacía que la vista de un
  * diseñador que además produce se viera revuelta.
  */

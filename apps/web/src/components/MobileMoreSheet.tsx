@@ -38,7 +38,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const visibleItems = useVisibleNavItems();
 
   // Mismo criterio de prioridad que usa `MobileTabBar` para sus 4 tabs
-  // (fuente compartida en `navMenu.ts`): todo lo que no entra ahí, entra acá,
+  // (fuente compartida en `navMenu.ts`): todo lo que no entra ahí, entra aquí,
   // en el mismo orden relativo de `useVisibleNavItems()`.
   const primaryUrls = new Set(
     TAB_PRIORITY_URLS.filter((url) =>

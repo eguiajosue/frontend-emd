@@ -12,7 +12,7 @@
  * ya tenía asignado. Ese era el bug de "no me deja modificar el estatus".
  *
  * Qué pedidos ve cada quien ya lo decide el backend (`GET /orders` filtra por
- * rol, área y asignación); acá sólo se decide, sobre lo que YA puede ver, a
+ * rol, área y asignación); aquí sólo se decide, sobre lo que YA puede ver, a
  * qué estados puede moverlo. Cancelado (10) queda fuera a propósito: dar de
  * baja un pedido es decisión de Recepción, no del área que lo produce.
  */

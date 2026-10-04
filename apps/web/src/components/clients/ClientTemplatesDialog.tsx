@@ -56,7 +56,7 @@ export function ClientTemplatesDialog({ clientId, onClose }: ClientTemplatesDial
   const saveRename = async (t: OrderTemplate) => {
     const name = draftName.trim();
     if (!name) {
-      setRenameError("Poné un nombre");
+      setRenameError("Pon un nombre");
       return;
     }
     if (name === t.name) {
@@ -98,7 +98,7 @@ export function ClientTemplatesDialog({ clientId, onClose }: ClientTemplatesDial
               </div>
             ) : templates.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {clientName} todavía no tiene plantillas. Al cargar un pedido suyo, tocá «Guardar como
+                {clientName} todavía no tiene plantillas. Al cargar un pedido suyo, toca «Guardar como
                 plantilla» y la próxima vez queda a un toque.
               </p>
             ) : (

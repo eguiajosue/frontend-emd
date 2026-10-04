@@ -78,7 +78,7 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
       setError(
         type === "SALIDA" && qty > item.quantity
           ? `No alcanza: hay ${formatQuantity(item.quantity, item.unit)}`
-          : "Ingresá una cantidad válida"
+          : "Ingresa una cantidad válida"
       );
       return;
     }

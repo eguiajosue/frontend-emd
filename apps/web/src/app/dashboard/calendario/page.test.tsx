@@ -40,7 +40,7 @@ vi.mock("@/hooks/useOrders", () => ({
 
 // El resto de las vistas del calendario (grillas, sheets, diálogos) no son el
 // objeto de este test — se reemplazan por un stub que expone qué `orders` le
-// llegaron después de filtrar, que es lo que se quiere verificar acá: que
+// llegaron después de filtrar, que es lo que se quiere verificar aquí: que
 // `AreaFilterBar` filtra tanto `events` como `orders` (antes sólo eventos).
 vi.mock("@/components/calendar/TeamCalendar", () => ({
   TeamCalendar: ({ orders: visibleOrders }: { orders: Order[] }) => (

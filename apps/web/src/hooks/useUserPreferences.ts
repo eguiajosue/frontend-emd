@@ -81,7 +81,7 @@ export function useUserPreferences() {
   return {
     preferences: query.data,
     isLoading: query.isPending,
-    // Silencia el rechazo acá: el toast de error ya lo dispara el manejo
+    // Silencia el rechazo aquí: el toast de error ya lo dispara el manejo
     // global de mutaciones (mutationCache.onError en providers.tsx).
     updatePreferences: (partial: Partial<UserPreferences>) =>
       mutation.mutateAsync(partial).catch(() => undefined),

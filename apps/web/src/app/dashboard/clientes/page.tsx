@@ -184,7 +184,7 @@ const ClientesPage = () => {
             search={{ placeholder: "Buscar cliente..." }}
             filters={clientFilters}
             emptyMessage="Todavía no cargaste ningún cliente"
-            emptyDescription="Al cargar el primero, su historial de pedidos aparece acá mismo."
+            emptyDescription="Al cargar el primero, su historial de pedidos aparece aquí mismo."
             emptyIcon={Users}
             deleteDescription="Esta acción eliminará al cliente de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Cliente" : "Nuevo Cliente")}

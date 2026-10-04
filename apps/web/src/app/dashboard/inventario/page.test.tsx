@@ -130,6 +130,6 @@ describe("InventarioPage", () => {
     roles = ["recepcion"];
     areas = [];
     render(<InventarioPage />);
-    expect(screen.getByText("No tenés un departamento con inventario")).toBeInTheDocument();
+    expect(screen.getByText("No tienes un departamento con inventario")).toBeInTheDocument();
   });
 });

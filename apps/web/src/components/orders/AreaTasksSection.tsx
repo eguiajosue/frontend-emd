@@ -273,7 +273,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
   const subtitle = awaitingAuthorization
     ? tasks.length === 0
       ? isManager
-        ? "Definí acá a qué área pasa el pedido cuando el cliente autorice (o elegila al autorizar)."
+        ? "Define aquí a qué área pasa el pedido cuando el cliente autorice (o elígela al autorizar)."
         : "Recepción define a qué áreas pasa cuando el cliente autorice."
       : "El pedido pasa a estas áreas en cuanto el cliente autorice."
     : tasks.length === 0

@@ -170,7 +170,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                 <EmptyState
                   icon={PartyPopper}
                   title="Bandeja al día"
-                  description="No hay diseños pendientes ni cambios por hacer. Lo nuevo aparece acá apenas entra."
+                  description="No hay diseños pendientes ni cambios por hacer. Lo nuevo aparece aquí apenas entra."
                 />
               ) : (
                 <>

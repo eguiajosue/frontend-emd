@@ -9,7 +9,7 @@ import {
 // `openDB` cachea la conexión a nivel de módulo (ver `getDb` en
 // `offlineQueue.ts`), así que entre tests no se reabre la DB: en cambio se
 // vacía a mano, reusando `listPendingMutations`/`removePendingMutation` (ya
-// probados acá abajo) en vez de tocar el detalle interno del store.
+// probados aquí abajo) en vez de tocar el detalle interno del store.
 beforeEach(async () => {
   const pending = await listPendingMutations();
   await Promise.all(pending.map((m) => removePendingMutation(m.id)));

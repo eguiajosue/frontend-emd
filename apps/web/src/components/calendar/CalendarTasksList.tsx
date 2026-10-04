@@ -145,7 +145,7 @@ export function CalendarTasksList() {
           <EmptyState
             icon={ListChecks}
             title="No tienes tareas pendientes"
-            description="Registrá acá lo que hay que hacer aunque todavía no tenga fecha."
+            description="Registra aquí lo que hay que hacer aunque todavía no tenga fecha."
             action={{ label: "Crear tarea", onClick: openCreate, icon: Plus }}
             className="mt-2"
           />

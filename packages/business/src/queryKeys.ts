@@ -22,7 +22,7 @@ export const ENDPOINTS = {
   chat: "chat",
   // Catálogo de estados (`GET /status`): los 4 del circuito de Diseño se
   // siembran con ids que cambian entre entornos, así que el tablero los
-  // resuelve por nombre desde acá en vez de hardcodearlos.
+  // resuelve por nombre desde aquí en vez de hardcodearlos.
   statuses: "status",
   // Calendario de equipo de Recepción (instalaciones, juntas, visitas).
   calendarEvents: "calendar-events",

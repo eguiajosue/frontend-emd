@@ -119,7 +119,7 @@ function StatTile({
  * No es el catálogo de Materiales (/dashboard/materiales): ese es la lista con
  * la que se arma la hoja de materiales de un pedido. Un artículo puede estar
  * vinculado a un material del catálogo, pero muchos consumibles sólo existen
- * acá.
+ * aquí.
  *
  * Admin/superuser/recepción ven todos los departamentos y son los únicos que
  * crean, editan, borran y mueven stock; cada área sólo consulta el suyo (el
@@ -239,8 +239,8 @@ export default function InventarioPage() {
         <Title title="Inventario" />
         <EmptyState
           icon={Warehouse}
-          title="No tenés un departamento con inventario"
-          description="El inventario se lleva por área. Pedí a administración que te asigne a un departamento."
+          title="No tienes un departamento con inventario"
+          description="El inventario se lleva por área. Pide a administración que te asigne a un departamento."
         />
       </div>
     );
@@ -403,7 +403,7 @@ export default function InventarioPage() {
               title={`Todavía no hay inventario en ${scopeLabel}`}
               description={
                 canManage
-                  ? "Cargá lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
+                  ? "Carga lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
                   : "Administración o Recepción cargan el inventario del departamento."
               }
               action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: openCreate } : undefined}
@@ -428,7 +428,7 @@ export default function InventarioPage() {
             <EmptyState
               icon={History}
               title="Sin movimientos todavía"
-              description="Cada entrada, salida o ajuste queda registrado acá con quién lo hizo y cuándo."
+              description="Cada entrada, salida o ajuste queda registrado aquí con quién lo hizo y cuándo."
             />
           ) : (
             <div className="rounded-2xl border border-border/60 bg-card px-4 shadow-soft sm:px-5">

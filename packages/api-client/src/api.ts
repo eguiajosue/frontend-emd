@@ -1,7 +1,7 @@
 /**
  * Cliente HTTP único de la app.
  *
- * Todas las llamadas al backend pasan por acá, que a su vez usa `authFetch`
+ * Todas las llamadas al backend pasan por aquí, que a su vez usa `authFetch`
  * (el único punto de salida HTTP, responsable del 401 -> signOut).
  *
  * Diseñado para absorber los cambios que está haciendo el backend sin tocar
@@ -47,7 +47,7 @@ export function getErrorMessage(
     if (error.status === 404) return "No se encontró el recurso solicitado.";
     // El throttler del backend responde "ThrottlerException: Too Many
     // Requests" en inglés; se mostraba tal cual.
-    if (error.status === 429) return "Demasiados intentos seguidos. Esperá unos segundos y probá de nuevo.";
+    if (error.status === 429) return "Demasiados intentos seguidos. Espera unos segundos y prueba de nuevo.";
     // El backend manda mensajes específicos y en español incluso para 5xx
     // deliberados (ej. "servicio no configurado todavía", "no se pudo
     // enviar el reporte") — sólo caemos al genérico cuando no hay mensaje

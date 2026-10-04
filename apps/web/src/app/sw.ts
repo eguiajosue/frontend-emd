@@ -116,7 +116,7 @@ self.addEventListener("notificationclick", (event) => {
 const SYNC_TAG = "sync-pending-mutations";
 
 // La Background Sync API (evento `sync`, `SyncEvent`) no está en los tipos
-// DOM que trae TypeScript todavía: se tipa mínimamente acá en vez de sumar
+// DOM que trae TypeScript todavía: se tipa mínimamente aquí en vez de sumar
 // una lib externa sólo por esto.
 interface SyncEvent extends ExtendableEvent {
   readonly tag: string;

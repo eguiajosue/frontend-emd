@@ -125,7 +125,7 @@ interface InventoryItemDialogProps {
  * elegirlo autocompleta los datos), pero un consumible propio del área —un
  * cono de hilo, una tinta— se carga sin vínculo.
  *
- * El stock no se edita acá: en el alta se informa el stock inicial (queda en
+ * El stock no se edita aquí: en el alta se informa el stock inicial (queda en
  * el kardex como primera entrada) y después cambia sólo con movimientos.
  */
 export function InventoryItemDialog({
@@ -197,7 +197,7 @@ export function InventoryItemDialog({
 
   const handleSubmit = async () => {
     const next: typeof errors = {};
-    if (!form.area) next.area = "Elegí el departamento";
+    if (!form.area) next.area = "Elige el departamento";
     if (!form.name.trim()) next.name = "El nombre es requerido";
     if (!form.unit.trim()) next.unit = "La unidad es requerida";
     const minStock = parseOptionalNumber(form.minStock);
@@ -260,7 +260,7 @@ export function InventoryItemDialog({
           <FormField label="Departamento" htmlFor="inv-area" required error={errors.area}>
             <Select value={form.area} onValueChange={(v) => set("area", v as InventoryArea)}>
               <SelectTrigger id="inv-area" aria-invalid={Boolean(errors.area)}>
-                <SelectValue placeholder="Elegí el departamento..." />
+                <SelectValue placeholder="Elige el departamento..." />
               </SelectTrigger>
               <SelectContent>
                 {areas.map((area) => (
@@ -276,7 +276,7 @@ export function InventoryItemDialog({
             label="Material del catálogo"
             htmlFor="inv-material"
             icon={Boxes}
-            hint="Opcional. Dejalo vacío para consumibles propios del área (hilos, tintas...)."
+            hint="Opcional. Déjalo vacío para consumibles propios del área (hilos, tintas...)."
           >
             <Select value={form.materialId ? String(form.materialId) : NONE} onValueChange={handleMaterialChange}>
               <SelectTrigger id="inv-material">

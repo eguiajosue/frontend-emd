@@ -14,7 +14,7 @@ export interface StoredSession {
  * Mobile: la URL del backend viene de `EXPO_PUBLIC_BACKEND_URL` (Expo inlinea
  * las env vars `EXPO_PUBLIC_*` al bundlear, igual que Next.js con
  * `NEXT_PUBLIC_*`), y un 401 borra la sesión guardada en vez de llamar a
- * NextAuth (que no existe acá).
+ * NextAuth (que no existe aquí).
  *
  * Debe llamarse una sola vez, antes de la primera pantalla — ver App.tsx.
  */

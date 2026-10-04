@@ -6,7 +6,7 @@
  * status y orderProducts.product; `client` incluye company; `user` incluye roles).
  *
  * Regla: ningún componente/pantalla define tipos de entidad propios. Si el
- * backend cambia un shape, se actualiza acá y TypeScript marca los usos rotos.
+ * backend cambia un shape, se actualiza aquí y TypeScript marca los usos rotos.
  */
 
 /** Toda entidad del backend tiene id numérico autoincremental. */
@@ -368,7 +368,7 @@ export type DesignRevisionFileInput = UploadedFileInput;
 /**
  * Metadata de UN archivo de una ronda de diseño. Una hoja de autorización
  * puede ser varias imágenes o un PDF, así que tanto el montaje como el
- * feedback son listas. El contenido no viaja acá: se pide aparte con
+ * feedback son listas. El contenido no viaja aquí: se pide aparte con
  * `GET /orders/:id/design-revisions/:revisionId/files/:fileId`.
  */
 export interface DesignRevisionFile {
@@ -751,7 +751,7 @@ export type InventoryStockStatus = "ok" | "low" | "out";
 /**
  * Existencia física de un departamento. NO es el catálogo de Materiales: un
  * artículo puede vincularse a un Material (`materialId`), pero muchos
- * consumibles (hilos de bordado, tintas de impresión) sólo viven acá.
+ * consumibles (hilos de bordado, tintas de impresión) sólo viven aquí.
  * `quantity` sólo cambia con movimientos (ver `InventoryMovement`).
  */
 export interface InventoryItem extends BaseEntity {
@@ -953,7 +953,7 @@ export interface ClientInsights {
     typicalQuantity: number;
   }>;
   leadTime: { days: number; samples: number } | null;
-  /** Últimas fechas de entrega (ISO): de acá sale la hora habitual, en hora local. */
+  /** Últimas fechas de entrega (ISO): de aquí sale la hora habitual, en hora local. */
   recentDeliveries: string[];
   cadence: { medianDays: number; samples: number; regular: boolean; nextExpectedAt: string } | null;
   suggestion: ClientSuggestedOrder | null;

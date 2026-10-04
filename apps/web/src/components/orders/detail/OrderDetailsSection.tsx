@@ -38,7 +38,7 @@ function userLabel(u: User): string {
  * lugar, y el borrador se arma al entrar a editar — no en cada refetch, que
  * antes pisaba lo que se estaba escribiendo.
  *
- * "Área actual" ya no se edita acá: dónde está el pedido lo dice la cadena de
+ * "Área actual" ya no se edita aquí: dónde está el pedido lo dice la cadena de
  * etapas, y a qué áreas va se decide en "Producción".
  */
 export function OrderDetailsSection({

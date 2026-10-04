@@ -170,7 +170,7 @@ const HistorialPage = () => {
         <EmptyState
           icon={Archive}
           title="El historial todavía está en blanco"
-          description="En cuanto se entregue el primer pedido, va a quedar registrado acá para siempre."
+          description="En cuanto se entregue el primer pedido, va a quedar registrado aquí para siempre."
         />
       ) : (
         <>

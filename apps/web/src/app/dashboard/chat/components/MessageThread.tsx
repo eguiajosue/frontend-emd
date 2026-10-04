@@ -53,7 +53,7 @@ import type {
 } from "@/types";
 
 // Mismo criterio que los archivos del cliente de un pedido
-// (`CreateOrderDialog`), adaptado a un límite algo más generoso porque acá
+// (`CreateOrderDialog`), adaptado a un límite algo más generoso porque aquí
 // también se admiten audios y documentos, no sólo imágenes/PDF chicos.
 const CHAT_ATTACHMENT_MAX_BYTES = 15 * 1024 * 1024; // 15MB
 const CHAT_ATTACHMENT_ACCEPT =
@@ -352,7 +352,7 @@ export function MessageThread({
     enabled: shouldVirtualize,
   });
 
-  // Sólo se anima la entrada de mensajes que todavía no se renderizaron acá.
+  // Sólo se anima la entrada de mensajes que todavía no se renderizaron aquí.
   // Se rastrea por id (no por índice) porque la virtualización sólo monta los
   // ítems visibles: un mensaje viejo que entra/sale del rango virtualizado al
   // hacer scroll no debe re-animarse, y uno recién llegado sí. El set vive en
@@ -579,7 +579,7 @@ export function MessageThread({
               <p className="pb-0.5 text-xs font-bold text-primary">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
-                nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML acá. */}
+                nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML aquí. */}
             {message.body ? (
               <p className="whitespace-pre-wrap break-words">{message.body}</p>
             ) : null}
@@ -711,7 +711,7 @@ export function MessageThread({
           </ul>
           <p className="pt-2 text-xs text-muted-foreground">
             Las cuentas de administración participan de todas las conversaciones para
-            monitoreo interno y se muestran acá.
+            monitoreo interno y se muestran aquí.
           </p>
         </div>
       ) : null}

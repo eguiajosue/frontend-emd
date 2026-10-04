@@ -2,7 +2,7 @@
  * Web Push (Fase 3): suscribir/desuscribir el navegador a notificaciones
  * push reales, además del Socket.io en vivo existente.
  *
- * No expone UI: eso es Fase 4 (panel en /dashboard/configuracion). Acá sólo
+ * No expone UI: eso es Fase 4 (panel en /dashboard/configuracion). Aquí sólo
  * quedan las dos funciones listas para que ese panel las llame.
  */
 

@@ -434,7 +434,7 @@ function NotificationsSection() {
     }
     if (isIOSInstallRequired()) {
       toast.error(
-        "En iPhone/iPad, primero agregá EMD a la pantalla de inicio (compartir → Agregar a inicio) para poder activar el push."
+        "En iPhone/iPad, primero agrega EMD a la pantalla de inicio (compartir → Agregar a inicio) para poder activar el push."
       );
       return;
     }
@@ -443,7 +443,7 @@ function NotificationsSection() {
       const subscription = await subscribeToPush(token);
       if (!subscription) {
         toast.error(
-          "No se pudo activar el push. Revisá los permisos de notificaciones del navegador."
+          "No se pudo activar el push. Revisa los permisos de notificaciones del navegador."
         );
         return;
       }
@@ -508,7 +508,7 @@ function NotificationsSection() {
                 id="notify-mentions"
                 icon={AtSign}
                 label="Sólo menciones directas"
-                description="Avisar únicamente cuando te mencionen a vos. (Próximamente: el chat todavía no tiene @menciones.)"
+                description="Avisar únicamente cuando te mencionen a ti. (Próximamente: el chat todavía no tiene @menciones.)"
                 checked={mentionsOnly}
                 disabled={muted}
                 onCheckedChange={(checked) => updatePreferences({ notifyMentionsOnly: checked })}
@@ -537,7 +537,7 @@ function NotificationsSection() {
 
             <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-muted-foreground">
-                Activá el push para recibir avisos aunque tengas la pestaña cerrada.
+                Activa el push para recibir avisos aunque tengas la pestaña cerrada.
               </p>
               <Button
                 variant="outline"

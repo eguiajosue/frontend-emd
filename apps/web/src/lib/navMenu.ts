@@ -247,7 +247,7 @@ export function buildMenuItems(): NavGroup[] {
 /**
  * Orden de prioridad para elegir los tabs principales de la barra móvil: se
  * recorre esta lista y se toman los primeros `MAX_PRIMARY_TABS` ítems que el
- * rol actual puede ver. Vive acá (no en `MobileTabBar.tsx`) para que
+ * rol actual puede ver. Vive aquí (no en `MobileTabBar.tsx`) para que
  * `MobileMoreSheet.tsx` pueda derivar el resto de la lista ("Más") a partir
  * de la misma fuente y ambas superficies nunca diverjan sobre qué ítem es
  * "principal" y cuál queda detrás de "Más".

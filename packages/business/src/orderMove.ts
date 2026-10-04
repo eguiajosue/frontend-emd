@@ -24,7 +24,7 @@ export interface MoveActor {
  *
  * El tablero de producción ubica cada pedido por el estado de ESTAS tareas (ver
  * `effectiveProductionStatusId`), así que cambiar el estado —arrastrando la
- * tarjeta o con los botones del detalle— tiene que escribir acá. Escribir
+ * tarjeta o con los botones del detalle— tiene que escribir aquí. Escribir
  * `Order.statusId` en su lugar devuelve 200 y no mueve nada: la etiqueta cambia
  * pero la tarjeta se queda en su columna.
  *

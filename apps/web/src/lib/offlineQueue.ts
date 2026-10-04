@@ -2,7 +2,7 @@
  * Cola de mutaciones offline (IndexedDB vía `idb`).
  *
  * Cuando una escritura al backend falla por falta de red (no por un error de
- * negocio: eso se propaga tal cual), se guarda acá en vez de perderse, y se
+ * negocio: eso se propaga tal cual), se guarda aquí en vez de perderse, y se
  * reintenta cuando vuelve la conexión (`registerBackgroundSync` / el listener
  * `online`, ver `useEnqueueOnReconnect`). Vive tanto en el hilo principal como
  * en el service worker (`sw.ts`): `idb` es compatible con ambos contextos.

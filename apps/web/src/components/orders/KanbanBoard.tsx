@@ -78,7 +78,7 @@ export function KanbanBoard({
           isTarget && "border-primary/50 text-primary"
         )}
       >
-        {isTarget ? "Soltar acá" : "Sin pedidos"}
+        {isTarget ? "Soltar aquí" : "Sin pedidos"}
       </p>
     ) : (
       <motion.div

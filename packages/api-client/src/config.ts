@@ -3,7 +3,7 @@
  *
  * Portable entre apps (Next.js/Web y Expo/Mobile): cada app lee la URL del
  * backend de su propio mecanismo de env vars (`NEXT_PUBLIC_BACKEND_URL` en
- * Web, `EXPO_PUBLIC_BACKEND_URL` en Mobile) y la inyecta acá con
+ * Web, `EXPO_PUBLIC_BACKEND_URL` en Mobile) y la inyecta aquí con
  * `configureApiClient()` una sola vez al arrancar.
  */
 
@@ -34,7 +34,7 @@ export function isBackendConfigured(): boolean {
 export function apiUrl(path: string): string {
   if (!isBackendConfigured()) {
     throw new Error(
-      "El backend no está configurado: llamá a configureApiClient({ backendUrl }) al arrancar la app."
+      "El backend no está configurado: llama a configureApiClient({ backendUrl }) al arrancar la app."
     );
   }
   const suffix = path.replace(/^\/+/, "");

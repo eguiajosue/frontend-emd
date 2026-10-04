@@ -10,7 +10,7 @@ export default function DashboardNotFound() {
       </span>
       <h2 className="font-heading text-2xl font-semibold leading-tight tracking-tight">404 — Sección no encontrada</h2>
       <p className="max-w-sm text-sm text-muted-foreground">
-        La pantalla que buscás no existe o fue movida.
+        La pantalla que buscas no existe o fue movida.
       </p>
       <Button asChild>
         <Link href="/dashboard">Volver al inicio</Link>

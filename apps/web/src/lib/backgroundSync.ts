@@ -8,7 +8,7 @@
  *    cuanto detecte red, incluso con la pestaña cerrada (`sw.ts` escucha el
  *    evento `sync`).
  *  - `registerOnlineDrainFallback()`: para Safari/Firefox (sin Background
- *    Sync), escucha el evento `online` de `window` y drena la cola desde acá
+ *    Sync), escucha el evento `online` de `window` y drena la cola desde aquí
  *    mismo, con el mismo código (`drainPendingMutations`) que usaría el SW.
  */
 

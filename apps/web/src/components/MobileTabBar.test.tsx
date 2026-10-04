@@ -46,7 +46,7 @@ vi.mock("@/components/ThemeToggle", () => ({
 /**
  * `MobileMoreSheet` (montado dentro de `MobileTabBar`) reutiliza
  * `ConfiguracionLink`/`InstallAppButton` de `app-sidebar.tsx`, que llaman a
- * `useSidebar()` de verdad — de ahí el `SidebarProvider` real acá en vez de
+ * `useSidebar()` de verdad — de ahí el `SidebarProvider` real aquí en vez de
  * mockear `@/components/ui/sidebar` como antes (ese mock desapareció junto
  * con `setOpenMobile`, que `MobileTabBar` ya no usa).
  */

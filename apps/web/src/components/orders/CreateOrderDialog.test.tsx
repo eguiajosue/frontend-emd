@@ -165,7 +165,7 @@ describe("CreateOrderDialog (una sola vista)", () => {
   it("sin cliente no crea y lleva el foco al cliente", async () => {
     renderDialog();
     await submit();
-    expect(await screen.findAllByText("Seleccioná o escribí un cliente")).not.toHaveLength(0);
+    expect(await screen.findAllByText("Selecciona o escribe un cliente")).not.toHaveLength(0);
     expect(createMock).not.toHaveBeenCalled();
     await act(() => new Promise((r) => requestAnimationFrame(() => r(null))));
     expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Cliente" }));
@@ -183,10 +183,10 @@ describe("CreateOrderDialog (una sola vista)", () => {
 
   it("sin productos muestra el estado vacío y no crea", async () => {
     renderDialog();
-    expect(screen.getByText("Buscá o escribí un producto.")).toBeInTheDocument();
+    expect(screen.getByText("Busca o escribe un producto.")).toBeInTheDocument();
     await pickClientByFreeText("Juan Pérez");
     await submit();
-    expect(await screen.findByText("Agregá al menos un producto")).toBeInTheDocument();
+    expect(await screen.findByText("Agrega al menos un producto")).toBeInTheDocument();
     expect(createMock).not.toHaveBeenCalled();
   });
 
@@ -271,7 +271,7 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await addProduct("Gorra");
     await userEvent.type(screen.getByLabelText("Descripción"), "Gorras");
     await submit();
-    expect(await screen.findByText("Elegí al menos un área de producción")).toBeInTheDocument();
+    expect(await screen.findByText("Elige al menos un área de producción")).toBeInTheDocument();
     expect(createMock).not.toHaveBeenCalled();
   });
 

@@ -215,7 +215,7 @@ export function ProductionHome({
                 <EmptyState
                   icon={PartyPopper}
                   title="Sin trabajos pendientes"
-                  description="Cuando entre trabajo nuevo a tu área aparece acá, ordenado por prioridad."
+                  description="Cuando entre trabajo nuevo a tu área aparece aquí, ordenado por prioridad."
                 />
               ) : (
                 <>

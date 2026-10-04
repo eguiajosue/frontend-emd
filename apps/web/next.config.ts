@@ -71,7 +71,7 @@ const nextConfig = {
     NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
   },
   /**
-   * Rutas viejas que se fusionaron en pantallas unificadas. Se redirigen acá
+   * Rutas viejas que se fusionaron en pantallas unificadas. Se redirigen aquí
    * (antes del render) para no romper favoritos ni links compartidos, sin
    * mantener una página por cada una.
    */
