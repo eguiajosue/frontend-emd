@@ -154,7 +154,7 @@ export function NotificationBell() {
         <div className="max-h-80 overflow-y-auto">
           {preview.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Todo tranquilo por acá. Sin notificaciones nuevas.
+              Todo tranquilo por aquí. Sin notificaciones nuevas.
             </p>
           ) : (
             previewGroups.map((dayGroup) => (

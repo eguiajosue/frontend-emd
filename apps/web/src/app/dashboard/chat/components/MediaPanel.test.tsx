@@ -18,7 +18,7 @@ describe("MediaPanel", () => {
   it("muestra el estado vacío cuando no hay adjuntos", () => {
     render(<MediaPanel messages={[makeMessage({ body: "hola" })]} />);
     expect(
-      screen.getByText(/van a aparecer acá/i)
+      screen.getByText(/van a aparecer aquí/i)
     ).toBeInTheDocument();
   });
 

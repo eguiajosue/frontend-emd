@@ -22,7 +22,7 @@ const manager = { areas: [], isManager: true };
 describe("areaTasksToMove", () => {
   it("quien trabaja un área mueve la suya", () => {
     // Regresión: el tablero ubica el pedido por ESTA tarea, así que cambiar el
-    // estado tiene que escribir acá y no en `Order.statusId` — escribir el
+    // estado tiene que escribir aquí y no en `Order.statusId` — escribir el
     // pedido devolvía 200 y la tarjeta se quedaba en su columna.
     const o = order([task(1, "dtf", "terminado"), task(2, "bordado", "pendiente")]);
     expect(areaTasksToMove(o, worker("bordado")).map((t) => t.id)).toEqual([2]);

@@ -85,7 +85,7 @@ export function UpcomingEventsSheet({
             <EmptyState
               icon={CalendarDays}
               title="No hay nada agendado"
-              description="Los próximos eventos y pedidos con entrega van a aparecer acá."
+              description="Los próximos eventos y pedidos con entrega van a aparecer aquí."
             />
           ) : (
             <div className="space-y-5">

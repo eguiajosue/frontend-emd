@@ -59,7 +59,7 @@ export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
   const canMoveToNext = canManageOperations || (!!next && myStageIds.includes(next.value));
   const isChanging = isMoving;
 
-  // En diseño el estado no se mueve desde acá, pero sí se dice de quién es el
+  // En diseño el estado no se mueve desde aquí, pero sí se dice de quién es el
   // turno (antes era un "—" que no decía nada).
   const designStep = getDesignStep(order, { roles, isAdmin });
   if (designStep) {

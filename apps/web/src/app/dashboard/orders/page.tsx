@@ -183,7 +183,7 @@ const OrdersPage = () => {
   const { data: orders, isPending, isError, refetch } = useOrders();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
-  // Precargado acá (igual que clients/users) para que los chips "Frecuentes"
+  // Precargado aquí (igual que clients/users) para que los chips "Frecuentes"
   // del paso Productos del wizard no arranquen fríos la primera vez que se
   // abre en la sesión.
   useEntityList<OrderProductPreset>("orderProductPresets", { staleTime: CATALOG_STALE_TIME });
@@ -387,7 +387,7 @@ const OrdersPage = () => {
   // El backend (GET /orders) ya devuelve, para roles operativos, sólo los pedidos
   // que ese usuario debe ver (según su rol, la config. de visibilidad por área y si
   // el pedido está asignado a él). El resto de los filtros (cliente, estatus, fecha
-  // de entrega, caducados) se aplican acá encima, sobre ese mismo array.
+  // de entrega, caducados) se aplican aquí encima, sobre ese mismo array.
   const isOperationalRole = !canManageOperations;
 
   // Pedidos entregados hace más de `deliveredRetentionHours`: se ocultan del
@@ -478,7 +478,7 @@ const OrdersPage = () => {
     } catch {
       // Import dinámico: puede fallar por red (chunk viejo tras un deploy,
       // conexión inestable). Antes era un import estático, siempre disponible.
-      toast.error("No se pudo generar el Excel. Probá de nuevo.");
+      toast.error("No se pudo generar el Excel. Prueba de nuevo.");
     }
   };
 
@@ -673,7 +673,7 @@ const OrdersPage = () => {
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
               quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
               Antes eran dos pantallas distintas para el mismo trabajo. */}
-          <Title title={screenCopy.title} description={screenCopy.description} />
+          <Title title={screenCopy.title} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -802,7 +802,7 @@ const OrdersPage = () => {
           <EmptyState
             icon={PartyPopper}
             title="Sin pendientes por ahora — buen trabajo"
-            description="No hay pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer acá."
+            description="No hay pedidos asignados en este momento. Cuando entre uno nuevo, va a aparecer aquí."
           />
         ) : (
           <EmptyState

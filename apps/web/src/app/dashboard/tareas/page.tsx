@@ -118,7 +118,7 @@ export default function TareasPage() {
         <EmptyState
           icon={PartyPopper}
           title="Sin tareas por ahora"
-          description="Cuando Recepción te asigne algo, o entre trabajo nuevo a tu área, aparece acá."
+          description="Cuando Recepción te asigne algo, o entre trabajo nuevo a tu área, aparece aquí."
         />
       ) : (
         <div className="space-y-8">
@@ -126,7 +126,7 @@ export default function TareasPage() {
             <ColumnHeader id="tareas-mias" icon={UserRound} label="Tuyas" count={mine.length} />
             {mine.length === 0 ? (
               <p className="px-1 text-sm text-muted-foreground">
-                No tenés tareas a tu nombre. Tomá una de las libres para empezar.
+                No tienes tareas a tu nombre. Toma una de las libres para empezar.
               </p>
             ) : (
               renderList(mine)

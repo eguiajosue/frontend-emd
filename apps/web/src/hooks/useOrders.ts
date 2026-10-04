@@ -43,7 +43,7 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
 /**
  * `GET /orders/history`: TODOS los pedidos de la empresa (sin filtro de
  * antigüedad de entrega), paginado por el backend. A diferencia de `useOrders`
- * (que trae el array plano completo), acá se pagina explícitamente porque el
+ * (que trae el array plano completo), aquí se pagina explícitamente porque el
  * historial puede crecer indefinidamente.
  */
 export function useOrderHistoryList(page: number, limit = 20) {
@@ -266,7 +266,7 @@ export function useTakeOrderReception() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Atendés el pedido #${order.id}: las notificaciones te llegan a vos.`);
+      toast.success(`Atiendes el pedido #${order.id}: las notificaciones te llegan a ti.`);
     },
     // El backend explica el rechazo en español (rol sin permiso, pedido
     // inexistente): mostrar SU mensaje, no uno genérico.
@@ -447,7 +447,7 @@ export function useDeleteOrder() {
  * Mientras el backend no exponga `POST /orders/bulk-actions`, se sigue
  * disparando una request PATCH + POST de historial por pedido en paralelo
  * (`Promise.allSettled`); si ese endpoint dedicado aparece más adelante,
- * alcanza con reemplazar el cuerpo de `run` acá sin tocar el resto de la
+ * alcanza con reemplazar el cuerpo de `run` aquí sin tocar el resto de la
  * pantalla (la UI ya asume una function async que puede fallar parcial).
  */
 export function useBulkChangeOrderStatus() {
@@ -532,7 +532,7 @@ function isNotFound(error: unknown): boolean {
  * Notas internas de un pedido (`GET/POST /orders/:id/notes`).
  *
  * Endpoint nuevo, desplegado en paralelo por el equipo de backend: si todavía
- * no existe, el 404 se absorbe acá y la pantalla muestra "sin notas" en vez
+ * no existe, el 404 se absorbe aquí y la pantalla muestra "sin notas" en vez
  * de romper.
  */
 export function useOrderNotes(orderId: number | null) {

@@ -49,7 +49,7 @@ export function MediaPanel({ messages, className }: MediaPanelProps) {
       {attachments.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           Las imágenes, videos y archivos que se compartan en esta conversación
-          van a aparecer acá.
+          van a aparecer aquí.
         </p>
       ) : (
         <>

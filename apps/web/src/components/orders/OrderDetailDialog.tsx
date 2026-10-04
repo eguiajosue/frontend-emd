@@ -55,13 +55,13 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
               {forbidden ? (
                 <EmptyState
                   icon={Lock}
-                  title="No tenés acceso a este pedido"
+                  title="No tienes acceso a este pedido"
                   description="Puede que no esté asignado a tu área o que ya no exista."
                 />
               ) : (
                 <ErrorState
                   title="No se pudo cargar el detalle del pedido."
-                  description="Revisá tu conexión e intentá nuevamente."
+                  description="Revisa tu conexión e intenta nuevamente."
                   onRetry={() => refetch()}
                 />
               )}

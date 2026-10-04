@@ -170,11 +170,11 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                 <EmptyState
                   icon={PartyPopper}
                   title="Bandeja al día"
-                  description="No hay diseños pendientes ni cambios por hacer. Lo nuevo aparece acá apenas entra."
+                  description="No hay diseños pendientes ni cambios por hacer. Lo nuevo aparece aquí apenas entra."
                 />
               ) : (
                 <>
-                  <HomeSection id="home-next" title="Siguiente diseño" description="Lo que conviene hacer ahora.">
+                  <HomeSection id="home-next" title="Siguiente diseño">
                     <NextUp entry={next} now={now} onOpen={() => setOpenOrderId(next.item.id)} />
                   </HomeSection>
 
@@ -182,7 +182,6 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                     id="home-queue"
                     title="Tu bandeja por prioridad"
                     count={prioritized.length}
-                    description="Primero lo vencido y lo que volvió con cambios; después lo nuevo sin abrir."
                     action={{ label: "Tareas asignadas", href: "/dashboard/tareas" }}
                   >
                     <div className="space-y-5">
@@ -238,7 +237,6 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                 id="home-waiting"
                 title="Esperando al cliente"
                 count={data.counters.waitingClient}
-                description="Montajes enviados; Recepción confirma la autorización."
               >
                 {data.waitingClient.length === 0 ? (
                   <Panel className="px-4 py-4 text-sm text-muted-foreground">Ningún montaje esperando respuesta.</Panel>
@@ -267,7 +265,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                 )}
               </HomeSection>
 
-              <HomeSection id="home-team" title="Equipo" description="Diseños activos por persona.">
+              <HomeSection id="home-team" title="Equipo">
                 {data.team.length === 0 ? (
                   <Panel className="px-4 py-4 text-sm text-muted-foreground">Sin diseños activos.</Panel>
                 ) : (

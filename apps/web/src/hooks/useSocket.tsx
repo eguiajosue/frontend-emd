@@ -70,7 +70,7 @@ const HIGHLIGHT_TOAST_DURATION_MS = 9000;
  *   usuario no está mirando la pantalla del chat.
  *
  * Esta es la ÚNICA conexión de Socket.io de la app (se monta una vez en el
- * layout del dashboard): cualquier feature nueva debe engancharse acá en vez
+ * layout del dashboard): cualquier feature nueva debe engancharse aquí en vez
  * de abrir un segundo socket.
  */
 
@@ -227,7 +227,7 @@ export function useSocket() {
     // chatRead/chatDelivered/presenceChanged sólo invalidan la cache del
     // chat: el dato en sí (lastReadAt/deliveredAt/isOnline/lastSeenAt) se
     // vuelve a pedir a GET /chat/conversations/:id/members, no se aplica a
-    // mano acá — mantiene una sola fuente de verdad.
+    // mano aquí — mantiene una sola fuente de verdad.
     const handleChatRead = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("chat") });
     };

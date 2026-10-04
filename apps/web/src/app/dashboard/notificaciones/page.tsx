@@ -205,13 +205,13 @@ export default function NotificacionesPage() {
               ? "Ni una notificación pendiente. Buen trabajo."
               : filter === "read"
               ? "Todavía no leíste ninguna notificación"
-              : "Acá aparecen las notificaciones"
+              : "Aquí aparecen las notificaciones"
           }
           description={
             isUnavailable
               ? "Esta función se está desplegando del lado del servidor. Intentar nuevamente en un rato."
               : filter === "all"
-              ? "Cuando Recepción asigne un pedido o algo cambie, el aviso aparece acá."
+              ? "Cuando Recepción asigne un pedido o algo cambie, el aviso aparece aquí."
               : undefined
           }
         />

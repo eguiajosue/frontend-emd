@@ -215,11 +215,11 @@ export function ProductionHome({
                 <EmptyState
                   icon={PartyPopper}
                   title="Sin trabajos pendientes"
-                  description="Cuando entre trabajo nuevo a tu área aparece acá, ordenado por prioridad."
+                  description="Cuando entre trabajo nuevo a tu área aparece aquí, ordenado por prioridad."
                 />
               ) : (
                 <>
-                  <HomeSection id="home-next" title="Siguiente trabajo" description="Lo que conviene hacer ahora.">
+                  <HomeSection id="home-next" title="Siguiente trabajo">
                     <NextUp
                       entry={next}
                       now={now}
@@ -233,7 +233,6 @@ export function ProductionHome({
                     id="home-queue"
                     title="Tu lista por prioridad"
                     count={prioritized.length}
-                    description="Primero lo que está por vencer y lo que nadie empezó."
                     action={{ label: "Tareas asignadas", href: "/dashboard/tareas" }}
                   >
                     <div className="space-y-5">
@@ -324,7 +323,7 @@ export function ProductionHome({
                 </HomeSection>
               )}
 
-              <HomeSection id="home-upcoming" title="Llegan de Diseño" count={data.counters.upcoming} description="Se trabajan cuando el cliente autorice el montaje.">
+              <HomeSection id="home-upcoming" title="Llegan de Diseño" count={data.counters.upcoming}>
                 {data.upcoming.length === 0 ? (
                   <Panel className="px-4 py-4 text-sm text-muted-foreground">Nada planificado por ahora.</Panel>
                 ) : (

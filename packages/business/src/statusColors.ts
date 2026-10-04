@@ -1,5 +1,5 @@
 /**
- * Mapeo único de color por estado de pedido. Usar SIEMPRE desde acá
+ * Mapeo único de color por estado de pedido. Usar SIEMPRE desde aquí
  * (tabla de pedidos, Mis Tareas, panel admin, tablero de estatus, detalle
  * de pedido) para que el significado de cada color sea consistente en
  * toda la app, en light y dark mode.
@@ -7,7 +7,7 @@
  * Los 5 estados originales (pendiente..entregado) se resuelven por id, que
  * es estable. Los 4 estados del flujo de diseño (ver `DESIGN_FLOW_STATUS_NAMES`
  * en `orderStatus.ts`) los siembra el backend con ids que pueden variar entre
- * entornos, así que se resuelven por NOMBRE — por eso toda función acá acepta
+ * entornos, así que se resuelven por NOMBRE — por eso toda función aquí acepta
  * un `statusName` opcional (típicamente `order.status?.name`) que, cuando
  * matchea un estado de diseño conocido, tiene prioridad sobre el id.
  */

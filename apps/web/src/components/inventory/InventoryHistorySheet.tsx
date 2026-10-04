@@ -47,7 +47,7 @@ export function InventoryHistorySheet({ item, onClose }: InventoryHistorySheetPr
             <EmptyState
               icon={History}
               title="Sin movimientos todavía"
-              description="Las entradas, salidas y ajustes de este artículo aparecen acá."
+              description="Las entradas, salidas y ajustes de este artículo aparecen aquí."
             />
           ) : (
             <InventoryMovementsList movements={data} unit={item?.unit} />

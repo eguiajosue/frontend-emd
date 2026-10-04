@@ -56,7 +56,7 @@ describe("OrderMaterialDialog", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /^Agregar$/i }));
 
-    expect(await screen.findByText("Elegí un material")).toBeInTheDocument();
+    expect(await screen.findByText("Elige un material")).toBeInTheDocument();
     expect(createMutateAsync).not.toHaveBeenCalled();
   });
 

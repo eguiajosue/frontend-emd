@@ -4,7 +4,7 @@
  * Estado efímero de "escribiendo…" por conversación: quién está escribiendo
  * AHORA en cada una. Vive en memoria (un Map compartido a nivel de módulo),
  * nunca en React Query — no es un dato que tenga sentido cachear/persistir.
- * `useSocket` (la única conexión de socket de la app) escribe acá cuando
+ * `useSocket` (la única conexión de socket de la app) escribe aquí cuando
  * llegan `chatTyping`/`chatStopTyping`; este hook sólo lee y se suscribe a
  * los cambios de UNA conversación puntual.
  */

@@ -89,7 +89,7 @@ const UsuariosPage = () => {
   // ver las opciones de rol "admin"/"superuser" en la lista de checkboxes
   // (defensa en profundidad: el backend igual sólo permite esta pantalla a
   // admin/superuser, pero si en el futuro se abre a otro rol esto ya evita
-  // que asignen esos roles desde acá).
+  // que asignen esos roles desde aquí).
   const selectableRoles = isAdmin
     ? roles
     : roles.filter((r) => !ADMIN_ROLE_NAMES.includes(r.name));
@@ -164,7 +164,7 @@ const UsuariosPage = () => {
             schema={(editing) => (editing ? editSchema : createSchema)}
             columns={getUserColumns}
             emptyMessage="No hay otros usuarios registrados"
-            emptyDescription="Invitá al resto del equipo creando sus cuentas de usuario."
+            emptyDescription="Invita al resto del equipo creando sus cuentas de usuario."
             emptyIcon={UserCog}
             deleteDescription="Esta acción eliminará al usuario de forma permanente."
             dialogTitle={(editing) => (editing ? "Editar Usuario" : "Nuevo Usuario")}

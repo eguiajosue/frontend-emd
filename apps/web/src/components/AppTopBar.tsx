@@ -46,7 +46,7 @@ function BrandPill() {
 
 /**
  * Pestañas de la sección actual (ej. Operación: Panel · Pedidos · Calendario ·
- * Historial). El riel sólo muestra íconos; acá se leen los nombres de lo que
+ * Historial). El riel sólo muestra íconos; aquí se leen los nombres de lo que
  * está "al lado" de la pantalla abierta, como la barra central de la
  * referencia.
  */

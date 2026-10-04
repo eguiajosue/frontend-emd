@@ -38,7 +38,7 @@ type CalendarView = "mes" | "semana" | "dia";
  * clientes — reemplaza la lista que hoy se coordina a mano por WhatsApp.
  * Compartido entre recepcion/admin/superuser: cualquiera ve y edita
  * cualquier evento. Mezcla, además, los pedidos con fecha de entrega (sólo
- * lectura acá — se editan desde "Pedidos").
+ * lectura aquí — se editan desde "Pedidos").
  */
 type MobileView = "mes" | "diaSemana";
 
@@ -123,7 +123,7 @@ export default function CalendarioPage() {
   if (!isSessionLoading && !canManageOperations) {
     return (
       <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">
-        No tenés permiso para ver esta página.
+        No tienes permiso para ver esta página.
       </Card>
     );
   }
@@ -133,10 +133,7 @@ export default function CalendarioPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Title
-          title="Calendario"
-          description="Instalaciones, juntas, visitas a clientes y pedidos con entrega: compartido por todo el equipo."
-        />
+        <Title title="Calendario" />
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="outline"
@@ -254,7 +251,7 @@ export default function CalendarioPage() {
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarClock className="h-3.5 w-3.5 shrink-0" />
               Los pedidos se marcan con <span className="font-medium">un ícono de paquete</span> — se
-              editan desde &quot;Pedidos&quot;, acá sólo se consultan.
+              editan desde &quot;Pedidos&quot;, aquí sólo se consultan.
             </p>
           </div>
 

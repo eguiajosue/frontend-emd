@@ -53,6 +53,8 @@ import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { SaveOrderTemplateDialog } from "@/components/orders/SaveOrderTemplateDialog";
+import { CustomizeFrequentsDialog, resolveFrequents } from "@/components/orders/CustomizeFrequentsDialog";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
 import { useClientOrders, useOrder } from "@/hooks/useOrders";
 import {
@@ -141,18 +143,18 @@ const orderSchema = z
     description: z
       .string()
       .trim()
-      .min(1, "Escribí una descripción")
+      .min(1, "Escribe una descripción")
       .max(MAX_DESCRIPTION_LENGTH, "Máximo 1000 caracteres"),
     deliveryDate: z.string().optional().or(z.literal("")),
     assignedUserId: z.number().optional(),
-    orderProducts: z.array(orderProductSchema).min(1, "Agregá al menos un producto"),
+    orderProducts: z.array(orderProductSchema).min(1, "Agrega al menos un producto"),
   })
   .superRefine((data, ctx) => {
     if (!data.clientId && !data.clientNameOverride?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["clientId"],
-        message: "Seleccioná o escribí un cliente",
+        message: "Selecciona o escribe un cliente",
       });
     }
     // Sin diseño el área destino es obligatoria (a donde va el pedido directo);
@@ -161,7 +163,7 @@ const orderSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["area"],
-        message: "Elegí al menos un área de producción",
+        message: "Elige al menos un área de producción",
       });
     }
     // Con montaje el pedido arranca en Diseño y necesita responsable sí o sí
@@ -171,7 +173,7 @@ const orderSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["assignedUserId"],
-        message: "Elegí un diseñador o «Cualquier diseñador»",
+        message: "Elige un diseñador o «Cualquier diseñador»",
       });
     }
   });
@@ -189,7 +191,7 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   description: "Descripción",
 };
 
-/** Rol del área de Diseño; los pedidos con montaje arrancan siempre acá. */
+/** Rol del área de Diseño; los pedidos con montaje arrancan siempre aquí. */
 const DESIGN_ROLE = "diseno";
 
 /** Radix Select no admite `value=""`: centinela para "Sin asignar" / "Sin hora". */
@@ -400,6 +402,12 @@ export function CreateOrderDialog({
     staleTime: CATALOG_STALE_TIME,
   });
   const { data: users, isPending: usersPending } = useEntityList<User>("users", { enabled: open });
+  const { preferences, updatePreferences } = useUserPreferences();
+  const [frequentsOpen, setFrequentsOpen] = useState(false);
+  const myFrequents = useMemo(
+    () => resolveFrequents(productPresets, preferences?.frequentProductIds),
+    [productPresets, preferences?.frequentProductIds]
+  );
   const { create } = useEntityMutations<Order, CreateOrderPayload>("orders");
 
   const [clientId, setClientId] = useState<number | undefined>(undefined);
@@ -867,7 +875,7 @@ export function CreateOrderDialog({
     setLiveMessage(
       `Se cargó ${baseLabel(source)}: ${nextRows.length} ${
         nextRows.length === 1 ? "producto" : "productos"
-      }. Revisá cantidades y descripción.`
+      }. Revisa cantidades y descripción.`
     );
     // Lo que más cambia de una vez a otra es la cantidad: el foco va ahí.
     if (nextRows[0]) {
@@ -1045,7 +1053,7 @@ export function CreateOrderDialog({
       markDirty();
       focusById("order-file-remove");
     } catch {
-      toast.error("No se pudo leer el archivo. Intentá de nuevo.");
+      toast.error("No se pudo leer el archivo. Intenta de nuevo.");
     } finally {
       e.target.value = "";
     }
@@ -1109,7 +1117,7 @@ export function CreateOrderDialog({
     if (Object.keys(nextRowErrors).length > 0) {
       fieldErrors.orderProducts = "Hay productos incompletos";
     } else if (completeRows.length === 0) {
-      fieldErrors.orderProducts = "Agregá al menos un producto";
+      fieldErrors.orderProducts = "Agrega al menos un producto";
     }
     return { fieldErrors, rowErrors: nextRowErrors };
   };
@@ -1259,15 +1267,15 @@ export function CreateOrderDialog({
       if (materialsFailed > 0) {
         toast.warning(
           materialsFailed === 1
-            ? "El pedido se creó, pero no se pudo copiar 1 material. Cargalo desde la hoja de materiales."
-            : `El pedido se creó, pero no se pudieron copiar ${materialsFailed} materiales. Cargalos desde la hoja de materiales.`
+            ? "El pedido se creó, pero no se pudo copiar 1 material. Cárgalo desde la hoja de materiales."
+            : `El pedido se creó, pero no se pudieron copiar ${materialsFailed} materiales. Cárgalos desde la hoja de materiales.`
         );
       }
       setDirty(false);
       onClose();
       onCreated?.(order);
     } catch (error) {
-      // El toast de error ya lo dispara el feedback global (providers.tsx); acá
+      // El toast de error ya lo dispara el feedback global (providers.tsx); aquí
       // sólo el aviso accesible del footer, con el mismo mensaje.
       setSubmitError(getErrorMessage(error, "No se pudo crear el pedido."));
       requestAnimationFrame(() => errorSummaryRef.current?.focus());
@@ -1280,7 +1288,7 @@ export function CreateOrderDialog({
   /** ⌘/Ctrl+Enter crea el pedido desde cualquier campo (incluida la descripción). */
   const handleFormKeyDown = (e: React.KeyboardEvent) => {
     // Un combobox o un select abierto vive en un portal: su keydown sube por
-    // React hasta acá, pero ese Enter es para elegir la opción. Enviar en el
+    // React hasta aquí, pero ese Enter es para elegir la opción. Enviar en el
     // mismo evento mandaría el estado ANTERIOR a esa elección.
     if (e.defaultPrevented || !e.currentTarget.contains(e.target as Node)) return;
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -1625,7 +1633,7 @@ export function CreateOrderDialog({
                             customValue=""
                             placeholder="Buscar cliente…"
                             createLabel={(value) => `Usar "${value}" como nombre de cliente`}
-                            emptyLabel="Todavía no hay clientes. Escribí un nombre para usarlo."
+                            emptyLabel="Todavía no hay clientes. Escribe un nombre para usarlo."
                             onSelectItem={(item) => chooseClient(Number(item.id))}
                             onUseCustom={(text) => chooseClient(undefined, clampName(text))}
                           />
@@ -1768,7 +1776,7 @@ export function CreateOrderDialog({
                             aria-describedby={describedBy("order-assignee", assigneeHint, errors.assignedUserId)}
                             className="h-11 w-full sm:h-9 sm:max-w-sm"
                           >
-                            <SelectValue placeholder={requiresDesign ? "Elegí un diseñador…" : "Sin asignar"} />
+                            <SelectValue placeholder={requiresDesign ? "Elige un diseñador…" : "Sin asignar"} />
                           </SelectTrigger>
                           <SelectContent>
                             {/* "Sin asignar" sólo sin diseño y si el área no tiene cuenta compartida. */}
@@ -1792,7 +1800,7 @@ export function CreateOrderDialog({
                         </Select>
                       ) : (
                         <p className="text-meta">
-                          Elegí primero un área de producción.
+                          Elige primero un área de producción.
                         </p>
                       )}
                       <FieldMessages
@@ -1855,11 +1863,21 @@ export function CreateOrderDialog({
 
                       {productPresets.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-label">Frecuentes</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-label">Frecuentes</p>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-muted-foreground"
+                              onClick={() => setFrequentsOpen(true)}
+                            >
+                              Personalizar
+                            </Button>
+                          </div>
                           <div className="flex flex-wrap gap-2">
-                            {productPresets
+                            {myFrequents
                               .filter((preset) => !learnedKeys.has(normalizeProductKey(preset.name)))
-                              .slice(0, 10)
                               .map((preset) => {
                               const row = rows.find((r) => sameName(r.customName, preset.name));
                               return (
@@ -1888,8 +1906,8 @@ export function CreateOrderDialog({
                       {rows.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                           {productPresets.length > 0
-                            ? "Tocá un frecuente o buscá un producto."
-                            : "Buscá o escribí un producto."}
+                            ? "Toca un frecuente o busca un producto."
+                            : "Busca o escribe un producto."}
                         </p>
                       ) : (
                         <ul aria-labelledby="order-products-label" className="divide-y divide-border/60">
@@ -1916,7 +1934,7 @@ export function CreateOrderDialog({
                                     customValue={row.customName}
                                     placeholder="Buscar producto…"
                                     createLabel={(value) => `Usar "${value}" como producto nuevo`}
-                                    emptyLabel="Todavía no hay productos frecuentes. Escribí uno para usarlo."
+                                    emptyLabel="Todavía no hay productos frecuentes. Escribe uno para usarlo."
                                     onSelectItem={(item) => renameRow(row.key, item.label)}
                                     onUseCustom={(text) => renameRow(row.key, text)}
                                   />
@@ -2006,7 +2024,7 @@ export function CreateOrderDialog({
                             customValue=""
                             placeholder="+ Agregar producto…"
                             createLabel={(value) => `Usar "${value}" como producto nuevo`}
-                            emptyLabel="Todavía no hay productos frecuentes. Escribí uno para usarlo."
+                            emptyLabel="Todavía no hay productos frecuentes. Escribe uno para usarlo."
                             onSelectItem={(item) => addProduct(item.label)}
                             onUseCustom={(text) => addProduct(text)}
                           />
@@ -2041,7 +2059,7 @@ export function CreateOrderDialog({
                           id="order-description"
                           hint={
                             base && base.kind !== "suggestion" && !descriptionTouched && description
-                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : baseOrigin(base)}: ajustá lo que cambia esta vez.`
+                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : baseOrigin(base)}: ajusta lo que cambia esta vez.`
                               : undefined
                           }
                           error={errors.description}
@@ -2493,7 +2511,7 @@ export function CreateOrderDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>¿Descartar pedido?</AlertDialogTitle>
             <AlertDialogDescription>
-              Hay datos cargados que todavía no se guardaron. Si cerrás ahora se pierden.
+              Hay datos cargados que todavía no se guardaron. Si cierras ahora se pierden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2512,6 +2530,13 @@ export function CreateOrderDialog({
         </AlertDialogContent>
       </AlertDialog>
 
+      <CustomizeFrequentsDialog
+        open={frequentsOpen}
+        onOpenChange={setFrequentsOpen}
+        presets={productPresets}
+        current={myFrequents}
+        onSave={(ids) => updatePreferences({ frequentProductIds: ids })}
+      />
       <SaveOrderTemplateDialog
         open={saveTemplateOpen}
         onOpenChange={(next) => {
@@ -2523,7 +2548,7 @@ export function CreateOrderDialog({
         contentSummary={templateContentSummary}
         blocker={
           !requiresDesign && areas.length === 0
-            ? "Elegí al menos un área de producción: sin diseño, la plantilla necesita a dónde ir."
+            ? "Elige al menos un área de producción: sin diseño, la plantilla necesita a dónde ir."
             : undefined
         }
         onSave={async (name) => {

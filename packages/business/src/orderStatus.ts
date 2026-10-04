@@ -106,7 +106,7 @@ export function getNextStatusOption(
 /**
  * Estados del flujo de diseño (opcional, `Order.requiresDesign`). El backend
  * los siembra con ids que pueden variar entre entornos, así que NUNCA se
- * hardcodean acá — se identifican por NOMBRE contra `order.status?.name`
+ * hardcodean aquí — se identifican por NOMBRE contra `order.status?.name`
  * (que el backend siempre incluye en `GET /orders`).
  *
  * No forman parte de `statusMap`/`statusOptions` a propósito: eso hace que el

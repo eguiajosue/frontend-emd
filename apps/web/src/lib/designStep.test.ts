@@ -16,7 +16,7 @@ describe("getDesignStep", () => {
 
   it("sin empezar: Diseño ve 'Nuevo', Recepción 'sin empezar'; empezado dice quién", () => {
     const fresh = order("en diseño", true, { designStartedAt: null });
-    expect(getDesignStep(fresh, diseno)).toMatchObject({ label: "Nuevo: empezalo", mine: true });
+    expect(getDesignStep(fresh, diseno)).toMatchObject({ label: "Nuevo: empiézalo", mine: true });
     expect(getDesignStep(fresh, recepcion)).toMatchObject({ label: "En Diseño · sin empezar" });
     const started = order("en diseño", true, {
       designStartedAt: "2026-10-03T10:00:00.000Z",
