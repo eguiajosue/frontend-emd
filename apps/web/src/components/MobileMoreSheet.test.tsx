@@ -80,10 +80,9 @@ describe("MobileMoreSheet", () => {
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
   });
 
-  it("para rol operativo (taller): los 4 tabs principales no se repiten acá; Inventario y Ayuda quedan en el sheet", () => {
-    // Menú operativo: Inicio, Tareas asignadas, Inventario, Chat interno,
-    // Notificaciones, Ayuda. Los 4 primeros por prioridad (Inicio, Tareas,
-    // Chat, Notificaciones) son los tabs de `MobileTabBar`; el resto, acá.
+  it("para rol operativo (taller): los 4 tabs principales no se repiten acá; Ayuda queda en el sheet y no hay Inventario", () => {
+    // Menú operativo: Inicio, Tareas asignadas, Chat interno, Notificaciones,
+    // Ayuda. El inventario es sólo de Recepción y administración.
     mocks.roles = ["taller"];
     renderSheet();
 
@@ -91,7 +90,7 @@ describe("MobileMoreSheet", () => {
     expect(screen.queryByRole("link", { name: "Tareas asignadas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Inventario" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
   });

@@ -108,7 +108,6 @@ const PRODUCTION: ProductionDashboard = {
   ],
   upcoming: [{ ...ref(20), area: "taller", designStatus: "en diseño" }],
   team: [{ name: "Beto", inProgress: 1 }],
-  lowStock: [],
   events: [],
 };
 
