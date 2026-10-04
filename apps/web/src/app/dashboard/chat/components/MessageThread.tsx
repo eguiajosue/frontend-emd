@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useContext, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   ArrowLeft,
@@ -124,7 +125,7 @@ function OrderRefChip({
     >
       <Eye className="mt-0.5 h-3 w-3 shrink-0 opacity-60" />
       <div className="min-w-0">
-        <p className="font-medium">Pedido #{order.id}</p>
+        <p className="font-medium">Pedido {formatOrderCode(order.id)}</p>
         <p className="truncate opacity-70">{order.description}</p>
         {order.status ? <p className="opacity-60 first-letter:uppercase">{order.status.name}</p> : null}
       </div>
@@ -239,7 +240,7 @@ function OrderPicker({
                     setFilter("");
                   }}
                 >
-                  <span className="font-medium">#{order.id}</span>{" "}
+                  <span className="font-medium">{formatOrderCode(order.id)}</span>{" "}
                   <span className="text-muted-foreground">{order.description}</span>
                 </Button>
               </li>
@@ -795,7 +796,7 @@ export function MessageThread({
           <div className="mb-2 flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1 truncate">
-              <span className="font-semibold">Pedido #{attachedOrder.id}</span>{" "}
+              <span className="font-semibold">Pedido {formatOrderCode(attachedOrder.id)}</span>{" "}
               <span className="text-muted-foreground">{attachedOrder.description}</span>
             </span>
             <SimpleTooltip label="Quitar adjunto">

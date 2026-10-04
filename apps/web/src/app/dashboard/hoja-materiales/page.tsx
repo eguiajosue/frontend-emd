@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode, matchesOrderCode } from "@/lib/orderCode";
 import { Button } from "@/components/ui/button";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -109,7 +110,8 @@ export default function HojaMaterialesPage() {
   const filteredOrders = useMemo(() => {
     if (!query) return activeOrders;
     return activeOrders.filter((order) => {
-      const haystack = `${order.id} ${order.description} ${getOrderClientName(order)}`.toLowerCase();
+      if (matchesOrderCode(query, order.id)) return true;
+      const haystack = `${formatOrderCode(order.id)} ${order.description} ${getOrderClientName(order)}`.toLowerCase();
       return haystack.includes(query);
     });
   }, [activeOrders, query]);
@@ -171,7 +173,7 @@ export default function HojaMaterialesPage() {
         <Button variant="link" size="sm" className="h-auto gap-1.5 px-0" asChild>
           <Link href={`/dashboard/orders/${focusedOrderId}`}>
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Volver al pedido #{focusedOrderId}
+            Volver al pedido {formatOrderCode(focusedOrderId)}
           </Link>
         </Button>
       )}
@@ -301,7 +303,7 @@ function SortableOrderRow({
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0 cursor-grab touch-none rounded-full text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
-            aria-label={`Arrastrar para cambiar la prioridad del pedido #${order.id}`}
+            aria-label={`Arrastrar para cambiar la prioridad del pedido ${formatOrderCode(order.id)}`}
             {...attributes}
             {...listeners}
           >
@@ -337,7 +339,7 @@ function OrderRowSummary({
   return (
     <span className="flex flex-1 flex-wrap items-center justify-between gap-2 pr-2 text-left">
       <span className="min-w-0">
-        <span className="font-semibold">Pedido #{order.id}</span>
+        <span className="font-semibold">Pedido {formatOrderCode(order.id)}</span>
         <span className="text-muted-foreground"> · {getOrderClientName(order)}</span>
       </span>
       <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">

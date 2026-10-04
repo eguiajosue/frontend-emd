@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { formatOrderCode } from "@/lib/orderCode";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -10,120 +11,21 @@ import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { useOrderHistoryList, downloadOrdersExport, type OrderHistoryFilters } from "@/hooks/useOrders";
-import { useAuthToken, useEntityList } from "@/hooks/useEntity";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { HistoryFilters, hasHistoryFilters } from "./HistoryFilters";
+import { useAuthToken } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
-import { formatDeliveryDate, getAssignedUserName, getClientName, getOrderClientName } from "@/lib/format";
-import { AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
+import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { orderAreaTags } from "@/lib/orderAreas";
 import { useDeliveryProgress } from "@/lib/deliveryProgress";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { cn } from "@/lib/utils";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsUpDown,
-  FileDown,
-  Archive,
-  ListChecks,
-  Paperclip,
-  SearchX,
-  UserRound,
-  X,
-} from "lucide-react";
-import type { Client, Order } from "@/types";
+import { CalendarDays, ChevronLeft, ChevronRight, FileDown, FilterX, Archive, ListChecks, Paperclip, UserRound } from "lucide-react";
+import type { Order } from "@/types";
 import { EmptyState } from "@/components/ui/empty-state";
 
 const PAGE_SIZE = 20;
-const ALL = "all";
-
-/** Filtros tal como los edita la pantalla (fechas "yyyy-MM-dd" del input). */
-interface HistoryFilterState {
-  clientId?: number;
-  area?: string;
-  from: string;
-  to: string;
-}
-
-const EMPTY_FILTERS: HistoryFilterState = { clientId: undefined, area: undefined, from: "", to: "" };
-
-/** Pasa las fechas del input a instantes: desde el inicio del día hasta su final, en hora local. */
-function toHistoryQuery(f: HistoryFilterState): OrderHistoryFilters {
-  return {
-    clientId: f.clientId,
-    area: f.area,
-    deliveryFrom: f.from ? new Date(`${f.from}T00:00:00`).toISOString() : undefined,
-    deliveryTo: f.to ? new Date(`${f.to}T23:59:59.999`).toISOString() : undefined,
-  };
-}
-
-function ClientFilter({
-  clients,
-  value,
-  onChange,
-}: {
-  clients: Client[];
-  value?: number;
-  onChange: (id?: number) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = clients.find((c) => c.id === value);
-  const sorted = useMemo(
-    () => [...clients].sort((a, b) => getClientName(a).localeCompare(getClientName(b), "es")),
-    [clients]
-  );
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Filtrar por cliente"
-          className="w-full justify-between font-normal sm:w-56"
-        >
-          <span className="truncate">{selected ? getClientName(selected) : "Todos los clientes"}</span>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Buscar cliente…" />
-          <CommandList>
-            <CommandEmpty>Sin coincidencias.</CommandEmpty>
-            <CommandItem
-              value="Todos los clientes"
-              onSelect={() => {
-                onChange(undefined);
-                setOpen(false);
-              }}
-            >
-              Todos los clientes
-            </CommandItem>
-            {sorted.map((client) => (
-              <CommandItem
-                key={client.id}
-                value={`${getClientName(client)} ${client.id}`}
-                onSelect={() => {
-                  onChange(client.id);
-                  setOpen(false);
-                }}
-              >
-                {getClientName(client)}
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 /**
  * Una fila del historial: número, cliente y descripción, áreas, entrega
@@ -146,10 +48,10 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
         variant="bare"
         size="bare"
         onClick={() => onOpen(order.id)}
-        aria-label={`Ver pedido #${order.id} de ${client}`}
-        className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center sm:grid-cols-[3rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors hover:bg-muted/50 lg:grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
+        aria-label={`Ver pedido ${formatOrderCode(order.id)} de ${client}`}
+        className="grid w-full grid-cols-[5.5rem_minmax(0,1fr)] items-center sm:grid-cols-[5.75rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors hover:bg-muted/50 lg:grid-cols-[6rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
       >
-        <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
+        <span className="font-heading text-sm font-semibold tabular-nums">{formatOrderCode(order.id)}</span>
         <span className="min-w-0">
           <span className="block truncate text-sm font-medium">{client}</span>
           <span className="block truncate text-xs text-muted-foreground">{order.description}</span>
@@ -220,19 +122,19 @@ const HistorialPage = () => {
   const [page, setPage] = useState(1);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
-  const [filters, setFilters] = useState<HistoryFilterState>(EMPTY_FILTERS);
-  const query = useMemo(() => toHistoryQuery(filters), [filters]);
+  const [filters, setFilters] = useState<OrderHistoryFilters>({});
   const { orders, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
     page,
     PAGE_SIZE,
-    query
+    filters
   );
-  const { data: clients } = useEntityList<Client>("clients");
-  const hasFilters = Boolean(filters.clientId || filters.area || filters.from || filters.to);
-  const updateFilters = (patch: Partial<HistoryFilterState>) => {
-    setFilters((prev) => ({ ...prev, ...patch }));
+  const filtering = hasHistoryFilters(filters);
+  // Cambiar un filtro vuelve a la primera página: quedarse en la 7 de un
+  // resultado que ahora tiene 2 mostraba una lista vacía.
+  const updateFilters = useCallback((next: OrderHistoryFilters) => {
+    setFilters(next);
     setPage(1);
-  };
+  }, []);
   const { canManageOperations } = usePermissions();
   const token = useAuthToken();
 
@@ -241,7 +143,8 @@ const HistorialPage = () => {
   const handleExportCsv = async () => {
     setIsExportingCsv(true);
     try {
-      await downloadOrdersExport(token, {});
+      // El CSV exporta lo mismo que se está viendo.
+      await downloadOrdersExport(token, filters);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "No se pudo exportar el CSV."
@@ -263,51 +166,7 @@ const HistorialPage = () => {
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filtros del historial">
-        <ClientFilter clients={clients} value={filters.clientId} onChange={(clientId) => updateFilters({ clientId })} />
-        <Select
-          value={filters.area ?? ALL}
-          onValueChange={(v) => updateFilters({ area: v === ALL ? undefined : v })}
-        >
-          <SelectTrigger className="w-full sm:w-44" aria-label="Filtrar por área">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas las áreas</SelectItem>
-            {AREA_OPTIONS.map((a) => (
-              <SelectItem key={a.value} value={a.value}>
-                {a.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Entrega desde
-          <Input
-            type="date"
-            className="w-40"
-            value={filters.from}
-            max={filters.to || undefined}
-            onChange={(e) => updateFilters({ from: e.target.value })}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-          Entrega hasta
-          <Input
-            type="date"
-            className="w-40"
-            value={filters.to}
-            min={filters.from || undefined}
-            onChange={(e) => updateFilters({ to: e.target.value })}
-          />
-        </label>
-        {hasFilters && (
-          <Button type="button" variant="ghost" onClick={() => updateFilters(EMPTY_FILTERS)}>
-            <X className="h-4 w-4" aria-hidden />
-            Limpiar filtros
-          </Button>
-        )}
-      </div>
+      <HistoryFilters filters={filters} onChange={updateFilters} />
 
       {isPending ? (
         <Card className="divide-y divide-border/60">
@@ -321,11 +180,12 @@ const HistorialPage = () => {
         </Card>
       ) : isError ? (
         <ErrorState onRetry={() => refetch()} />
-      ) : orders.length === 0 && hasFilters ? (
+      ) : orders.length === 0 && filtering ? (
         <EmptyState
-          icon={SearchX}
-          title="Sin pedidos con estos filtros"
-          description="Prueba con otro cliente, área o rango de fechas."
+          icon={FilterX}
+          title="Ningún pedido coincide con la búsqueda"
+          description="Prueba con otro código, cliente, área o rango de fechas."
+          action={{ label: "Limpiar filtros", icon: FilterX, onClick: () => updateFilters({}) }}
         />
       ) : orders.length === 0 ? (
         <EmptyState
@@ -337,10 +197,10 @@ const HistorialPage = () => {
         <>
           <Card className="overflow-hidden">
             <div
-              className="hidden grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid"
+              className="hidden grid-cols-[6rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid"
               aria-hidden
             >
-              <span>Pedido</span>
+              <span>Código</span>
               <span>Cliente</span>
               <span>Áreas</span>
               <span>Entrega</span>
@@ -355,7 +215,9 @@ const HistorialPage = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-4">
             <p className="text-meta tabular-nums">
-              {meta ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedidos` : null}
+              {meta
+                ? `Página ${meta.page} de ${meta.totalPages} · ${meta.total} pedido${meta.total === 1 ? "" : "s"}${filtering ? " encontrados" : ""}`
+                : null}
             </p>
             <div className="flex items-center gap-2">
               <Button

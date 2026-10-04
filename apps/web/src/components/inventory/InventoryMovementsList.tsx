@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -65,7 +66,7 @@ export function InventoryMovementsList({ movements, showItem = false, unit }: In
                   {m.note && m.order && " · "}
                   {m.order && (
                     <Link href={`/dashboard/orders/${m.order.id}`} className="underline-offset-2 hover:underline">
-                      Pedido #{m.order.id}
+                      Pedido {formatOrderCode(m.order.id)}
                     </Link>
                   )}
                 </p>

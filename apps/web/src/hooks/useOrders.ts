@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -46,24 +47,52 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
  * (que trae el array plano completo), aquí se pagina explícitamente porque el
  * historial puede crecer indefinidamente.
  */
-/** Filtros del historial; las fechas son instantes ISO (inicio/fin de día local). */
+/** Búsqueda y filtros del Historial (se resuelven en el backend, paginados). */
 export interface OrderHistoryFilters {
+  /** Código ("EMD-P0042", "42"), cliente, empresa o descripción. */
+  q?: string;
+  statusId?: number;
   clientId?: number;
+  /** Área actual del pedido o de alguna de sus tareas. */
   area?: string;
+  /** Fecha de creación desde/hasta, `YYYY-MM-DD` (día local). */
+  dateFrom?: string;
+  dateTo?: string;
+  /** Fecha de entrega desde/hasta, `YYYY-MM-DD` (día local). */
   deliveryFrom?: string;
   deliveryTo?: string;
 }
 
+/** Inicio o fin del día local `YYYY-MM-DD`, como instante ISO. */
+const dayStart = (day: string) => new Date(`${day}T00:00:00`).toISOString();
+const dayEnd = (day: string) => new Date(`${day}T23:59:59.999`).toISOString();
+
+/** Sólo los filtros con valor, como parámetros de query. */
+export function historyFilterParams(filters: OrderHistoryFilters): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (filters.q?.trim()) params.q = filters.q.trim();
+  if (filters.statusId !== undefined) params.statusId = String(filters.statusId);
+  if (filters.clientId !== undefined) params.clientId = String(filters.clientId);
+  if (filters.area) params.area = filters.area;
+  // Rangos inclusivos: "hasta el 31" incluye todo ese día.
+  if (filters.dateFrom) params.dateFrom = dayStart(filters.dateFrom);
+  if (filters.dateTo) params.dateTo = dayEnd(filters.dateTo);
+  if (filters.deliveryFrom) params.deliveryFrom = dayStart(filters.deliveryFrom);
+  if (filters.deliveryTo) params.deliveryTo = dayEnd(filters.deliveryTo);
+  return params;
+}
+
 export function useOrderHistoryList(page: number, limit = 20, filters: OrderHistoryFilters = {}) {
   const token = useAuthToken();
+  const filterParams = historyFilterParams(filters);
 
   const query = useQuery<Paginated<Order>>({
-    queryKey: [...queryKeys.all("orderHistory"), page, limit, filters],
+    queryKey: [...queryKeys.all("orderHistory"), page, limit, filterParams],
     enabled: Boolean(token),
     queryFn: () =>
       request<Paginated<Order>>(ENDPOINTS.orderHistory, {
         token,
-        params: { page, limit, ...filters },
+        params: { page, limit, ...filterParams },
       }),
     placeholderData: (previous) => previous,
   });
@@ -274,7 +303,7 @@ export function useTakeOrderReception() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Atiendes el pedido #${order.id}: las notificaciones te llegan a ti.`);
+      toast.success(`Atiendes el pedido ${formatOrderCode(order.id)}: las notificaciones te llegan a ti.`);
     },
     // El backend explica el rechazo en español (rol sin permiso, pedido
     // inexistente): mostrar SU mensaje, no uno genérico.
@@ -362,7 +391,7 @@ export function useTakeOrderDesign() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Tomaste el pedido #${order.id}: queda a tu nombre`);
+      toast.success(`Tomaste el pedido ${formatOrderCode(order.id)}: queda a tu nombre`);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo tomar el pedido."));
@@ -394,7 +423,7 @@ export function useStartOrderDesign() {
       }),
     onSuccess: (order) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
-      toast.success(`Empezaste el pedido #${order.id}: Recepción ya lo ve en curso`);
+      toast.success(`Empezaste el pedido ${formatOrderCode(order.id)}: Recepción ya lo ve en curso`);
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "No se pudo marcar el pedido como empezado."));
@@ -678,12 +707,8 @@ export function useClientOrders(clientId: number | null, options?: { limit?: num
  * Filtros compartidos por la pantalla de pedidos, reusados como query params
  * de `GET /orders/export`.
  */
-export interface OrdersExportFilters {
-  clientId?: number;
+export interface OrdersExportFilters extends OrderHistoryFilters {
   statusIds?: number[];
-  deliveryFrom?: string;
-  deliveryTo?: string;
-  area?: string;
   assignedUserId?: number | null;
 }
 
@@ -696,14 +721,10 @@ export async function downloadOrdersExport(
   token: string | undefined,
   filters: OrdersExportFilters
 ): Promise<void> {
-  const params: Record<string, string> = {};
-  if (filters.clientId !== undefined) params.clientId = String(filters.clientId);
+  const params: Record<string, string> = historyFilterParams(filters);
   if (filters.statusIds && filters.statusIds.length > 0) {
     params.statusIds = filters.statusIds.join(",");
   }
-  if (filters.deliveryFrom) params.deliveryFrom = filters.deliveryFrom;
-  if (filters.deliveryTo) params.deliveryTo = filters.deliveryTo;
-  if (filters.area) params.area = filters.area;
   if (filters.assignedUserId !== undefined && filters.assignedUserId !== null) {
     params.assignedUserId = String(filters.assignedUserId);
   }
@@ -768,7 +789,7 @@ export function useForceFinishOrder() {
     onSuccess: (orderId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
-      toast.success(`Pedido #${orderId} listo para entregar`);
+      toast.success(`Pedido ${formatOrderCode(orderId)} listo para entregar`);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

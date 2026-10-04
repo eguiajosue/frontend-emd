@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useState, type ElementType } from "react";
 import Link from "next/link";
 import {
@@ -99,7 +100,7 @@ export function OrderDetailHeader({
     <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1 space-y-3 text-left">
         <Title className="font-heading text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-[1.75rem]">
-          <span className="tabular-nums text-muted-foreground">#{order.id}</span>{" "}
+          <span className="tabular-nums text-muted-foreground">{formatOrderCode(order.id)}</span>{" "}
           {getOrderClientName(order)}
         </Title>
         <div className="flex flex-wrap items-center gap-2">
@@ -199,7 +200,7 @@ export function OrderDetailHeader({
         open={confirmDeleteOpen}
         onOpenChange={setConfirmDeleteOpen}
         onConfirm={handleConfirmDelete}
-        title={`¿Eliminar el pedido #${order.id}?`}
+        title={`¿Eliminar el pedido ${formatOrderCode(order.id)}?`}
         description="Esta acción no se puede deshacer. El pedido y su historial dejarán de estar disponibles."
       />
     </div>

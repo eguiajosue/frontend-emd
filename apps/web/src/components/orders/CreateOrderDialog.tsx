@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
@@ -237,23 +238,23 @@ type BaseSource =
   | { kind: "template"; id: number; name: string }
   | { kind: "suggestion"; id: number; name: string };
 
-/** "el pedido #88" / "la plantilla «Figuras»" / "lo habitual de Luis" (para armar frases). */
+/** "el pedido EMD-P0088" / "la plantilla «Figuras»" / "lo habitual de Luis" (para armar frases). */
 function baseLabel(source: BaseSource): string {
-  if (source.kind === "order") return `el pedido #${source.id}`;
+  if (source.kind === "order") return `el pedido ${formatOrderCode(source.id)}`;
   if (source.kind === "template") return `la plantilla «${source.name}»`;
   return `lo habitual de ${source.name}`;
 }
 
 /** Meta de las secciones precargadas. */
 function baseMeta(source: BaseSource): string {
-  if (source.kind === "order") return `Como el pedido #${source.id}`;
+  if (source.kind === "order") return `Como el pedido ${formatOrderCode(source.id)}`;
   if (source.kind === "template") return `Plantilla «${source.name}»`;
   return "Lo habitual";
 }
 
-/** "Del pedido #88" / "De la plantilla «X»" / "De lo habitual de Luis" (comienzo de frase). */
+/** "Del pedido EMD-P0088" / "De la plantilla «X»" / "De lo habitual de Luis" (comienzo de frase). */
 function baseOrigin(source: BaseSource): string {
-  if (source.kind === "order") return `Del pedido #${source.id}`;
+  if (source.kind === "order") return `Del pedido ${formatOrderCode(source.id)}`;
   if (source.kind === "template") return `De la plantilla «${source.name}»`;
   return `De lo habitual de ${source.name}`;
 }
@@ -901,7 +902,7 @@ export function CreateOrderDialog({
       })
       .catch(() => {
         if (requestId === baseRequestRef.current) {
-          toast.error(`No se pudo copiar la hoja de materiales del pedido #${order.id}.`);
+          toast.error(`No se pudo copiar la hoja de materiales del pedido ${formatOrderCode(order.id)}.`);
         }
       })
       .finally(() => {
@@ -1563,7 +1564,7 @@ export function CreateOrderDialog({
                                       <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm">{describeOrderProducts(o.orderProducts)}</p>
                                         <p className="truncate text-meta tabular-nums">
-                                          {[`#${o.id}`, when, route].filter(Boolean).join(" · ")}
+                                          {[formatOrderCode(o.id), when, route].filter(Boolean).join(" · ")}
                                         </p>
                                       </div>
                                       {inUse ? (
@@ -1586,7 +1587,7 @@ export function CreateOrderDialog({
                                           size="sm"
                                           className={cn("shrink-0 gap-1.5", TAP)}
                                           disabled={!hasProducts}
-                                          aria-label={`Usar el pedido #${o.id} como base`}
+                                          aria-label={`Usar el pedido ${formatOrderCode(o.id)} como base`}
                                           onClick={() => applyBase(o, base?.snapshot ?? takeSnapshot())}
                                         >
                                           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
@@ -2059,7 +2060,7 @@ export function CreateOrderDialog({
                           id="order-description"
                           hint={
                             base && base.kind !== "suggestion" && !descriptionTouched && description
-                              ? `${base.kind === "order" ? `Copiada del pedido #${base.id}` : baseOrigin(base)}: ajusta lo que cambia esta vez.`
+                              ? `${base.kind === "order" ? `Copiada del pedido ${formatOrderCode(base.id)}` : baseOrigin(base)}: ajusta lo que cambia esta vez.`
                               : undefined
                           }
                           error={errors.description}

@@ -405,7 +405,7 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await fillDirectOrder();
     await submit();
     const [message, options] = toastSuccess.mock.calls[0];
-    expect(message).toBe("Pedido #123 enviado a Taller");
+    expect(message).toBe("Pedido EMD-P0123 enviado a Taller");
     expect(options.action.label).toBe("Crear otro para Juan Pérez");
     options.action.onClick();
     expect(onCreateAnother).toHaveBeenCalledWith(undefined, "Juan Pérez");
@@ -502,12 +502,12 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
     expect(screen.getByText("Pedidos anteriores")).toBeInTheDocument();
     expect(screen.getByText("Figuras ×20")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
+    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido EMD-P0041 como base" }));
 
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
     expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras para el festival de primavera");
-    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
+    expect(screen.getByText("Como el pedido EMD-P0041")).toBeInTheDocument();
     expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
     expect(requestMock).toHaveBeenCalledWith("orders/41/materials", { token: "token" });
     // La fecha no se repite.
@@ -542,7 +542,7 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
     renderDialog();
 
     await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
-    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
+    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido EMD-P0041 como base" }));
     expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /Quitar base/ }));
@@ -550,7 +550,7 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
     expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
     expect(screen.getByLabelText("Descripción")).toHaveValue("");
     expect(screen.queryByText("Vinil impreso sobre coroplast")).toBeNull();
-    expect(screen.getByRole("button", { name: "Usar el pedido #41 como base" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Usar el pedido EMD-P0041 como base" })).toBeInTheDocument();
   });
 
   it("«Repetir pedido» abre con el cliente y el pedido como base", async () => {
@@ -560,7 +560,7 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
 
     expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
-    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
+    expect(screen.getByText("Como el pedido EMD-P0041")).toBeInTheDocument();
   });
 });
 

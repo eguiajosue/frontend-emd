@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
@@ -355,7 +356,7 @@ const AdminDashboardPage = () => {
   type OrderRow = { order: Order; timeInStatusMs: number };
 
   const trackingColumns: ColumnDef<OrderRow>[] = [
-    { id: "id", header: "ID", cell: ({ row }) => `#${row.original.order.id}` },
+    { id: "id", header: "ID", cell: ({ row }) => `${formatOrderCode(row.original.order.id)}` },
     {
       id: "client",
       header: "Cliente",
@@ -411,7 +412,7 @@ const AdminDashboardPage = () => {
   ];
 
   const stagnantColumns: ColumnDef<(typeof stagnantOrders)[number]>[] = [
-    { id: "id", header: "Pedido", cell: ({ row }) => `#${row.original.order.id}` },
+    { id: "id", header: "Pedido", cell: ({ row }) => `${formatOrderCode(row.original.order.id)}` },
     {
       id: "client",
       header: "Cliente",

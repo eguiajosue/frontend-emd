@@ -195,7 +195,7 @@ describe("Inicio de Producción", () => {
       "Sin empezar1",
       "En curso1",
     ]);
-    await userEvent.click(within(queue).getByRole("button", { name: "Terminar: pedido #10" }));
+    await userEvent.click(within(queue).getByRole("button", { name: "Terminar: pedido EMD-P0010" }));
     expect(mocks.advance).toHaveBeenLastCalledWith(expect.objectContaining({ taskId: 1 }), "terminado");
 
     expect(screen.getByRole("region", { name: /Llegan de Diseño/ })).toBeInTheDocument();

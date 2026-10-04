@@ -73,6 +73,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ordersScreenCopy } from "@/lib/orderScreen";
+import { formatOrderCode } from "@/lib/orderCode";
 import { TASKS_URL } from "@/lib/navMenu";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
@@ -455,7 +456,7 @@ const OrdersPage = () => {
     }
 
     const rows = visibleOrders.map((order) => ({
-      ID: order.id,
+      Código: formatOrderCode(order.id),
       Cliente: getOrderClientName(order),
       Descripción: order.description,
       Estado: (statusMap[order.statusId] || "desconocido").toUpperCase(),

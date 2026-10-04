@@ -11,3 +11,4 @@ export * from "./queryKeys";
 export * from "./session";
 export * from "./hooks/usePermissionsFromSession";
 export * from "./hooks/useOrderDetail";
+export * from "./orderCode";

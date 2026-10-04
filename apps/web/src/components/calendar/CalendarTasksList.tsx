@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ListChecks, Package, Pencil, Plus, Trash2 } from "lucide-react";
@@ -97,7 +98,7 @@ export function CalendarTasksList() {
         {task.orderId && (
           <Badge variant="muted" className="mt-1.5 rounded-full border-transparent bg-card px-2 py-0">
             <Package className="h-3 w-3" aria-hidden />
-            Pedido #{task.orderId}
+            Pedido {formatOrderCode(task.orderId)}
           </Badge>
         )}
       </div>

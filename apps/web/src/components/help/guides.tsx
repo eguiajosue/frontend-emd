@@ -83,7 +83,7 @@ export const GUIDES: Record<GuideKey, Guide> = {
               ["Esperando al cliente", 5],
               ["Listos para entregar", 3],
             ]}
-            next="#128 · Bordados SA · listo para entregar"
+            next="EMD-P0128 · Bordados SA · listo para entregar"
           />
         ),
       },
@@ -156,7 +156,7 @@ export const GUIDES: Record<GuideKey, Guide> = {
               ["Nuevos sin empezar", 4],
               ["Esperando al cliente", 2],
             ]}
-            next="#131 · Escuela Norte · Abrir y empezar"
+            next="EMD-P0131 · Escuela Norte · Abrir y empezar"
           />
         ),
       },
@@ -199,7 +199,7 @@ export const GUIDES: Record<GuideKey, Guide> = {
               ["Por vencer", 3],
               ["Sin empezar", 4],
             ]}
-            next="#131 · Bordado · Tomar y empezar"
+            next="EMD-P0131 · Bordado · Tomar y empezar"
           />
         ),
       },

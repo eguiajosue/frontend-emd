@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HistorialPage from "./page";
 
@@ -9,6 +9,7 @@ vi.mock("@/hooks/useOrders", () => ({
   downloadOrdersExport: vi.fn(),
 }));
 vi.mock("@/hooks/useEntity", () => ({
+  CATALOG_STALE_TIME: 0,
   useAuthToken: () => "token",
   useEntityList: () => ({ data: [{ id: 4, first_name: "Ana", last_name: "Pérez" }] }),
 }));
@@ -30,21 +31,14 @@ beforeEach(() => {
 const lastFilters = () => historyMock.mock.calls.at(-1)?.[2];
 
 describe("HistorialPage filtros", () => {
-  it("filtra por cliente y por rango de entrega (día completo)", async () => {
+  it("filtra por cliente, muestra el vacío propio y «Limpiar filtros» vuelve a todo", async () => {
     render(<HistorialPage />);
     await userEvent.click(screen.getByRole("combobox", { name: "Filtrar por cliente" }));
     await userEvent.click(await screen.findByText("Ana Pérez"));
     expect(lastFilters()).toMatchObject({ clientId: 4 });
+    expect(screen.getByText("Ningún pedido coincide con la búsqueda")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Entrega desde"), { target: { value: "2026-10-01" } });
-    fireEvent.change(screen.getByLabelText("Entrega hasta"), { target: { value: "2026-10-31" } });
-    expect(lastFilters()).toMatchObject({
-      deliveryFrom: new Date("2026-10-01T00:00:00").toISOString(),
-      deliveryTo: new Date("2026-10-31T23:59:59.999").toISOString(),
-    });
-    expect(screen.getByText("Sin pedidos con estos filtros")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
-    expect(Object.values(lastFilters()).every((v) => v === undefined)).toBe(true);
+    await userEvent.click(screen.getAllByRole("button", { name: "Limpiar filtros" })[0]);
+    expect(lastFilters()).toEqual({});
   });
 });

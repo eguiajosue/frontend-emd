@@ -64,7 +64,7 @@ describe("CommandPalette", () => {
 
     await userEvent.clear(screen.getByPlaceholderText(/Buscar pantalla/));
     await userEvent.type(screen.getByPlaceholderText(/Buscar pantalla/), "cruz");
-    await userEvent.click(screen.getByRole("option", { name: /#42/ }));
+    await userEvent.click(screen.getByRole("option", { name: /EMD-P0042/ }));
     expect(push).toHaveBeenCalledWith("/dashboard/orders?openOrderId=42");
   });
 

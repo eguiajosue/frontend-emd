@@ -1,3 +1,4 @@
+import { formatOrderCode } from "@/lib/orderCode";
 // Tipos de notificación emitidos por el backend (ver
 // backend-emd/src/order/order.service.ts y notifications.gateway.ts) y su
 // presentación en el panel de notificaciones: cada tipo tiene su propia
@@ -159,9 +160,9 @@ export interface OrderStatusChangedPayload {
 /**
  * Texto en español del cambio de estado, equivalente al `body` que persiste
  * el backend, para renderizar la notificación que llega en vivo por WS.
- * Ej: `Ana cambió el estado del pedido #123 de "en diseño" a "terminado"`.
+ * Ej: `Ana cambió el estado del pedido EMD-P0123 de "en diseño" a "terminado"`.
  */
 export const formatOrderStatusChanged = (
   payload: OrderStatusChangedPayload,
 ): string =>
-  `${payload.changedByUsername} cambió el estado del pedido #${payload.orderId} de "${payload.previousStatus}" a "${payload.newStatus}"`;
+  `${payload.changedByUsername} cambió el estado del pedido ${formatOrderCode(payload.orderId)} de "${payload.previousStatus}" a "${payload.newStatus}"`;

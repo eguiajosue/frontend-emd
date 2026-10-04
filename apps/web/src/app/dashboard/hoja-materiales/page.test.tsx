@@ -56,9 +56,9 @@ describe("HojaMaterialesPage", () => {
   it("sólo lista pedidos activos (ni entregados ni cancelados)", () => {
     render(<HojaMaterialesPage />);
 
-    expect(screen.getByText(/Pedido #1/)).toBeInTheDocument();
-    expect(screen.queryByText(/Pedido #2/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Pedido #3/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Pedido EMD-P0001/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pedido EMD-P0002/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Pedido EMD-P0003/)).not.toBeInTheDocument();
   });
 
   it("filtra por texto de búsqueda (cliente o número de pedido)", async () => {
@@ -70,14 +70,14 @@ describe("HojaMaterialesPage", () => {
       "Treviño"
     );
 
-    expect(screen.queryByText(/Pedido #1/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Pedido #4/)).toBeInTheDocument();
+    expect(screen.queryByText(/Pedido EMD-P0001/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Pedido EMD-P0004/)).toBeInTheDocument();
   });
 
   it("al hacer click en un pedido, se despliega su checklist de materiales", async () => {
     render(<HojaMaterialesPage />);
 
-    await userEvent.click(screen.getByRole("button", { name: /^Pedido #1/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Pedido EMD-P0001/i }));
 
     expect(screen.getByText("Todavía no se cargó ningún material.")).toBeInTheDocument();
   });
@@ -97,8 +97,8 @@ describe("HojaMaterialesPage", () => {
     ];
     render(<HojaMaterialesPage />);
 
-    const names = screen.getAllByText(/^Pedido #\d+$/).map((el) => el.textContent);
-    expect(names).toEqual(["Pedido #30", "Pedido #10", "Pedido #20"]);
+    const names = screen.getAllByText(/^Pedido EMD-P\d+$/).map((el) => el.textContent);
+    expect(names).toEqual(["Pedido EMD-P0030", "Pedido EMD-P0010", "Pedido EMD-P0020"]);
   });
 
   it("muestra el asa de arrastre cuando se puede administrar y no hay búsqueda", () => {

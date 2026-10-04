@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -301,7 +302,7 @@ export function CalendarEventDialog({
                   .map((order) => (
                     <SelectItem key={order.id} value={String(order.id)}>
                       <span className="truncate">
-                        #{order.id} · {order.description}
+                        {formatOrderCode(order.id)} · {order.description}
                       </span>
                     </SelectItem>
                   ))}

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode, matchesOrderCode } from "@/lib/orderCode";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -215,7 +216,7 @@ export function CommandPalette() {
         (o) =>
           getOrderClientName(o).toLowerCase().includes(query) ||
           o.description?.toLowerCase().includes(query) ||
-          String(o.id).includes(query)
+          matchesOrderCode(query, o.id)
       )
       .slice(0, 8);
   }, [orders, query]);
@@ -338,7 +339,7 @@ export function CommandPalette() {
                 {matchingOrders.length > 0 && (
                   <CommandGroup heading="Pedidos">
                     {matchingOrders.map((order) => {
-                      const label = `#${order.id} · ${getOrderClientName(order)} — ${order.description}`;
+                      const label = `${formatOrderCode(order.id)} · ${getOrderClientName(order)} — ${order.description}`;
                       return (
                         <CommandItem
                           key={order.id}

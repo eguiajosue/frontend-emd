@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   CalendarDays,
@@ -108,7 +109,7 @@ function NextUp({
       <div className="min-w-0 space-y-1">
         <p className="font-heading text-xl font-semibold leading-snug">{productsLine(item.products)}</p>
         <p className="truncate text-sm text-muted-foreground">
-          <span className="tabular-nums">#{item.id}</span> · {item.clientName}
+          <span className="tabular-nums">{formatOrderCode(item.id)}</span> · {item.clientName}
           {item.description ? ` · ${item.description}` : ""}
         </p>
       </div>
@@ -261,11 +262,11 @@ export function ProductionHome({
                                         type="button"
                                         onClick={() => setOpenOrderId(item.id)}
                                         className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                                        aria-label={`Ver pedido #${item.id} de ${item.clientName}`}
+                                        aria-label={`Ver pedido ${formatOrderCode(item.id)} de ${item.clientName}`}
                                       >
                                         <span className="block truncate text-sm font-medium">{productsLine(item.products)}</span>
                                         <span className="block truncate text-meta">
-                                          <span className="tabular-nums">#{item.id}</span> · {item.clientName} ·{" "}
+                                          <span className="tabular-nums">{formatOrderCode(item.id)}</span> · {item.clientName} ·{" "}
                                           {AreaIcon && <AreaIcon className="inline h-3 w-3 align-[-1px]" aria-hidden />} {getAreaLabel(item.area)} ·{" "}
                                           {dueText(item.deliveryDate, now)} · {whoLine(item)}
                                         </span>
@@ -278,7 +279,7 @@ export function ProductionHome({
                                       className="shrink-0 gap-1.5"
                                       onClick={() => run(item)}
                                       disabled={busy}
-                                      aria-label={`${action.label}: pedido #${item.id}`}
+                                      aria-label={`${action.label}: pedido ${formatOrderCode(item.id)}`}
                                     >
                                       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ActionIcon className="h-3.5 w-3.5" />}
                                       {action.label}
@@ -337,7 +338,7 @@ export function ProductionHome({
                         >
                           <span className="block truncate text-sm font-medium">{productsLine(order.products)}</span>
                           <span className="block truncate text-meta">
-                            #{order.id} · {order.clientName} · {order.designStatus} · {dueText(order.deliveryDate, now)}
+                            {formatOrderCode(order.id)} · {order.clientName} · {order.designStatus} · {dueText(order.deliveryDate, now)}
                           </span>
                         </button>
                       </li>

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { memo } from "react";
 import { ArrowRight, CalendarDays, CheckCircle2, Loader2, Play, RotateCcw, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -78,7 +79,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
         variant="bare"
         size="bare"
         onClick={() => onOpen(task.order.id)}
-        aria-label={`Ver pedido #${task.order.id} de ${clientName(task)}`}
+        aria-label={`Ver pedido ${formatOrderCode(task.order.id)} de ${clientName(task)}`}
         className="absolute inset-0 z-0 rounded-2xl"
       />
 
@@ -119,7 +120,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
             {task.order.description || "Sin descripción"}
           </h3>
           <p className="truncate text-sm text-muted-foreground">
-            <span className="tabular-nums">#{task.order.id}</span> · {clientName(task)}
+            <span className="tabular-nums">{formatOrderCode(task.order.id)}</span> · {clientName(task)}
           </p>
         </div>
 

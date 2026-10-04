@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -79,7 +80,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
         <CardContent className="density-card space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-            <span className="text-xs font-medium tabular-nums text-muted-foreground">#{order.id}</span>
+            <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatOrderCode(order.id)}</span>
           </div>
 
           <div className="min-w-0 space-y-1">

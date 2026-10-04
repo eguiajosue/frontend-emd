@@ -56,7 +56,7 @@ describe("CalendarTaskDialog", () => {
 
     await userEvent.type(screen.getByLabelText(/Qué hay que hacer/), "Confirmar medidas");
     await userEvent.click(screen.getByLabelText(/^Pedido/i));
-    await userEvent.click(await screen.findByRole("option", { name: /#42/i }));
+    await userEvent.click(await screen.findByRole("option", { name: /EMD-P0042/i }));
     await userEvent.click(screen.getByRole("button", { name: /Crear tarea/i }));
 
     expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ orderId: 42 }));

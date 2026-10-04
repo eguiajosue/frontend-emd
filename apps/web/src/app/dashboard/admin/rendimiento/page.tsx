@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { ColumnDef } from "@tanstack/react-table";
@@ -225,7 +226,7 @@ const RendimientoPage = () => {
                           <ul className="space-y-1 text-xs text-muted-foreground">
                             {group.orders.slice(0, 5).map((o) => (
                               <li key={o.id} className="truncate">
-                                #{o.id} · {getOrderClientName(o)}
+                                {formatOrderCode(o.id)} · {getOrderClientName(o)}
                               </li>
                             ))}
                             {group.orders.length > 5 && (

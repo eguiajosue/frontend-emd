@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -55,7 +56,7 @@ function actionLabel(item: DesignWorkItem): string {
 function Meta({ item, now }: { item: DesignWorkItem; now: number }) {
   return (
     <span className="block truncate text-meta">
-      <span className="tabular-nums">#{item.id}</span> · {item.clientName}
+      <span className="tabular-nums">{formatOrderCode(item.id)}</span> · {item.clientName}
       {item.round > 0 ? ` · ronda ${item.round + (isChangesRequested(item.status) ? 1 : 0)}` : ""}
       {item.areas.length > 0 ? ` · luego ${item.areas.map((a) => getAreaLabel(a)).join(", ")}` : ""} ·{" "}
       {dueText(item.deliveryDate, now)} · {whoLine(item)}
@@ -74,7 +75,7 @@ function NextUp({ entry, now, onOpen }: { entry: Prioritized<DesignWorkItem>; no
       <div className="min-w-0 space-y-1">
         <p className="font-heading text-xl font-semibold leading-snug">{productsLine(item.products)}</p>
         <p className="line-clamp-2 text-sm text-muted-foreground">
-          <span className="tabular-nums">#{item.id}</span> · {item.clientName}
+          <span className="tabular-nums">{formatOrderCode(item.id)}</span> · {item.clientName}
           {item.description ? ` · ${item.description}` : ""}
         </p>
       </div>
@@ -205,7 +206,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                                       type="button"
                                       onClick={() => setOpenOrderId(item.id)}
                                       className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                                      aria-label={`Ver pedido #${item.id} de ${item.clientName}`}
+                                      aria-label={`Ver pedido ${formatOrderCode(item.id)} de ${item.clientName}`}
                                     >
                                       <span className="block truncate text-sm font-medium">{productsLine(item.products)}</span>
                                       <Meta item={item} now={now} />
@@ -251,7 +252,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                             className="block w-full px-4 py-2.5 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                           >
                             <span className="block truncate text-sm font-medium">
-                              #{item.id} · {item.clientName}
+                              {formatOrderCode(item.id)} · {item.clientName}
                             </span>
                             <span className="block truncate text-meta">
                               Ronda {item.round || 1} enviada {relativeTo(item.lastSentAt ?? item.availableSince, now)} ·{" "}

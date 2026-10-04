@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { useMemo, useState } from "react";
 import { ArrowRight, ChevronDown, CloudOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -209,7 +210,7 @@ export function OrderProgressPanel({
           setConfirmCancelOpen(false);
           void move(orderWithTasks, CANCELLED_STATUS_ID);
         }}
-        title={`¿Cancelar el pedido #${order.id}?`}
+        title={`¿Cancelar el pedido ${formatOrderCode(order.id)}?`}
         description="Sale del tablero y deja de avisar a las áreas. Se puede volver a activar cambiando el estado."
         confirmLabel="Cancelar pedido"
         cancelLabel="Volver"
@@ -222,7 +223,7 @@ export function OrderProgressPanel({
           setConfirmForceOpen(false);
           void forceFinish(order, tasks);
         }}
-        title={`¿Marcar el pedido #${order.id} como listo para entregar?`}
+        title={`¿Marcar el pedido ${formatOrderCode(order.id)} como listo para entregar?`}
         description={`${
           unfinishedTasks.length === 1
             ? `${getAreaLabel(unfinishedTasks[0].area)} todavía no terminó`

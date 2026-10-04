@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { createContext, useEffect, useRef, type RefObject } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -163,7 +164,7 @@ export function useSocket() {
       invalidateOrders();
       if (isAdmin) {
         toast.info("Nuevo pedido creado", {
-          description: `Pedido #${order.id}${
+          description: `Pedido ${formatOrderCode(order.id)}${
             order.clientName ? ` de ${order.clientName}` : ""
           }${order.createdBy ? ` creado por ${order.createdBy}` : ""}`,
         });
@@ -172,7 +173,7 @@ export function useSocket() {
       // Llega a esta room (área/rol) porque el pedido se creó sin asignar a
       // nadie en particular y corresponde al área del usuario actual.
       showHighlightedOrderToast(
-        `Nuevo pedido #${order.id} en tu área`,
+        `Nuevo pedido ${formatOrderCode(order.id)} en tu área`,
         { clientName: order.clientName },
         order.id
       );
@@ -182,8 +183,8 @@ export function useSocket() {
       invalidateOrders();
       const title =
         order.reason === "design_montage_sent"
-          ? `Hoja de autorización lista: pedido #${order.orderId}`
-          : `Nuevo pedido asignado: #${order.orderId}`;
+          ? `Hoja de autorización lista: pedido ${formatOrderCode(order.orderId)}`
+          : `Nuevo pedido asignado: ${formatOrderCode(order.orderId)}`;
       showHighlightedOrderToast(
         title,
         {
@@ -200,7 +201,7 @@ export function useSocket() {
       const statusLabel = order.status
         ? statusMap[Number(order.status)] || order.status
         : "desconocido";
-      toast.info(`Pedido #${order.id} actualizado`, {
+      toast.info(`Pedido ${formatOrderCode(order.id)} actualizado`, {
         description: `Nuevo estado: ${statusLabel}`,
       });
     };

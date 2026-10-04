@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useState, type ReactNode } from "react";
@@ -250,7 +251,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
                               </span>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">
-                                  <span className="tabular-nums text-muted-foreground">#{item.id}</span> {item.clientName}
+                                  <span className="tabular-nums text-muted-foreground">{formatOrderCode(item.id)}</span> {item.clientName}
                                   <span className="font-normal text-muted-foreground"> · {productsLine(item.products)}</span>
                                 </p>
                                 <p className="truncate text-meta">{attentionText(item.reason, item.since, now)}</p>

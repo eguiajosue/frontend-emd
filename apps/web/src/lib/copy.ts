@@ -1,3 +1,4 @@
+import { formatOrderCode } from "@/lib/orderCode";
 /**
  * Micro-copy con variantes para las acciones MÁS frecuentes de la app
  * (crear pedido, cambiar estado). Rotar entre 2-3 frases con el mismo
@@ -23,15 +24,15 @@ const ORDER_CREATED_VARIANTS = [
  */
 export function orderCreatedMessage(details?: { id?: number; destination?: string }): string {
   if (details?.id && details.destination) {
-    return `Pedido #${details.id} enviado a ${details.destination}`;
+    return `Pedido ${formatOrderCode(details.id)} enviado a ${details.destination}`;
   }
   return pickVariant(ORDER_CREATED_VARIANTS);
 }
 
 const ORDER_STATUS_UPDATED_VARIANTS = (orderId: number) => [
-  `Pedido #${orderId} actualizado`,
-  `Pedido #${orderId} avanzó de estado`,
-  `Listo, pedido #${orderId} al día`,
+  `Pedido ${formatOrderCode(orderId)} actualizado`,
+  `Pedido ${formatOrderCode(orderId)} avanzó de estado`,
+  `Listo, pedido ${formatOrderCode(orderId)} al día`,
 ];
 
 export function orderStatusUpdatedMessage(orderId: number): string {

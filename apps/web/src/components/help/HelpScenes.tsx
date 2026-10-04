@@ -1,5 +1,6 @@
 "use client";
 
+import { formatOrderCode } from "@/lib/orderCode";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
@@ -56,18 +57,18 @@ export function NewOrderScene() {
           {p >= 4 && (
             <motion.div key="new" {...pop}>
               <Row className="ring-1 ring-primary/40">
-                <span>#131 · Bordados SA</span>
+                <span>EMD-P0131 · Bordados SA</span>
                 <Pill tone="amber">pendiente</Pill>
               </Row>
             </motion.div>
           )}
         </AnimatePresence>
         <Row>
-          <span>#130 · Escuela Norte</span>
+          <span>EMD-P0130 · Escuela Norte</span>
           <Pill tone="blue">en proceso</Pill>
         </Row>
         <Row>
-          <span>#129 · Café Luna</span>
+          <span>EMD-P0129 · Café Luna</span>
           <Pill tone="green">terminado</Pill>
         </Row>
       </div>
@@ -249,7 +250,7 @@ export function ClientReplyScene() {
   const p = useScenePhase(6, 1300);
   const changes = p <= 2;
   return (
-    <Screen title="Pedido #131 · Proceso de diseño">
+    <Screen title="Pedido EMD-P0131 · Proceso de diseño">
       <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 p-2">
         <FileImage className="h-6 w-6 text-muted-foreground" />
         <div className="flex-1">
@@ -300,7 +301,7 @@ export function DeliverScene() {
     <Screen title="Pedidos">
       <div className="space-y-1.5">
         <Row className={cn(p === 1 && "ring-1 ring-primary/40")}>
-          <span>#128 · Bordados SA</span>
+          <span>EMD-P0128 · Bordados SA</span>
           <span className="flex items-center gap-1.5">
             <AnimatePresence mode="wait">
               {delivered ? (
@@ -321,7 +322,7 @@ export function DeliverScene() {
           </span>
         </Row>
         <Row>
-          <span>#127 · Café Luna</span>
+          <span>EMD-P0127 · Café Luna</span>
           <Pill tone="blue">en proceso</Pill>
         </Row>
       </div>
@@ -336,7 +337,7 @@ export function DeliverScene() {
 export function UploadMontageScene() {
   const p = useScenePhase(5);
   return (
-    <Screen title="Pedido #131 · Proceso de diseño">
+    <Screen title="Pedido EMD-P0131 · Proceso de diseño">
       <div
         className={cn(
           "mb-2 flex h-16 items-center justify-center rounded-lg border-2 border-dashed border-border text-[11px] text-muted-foreground transition-colors",
@@ -381,7 +382,7 @@ export function UploadMontageScene() {
 export function RoundsScene() {
   const p = useScenePhase(4, 1500);
   return (
-    <Screen title="Pedido #131 · Rondas de montaje">
+    <Screen title="Pedido EMD-P0131 · Rondas de montaje">
       <div className="space-y-1.5">
         <Row>
           <span>Ronda 1</span>
@@ -423,7 +424,7 @@ export function TakeTaskScene({ area = "Bordado" }: { area?: string }) {
     <motion.div layoutId="task-card" transition={SPRING_DEFAULT}>
       <Row className="bg-card ring-1 ring-border">
         <span>
-          #131 · {area} · <span className="text-muted-foreground">entrega mañana</span>
+          EMD-P0131 · {area} · <span className="text-muted-foreground">entrega mañana</span>
         </span>
         {!mine ? (
           <FakeButton pressed={p === 1}>Tomar y empezar</FakeButton>
@@ -461,7 +462,7 @@ export function AreasProgressScene() {
     { name: "DTF", value: Math.min(100, p * 26) },
   ];
   return (
-    <Screen title="Pedido #131 · Áreas de producción">
+    <Screen title="Pedido EMD-P0131 · Áreas de producción">
       <div className="space-y-2.5">
         {areas.map((a) => (
           <div key={a.name}>
@@ -534,7 +535,7 @@ export function ChatScene() {
               <span className="max-w-[80%] rounded-2xl rounded-br-md bg-primary px-3 py-1.5 text-primary-foreground">
                 ¿Cómo va este?
                 <span className="mt-1 flex items-center gap-1 rounded-md bg-primary-foreground/15 px-1.5 py-0.5 text-[10px]">
-                  <Paperclip className="h-2.5 w-2.5" /> Pedido #131 · Escuela Norte
+                  <Paperclip className="h-2.5 w-2.5" /> Pedido EMD-P0131 · Escuela Norte
                 </span>
               </span>
             </motion.div>
@@ -577,7 +578,7 @@ export function NotificationsScene() {
           <motion.div key="panel" {...pop} className="ml-auto mt-2 w-[85%] space-y-1.5 rounded-xl border border-border bg-card p-2 shadow-lg">
             <p className="font-semibold">Notificaciones</p>
             <Row className="bg-primary/5">
-              <span>Nuevo pedido #131 para Bordado</span>
+              <span>Nuevo pedido EMD-P0131 para Bordado</span>
               <span className="h-1.5 w-1.5 rounded-full bg-primary" />
             </Row>
           </motion.div>
@@ -604,7 +605,7 @@ export function CalendarScene() {
         {days.map((d) => (
           <div key={d} className="h-9 rounded-md bg-card p-0.5 ring-1 ring-border/60 text-[9px] text-muted-foreground">
             {d}
-            {d === 4 && <div className="mt-0.5 truncate rounded bg-emerald-500/20 px-0.5 text-emerald-700 dark:text-emerald-300">#131</div>}
+            {d === 4 && <div className="mt-0.5 truncate rounded bg-emerald-500/20 px-0.5 text-emerald-700 dark:text-emerald-300">EMD-P0131</div>}
             <AnimatePresence>
               {d === 9 && p >= 2 && (
                 <motion.div key="ev" {...pop} className="mt-0.5 truncate rounded bg-violet-500/20 px-0.5 text-violet-700 dark:text-violet-300">
@@ -643,7 +644,7 @@ export function HistoryFiltersScene() {
             <motion.div key={r.id} layout {...pop}>
               <Row>
                 <span>
-                  #{r.id} · {r.client}
+                  {formatOrderCode(r.id)} · {r.client}
                 </span>
                 <Pill>{r.area}</Pill>
               </Row>
@@ -681,7 +682,7 @@ export function InventoryScene() {
       <AnimatePresence>
         {p >= 2 && (
           <motion.p key="mv" {...pop} className="mt-2 text-[11px] text-muted-foreground">
-            Salida de 12 · Pedido #131 · registrada en el historial
+            Salida de 12 · Pedido EMD-P0131 · registrada en el historial
           </motion.p>
         )}
       </AnimatePresence>
@@ -751,7 +752,7 @@ export function AdminPanelScene() {
         {p >= 2 && (
           <motion.div key="alert" {...pop} className="mt-2.5">
             <Row>
-              <span>#118 lleva 3 días en Diseño</span>
+              <span>EMD-P0118 lleva 3 días en Diseño</span>
               <Pill tone="red">Estancado</Pill>
             </Row>
           </motion.div>
