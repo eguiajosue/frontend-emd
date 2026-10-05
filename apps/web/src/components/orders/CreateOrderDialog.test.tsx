@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within, act } from "@testing-library/react";
+import { render, screen, within, act, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateOrderDialog } from "./CreateOrderDialog";
 
@@ -84,6 +84,34 @@ vi.mock("sonner", () => ({
     error: (...args: unknown[]) => toastError(...args),
     warning: vi.fn(),
   },
+}));
+
+// El estudio 3D real no corre en jsdom: un stub que "agrega" un mockup listo.
+const STUDIO_RESULT = {
+  image: { dataUrl: "data:image/png;base64,MOCKUP", width: 1600, height: 800 },
+  config: { garment: "tshirt", colors: { body: "#ffffff" }, layers: [] },
+};
+vi.mock("@/components/mockups/MockupStudioDialog", () => ({
+  MockupStudioDialog: ({
+    open,
+    onAttach,
+    onOpenChange,
+  }: {
+    open: boolean;
+    onAttach: (r: typeof STUDIO_RESULT) => void;
+    onOpenChange: (open: boolean) => void;
+  }) =>
+    open ? (
+      <button
+        type="button"
+        onClick={() => {
+          onAttach(STUDIO_RESULT);
+          onOpenChange(false);
+        }}
+      >
+        Agregar mockup de prueba
+      </button>
+    ) : null,
 }));
 
 const DESIGN_SHARED = {
@@ -822,5 +850,99 @@ describe("CreateOrderDialog: lo aprendido del cliente", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Usar .*, 14:00$/ }));
     expect(screen.getByRole("radio", { name: "En 1 semana" })).toHaveAttribute("data-state", "on");
     expect(screen.queryByText(/suele pedir con 7 días/)).toBeNull();
+  });
+});
+
+describe("CreateOrderDialog · mockups 3D", () => {
+  const MOCKUP_BODY = {
+    garment: "tshirt",
+    imageDataUrl: "data:image/png;base64,MOCKUP",
+    config: STUDIO_RESULT.config,
+  };
+  const mockupCalls = () =>
+    requestMock.mock.calls.filter(([path]) => String(path).endsWith("/123/mockups"));
+
+  async function addMockup() {
+    await userEvent.click(screen.getByRole("button", { name: "Crear mockup" }));
+    // El stub vive fuera del diálogo modal (Radix lo oculta y le quita los clics).
+    fireEvent.click(screen.getByRole("button", { name: "Agregar mockup de prueba", hidden: true }));
+  }
+
+  it("el mockup queda pendiente (se puede quitar) y se sube al pedido después de crearlo", async () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    await fillDirectOrder();
+    await addMockup();
+    await addMockup();
+    const list = screen.getByRole("list", { name: "Mockups para el pedido" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
+    await userEvent.click(screen.getByRole("button", { name: "Quitar mockup 2" }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(requestMock).not.toHaveBeenCalled();
+
+    await submit();
+    expect(createMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(mockupCalls()).toHaveLength(1));
+    expect(mockupCalls()[0][1]).toMatchObject({ method: "POST", token: "token", body: MOCKUP_BODY });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("si subir el mockup falla, el pedido igual se crea y el toast trae Reintentar con el mismo cuerpo", async () => {
+    const onClose = vi.fn();
+    const onCreated = vi.fn();
+    requestMock.mockImplementation((path: string) =>
+      String(path).endsWith("/mockups")
+        ? Promise.reject(new Error("Fallo de red"))
+        : Promise.resolve([])
+    );
+    renderDialog({ onClose, onCreated });
+    await fillDirectOrder();
+    await addMockup();
+    await submit();
+
+    // El pedido no se bloquea ni se revierte.
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onCreated).toHaveBeenCalledWith({ id: 123 });
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    const [message, options] = toastError.mock.calls[0] as [
+      string,
+      { description: string; action: { label: string; onClick: () => void } },
+    ];
+    expect(message).toBe("El pedido #123 se creó, pero no se pudo adjuntar el mockup.");
+    expect(options.description).toBe("Fallo de red");
+    expect(options.action.label).toBe("Reintentar");
+
+    requestMock.mockResolvedValue({ id: 9 });
+    options.action.onClick();
+    await vi.waitFor(() => expect(mockupCalls()).toHaveLength(2));
+    expect(mockupCalls()[1][1]).toMatchObject({ method: "POST", body: MOCKUP_BODY });
+    await vi.waitFor(() =>
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["orderMockups", 123], exact: true })
+    );
+    expect(toastError).toHaveBeenCalledTimes(1);
+  });
+
+  it("un mockup demasiado pesado (413) lo explica en el toast", async () => {
+    const { ApiError } = await import("@/lib/api");
+    requestMock.mockImplementation((path: string) =>
+      String(path).endsWith("/mockups")
+        ? Promise.reject(new ApiError("Payload Too Large", 413))
+        : Promise.resolve([])
+    );
+    renderDialog();
+    await fillDirectOrder();
+    await addMockup();
+    await submit();
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledTimes(1));
+    expect((toastError.mock.calls[0][1] as { description: string }).description).toMatch(/máximo 8 MB/);
+  });
+
+  it("sin mockups no se hace ningún POST extra", async () => {
+    renderDialog();
+    await fillDirectOrder();
+    await submit();
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(requestMock.mock.calls.filter(([path]) => String(path).includes("mockups"))).toHaveLength(0);
   });
 });
