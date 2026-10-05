@@ -7,8 +7,12 @@
  * nunca pasa por Playwright. Así que se levanta un backend mínimo y se apunta
  * `NEXT_PUBLIC_BACKEND_URL` acá.
  *
- * Sólo implementa lo que los tres flujos tocan. Cualquier otra ruta devuelve
+ * Sólo implementa lo que los flujos tocan. Cualquier otra ruta devuelve
  * una lista vacía, que es lo que la app espera de un catálogo sin datos.
+ *
+ * Rutas sólo para los tests (no existen en el backend real):
+ * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
+ * - `POST /__e2e/reset`:   vacía el almacén de mockups.
  */
 import { createServer } from "node:http";
 
@@ -69,24 +73,46 @@ const pedidos = () => [
   },
 ];
 
+/**
+ * Mockups guardados por pedido (en memoria). `recibidos` guarda el cuerpo de
+ * cada POST para que el test verifique qué mandó la app.
+ */
+let mockups = [];
+let recibidos = [];
+let siguienteMockupId = 1;
+
+const resumenMockup = ({ id, orderId, garment, createdAt, createdBy }) => ({ id, orderId, garment, createdAt, createdBy });
+
+/** Login: el usuario que se pide (por username) con sus roles; si no existe, Recepción. */
+function login(body) {
+  const { username } = JSON.parse(body || "{}");
+  const u = usuarios.find((x) => x.username === username) ?? usuarios[0];
+  const roles = u.roles.map((r) => r.name);
+  return {
+    id: u.id, username: u.username, token: token(u, roles), refreshToken: token(u, roles),
+    first_name: u.firstName, last_name: u.lastName, roles,
+  };
+}
+
+let preferencias = { hasSeenOnboarding: true };
+
 const rutas = {
-  "POST /auth/login": () => ({
-    id: 1, username: "recepcion1", token: token(), refreshToken: token(),
-    first_name: "Rita", last_name: "Ponce", roles: ["recepcion"],
-  }),
   "GET /orders": () => pedidos(),
   "GET /status": () => estados,
   "GET /users": () => usuarios,
   "GET /clients": () => [],
   "GET /settings": () => ({ deliveredRetentionHours: 72 }),
   "GET /notifications/unread-count": () => ({ unreadCount: 0 }),
+  // Tour de bienvenida ya visto: si no, su capa (fixed, z-110) tapa la
+  // pantalla y se come los clicks de los tests.
+  "GET /users/me/preferences": () => preferencias,
 };
 
 /** JWT sin firmar de verdad: sólo necesita un `exp` futuro que `jose` pueda leer. */
-function token() {
+function token(u = usuarios[0], roles = ["recepcion"]) {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const exp = Math.floor(Date.now() / 1000) + 3600;
-  return `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: 1, username: "recepcion1", roles: ["recepcion"], exp })}.firma-de-mentira`;
+  return `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub: u.id, username: u.username, roles, exp })}.firma-de-mentira`;
 }
 
 createServer((req, res) => {
@@ -105,6 +131,57 @@ createServer((req, res) => {
       res.writeHead(code, { "content-type": "application/json" });
       res.end(JSON.stringify(data));
     };
+
+    if (req.method === "POST" && path === "/auth/login") return send(login(body));
+
+    if (req.method === "PATCH" && path === "/users/me/preferences") {
+      preferencias = { ...preferencias, ...JSON.parse(body || "{}") };
+      return send(preferencias);
+    }
+
+    // Ganchos sólo para los tests.
+    if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
+    if (req.method === "POST" && path === "/__e2e/reset") {
+      mockups = [];
+      recibidos = [];
+      return send({ ok: true });
+    }
+
+    // Mockups de un pedido: lista, alta, detalle y baja.
+    const mockupsDe = path.match(/^\/orders\/(\d+)\/mockups(?:\/(\d+))?$/);
+    if (mockupsDe) {
+      const orderId = Number(mockupsDe[1]);
+      const mockupId = mockupsDe[2] ? Number(mockupsDe[2]) : null;
+      if (!pedidos().some((p) => p.id === orderId)) return send({ message: "Pedido no encontrado" }, 404);
+      if (mockupId === null && req.method === "GET") {
+        return send(mockups.filter((m) => m.orderId === orderId).map(resumenMockup));
+      }
+      if (mockupId === null && req.method === "POST") {
+        const payload = JSON.parse(body || "{}");
+        recibidos.push({ orderId, ...payload });
+        if (!payload.garment || typeof payload.imageDataUrl !== "string") {
+          return send({ message: "garment e imageDataUrl son obligatorios" }, 400);
+        }
+        const nuevo = {
+          id: siguienteMockupId++,
+          orderId,
+          garment: payload.garment,
+          dataUrl: payload.imageDataUrl,
+          config: payload.config,
+          createdAt: new Date().toISOString(),
+          createdBy: { id: 1, name: "Rita Ponce" },
+        };
+        mockups.push(nuevo);
+        return send(resumenMockup(nuevo), 201);
+      }
+      const existente = mockups.find((m) => m.orderId === orderId && m.id === mockupId);
+      if (!existente) return send({ message: "Mockup no encontrado" }, 404);
+      if (req.method === "GET") return send(existente);
+      if (req.method === "DELETE") {
+        mockups = mockups.filter((m) => m !== existente);
+        return send({ ok: true });
+      }
+    }
 
     // Avance de una tarea de área: es lo que el flujo 3 verifica.
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
