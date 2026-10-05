@@ -65,10 +65,10 @@ export interface ParsedQuoteLine {
 }
 
 const DONE_MARK = /[\u2705\u2714]/u; // ✅ ✔
-const PENDING_MARK = /[☑☐]/u; // ☑ ☐
-const ANY_MARK = /[✅✔☑☐]️?/gu;
-const HAS_MARK = /[✅✔☑☐]/u;
-const VARIATION = /️/gu;
+const PENDING_MARK = /[\u2611\u2610]/u; // ☑ ☐
+const ANY_MARK = /[\u2705\u2714\u2611\u2610]\uFE0F?/gu;
+const HAS_MARK = /[\u2705\u2714\u2611\u2610]/u;
+const VARIATION = /\uFE0F/gu;
 
 /** Expresión de palabra completa, sin distinguir mayúsculas, que entiende acentos. */
 function word(source: string, flags = "iu"): RegExp {
