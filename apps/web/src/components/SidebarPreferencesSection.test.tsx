@@ -3,11 +3,11 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { SidebarPreferencesSection } from "./SidebarPreferencesSection";
 
-type Prefs = { favorites: string[]; order: Record<string, string[]>; hidden: string[]; expanded: boolean };
-const DEFAULT: Prefs = { favorites: [], order: {}, hidden: [], expanded: false };
+type Prefs = { favorites: string[]; order: string[]; hidden: string[]; expanded: boolean };
+const DEFAULT: Prefs = { favorites: [], order: [], hidden: [], expanded: false };
 
 const nav = vi.hoisted(() => ({
-  prefs: { favorites: [], order: {}, hidden: [], expanded: false } as Prefs,
+  prefs: { favorites: [], order: [], hidden: [], expanded: false } as Prefs,
   isCustomized: false,
   toggleFavorite: vi.fn(),
   setHidden: vi.fn(),
@@ -57,7 +57,7 @@ const drag = (list: string, from: string, to: string) =>
   nav.dragEnd[list]({ active: { id: from }, over: { id: to } } as unknown as DragEndEvent);
 
 afterEach(() => {
-  nav.prefs = { ...DEFAULT, favorites: [], hidden: [], order: {} };
+  nav.prefs = { ...DEFAULT };
   nav.isCustomized = false;
   nav.dragEnd = {};
   vi.clearAllMocks();
@@ -70,7 +70,7 @@ const rowTitles = (list: HTMLElement) =>
 
 describe("Configuración › Barra lateral", () => {
   it("lista cada grupo visible para el rol, con su orden propio", () => {
-    nav.prefs = { ...nav.prefs, order: { Equipo: ["/dashboard/ayuda"] } };
+    nav.prefs = { ...nav.prefs, order: ["/dashboard/ayuda"] };
     render(<SidebarPreferencesSection />);
     expect(screen.getByText("Barra lateral")).toBeInTheDocument();
     expect(rowTitles(screen.getByRole("list", { name: "Equipo" }))).toEqual([
@@ -114,7 +114,7 @@ describe("Configuración › Barra lateral", () => {
     expect(nav.reorderFavorites).toHaveBeenCalledWith(["/dashboard/calendario", "/dashboard/clientes"]);
 
     drag("Equipo", "/dashboard/chat", "/dashboard/ayuda");
-    expect(nav.reorderGroup).toHaveBeenCalledWith("Equipo", [
+    expect(nav.reorderGroup).toHaveBeenCalledWith([
       "/dashboard/notificaciones",
       "/dashboard/ayuda",
       "/dashboard/chat",

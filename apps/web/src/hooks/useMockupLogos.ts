@@ -9,8 +9,9 @@ import type { MockupLogoSummary } from "@/lib/mockups/types";
  * Biblioteca de logos de la empresa (compartida; Recepción/Admin).
  *
  * - `GET    /mockup-logos`            → lista liviana, más usados primero
- * - `GET    /mockup-logos/:id/image`  → { dataUrl }
- * - `POST   /mockup-logos`            → { name, imageDataUrl } (PNG ≤ 2 MB)
+ * - `GET    /mockup-logos/:id/thumbnail` → { dataUrl } (≤ 160 px; la cuadrícula, sólo lo visible)
+ * - `GET    /mockup-logos/:id/image`  → { dataUrl } (completa; sólo al usar el logo)
+ * - `POST   /mockup-logos`            → { name, imageDataUrl (PNG ≤ 2 MB), thumbnailDataUrl (PNG ≤ 24 KB) }
  * - `PATCH  /mockup-logos/:id`        → { name }
  * - `POST   /mockup-logos/:id/use`    → suma un uso
  * - `DELETE /mockup-logos/:id`
@@ -21,6 +22,7 @@ export const mockupLogoKeys = {
   all: ["mockupLogos"] as const,
   list: () => ["mockupLogos", "list"] as const,
   image: (id: number) => ["mockupLogos", "image", id] as const,
+  thumbnail: (id: number) => ["mockupLogos", "thumbnail", id] as const,
 };
 
 function isNotFound(error: unknown): boolean {
@@ -68,12 +70,14 @@ function imageQuery(token: string | undefined, id: number) {
   };
 }
 
-/** Imagen de un logo; `enabled` se prende cuando su tarjeta se ve en pantalla. */
-export function useMockupLogoImage(id: number, options?: { enabled?: boolean }) {
+/** Miniatura de un logo; `enabled` se prende cuando su tarjeta se ve en pantalla. */
+export function useMockupLogoThumbnail(id: number, options?: { enabled?: boolean }) {
   const token = useAuthToken();
   return useQuery<{ dataUrl: string }>({
-    ...imageQuery(token, id),
+    queryKey: mockupLogoKeys.thumbnail(id),
+    queryFn: () => request<{ dataUrl: string }>(`${LOGOS}/${id}/thumbnail`, { token }),
     enabled: Boolean(token) && (options?.enabled ?? true),
+    staleTime: Infinity,
     meta: { silentError: true },
   });
 }
@@ -88,11 +92,14 @@ export function useMockupLogoMutations() {
   const invalidateList = () => queryClient.invalidateQueries({ queryKey: mockupLogoKeys.list() });
 
   const upload = useMutation({
-    mutationFn: (payload: { name: string; imageDataUrl: string }) =>
+    mutationFn: (payload: { name: string; imageDataUrl: string; thumbnailDataUrl: string }) =>
       request<MockupLogoSummary>(LOGOS, { token, method: "POST", body: payload }),
     onSuccess: (logo, payload) => {
-      // La imagen ya la tenemos: la tarjeta nueva no la vuelve a pedir.
-      if (logo?.id) queryClient.setQueryData(mockupLogoKeys.image(logo.id), { dataUrl: payload.imageDataUrl });
+      // Ya las tenemos: la tarjeta nueva no las vuelve a pedir.
+      if (logo?.id) {
+        queryClient.setQueryData(mockupLogoKeys.thumbnail(logo.id), { dataUrl: payload.thumbnailDataUrl });
+        queryClient.setQueryData(mockupLogoKeys.image(logo.id), { dataUrl: payload.imageDataUrl });
+      }
       return invalidateList();
     },
     meta: { ownErrorToast: true },
@@ -108,6 +115,7 @@ export function useMockupLogoMutations() {
     mutationFn: (id: number) => request<void>(`${LOGOS}/${id}`, { token, method: "DELETE" }),
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: mockupLogoKeys.image(id) });
+      queryClient.removeQueries({ queryKey: mockupLogoKeys.thumbnail(id) });
       return invalidateList();
     },
   });

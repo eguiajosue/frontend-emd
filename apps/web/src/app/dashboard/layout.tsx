@@ -51,8 +51,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             contenido deja su ancho (3.75rem, o 14.5rem expandido) + márgenes
             (1rem a cada lado). `--rail-offset` lo reutiliza `AppTopBar`. */}
         <main
+          data-rail={expanded ? "expanded" : "collapsed"}
           style={{ "--rail-offset": expanded ? RAIL_OFFSET_EXPANDED : RAIL_OFFSET_COLLAPSED } as React.CSSProperties}
-          className="relative w-full min-w-0 overflow-x-hidden transition-[padding] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
+          className="relative w-full min-w-0 overflow-x-hidden transition-[padding] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
         >
           <AppTopBar />
           <AnimatePresence mode="wait">

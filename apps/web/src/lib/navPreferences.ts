@@ -13,8 +13,12 @@
 export interface NavPreferences {
   /** Urls fijadas arriba, en el orden del usuario. */
   favorites: string[];
-  /** Orden propio por grupo (llave: `groupLabel`). */
-  order: Record<string, string[]>;
+  /**
+   * Orden propio: una sola lista plana de urls. Cada grupo ordena sus ítems
+   * por su posición aquí; así el orden sobrevive a renombrar grupos, a
+   * cambiar de menú (operativo ↔ completo) y a ítems que cambian de grupo.
+   */
+  order: string[];
   /** Urls que no se muestran en la barra (siguen accesibles por url y Ctrl+K). */
   hidden: string[];
   /** Barra expandida: muestra los títulos junto a los íconos. */
@@ -23,7 +27,7 @@ export interface NavPreferences {
 
 export const DEFAULT_NAV_PREFERENCES: NavPreferences = {
   favorites: [],
-  order: {},
+  order: [],
   hidden: [],
   expanded: false,
 };
@@ -38,14 +42,15 @@ export interface NavGroupOf<T extends NavEntry> {
   items: T[];
 }
 
-const MAX_IDS = 100;
+/** Tope por lista; el backend rechaza más. */
+export const MAX_NAV_IDS = 50;
 
 function uniqueStrings(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   for (const v of value) {
     if (typeof v === "string" && v.length > 0 && !seen.has(v)) seen.add(v);
-    if (seen.size >= MAX_IDS) break;
+    if (seen.size >= MAX_NAV_IDS) break;
   }
   return [...seen];
 }
@@ -56,19 +61,13 @@ function uniqueStrings(value: unknown): string[] {
  */
 export function normalizeNavPreferences(raw: unknown): NavPreferences {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    return { ...DEFAULT_NAV_PREFERENCES, order: {} };
+    return { ...DEFAULT_NAV_PREFERENCES };
   }
   const r = raw as Record<string, unknown>;
-  const order: Record<string, string[]> = {};
-  if (r.order && typeof r.order === "object" && !Array.isArray(r.order)) {
-    for (const [group, urls] of Object.entries(r.order as Record<string, unknown>)) {
-      const list = uniqueStrings(urls);
-      if (list.length > 0) order[group] = list;
-    }
-  }
+  // Siempre exactamente estas cuatro llaves: es lo que acepta el backend.
   return {
     favorites: uniqueStrings(r.favorites),
-    order,
+    order: uniqueStrings(r.order),
     hidden: uniqueStrings(r.hidden),
     expanded: r.expanded === true,
   };
@@ -76,32 +75,19 @@ export function normalizeNavPreferences(raw: unknown): NavPreferences {
 
 /**
  * Todos los ítems del grupo (incluidos favoritos y ocultos) en el orden del
- * usuario: primero los que guardó, en su orden; después los que no estaban en
- * su lista (nuevos o nunca movidos) en el orden por defecto.
+ * usuario: primero los que están en `prefs.order`, por su posición ahí;
+ * después los que no (nuevos o nunca movidos), en el orden por defecto.
  */
 export function orderGroupItems<T extends NavEntry>(
   group: NavGroupOf<T>,
   prefs: NavPreferences
 ): T[] {
-  const saved = prefs.order[group.groupLabel];
-  if (!saved || saved.length === 0) return group.items;
-  const byUrl = new Map(group.items.map((item) => [item.url, item]));
-  const ordered: T[] = [];
-  const placed = new Set<string>();
-  for (const url of saved) {
-    const item = byUrl.get(url);
-    if (item && !placed.has(url)) {
-      ordered.push(item);
-      placed.add(url);
-    }
-  }
-  for (const item of group.items) {
-    if (!placed.has(item.url)) {
-      ordered.push(item);
-      placed.add(item.url);
-    }
-  }
-  return ordered;
+  if (prefs.order.length === 0) return group.items;
+  const index = new Map(prefs.order.map((url, i) => [url, i]));
+  const saved = group.items.filter((item) => index.has(item.url));
+  if (saved.length === 0) return group.items;
+  saved.sort((a, b) => index.get(a.url)! - index.get(b.url)!);
+  return [...saved, ...group.items.filter((item) => !index.has(item.url))];
 }
 
 /**
@@ -169,6 +155,7 @@ export function toggleFavorite(prefs: NavPreferences, url: string): NavPreferenc
   if (prefs.favorites.includes(url)) {
     return { ...prefs, favorites: prefs.favorites.filter((u) => u !== url) };
   }
+  if (prefs.favorites.length >= MAX_NAV_IDS) return prefs;
   return {
     ...prefs,
     favorites: [...prefs.favorites, url],
@@ -180,6 +167,7 @@ export function toggleFavorite(prefs: NavPreferences, url: string): NavPreferenc
 export function setHidden(prefs: NavPreferences, url: string, hidden: boolean): NavPreferences {
   if (hidden) {
     if (prefs.hidden.includes(url) && !prefs.favorites.includes(url)) return prefs;
+    if (!prefs.hidden.includes(url) && prefs.hidden.length >= MAX_NAV_IDS) return prefs;
     return {
       ...prefs,
       hidden: prefs.hidden.includes(url) ? prefs.hidden : [...prefs.hidden, url],
@@ -198,16 +186,20 @@ export function setHidden(prefs: NavPreferences, url: string, hidden: boolean): 
 export function reorderFavorites(prefs: NavPreferences, urls: string[]): NavPreferences {
   const next = uniqueStrings(urls);
   const rest = prefs.favorites.filter((u) => !next.includes(u));
-  return { ...prefs, favorites: [...next, ...rest] };
+  return { ...prefs, favorites: [...next, ...rest].slice(0, MAX_NAV_IDS) };
 }
 
-/** Nuevo orden de un grupo (todas sus urls, incluidos favoritos y ocultos). */
-export function reorderGroup(
-  prefs: NavPreferences,
-  groupLabel: string,
-  urls: string[]
-): NavPreferences {
-  return { ...prefs, order: { ...prefs.order, [groupLabel]: uniqueStrings(urls) } };
+/**
+ * Nuevo orden de un grupo: `urls` son todas las del grupo (incluidos
+ * favoritos y ocultos) en su nuevo orden. Se quitan de la lista plana y se
+ * agregan al final; el orden relativo de los demás grupos no cambia.
+ */
+export function reorderGroup(prefs: NavPreferences, urls: string[]): NavPreferences {
+  const group = uniqueStrings(urls);
+  const others = prefs.order.filter((u) => !group.includes(u));
+  // Si no cabe todo, se sacrifican primero las urls más viejas de otros grupos.
+  const room = Math.max(0, MAX_NAV_IDS - group.length);
+  return { ...prefs, order: [...others.slice(Math.max(0, others.length - room)), ...group] };
 }
 
 export function setExpanded(prefs: NavPreferences, expanded: boolean): NavPreferences {

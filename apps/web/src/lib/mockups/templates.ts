@@ -1,8 +1,10 @@
-import { garmentLabel, isGarmentEnabled } from "@/lib/mockups/garments";
+import { dataUrlBytes } from "@/lib/mockups/dataUrl";
+import { assertGarmentEnabled, garmentLabel, isGarmentEnabled } from "@/lib/mockups/garments";
 import { newLayerId, normalizeHexColor } from "@/lib/mockups/studio";
 import {
   DEFAULT_COLORS,
   MAX_TEMPLATE_THUMBNAIL_BYTES,
+  type CreateMockupTemplatePayload,
   type DesignLayer,
   type GarmentColors,
   type MockupConfig,
@@ -39,13 +41,7 @@ export function cleanTemplateName(name: string): string | null {
   return clean || null;
 }
 
-/** Bytes aproximados de un data URL base64. */
-export function dataUrlBytes(dataUrl: string): number {
-  const comma = dataUrl.indexOf(",");
-  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
-  const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
-  return Math.max(0, Math.floor((b64.length * 3) / 4) - padding);
-}
+export { dataUrlBytes };
 
 export function thumbnailFits(image: Pick<MockupExport, "dataUrl">): boolean {
   return dataUrlBytes(image.dataUrl) <= MAX_TEMPLATE_THUMBNAIL_BYTES;
@@ -105,4 +101,14 @@ export function configFromTemplate(template: { garment?: unknown; config?: unkno
       ...(raw.options && typeof raw.options === "object" ? { options: raw.options } : {}),
     },
   };
+}
+
+/** Cuerpo de `POST /mockup-templates` (sólo prendas habilitadas, R11). */
+export function buildTemplatePayload(
+  name: string,
+  config: MockupConfig,
+  thumbnail: Pick<MockupExport, "dataUrl">
+): CreateMockupTemplatePayload {
+  assertGarmentEnabled(config.garment);
+  return { name, garment: config.garment, config, thumbnailDataUrl: thumbnail.dataUrl };
 }

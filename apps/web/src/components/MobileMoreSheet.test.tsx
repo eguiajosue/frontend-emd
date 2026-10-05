@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileMoreSheet } from "./MobileMoreSheet";
@@ -6,18 +6,7 @@ import { MobileMoreSheet } from "./MobileMoreSheet";
 const mocks = vi.hoisted(() => ({
   roles: ["superuser"] as string[],
   pathname: "/dashboard/orders",
-  navPrefs: { favorites: [], order: {}, hidden: [], expanded: false } as {
-    favorites: string[];
-    order: Record<string, string[]>;
-    hidden: string[];
-    expanded: boolean;
-  },
 }));
-
-vi.mock("@/hooks/useNavPreferences", () => ({
-  useNavPreferences: () => ({ prefs: mocks.navPrefs }),
-}));
-
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -29,6 +18,15 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
+}));
+
+// Sin preferencias de barra (`navPreferences: null`, como todo usuario hoy):
+// el menú debe verse igual que antes (contrato R16).
+vi.mock("@/hooks/useNavPreferences", () => ({
+  useNavPreferences: () => ({
+    prefs: { favorites: [], order: [], hidden: [], expanded: false },
+    expanded: false,
+  }),
 }));
 
 vi.mock("@/hooks/useChat", () => ({
@@ -58,10 +56,6 @@ function renderSheet() {
     </SidebarProvider>
   );
 }
-
-afterEach(() => {
-  mocks.navPrefs = { favorites: [], order: {}, hidden: [], expanded: false };
-});
 
 describe("MobileMoreSheet", () => {
   it("muestra la tarjeta de identidad: avatar, nombre completo, rol y username", () => {

@@ -291,7 +291,7 @@ export function SidebarPreferencesSection() {
               <SortableList
                 label={group.groupLabel}
                 items={items}
-                onReorder={(urls) => nav.reorderGroup(group.groupLabel, urls)}
+                onReorder={nav.reorderGroup}
               >
                 {items.map((item) => (
                   <SortableRow

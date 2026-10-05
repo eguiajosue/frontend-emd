@@ -1,7 +1,14 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DesignImportError, importDesignFile, isDesignFile } from "./importDesign";
-import { MAX_DESIGN_PX } from "./types";
+import {
+  DesignImportError,
+  designFromDataUrl,
+  importDesignFile,
+  importDesignFromUrl,
+  isDesignFile,
+  makeLogoThumbnail,
+} from "./importDesign";
+import { LOGO_THUMBNAIL_PX, MAX_DESIGN_PX } from "./types";
 
 let nextSize = { width: 2048, height: 1024 };
 let failDecode = false;
@@ -131,5 +138,47 @@ describe("isDesignFile", () => {
     expect(isDesignFile(file("a.svg", ""))).toBe(true);
     expect(isDesignFile(file("a.gif", "image/gif"))).toBe(false);
     expect(isDesignFile(file("a.txt", ""))).toBe(false);
+  });
+});
+
+describe("biblioteca: banderas, logos y miniaturas", () => {
+  it("una bandera se baja de /flags y se rasteriza como cualquier SVG", async () => {
+    nextSize = { width: 640, height: 480 };
+    const fetchMock = vi.fn(async () => new Response("<svg/>", { status: 200, headers: { "content-type": "image/svg+xml" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const design = await importDesignFromUrl("/flags/4x3/mx.svg", "Bandera de México");
+    expect(fetchMock).toHaveBeenCalledWith("/flags/4x3/mx.svg");
+    expect(design).toEqual({ name: "Bandera de México", dataUrl: "data:image/png;base64,AAAA", aspect: 4 / 3 });
+    // SVG: se lleva al máximo por su lado mayor.
+    expect(canvasSizes.at(-1)).toEqual({ width: MAX_DESIGN_PX, height: 768 });
+  });
+
+  it("si la bandera no baja, el error es claro", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    await expect(importDesignFromUrl("/flags/4x3/zz.svg", "Bandera de Nada")).rejects.toThrow(
+      "No se pudo cargar «Bandera de Nada»."
+    );
+  });
+
+  it("un logo ya reducido sólo se mide (no se vuelve a codificar)", async () => {
+    nextSize = { width: 300, height: 100 };
+    const design = await designFromDataUrl("Colegio", "data:image/png;base64,LOGO");
+    expect(design).toEqual({ name: "Colegio", dataUrl: "data:image/png;base64,LOGO", aspect: 3 });
+    expect(toDataURL).not.toHaveBeenCalled();
+  });
+
+  it("miniatura de logo: ≤ 160 px y se achica hasta pesar ≤ 24 KB", async () => {
+    nextSize = { width: 1024, height: 512 };
+    expect(await makeLogoThumbnail("data:image/png;base64,LOGO")).toBe("data:image/png;base64,AAAA");
+    expect(canvasSizes.at(-1)).toEqual({ width: LOGO_THUMBNAIL_PX, height: 80 });
+
+    const heavy = `data:image/png;base64,${"A".repeat(40_000)}`;
+    toDataURL.mockReturnValueOnce(heavy).mockReturnValueOnce("data:image/png;base64,BBBB");
+    canvasSizes = [];
+    expect(await makeLogoThumbnail("data:image/png;base64,LOGO")).toBe("data:image/png;base64,BBBB");
+    expect(canvasSizes.map((c) => c.width)).toEqual([160, 128]);
+
+    toDataURL.mockReturnValue(heavy);
+    await expect(makeLogoThumbnail("data:image/png;base64,LOGO")).rejects.toBeInstanceOf(DesignImportError);
   });
 });

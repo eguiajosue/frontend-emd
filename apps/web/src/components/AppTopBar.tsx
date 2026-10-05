@@ -172,7 +172,7 @@ function UserMenu() {
  */
 export function AppTopBar() {
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0">
+    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0">
       <BrandPill />
       <div className="flex min-w-0 flex-1 justify-center">
         <SectionNav />

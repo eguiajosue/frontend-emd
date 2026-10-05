@@ -28,6 +28,7 @@ import { garmentLabel, isGarmentEnabled } from "@/lib/mockups/garments";
 import { normalizeSearch } from "@/lib/mockups/flags";
 import {
   TEMPLATE_NAME_MAX,
+  buildTemplatePayload,
   cleanTemplateName,
   configFromTemplate,
   suggestTemplateName,
@@ -104,7 +105,7 @@ export function SaveTemplateDialog({
         setError("La miniatura salió demasiado pesada. Intenta de nuevo.");
         return;
       }
-      await create.mutateAsync({ name: clean, garment: config.garment, config, thumbnailDataUrl: thumbnail.dataUrl });
+      await create.mutateAsync(buildTemplatePayload(clean, config, thumbnail));
       toast.success(`Plantilla «${clean}» guardada`);
       onOpenChange(false);
     } catch (err) {
@@ -421,7 +422,7 @@ export function MockupTemplatesDialog({
         open={confirmDelete !== null}
         onOpenChange={(next) => !next && setConfirmDelete(null)}
         title="¿Eliminar plantilla?"
-        description={`«${confirmDelete?.name ?? ""}» se borra para toda la recepción. Esto no se puede deshacer.`}
+        description={`«${confirmDelete?.name ?? ""}»${confirmDelete?.createdBy?.name ? ` (de ${confirmDelete.createdBy.name})` : ""} se borra para toda la recepción. Esto no se puede deshacer.`}
         confirmLabel="Eliminar"
         destructive
         onConfirm={() => {

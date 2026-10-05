@@ -181,6 +181,8 @@ export function MockupStudio({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const configRef = useRef(config);
+  configRef.current = config;
   const garment = config.garment;
   const selected = config.layers.find((l) => l.id === selectedId) ?? null;
   const baseScale = defaultPlacement(garment).scale || 1;
@@ -194,14 +196,17 @@ export function MockupStudio({
   /** Agrega diseños ya importados (archivo, logo de la biblioteca o bandera). */
   const addDesigns = useCallback((designs: ImportedDesign[]) => {
     if (designs.length === 0) return;
-    let lastId: string | null = null;
-    setConfig((prev) => {
-      // Se coloca en la prenda que esté en ese momento (pudo cambiar mientras se leía).
-      const added: DesignLayer[] = designs.map((d) => createLayer(d, prev.garment));
-      lastId = added[added.length - 1].id;
-      return { ...prev, layers: [...prev.layers, ...added] };
-    });
-    if (lastId) setSelectedId(lastId);
+    const garmentNow = configRef.current.garment;
+    const added: DesignLayer[] = designs.map((d) => createLayer(d, garmentNow));
+    setConfig((prev) => ({
+      ...prev,
+      // La prenda pudo cambiar mientras se leía el archivo.
+      layers: [
+        ...prev.layers,
+        ...added.map((l) => (prev.garment === garmentNow ? l : { ...l, placement: defaultPlacement(prev.garment) })),
+      ],
+    }));
+    setSelectedId(added[added.length - 1].id);
   }, []);
 
   const addFiles = useCallback(

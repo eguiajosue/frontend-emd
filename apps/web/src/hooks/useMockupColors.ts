@@ -25,8 +25,8 @@ import type { MockupColorsPreference } from "@/lib/mockups/types";
  * `PATCH /users/me/preferences { mockupColors }`.
  *
  * Los cambios son optimistas: se ven al instante en la caché de preferencias
- * y, si el guardado falla, vuelven a como estaban (el toast de error lo pone
- * el manejo global de mutaciones).
+ * y, si el guardado falla, vuelven a como estaban (lo hace
+ * `useUserPreferences`; el toast de error lo pone el manejo global).
  */
 export function useMockupColors() {
   const queryClient = useQueryClient();
@@ -52,19 +52,11 @@ export function useMockupColors() {
         next = result;
       }
       if (next === current) return true;
-
-      queryClient.setQueryData<UserPreferences>(PREFERENCES_QUERY_KEY, (prev) =>
-        prev ? { ...prev, mockupColors: next } : ({ mockupColors: next } as UserPreferences)
-      );
-      const saved = await updatePreferences({ mockupColors: next });
-      if (!saved) {
-        // Falló: se regresa a lo que había (si nadie lo cambió mientras tanto).
-        queryClient.setQueryData<UserPreferences>(PREFERENCES_QUERY_KEY, (prev) =>
-          prev && prev.mockupColors === next ? { ...prev, mockupColors: cached?.mockupColors ?? null } : prev
-        );
-        return false;
-      }
-      return true;
+      // Optimista y en serie lo hace `updatePreferences` (R5): la caché cambia
+      // en el acto y, si el PATCH falla, vuelve a como estaba. Siempre se
+      // manda el objeto completo (las dos listas).
+      const saved = await updatePreferences({ mockupColors: { favorites: next.favorites, custom: next.custom } });
+      return Boolean(saved);
     },
     [queryClient, updatePreferences]
   );

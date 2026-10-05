@@ -32,18 +32,13 @@ export function useNavGroups() {
  * qué puede ver cada rol.
  */
 export function useVisibleNavItems(): VisibleNavItem[] {
-  const { data: session } = useSession();
-  const userRoles = session?.user?.roles || [];
-  const operationalOnly = isOperationalOnly(userRoles);
+  const groups = useVisibleNavGroups();
   const chatUnread = useChatUnreadCount();
   const { count: notificationsUnread } = useUnreadNotificationsCount();
-
-  const groups = operationalOnly ? OPERATIONAL_MENU : buildMenuItems();
 
   const items: VisibleNavItem[] = [];
   for (const group of groups) {
     for (const item of group.items) {
-      if (!isNavItemVisible(item, userRoles, operationalOnly)) continue;
       const unreadCount =
         item.url === "/dashboard/chat"
           ? chatUnread

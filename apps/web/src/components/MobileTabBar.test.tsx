@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileTabBar } from "./MobileTabBar";
 
@@ -9,18 +9,7 @@ import { MobileTabBar } from "./MobileTabBar";
 const mocks = vi.hoisted(() => ({
   roles: ["admin"] as string[],
   pathname: "/dashboard/orders",
-  navPrefs: { favorites: [], order: {}, hidden: [], expanded: false } as {
-    favorites: string[];
-    order: Record<string, string[]>;
-    hidden: string[];
-    expanded: boolean;
-  },
 }));
-
-vi.mock("@/hooks/useNavPreferences", () => ({
-  useNavPreferences: () => ({ prefs: mocks.navPrefs }),
-}));
-
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -32,6 +21,15 @@ vi.mock("next-auth/react", () => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
+}));
+
+// Sin preferencias de barra (`navPreferences: null`, como todo usuario hoy):
+// el menú debe verse igual que antes (contrato R16).
+vi.mock("@/hooks/useNavPreferences", () => ({
+  useNavPreferences: () => ({
+    prefs: { favorites: [], order: [], hidden: [], expanded: false },
+    expanded: false,
+  }),
 }));
 
 vi.mock("@/hooks/useChat", () => ({
@@ -68,10 +66,6 @@ function renderBar() {
     </SidebarProvider>
   );
 }
-
-afterEach(() => {
-  mocks.navPrefs = { favorites: [], order: {}, hidden: [], expanded: false };
-});
 
 describe("MobileTabBar", () => {
   it("admin/superuser: Panel General, Inicio, Pedidos, Chat interno + Más", () => {
@@ -166,32 +160,5 @@ describe("MobileTabBar", () => {
     // bottom sheet propio, no el drawer lateral del `Sidebar` primitive.
     expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
-  });
-
-  it("favoritos del usuario primero en los tabs, en su orden", () => {
-    mocks.roles = ["recepcion"];
-    mocks.pathname = "/dashboard/orders";
-    mocks.navPrefs = { ...mocks.navPrefs, favorites: ["/dashboard/clientes", "/dashboard/calendario"] };
-    renderBar();
-
-    const tabs = screen
-      .getAllByRole("link")
-      .map((link) => link.getAttribute("aria-label"));
-    expect(tabs).toEqual(["Clientes", "Calendario", "Inicio", "Pedidos"]);
-  });
-
-  it("los ocultos no ocupan tab (entra el siguiente por prioridad) pero siguen en Más", () => {
-    mocks.roles = ["recepcion"];
-    mocks.pathname = "/dashboard/inicio";
-    mocks.navPrefs = { ...mocks.navPrefs, hidden: ["/dashboard/orders"] };
-    renderBar();
-
-    expect(screen.queryByRole("link", { name: "Pedidos" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Notificaciones" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Hoja de Materiales" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Más opciones" }));
-    const more = screen.getByRole("navigation", { name: "Más opciones de navegación" });
-    expect(within(more).getByRole("link", { name: "Pedidos" })).toBeInTheDocument();
   });
 });

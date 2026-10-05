@@ -1,13 +1,14 @@
-import { FLAG_NAMES_ES } from "./flagNames";
+import { FLAG_CODES } from "./flagCodes";
 
 /**
  * Banderas de la biblioteca de mockups (flag-icons, MIT; SVG locales en
- * `public/flags/`, sin red). México, Estados Unidos y Canadá van fijas
- * arriba; el resto en orden alfabético por su nombre en español.
+ * `public/flags/4x3/`, sin red; ver scripts/sync-flags.mjs). México, Estados
+ * Unidos y Canadá van fijas arriba; el resto en orden alfabético por su
+ * nombre en español (`Intl.DisplayNames("es")`).
  */
 
 export interface FlagEntry {
-  /** Código en minúsculas de flag-icons (ISO 3166-1 alfa-2 o "gb-eng"…). */
+  /** Código ISO 3166-1 alfa-2 en minúsculas. */
   code: string;
   /** Nombre en español. */
   name: string;
@@ -33,14 +34,32 @@ const ALIASES: Record<string, string[]> = {
 };
 
 export function flagUrl(code: string): string {
-  return `/flags/${code}.svg`;
+  return `/flags/4x3/${code}.svg`;
+}
+
+let displayNames: Intl.DisplayNames | null | undefined;
+
+/** Nombre del país en español ("mx" → "México"); el código si el navegador no sabe. */
+export function countryNameEs(code: string): string {
+  if (displayNames === undefined) {
+    try {
+      displayNames = new Intl.DisplayNames(["es-MX", "es"], { type: "region" });
+    } catch {
+      displayNames = null;
+    }
+  }
+  try {
+    return displayNames?.of(code.toUpperCase()) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
 }
 
 /** Minúsculas y sin acentos: "méx" encuentra "México". */
 export function normalizeSearch(text: string): string {
   return text
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
@@ -49,22 +68,28 @@ export function normalizeSearch(text: string): string {
 const collator = new Intl.Collator("es", { sensitivity: "base" });
 
 function buildFlags(): FlagEntry[] {
-  const pinned = PINNED_FLAG_CODES.filter((c) => c in FLAG_NAMES_ES);
-  const rest = Object.keys(FLAG_NAMES_ES)
-    .filter((c) => !(pinned as readonly string[]).includes(c))
-    .sort((a, b) => collator.compare(FLAG_NAMES_ES[a], FLAG_NAMES_ES[b]));
-  return [...pinned, ...rest].map((code) => ({ code, name: FLAG_NAMES_ES[code], url: flagUrl(code) }));
+  const names = new Map(FLAG_CODES.map((code) => [code, countryNameEs(code)]));
+  const pinned = PINNED_FLAG_CODES.filter((c) => names.has(c));
+  const rest = FLAG_CODES.filter((c) => !(pinned as readonly string[]).includes(c)).sort((a, b) =>
+    collator.compare(names.get(a)!, names.get(b)!)
+  );
+  return [...pinned, ...rest].map((code) => ({ code, name: names.get(code)!, url: flagUrl(code) }));
 }
 
-/** Todas las banderas: MX, US, CA y luego A-Z. */
-export const FLAGS: readonly FlagEntry[] = buildFlags();
+let cache: FlagEntry[] | null = null;
+
+/** Todas las banderas: MX, US, CA y luego A-Z (se arma la primera vez que se pide). */
+export function getFlags(): readonly FlagEntry[] {
+  cache ??= buildFlags();
+  return cache;
+}
 
 /**
  * Filtra por nombre en español (o un alias), sin importar acentos ni
- * mayúsculas. Conserva el orden de `FLAGS` (las fijas siguen arriba) pero
+ * mayúsculas. Conserva el orden de `getFlags()` (las fijas siguen arriba) pero
  * deja primero los que empiezan con lo buscado.
  */
-export function searchFlags(query: string, flags: readonly FlagEntry[] = FLAGS): FlagEntry[] {
+export function searchFlags(query: string, flags: readonly FlagEntry[] = getFlags()): FlagEntry[] {
   const q = normalizeSearch(query);
   if (!q) return [...flags];
   const starts: FlagEntry[] = [];

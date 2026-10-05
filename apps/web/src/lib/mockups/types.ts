@@ -131,7 +131,7 @@ export interface MockupCanvasHandle {
   exportSheet: () => Promise<MockupExport>;
   /**
    * Miniatura chica (≈ 400 × 400, sólo la vista de frente, JPEG) para las
-   * plantillas: pesa muy poco (≤ MAX_TEMPLATE_THUMBNAIL_BYTES).
+   * plantillas: pesa muy poco (≤ MAX_TEMPLATE_THUMBNAIL_BYTES, 96 KB).
    */
   exportThumbnail: () => Promise<MockupExport>;
   setView: (view: MockupView) => void;
@@ -177,8 +177,8 @@ export interface CreateMockupTemplatePayload {
   thumbnailDataUrl: string;
 }
 
-/** La miniatura de una plantilla no puede pasar de esto (backend). */
-export const MAX_TEMPLATE_THUMBNAIL_BYTES = 300 * 1024;
+/** La miniatura de una plantilla no puede pasar de esto (backend, decisión R6). */
+export const MAX_TEMPLATE_THUMBNAIL_BYTES = 96 * 1024;
 
 /* --------------------------------- Logos --------------------------------- */
 
@@ -194,6 +194,10 @@ export interface MockupLogoSummary {
 
 /** Tope de la imagen de un logo (PNG). */
 export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+
+/** Miniatura del logo para la cuadrícula (R7): PNG de ≤ 160 px y ≤ 24 KB. */
+export const LOGO_THUMBNAIL_PX = 160;
+export const MAX_LOGO_THUMBNAIL_BYTES = 24 * 1024;
 
 /** Lo que el backend guarda por mockup (respuesta de GET /orders/:id/mockups). */
 export interface OrderMockupSummary {

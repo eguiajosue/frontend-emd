@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_NAV_PREFERENCES,
+  MAX_NAV_IDS,
   applyNavPreferences,
   isFavorite,
   isHidden,
@@ -16,7 +17,13 @@ import {
   type NavGroupOf,
   type NavPreferences,
 } from "./navPreferences";
-import { MAX_PRIMARY_TABS, TAB_PRIORITY_URLS, buildMenuItems, isNavItemVisible } from "./navMenu";
+import {
+  MAX_PRIMARY_TABS,
+  OPERATIONAL_MENU,
+  TAB_PRIORITY_URLS,
+  buildMenuItems,
+  isNavItemVisible,
+} from "./navMenu";
 
 type Item = { url: string; title: string };
 const it_ = (url: string): Item => ({ url, title: url.toUpperCase() });
@@ -29,7 +36,6 @@ const GROUPS: NavGroupOf<Item>[] = [
 
 const prefs = (p: Partial<NavPreferences> = {}): NavPreferences => ({
   ...DEFAULT_NAV_PREFERENCES,
-  order: {},
   ...p,
 });
 
@@ -44,38 +50,36 @@ describe("normalizeNavPreferences", () => {
     expect(normalizeNavPreferences(raw)).toEqual(DEFAULT_NAV_PREFERENCES);
   });
 
-  it("conserva lo válido y descarta lo demás", () => {
-    expect(
-      normalizeNavPreferences({
-        favorites: ["/a", "/a", 3, "", "/b"],
-        order: { Operación: ["/c", "/a", 9], Vacío: [], Mal: "no", Lista: null },
-        hidden: "nope",
-        expanded: "true",
-      })
-    ).toEqual({
+  it("conserva lo válido y descarta lo demás (siempre las cuatro llaves, sin extras)", () => {
+    const result = normalizeNavPreferences({
+      favorites: ["/a", "/a", 3, "", "/b"],
+      order: ["/c", "/a", 9, "/c"],
+      hidden: "nope",
+      expanded: "true",
+      extra: 1,
+    });
+    expect(result).toEqual({
       favorites: ["/a", "/b"],
-      order: { Operación: ["/c", "/a"] },
+      order: ["/c", "/a"],
       hidden: [],
       expanded: false,
     });
+    expect(Object.keys(result).sort()).toEqual(["expanded", "favorites", "hidden", "order"]);
   });
 
-  it("order como arreglo se ignora; expanded true se respeta", () => {
-    expect(normalizeNavPreferences({ order: ["/a"], expanded: true })).toEqual({
+  it("order con la forma vieja (objeto por grupo) se ignora; expanded true se respeta", () => {
+    expect(normalizeNavPreferences({ order: { Operación: ["/a"] }, expanded: true })).toEqual({
       ...DEFAULT_NAV_PREFERENCES,
       expanded: true,
     });
   });
 
-  it("limita la cantidad de ids", () => {
+  it("limita cada lista a MAX_NAV_IDS", () => {
     const many = Array.from({ length: 300 }, (_, i) => `/x${i}`);
-    expect(normalizeNavPreferences({ favorites: many }).favorites).toHaveLength(100);
-  });
-
-  it("no comparte el objeto `order` del valor por defecto", () => {
-    const a = normalizeNavPreferences(null);
-    a.order.X = ["/a"];
-    expect(DEFAULT_NAV_PREFERENCES.order).toEqual({});
+    const r = normalizeNavPreferences({ favorites: many, order: many, hidden: many });
+    expect(r.favorites).toHaveLength(MAX_NAV_IDS);
+    expect(r.order).toHaveLength(MAX_NAV_IDS);
+    expect(r.hidden).toHaveLength(MAX_NAV_IDS);
   });
 });
 
@@ -85,29 +89,48 @@ describe("orderGroupItems", () => {
   });
 
   it("aplica el orden guardado y agrega al final los nuevos/no listados", () => {
-    expect(urls(orderGroupItems(GROUPS[0], prefs({ order: { Operación: ["/c", "/a"] } })))).toEqual([
-      "/c",
-      "/a",
-      "/b",
-    ]);
+    expect(urls(orderGroupItems(GROUPS[0], prefs({ order: ["/c", "/a"] })))).toEqual(["/c", "/a", "/b"]);
   });
 
-  it("ignora urls desconocidas y repetidas", () => {
-    expect(
-      urls(orderGroupItems(GROUPS[0], prefs({ order: { Operación: ["/zz", "/b", "/b", "/d"] } })))
-    ).toEqual(["/b", "/a", "/c"]);
+  it("ignora urls desconocidas y las de otros grupos (lista plana)", () => {
+    expect(urls(orderGroupItems(GROUPS[0], prefs({ order: ["/zz", "/e", "/b", "/d"] })))).toEqual([
+      "/b",
+      "/a",
+      "/c",
+    ]);
   });
 
   it("el orden de otro grupo no afecta", () => {
-    expect(urls(orderGroupItems(GROUPS[0], prefs({ order: { Equipo: ["/e", "/d"] } })))).toEqual([
-      "/a",
-      "/b",
-      "/c",
-    ]);
+    expect(urls(orderGroupItems(GROUPS[0], prefs({ order: ["/e", "/d"] })))).toEqual(["/a", "/b", "/c"]);
+  });
+
+  it("sobrevive a renombrar el grupo y a que un ítem cambie de grupo", () => {
+    const p = prefs({ order: ["/c", "/a", "/d"] });
+    const renamed = { groupLabel: "Trabajo diario", items: GROUPS[0].items };
+    expect(urls(orderGroupItems(renamed, p))).toEqual(["/c", "/a", "/b"]);
+    const moved = { groupLabel: "Equipo", items: [it_("/d"), it_("/e"), it_("/a")] };
+    expect(urls(orderGroupItems(moved, p))).toEqual(["/a", "/d", "/e"]);
   });
 });
 
 describe("applyNavPreferences", () => {
+  // R16 (contrato de regresión): sin preferencias la barra es idéntica a hoy.
+  it.each([
+    ["DEFAULT", DEFAULT_NAV_PREFERENCES],
+    ["null normalizado", normalizeNavPreferences(null)],
+    ["undefined normalizado", normalizeNavPreferences(undefined)],
+  ])("identidad con preferencias %s: devuelve los grupos de entrada sin cambios", (_label, p) => {
+    expect(applyNavPreferences(GROUPS, p)).toEqual({ favorites: [], groups: GROUPS });
+    for (const roles of [["superuser"], ["recepcion"], ["admin"]]) {
+      const groups = buildMenuItems()
+        .map((g) => ({ ...g, items: g.items.filter((i) => isNavItemVisible(i, roles, false)) }))
+        .filter((g) => g.items.length > 0);
+      expect(applyNavPreferences(groups, p)).toEqual({ favorites: [], groups });
+    }
+    const operational = OPERATIONAL_MENU;
+    expect(applyNavPreferences(operational, p)).toEqual({ favorites: [], groups: operational });
+  });
+
   it("sin preferencias → igual que el menú, sin favoritos", () => {
     expect(shape(applyNavPreferences(GROUPS, prefs()))).toEqual({
       favorites: [],
@@ -150,10 +173,7 @@ describe("applyNavPreferences", () => {
   it("ids desconocidos o ya no permitidos se ignoran", () => {
     expect(
       shape(
-        applyNavPreferences(
-          GROUPS,
-          prefs({ favorites: ["/nope", "/f"], hidden: ["/otra"], order: { Fantasma: ["/a"] } })
-        )
+        applyNavPreferences(GROUPS, prefs({ favorites: ["/nope", "/f"], hidden: ["/otra"], order: ["/fantasma"] }))
       )
     ).toEqual({
       favorites: ["/f"],
@@ -174,7 +194,7 @@ describe("applyNavPreferences", () => {
       shape(
         applyNavPreferences(
           GROUPS,
-          prefs({ favorites: ["/c"], hidden: ["/b"], order: { Operación: ["/c", "/b", "/a"], Equipo: ["/e"] } })
+          prefs({ favorites: ["/c"], hidden: ["/b"], order: ["/c", "/e", "/b", "/a"] })
         )
       )
     ).toEqual({
@@ -189,7 +209,7 @@ describe("applyNavPreferences", () => {
 
   it("ítem nuevo del menú aparece al final de su grupo", () => {
     const withNew = [{ ...GROUPS[0], items: [...GROUPS[0].items, it_("/nuevo")] }, ...GROUPS.slice(1)];
-    const r = applyNavPreferences(withNew, prefs({ order: { Operación: ["/c", "/b", "/a"] } }));
+    const r = applyNavPreferences(withNew, prefs({ order: ["/c", "/b", "/a"] }));
     expect(urls(r.groups[0].items)).toEqual(["/c", "/b", "/a", "/nuevo"]);
   });
 
@@ -201,7 +221,7 @@ describe("applyNavPreferences", () => {
 
   it("no muta la entrada", () => {
     const copy = JSON.stringify(GROUPS);
-    applyNavPreferences(GROUPS, prefs({ favorites: ["/a"], order: { Operación: ["/c"] } }));
+    applyNavPreferences(GROUPS, prefs({ favorites: ["/a"], order: ["/c"] }));
     expect(JSON.stringify(GROUPS)).toBe(copy);
   });
 
@@ -246,9 +266,26 @@ describe("cambios", () => {
     expect(p.favorites).toEqual(["/b", "/a", "/oculto-por-rol"]);
   });
 
-  it("reorderGroup guarda el orden de un grupo sin tocar los demás", () => {
-    const p = reorderGroup(prefs({ order: { Equipo: ["/e", "/d"] } }), "Operación", ["/c", "/a", "/b", "/c"]);
-    expect(p.order).toEqual({ Equipo: ["/e", "/d"], Operación: ["/c", "/a", "/b"] });
+  it("reorderGroup reescribe las urls del grupo en la lista plana sin tocar el orden de los demás", () => {
+    const p = reorderGroup(prefs({ order: ["/e", "/a", "/d", "/c"] }), ["/c", "/a", "/b", "/c"]);
+    expect(p.order).toEqual(["/e", "/d", "/c", "/a", "/b"]);
+    const r = applyNavPreferences(GROUPS, p);
+    expect(r.groups.map((g) => urls(g.items))).toEqual([["/c", "/a", "/b"], ["/e", "/d"], ["/f"]]);
+  });
+
+  it("reorderGroup respeta el tope de ids, sacrificando primero urls viejas de otros grupos", () => {
+    const old = Array.from({ length: MAX_NAV_IDS }, (_, i) => `/x${i}`);
+    const p = reorderGroup(prefs({ order: old }), ["/c", "/a", "/b"]);
+    expect(p.order).toHaveLength(MAX_NAV_IDS);
+    expect(p.order.slice(-3)).toEqual(["/c", "/a", "/b"]);
+    expect(p.order[0]).toBe("/x3");
+  });
+
+  it("toggleFavorite/setHidden no pasan del tope", () => {
+    const full = Array.from({ length: MAX_NAV_IDS }, (_, i) => `/x${i}`);
+    const p = prefs({ favorites: full, hidden: full });
+    expect(toggleFavorite(p, "/nuevo")).toBe(p);
+    expect(setHidden(p, "/nuevo", true)).toBe(p);
   });
 
   it("setExpanded", () => {
@@ -258,12 +295,12 @@ describe("cambios", () => {
   });
 
   it("no mutan el objeto original", () => {
-    const p = prefs({ favorites: ["/a"], hidden: ["/b"], order: { X: ["/a"] } });
+    const p = prefs({ favorites: ["/a"], hidden: ["/b"], order: ["/a"] });
     const copy = JSON.stringify(p);
     toggleFavorite(p, "/c");
     setHidden(p, "/a", true);
     reorderFavorites(p, ["/a"]);
-    reorderGroup(p, "X", ["/b"]);
+    reorderGroup(p, ["/b"]);
     setExpanded(p, true);
     expect(JSON.stringify(p)).toBe(copy);
   });
@@ -272,6 +309,17 @@ describe("cambios", () => {
 describe("pickPrimaryTabUrls", () => {
   const visible = ["/a", "/b", "/c", "/d", "/e", "/f"];
   const priority = ["/a", "/b", "/c", "/d", "/e", "/f"];
+
+  it("R16: con preferencias por defecto los tabs son los de siempre (TAB_PRIORITY_URLS)", () => {
+    for (const roles of [["superuser"], ["recepcion"], ["taller"]]) {
+      const visibleUrls = buildMenuItems()
+        .flatMap((g) => g.items)
+        .filter((i) => isNavItemVisible(i, roles, false))
+        .map((i) => i.url);
+      const today = TAB_PRIORITY_URLS.filter((url) => visibleUrls.includes(url)).slice(0, MAX_PRIMARY_TABS);
+      expect(pickPrimaryTabUrls(visibleUrls, DEFAULT_NAV_PREFERENCES, TAB_PRIORITY_URLS, MAX_PRIMARY_TABS)).toEqual(today);
+    }
+  });
 
   it("sin preferencias → prioridad por defecto", () => {
     expect(pickPrimaryTabUrls(visible, prefs(), priority, 4)).toEqual(["/a", "/b", "/c", "/d"]);

@@ -19,53 +19,29 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthToken } from "@/hooks/useEntity";
+import { useInView } from "@/hooks/useInView";
 import {
   fetchMockupLogoImage,
   mockupLogoErrorMessage,
-  useMockupLogoImage,
+  useMockupLogoThumbnail,
   useMockupLogoMutations,
   useMockupLogos,
   LOGO_TOO_LARGE_MESSAGE,
 } from "@/hooks/useMockupLogos";
-import { FLAGS, PINNED_FLAG_CODES, flagLayerName, normalizeSearch, searchFlags, type FlagEntry } from "@/lib/mockups/flags";
+import { getFlags, PINNED_FLAG_CODES, flagLayerName, normalizeSearch, searchFlags, type FlagEntry } from "@/lib/mockups/flags";
 import {
   DESIGN_ACCEPT,
   designFromDataUrl,
   importDesignFile,
   importDesignFromUrl,
+  makeLogoThumbnail,
   type ImportedDesign,
 } from "@/lib/mockups/importDesign";
-import { dataUrlBytes } from "@/lib/mockups/templates";
+import { dataUrlBytes } from "@/lib/mockups/dataUrl";
 import { MAX_LOGO_BYTES, type MockupLogoSummary } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
 
 export type LibraryTab = "logos" | "banderas";
-
-/** Se prende cuando el elemento entra (o está por entrar) en pantalla. */
-function useInView<T extends Element>(rootMargin = "200px") {
-  const ref = useRef<T>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || inView) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [inView, rootMargin]);
-  return { ref, inView };
-}
 
 function SearchBox({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -100,8 +76,8 @@ function LogoCard({
   onRename: (name: string) => void;
   onDelete: () => void;
 }) {
-  const { ref, inView } = useInView<HTMLLIElement>();
-  const image = useMockupLogoImage(logo.id, { enabled: inView });
+  const [ref, inView] = useInView<HTMLLIElement>();
+  const image = useMockupLogoThumbnail(logo.id, { enabled: inView });
   const [renaming, setRenaming] = useState(false);
 
   return (
@@ -215,7 +191,8 @@ function LogosTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
             setError(LOGO_TOO_LARGE_MESSAGE);
             continue;
           }
-          await upload.mutateAsync({ name: design.name, imageDataUrl: design.dataUrl });
+          const thumbnailDataUrl = await makeLogoThumbnail(design.dataUrl);
+          await upload.mutateAsync({ name: design.name, imageDataUrl: design.dataUrl, thumbnailDataUrl });
           toast.success(`Logo «${design.name}» guardado en la biblioteca`);
         } catch (err) {
           setError(mockupLogoErrorMessage(err, `No se pudo subir «${file.name}».`));
@@ -324,7 +301,7 @@ function LogosTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
         open={confirmDelete !== null}
         onOpenChange={(next) => !next && setConfirmDelete(null)}
         title="¿Eliminar logo?"
-        description={`«${confirmDelete?.name ?? ""}» se quita de la biblioteca para toda la recepción. Los mockups que ya lo usan no cambian.`}
+        description={`«${confirmDelete?.name ?? ""}»${confirmDelete?.createdBy?.name ? ` (subido por ${confirmDelete.createdBy.name})` : ""} se quita de la biblioteca para toda la recepción. Los mockups que ya lo usan no cambian.`}
         confirmLabel="Eliminar"
         destructive
         onConfirm={() => {
@@ -391,7 +368,8 @@ function FlagsTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
   const [query, setQuery] = useState("");
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const visible = useMemo(() => searchFlags(query, FLAGS), [query]);
+  const flags = getFlags();
+  const visible = useMemo(() => searchFlags(query, flags), [query, flags]);
 
   const pick = async (flag: FlagEntry) => {
     setBusyCode(flag.code);
@@ -411,7 +389,7 @@ function FlagsTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
       <div className="flex items-center gap-2">
         <SearchBox value={query} onChange={setQuery} placeholder="Buscar país…" />
         <span className="hidden shrink-0 text-meta tabular-nums sm:inline">
-          {visible.length === FLAGS.length ? `${FLAGS.length} países` : `${visible.length} de ${FLAGS.length}`}
+          {visible.length === flags.length ? `${flags.length} países` : `${visible.length} de ${flags.length}`}
         </span>
       </div>
       {error && (

@@ -1,32 +1,7 @@
 # Banderas de la biblioteca de mockups
 
-- Origen: [flag-icons](https://github.com/lipis/flag-icons) v7.5.0, SVG 4x3 sin cambios.
-- Licencia: MIT (texto abajo).
-- Se generan con `pnpm --filter web flags:copy` (`apps/web/scripts/copy-flags.mjs`), que también
-  escribe la lista de países con su nombre en español en `src/lib/mockups/flagNames.ts`.
-- 256 banderas: los países ISO 3166-1 más Kosovo, Inglaterra, Escocia, Gales,
-  Irlanda del Norte, Unión Europea y Naciones Unidas.
-
-```
-The MIT License (MIT)
-
-Copyright (c) 2013 Panayiotis Lipiridis
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+- Origen: [flag-icons](https://github.com/lipis/flag-icons) v7.5.0 (`flags/4x3/*.svg`, sin cambios).
+- Licencia: MIT — ver `LICENSE` en esta carpeta (Copyright (c) 2013 Panayiotis Lipiridis).
+- 249 países ISO 3166-1. Los nombres en español salen de `Intl.DisplayNames("es")`.
+- Se regeneran con `pnpm --filter web flags:sync` (`apps/web/scripts/sync-flags.mjs`), que también
+  escribe `src/lib/mockups/flagCodes.ts`. No se importa el CSS de flag-icons.

@@ -15,6 +15,8 @@ function fakeScene(currentGarment: "tshirt" | "cap", configGarment: "tshirt" | "
     current: { garment: currentGarment },
     config: { garment: configGarment, colors: { body: "#ffffff" }, layers: [] },
     rebuildDirtyDecals: vi.fn(),
+    // exportSheet y exportThumbnail comparten este método (privado).
+    exportComposite: (MockupScene.prototype as unknown as { exportComposite: unknown }).exportComposite,
   };
 }
 
@@ -28,5 +30,12 @@ describe("MockupScene.exportSheet", () => {
   it("no exporta sin prenda cargada", async () => {
     const scene = { ...fakeScene("tshirt", "tshirt"), current: null };
     await expect(MockupScene.prototype.exportSheet.call(scene as unknown as MockupScene)).rejects.toThrow(/^El 3D/);
+  });
+});
+
+describe("MockupScene.exportThumbnail", () => {
+  it("tiene la misma guarda: sin la prenda de la config no hay miniatura", async () => {
+    const scene = fakeScene("cap", "tshirt");
+    await expect(MockupScene.prototype.exportThumbnail.call(scene as unknown as MockupScene)).rejects.toThrow(/^El 3D/);
   });
 });

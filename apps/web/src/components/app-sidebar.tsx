@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -33,12 +33,10 @@ import { ThemeRailSwitch } from "./ThemeToggle";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { useNavLayout } from "@/hooks/useNavLayout";
 import { SPRING_STANDARD, useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import { findActiveNavUrl, type NavItem } from "@/lib/navMenu";
-import { useVisibleNavGroups } from "@/hooks/useVisibleNavItems";
-import { applyNavPreferences } from "@/lib/navPreferences";
+import type { NavItem } from "@/lib/navMenu";
 import { useOrderViewCounts } from "./SidebarOrderViews";
 
 const ORDERS_URL = "/dashboard/orders";
@@ -109,7 +107,7 @@ export function InstallAppButton() {
 
 /** Transición de ancho del riel: mismo tempo que `DURATION_STANDARD` y `EASE_OUT` (lib/motion.ts). */
 const RAIL_TRANSITION =
-  "transition-[width,border-radius] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
+  "transition-[width,border-radius] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
 
 /** Segmento flotante del riel: píldora blanca vertical, como en la referencia. */
 function RailSegment({
@@ -221,7 +219,6 @@ function RailItem({
   onToggleFavorite,
   onHide,
 }: RailItemProps) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const favoriteLabel = favorite ? "Quitar de favoritos" : "Agregar a favoritos";
@@ -353,9 +350,11 @@ function RailItem({
             Ocultar de la barra
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => router.push(SIDEBAR_SETTINGS_URL)}>
-            <SlidersHorizontal />
-            Personalizar barra
+          <DropdownMenuItem asChild>
+            <Link href={SIDEBAR_SETTINGS_URL}>
+              <SlidersHorizontal />
+              Personalizar barra
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -457,17 +456,10 @@ export function AppSidebar() {
   const chatUnread = useChatUnreadCount();
   const { count: notificationsUnread } = useUnreadNotificationsCount();
   const { reduced: reducedMotion } = useMotionPreset();
-  const nav = useNavPreferences();
+  const { roleVisibleGroups: roleGroups, favorites, groups, activeUrl, nav } = useNavLayout();
   const expanded = nav.expanded;
   const { collapsed: foldedGroups, toggle: toggleFold } = useCollapsedGroups();
 
-  // Grupos sin ningún ítem visible para el rol no se pintan.
-  const roleGroups = useVisibleNavGroups();
-  const { favorites, groups } = applyNavPreferences(roleGroups, nav.prefs);
-  const activeUrl = findActiveNavUrl(
-    roleGroups.flatMap((group) => group.items.map((item) => item.url)),
-    pathname
-  );
   const showsOrders = roleGroups.some((group) => group.items.some((item) => item.url === ORDERS_URL));
   // Los vencidos se avisan como badge sobre el ícono de Pedidos.
   const { overdue } = useOrderViewCounts(showsOrders);

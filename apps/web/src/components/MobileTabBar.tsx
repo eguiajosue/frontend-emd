@@ -4,13 +4,10 @@ import { useState } from "react";
 import { Menu } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
-import { useNavPreferences } from "@/hooks/useNavPreferences";
-import { pickPrimaryTabUrls } from "@/lib/navPreferences";
+import { useNavLayout } from "@/hooks/useNavLayout";
 import { MobileMoreSheet } from "./MobileMoreSheet";
 
 /**
@@ -42,27 +39,16 @@ function shortLabel(item: VisibleNavItem): string {
 }
 
 export function MobileTabBar() {
-  const pathname = usePathname();
   const visibleItems = useVisibleNavItems();
   const [moreOpen, setMoreOpen] = useState(false);
   const reducedMotion = useReducedMotion();
 
-  const { prefs } = useNavPreferences();
-
-  // Favoritos del usuario primero; luego la prioridad por defecto, sin ocultos.
-  const primaryTabs = pickPrimaryTabUrls(
-    visibleItems.map((item) => item.url),
-    prefs,
-    TAB_PRIORITY_URLS,
-    MAX_PRIMARY_TABS
-  )
+  // Favoritos del usuario primero; luego la prioridad por defecto, sin
+  // ocultos (fuente única con el riel y "Más": `useNavLayout`).
+  const { primaryTabUrls, activeUrl } = useNavLayout();
+  const primaryTabs = primaryTabUrls
     .map((url) => visibleItems.find((item) => item.url === url))
     .filter((item): item is VisibleNavItem => Boolean(item));
-  // Activo por prefijo: el detalle de un pedido sigue marcando "Pedidos".
-  const activeUrl = findActiveNavUrl(
-    visibleItems.map((item) => item.url),
-    pathname
-  );
 
   return (
     <nav

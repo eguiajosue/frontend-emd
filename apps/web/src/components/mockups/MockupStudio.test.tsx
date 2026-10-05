@@ -14,12 +14,13 @@ import type {
 
 let canvasProps: MockupCanvasProps | null = null;
 const exportSheet = vi.fn();
+const exportThumbnail = vi.fn();
 const setView = vi.fn();
 vi.mock("@/components/mockups/MockupCanvasLazy", async () => {
   const { forwardRef, useImperativeHandle } = await import("react");
   const Stub = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function Stub(props, ref) {
     canvasProps = props;
-    useImperativeHandle(ref, () => ({ exportSheet, setView }));
+    useImperativeHandle(ref, () => ({ exportSheet, exportThumbnail, setView }));
     return <div data-testid="canvas" />;
   });
   return { default: Stub, MockupCanvasLazy: Stub };
@@ -64,6 +65,42 @@ vi.mock("@/lib/download", () => ({ downloadFromUrl: (...args: unknown[]) => down
 const toastError = vi.fn();
 vi.mock("sonner", () => ({ toast: { error: (...args: unknown[]) => toastError(...args), success: vi.fn() } }));
 
+/* ---------------- Plantillas, biblioteca y mis colores (stubs) ---------------- */
+
+type TemplatesProps = import("react").ComponentProps<typeof import("./MockupTemplates").MockupTemplatesDialog>;
+type SaveProps = import("react").ComponentProps<typeof import("./MockupTemplates").SaveTemplateDialog>;
+type LibraryProps = import("react").ComponentProps<typeof import("./MockupLibrary").MockupLibraryDialog>;
+const dialogs = vi.hoisted(() => ({
+  templates: null as null | TemplatesProps,
+  save: null as null | SaveProps,
+  library: null as null | LibraryProps,
+}));
+vi.mock("./MockupTemplates", () => ({
+  MockupTemplatesDialog: (props: TemplatesProps) => {
+    dialogs.templates = props;
+    return props.open ? <div role="dialog" aria-label="Plantillas" /> : null;
+  },
+  SaveTemplateDialog: (props: SaveProps) => {
+    dialogs.save = props;
+    return props.open ? <div role="dialog" aria-label="Guardar como plantilla" /> : null;
+  },
+}));
+vi.mock("./MockupLibrary", () => ({
+  MockupLibraryDialog: (props: LibraryProps) => {
+    dialogs.library = props;
+    return props.open ? <div role="dialog" aria-label="Biblioteca" /> : null;
+  },
+}));
+const myColors = vi.hoisted(() => ({
+  entries: [] as { value: string; favorite: boolean }[],
+  addColor: vi.fn(async () => true),
+  toggleFavorite: vi.fn(async () => true),
+  removeColor: vi.fn(async () => true),
+}));
+vi.mock("@/hooks/useMockupColors", () => ({
+  useMockupColors: () => ({ colors: { favorites: [], custom: [] }, ...myColors }),
+}));
+
 import { MockupStudio } from "./MockupStudio";
 
 const SHEET = { dataUrl: "data:image/png;base64,SHEET", width: 1600, height: 800 };
@@ -72,6 +109,12 @@ beforeEach(() => {
   canvasProps = null;
   exportSheet.mockReset();
   exportSheet.mockResolvedValue(SHEET);
+  exportThumbnail.mockReset();
+  exportThumbnail.mockResolvedValue({ dataUrl: "data:image/jpeg;base64,THUMB", width: 400, height: 400 });
+  myColors.entries = [];
+  myColors.addColor.mockClear();
+  myColors.toggleFavorite.mockClear();
+  myColors.removeColor.mockClear();
   setView.mockReset();
   downloadFromUrl.mockReset();
   downloadFromUrl.mockResolvedValue(undefined);
@@ -255,5 +298,62 @@ describe("MockupStudio", () => {
   it("sin onAttach sólo se puede descargar", () => {
     render(<MockupStudio />);
     expect(screen.queryByRole("button", { name: "Adjuntar a pedido" })).not.toBeInTheDocument();
+  });
+
+  it("Mis colores: cada campo de color muestra los del usuario y aplicarlos cambia la prenda", async () => {
+    myColors.entries = [
+      { value: "#123456", favorite: true },
+      { value: "#abcdef", favorite: false },
+    ];
+    render(<MockupStudio />);
+    const mine = screen.getByRole("group", { name: "Color de la prenda: mis colores" });
+    const dots = within(mine).getAllByRole("button");
+    expect(dots.map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Color de la prenda: #123456 (favorito)",
+      "Color de la prenda: #ABCDEF",
+    ]);
+    await userEvent.click(dots[1]);
+    expect(canvasProps!.config.colors.body).toBe("#abcdef");
+  });
+
+  it("Plantillas: abre el panel y aplicar una reemplaza el mockup y vuelve al frente", async () => {
+    render(<MockupStudio />);
+    await upload();
+    await userEvent.click(screen.getByRole("button", { name: "Plantillas" }));
+    expect(screen.getByRole("dialog", { name: "Plantillas" })).toBeInTheDocument();
+    expect(dialogs.templates!.hasWork).toBe(true);
+    const applied = {
+      garment: "cap" as const,
+      colors: { body: "#000000", mesh: "#ffffff", visor: "#000000" },
+      layers: [],
+    };
+    act(() => dialogs.templates!.onApply(applied, {} as never));
+    expect(canvasProps!.config).toEqual(applied);
+    expect(canvasProps!.selectedLayerId).toBeNull();
+    expect(setView).toHaveBeenLastCalledWith("front");
+  });
+
+  it("Guardar como plantilla usa la miniatura del lienzo", async () => {
+    render(<MockupStudio />);
+    await userEvent.click(screen.getByRole("button", { name: "Guardar como plantilla" }));
+    expect(screen.getByRole("dialog", { name: "Guardar como plantilla" })).toBeInTheDocument();
+    expect(dialogs.save!.config.garment).toBe("tshirt");
+    await expect(dialogs.save!.exportThumbnail()).resolves.toMatchObject({ dataUrl: "data:image/jpeg;base64,THUMB" });
+  });
+
+  it("Biblioteca: lo elegido entra como diseño seleccionado", async () => {
+    render(<MockupStudio />);
+    await userEvent.click(screen.getByRole("button", { name: "Biblioteca" }));
+    expect(screen.getByRole("dialog", { name: "Biblioteca" })).toBeInTheDocument();
+    act(() => dialogs.library!.onAddDesign({ name: "Bandera de México", dataUrl: "data:image/png;base64,MX", aspect: 4 / 3 }));
+    expect(layers()).toHaveLength(1);
+    expect(layers()[0]).toMatchObject({ name: "Bandera de México", aspect: 4 / 3, placement: placements.tshirt });
+    expect(screen.getByRole("button", { name: "Seleccionar Bandera de México" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("sólo ofrece las prendas habilitadas (sudadera y camisa siguen ocultas)", () => {
+    render(<MockupStudio />);
+    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Playera", "Gorra"]);
+    expect(screen.queryByText("Sudadera")).not.toBeInTheDocument();
   });
 });

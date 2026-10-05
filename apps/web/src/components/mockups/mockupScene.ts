@@ -8,6 +8,8 @@ import type {
   MockupView,
   Vec3,
 } from "@/lib/mockups/types";
+import { MAX_TEMPLATE_THUMBNAIL_BYTES } from "@/lib/mockups/types";
+import { dataUrlBytes } from "@/lib/mockups/dataUrl";
 import { buildDecalGeometry, createSelectionTexture, DesignDecal, TriangleSoup } from "./DesignDecal";
 import {
   composeSheet,
@@ -238,16 +240,28 @@ export class MockupScene {
    * JPEG para que pese pocos KB (el backend acepta ≤ 300 KB).
    */
   async exportThumbnail(): Promise<MockupExport> {
-    return this.exportComposite(() => [{ view: "front", label: "Frente" }], {
-      width: THUMBNAIL_SIZE,
-      height: THUMBNAIL_SIZE,
-      padding: 16,
-      gap: 0,
-      labels: false,
-      supersample: 1.5,
-      mimeType: "image/jpeg",
-      quality: 0.86,
-    });
+    // Del más nítido al más liviano hasta caber en el tope del backend (R6).
+    const attempts = [
+      { size: THUMBNAIL_SIZE, quality: 0.86 },
+      { size: THUMBNAIL_SIZE, quality: 0.7 },
+      { size: 320, quality: 0.65 },
+      { size: 240, quality: 0.6 },
+    ];
+    let last: MockupExport | null = null;
+    for (const { size, quality } of attempts) {
+      last = await this.exportComposite(() => [{ view: "front", label: "Frente" }], {
+        width: size,
+        height: size,
+        padding: Math.round(size * 0.04),
+        gap: 0,
+        labels: false,
+        supersample: 1.5,
+        mimeType: "image/jpeg",
+        quality,
+      });
+      if (dataUrlBytes(last.dataUrl) <= MAX_TEMPLATE_THUMBNAIL_BYTES) return last;
+    }
+    return last!;
   }
 
   private async exportComposite(

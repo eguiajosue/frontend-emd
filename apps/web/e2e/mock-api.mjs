@@ -12,7 +12,11 @@
  *
  * Rutas sólo para los tests (no existen en el backend real):
  * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
- * - `POST /__e2e/reset`:   vacía el almacén de mockups.
+ * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
+ * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
+ * - `GET  /__e2e/mockup-templates`: plantillas guardadas, con su config.
+ * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
+ *   (barra lateral por defecto: `navPreferences: null`).
  */
 import { createServer } from "node:http";
 
@@ -94,7 +98,18 @@ function login(body) {
   };
 }
 
-let preferencias = { hasSeenOnboarding: true };
+/** `navPreferences`: barra lateral del usuario; PATCH la guarda y GET la devuelve tal cual. */
+const PREFERENCIAS_INICIALES = { hasSeenOnboarding: true, navPreferences: null };
+let preferencias = { ...PREFERENCIAS_INICIALES };
+
+/** Plantillas y logos de mockups (compartidos por la empresa), en memoria. */
+let plantillas = [];
+let siguientePlantillaId = 1;
+let logos = [];
+let siguienteLogoId = 1;
+const autor = { id: 1, name: "Rita Ponce" };
+const resumenPlantilla = ({ config, ...resto }) => resto;
+const resumenLogo = ({ imageDataUrl, thumbnailDataUrl, ...resto }) => resto;
 
 const rutas = {
   "GET /orders": () => pedidos(),
@@ -140,11 +155,87 @@ createServer((req, res) => {
     }
 
     // Ganchos sólo para los tests.
+    if (req.method === "POST" && path === "/__e2e/reset-preferences") {
+      preferencias = { ...PREFERENCIAS_INICIALES };
+      return send(preferencias);
+    }
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
+    if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
+    if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
     if (req.method === "POST" && path === "/__e2e/reset") {
       mockups = [];
       recibidos = [];
+      plantillas = [];
+      logos = [];
+      // "Mis colores" de mockups; la barra lateral tiene su propio reset.
+      preferencias = { ...preferencias, mockupColors: null };
       return send({ ok: true });
+    }
+
+    // Plantillas de mockup: lista (con miniatura, sin config), detalle, alta, renombrar, baja.
+    const plantilla = path.match(/^\/mockup-templates(?:\/(\d+))?$/);
+    if (plantilla) {
+      const id = plantilla[1] ? Number(plantilla[1]) : null;
+      if (id === null && req.method === "GET") return send(plantillas.map(resumenPlantilla));
+      if (id === null && req.method === "POST") {
+        const { name, garment, config, thumbnailDataUrl } = JSON.parse(body || "{}");
+        if (!name || !garment || !config || typeof thumbnailDataUrl !== "string") {
+          return send({ message: "name, garment, config y thumbnailDataUrl son obligatorios" }, 400);
+        }
+        if (thumbnailDataUrl.length > 140_000) return send({ message: "Miniatura demasiado grande" }, 413);
+        const ahora = new Date().toISOString();
+        const nueva = { id: siguientePlantillaId++, name, garment, createdAt: ahora, updatedAt: ahora, createdBy: autor, thumbnailUrl: thumbnailDataUrl, config };
+        plantillas.unshift(nueva);
+        return send(resumenPlantilla(nueva), 201);
+      }
+      const existente = plantillas.find((p) => p.id === id);
+      if (!existente) return send({ message: "Plantilla no encontrada" }, 404);
+      if (req.method === "GET") return send(existente);
+      if (req.method === "PATCH") {
+        existente.name = JSON.parse(body || "{}").name ?? existente.name;
+        existente.updatedAt = new Date().toISOString();
+        return send(resumenPlantilla(existente));
+      }
+      if (req.method === "DELETE") {
+        plantillas = plantillas.filter((p) => p !== existente);
+        return res.writeHead(204).end();
+      }
+    }
+
+    // Biblioteca de logos: lista (más usados primero), miniatura, imagen, alta, renombrar, uso, baja.
+    const logo = path.match(/^\/mockup-logos(?:\/(\d+)(?:\/(image|thumbnail|use))?)?$/);
+    if (logo) {
+      const id = logo[1] ? Number(logo[1]) : null;
+      const accion = logo[2] ?? null;
+      if (id === null && req.method === "GET") {
+        return send([...logos].sort((a, b) => b.useCount - a.useCount || b.id - a.id).map(resumenLogo));
+      }
+      if (id === null && req.method === "POST") {
+        const { name, imageDataUrl, thumbnailDataUrl } = JSON.parse(body || "{}");
+        if (!name || typeof imageDataUrl !== "string" || typeof thumbnailDataUrl !== "string") {
+          return send({ message: "name, imageDataUrl y thumbnailDataUrl son obligatorios" }, 400);
+        }
+        const nuevo = { id: siguienteLogoId++, name, createdAt: new Date().toISOString(), createdBy: autor, useCount: 0, lastUsedAt: null, imageDataUrl, thumbnailDataUrl };
+        logos.push(nuevo);
+        return send(resumenLogo(nuevo), 201);
+      }
+      const existente = logos.find((l) => l.id === id);
+      if (!existente) return send({ message: "Logo no encontrado" }, 404);
+      if (accion === "image" && req.method === "GET") return send({ dataUrl: existente.imageDataUrl });
+      if (accion === "thumbnail" && req.method === "GET") return send({ dataUrl: existente.thumbnailDataUrl });
+      if (accion === "use" && req.method === "POST") {
+        existente.useCount += 1;
+        existente.lastUsedAt = new Date().toISOString();
+        return res.writeHead(204).end();
+      }
+      if (!accion && req.method === "PATCH") {
+        existente.name = JSON.parse(body || "{}").name ?? existente.name;
+        return send(resumenLogo(existente));
+      }
+      if (!accion && req.method === "DELETE") {
+        logos = logos.filter((l) => l !== existente);
+        return res.writeHead(204).end();
+      }
     }
 
     // Mockups de un pedido: lista, alta, detalle y baja.

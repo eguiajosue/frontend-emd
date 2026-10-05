@@ -1,4 +1,10 @@
-import { ALL_GARMENTS, GARMENTS, defaultGarmentOptions, type ColorPart } from "@/lib/mockups/garments";
+import {
+  ALL_GARMENTS,
+  GARMENTS,
+  assertGarmentEnabled,
+  defaultGarmentOptions,
+  type ColorPart,
+} from "@/lib/mockups/garments";
 import { defaultPlacement } from "@/lib/mockups/presets";
 import {
   DEFAULT_COLORS,
@@ -110,6 +116,7 @@ export function mockupFilename(garment: Garment, date = new Date()): string {
 }
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {
+  assertGarmentEnabled(result.config.garment);
   return {
     garment: result.config.garment,
     imageDataUrl: result.image.dataUrl,

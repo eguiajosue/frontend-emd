@@ -140,9 +140,6 @@ importers:
       date-fns:
         specifier: ^3.6.0
         version: 3.6.0
-      flag-icons:
-        specifier: ^7.5.0
-        version: 7.5.0
       framer-motion:
         specifier: ^13.2.0
         version: 13.2.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -246,6 +243,9 @@ importers:
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
+      flag-icons:
+        specifier: ^7.5.0
+        version: 7.5.0
       jsdom:
         specifier: ^30.0.1
         version: 30.0.1

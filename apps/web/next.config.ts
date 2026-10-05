@@ -99,9 +99,11 @@ const withSerwist = require("@serwist/next").default({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   reloadOnOnline: true,
-  // Todo `public/` se precachea salvo las ~250 banderas de la biblioteca de
-  // mockups (≈ 2.4 MB, ver public/flags/README.md): bajan sólo cuando se ven.
-  globPublicPatterns: ["*", "!(flags)/**/*"],
+  // Todo `public/` se precachea salvo las banderas (≈ 250 SVG, ver
+  // public/flags/README.md) y los modelos 3D de mockups: sólo los usa
+  // Recepción, así que se cachean al pedirse (CacheFirst en src/app/sw.ts,
+  // decisión R9 de docs/plans/sidebar-y-mockups-v2.md).
+  globPublicPatterns: ["*", "!(flags|models)/**/*"],
 });
 
 module.exports = withSerwist(nextConfig);

@@ -22,7 +22,13 @@ import {
  * (`loadGarment`) y agregarla a `ENABLED_GARMENTS`.
  */
 
-/** Prendas visibles en la UI. Bandera de función: lo demás está oculto. */
+/**
+ * ÚNICA lista de prendas habilitadas (decisión R11): la usan el selector del
+ * estudio, al aplicar plantillas y los armadores de cuerpos que van al backend
+ * (`buildMockupPayload`, `buildTemplatePayload`). El backend tiene su par en
+ * `src/common/mockup-validation.ts` (`ORDER_MOCKUP_GARMENTS`): al habilitar una
+ * prenda se amplían las dos en el mismo release.
+ */
 export const ENABLED_GARMENTS = ["tshirt", "cap"] as const satisfies readonly Garment[];
 
 export type EnabledGarment = (typeof ENABLED_GARMENTS)[number];
@@ -125,6 +131,19 @@ export function isGarment(value: unknown): value is Garment {
 /** ¿Se puede usar en el estudio hoy? (prenda conocida y habilitada). */
 export function isGarmentEnabled(value: unknown): value is EnabledGarment {
   return typeof value === "string" && (ENABLED_GARMENTS as readonly string[]).includes(value);
+}
+
+/** Error al armar un cuerpo para el backend con una prenda no habilitada. */
+export class GarmentNotEnabledError extends Error {
+  constructor(garment: string) {
+    super(`La prenda «${garmentLabel(garment)}» todavía no está disponible.`);
+    this.name = "GarmentNotEnabledError";
+  }
+}
+
+/** Para los armadores de payload: sólo prendas de `ENABLED_GARMENTS`. */
+export function assertGarmentEnabled(value: unknown): asserts value is EnabledGarment {
+  if (!isGarmentEnabled(value)) throw new GarmentNotEnabledError(typeof value === "string" ? value : "");
 }
 
 export function getGarment(id: Garment): GarmentDefinition {
