@@ -192,6 +192,13 @@ createServer((req, res) => {
       return send(tareas.find((t) => t.id === id));
     }
 
+    // Detalle de un pedido.
+    const detalle = path.match(/^\/orders\/(\d+)$/);
+    if (detalle && req.method === "GET") {
+      const pedido = pedidos().find((p) => p.id === Number(detalle[1]));
+      return pedido ? send(pedido) : send({ message: "Pedido no encontrado" }, 404);
+    }
+
     const match = rutas[`${req.method} ${path}`];
     if (match) return send(match());
     if (path.startsWith("/orders/") && path.endsWith("/area-tasks")) return send(tareas);

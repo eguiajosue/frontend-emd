@@ -15,17 +15,20 @@ test.beforeEach(async ({ page }) => {
 test("1 · el tablero separa Diseño de Producción y no los mezcla", async ({ page }) => {
   await abrirTablero(page);
 
-  // Recepción ve los dos circuitos, uno a la vez.
-  const diseno = page.getByRole("tab", { name: /Diseño/ });
-  const produccion = page.getByRole("tab", { name: /Producción/ });
+  // Recepción ve los dos circuitos, uno a la vez (selector "Circuito").
+  const circuito = page.getByRole("radiogroup", { name: "Circuito" });
+  const diseno = circuito.getByRole("radio", { name: /Diseño/ });
+  const produccion = circuito.getByRole("radio", { name: /Producción/ });
   await expect(diseno).toBeVisible();
   await expect(produccion).toBeVisible();
 
-  // Producción: las cinco columnas del flujo, y ninguna del circuito de diseño.
+  // Producción: las columnas del flujo, y ninguna del circuito de diseño.
+  // "cancelado" queda archivado: sólo aparece con el toggle "Archivados".
   await produccion.click();
-  for (const columna of ["pendiente", "en proceso", "terminado", "entregado", "cancelado"]) {
+  for (const columna of ["pendiente", "en proceso", "terminado", "entregado"]) {
     await expect(page.getByRole("region", { name: columna })).toBeVisible();
   }
+  await expect(page.getByRole("region", { name: "cancelado" })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "en diseño" })).toHaveCount(0);
 
   // El pedido autorizado, cuya tarea de bordado está en "pendiente", tiene que
@@ -34,12 +37,14 @@ test("1 · el tablero separa Diseño de Producción y no los mezcla", async ({ p
     page.getByRole("region", { name: "pendiente" }).getByText("#101"),
   ).toBeVisible();
 
-  // Diseño: sus propias etapas, y el pedido que sigue en montaje.
+  // Diseño: sus propias etapas, y el pedido que sigue en montaje. "autorizado"
+  // ya no es columna de Diseño: el pedido pasa al tablero de Producción.
   await diseno.click();
-  for (const columna of ["en diseño", "esperando autorización", "autorizado"]) {
+  for (const columna of ["cambios solicitados", "en diseño", "esperando autorización"]) {
     await expect(page.getByRole("region", { name: columna })).toBeVisible();
   }
   await expect(page.getByRole("region", { name: "en proceso" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "autorizado" })).toHaveCount(0);
   await expect(
     page.getByRole("region", { name: "en diseño" }).getByText("#102"),
   ).toBeVisible();
@@ -47,10 +52,11 @@ test("1 · el tablero separa Diseño de Producción y no los mezcla", async ({ p
 
 test("2 · el detalle dice de quién es el trabajo y qué falta", async ({ page }) => {
   await page.goto("/dashboard/orders");
-  await page.getByText("Colegio San Marcos").first().click();
+  // La tarjeta entera es un botón (capa encima del texto).
+  await page.getByRole("button", { name: /Ver detalle del pedido #101/ }).click();
 
   // La tira de pase: el pedido está autorizado, así que la pelota es del área.
-  await expect(page.getByRole("region", { name: "Pase del pedido" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Dónde está el pedido" })).toBeVisible();
   // `Ahora en` vive en su propio span; la frase entera está en el párrafo.
   await expect(page.getByText(/Ahora en/).locator("xpath=..")).toContainText(
     "Producción",
@@ -71,7 +77,11 @@ test("3 · el logout vuelve al login y no a un 404", async ({ page }) => {
   // que apuntaba a un deploy de Vercel ya borrado, y el logout terminaba en
   // "404: NOT_FOUND / DEPLOYMENT_NOT_FOUND".
   await page.goto("/dashboard/orders");
-  await page.getByRole("button", { name: /Logout/i }).click();
+  // El botón de salir vive al pie del menú lateral ("Cerrar sesión").
+  await page
+    .getByRole("complementary", { name: "Navegación principal" })
+    .getByRole("button", { name: "Cerrar sesión" })
+    .click();
   await expect(page).toHaveURL(/\/login/, { timeout: 20_000 });
   await expect(page.locator("#username")).toBeVisible();
 });

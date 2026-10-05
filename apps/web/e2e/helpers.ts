@@ -17,5 +17,6 @@ export async function login(page: Page, username = "recepcion1") {
 /** Abre la pantalla de pedidos en modo cuadrícula (el tablero kanban). */
 export async function abrirTablero(page: Page) {
   await page.goto("/dashboard/orders");
-  await page.getByRole("button", { name: "Cuadrícula" }).click();
+  // Lista / Cuadrícula es un selector de una opción (radiogroup "Vista").
+  await page.getByRole("radiogroup", { name: "Vista" }).getByRole("radio", { name: "Cuadrícula" }).click();
 }

@@ -71,7 +71,13 @@ test.beforeEach(async ({ request }) => {
 });
 
 test("1 · Recepción arma un mockup, lo descarga y lo adjunta a un pedido", async ({ page, request }) => {
+  // WebGL por software: cargar la prenda y renderizar la lámina (3 vistas)
+  // tarda bastante más que en una máquina con GPU.
+  test.setTimeout(180_000);
   await login(page);
+  // /dashboard redirige al inicio del rol: esperar a que termine, si no esa
+  // redirección le gana al clic del menú.
+  await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
 
   // Se llega desde el menú.
   const nav = page.getByRole("complementary", { name: "Navegación principal" });
