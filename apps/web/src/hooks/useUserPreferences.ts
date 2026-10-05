@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { request } from "@/lib/api";
 import { useAuthToken } from "@/hooks/useEntity";
+import type { NavPreferences } from "@/lib/navPreferences";
 
 /**
  * Preferencias de usuario (tema, acento, idioma), persistidas en el backend
@@ -35,6 +36,10 @@ export interface UserPreferences {
   timeFormatPreference?: "24h" | "12h" | null;
   /** Productos frecuentes del alta de pedido elegidos y ordenados por este usuario (null = por defecto). */
   frequentProductIds?: number[] | null;
+  /** Barra lateral de este usuario: favoritos, orden, ocultos, expandida (null = por defecto). */
+  navPreferences?: NavPreferences | null;
+  /** "Mis colores" del estudio de mockups: favoritos y colores propios (hex `#rrggbb`, máx. 48 c/u). */
+  mockupColors?: { favorites: string[]; custom: string[] } | null;
   /**
    * Notificaciones (Fase 4). Modo silencio general: si está activo, el
    * backend no persiste ni pushea notificaciones (salvo menciones directas,
@@ -53,8 +58,8 @@ export interface UserPreferences {
   notifyCriticalAlerts?: boolean | null;
 }
 
-const PREFERENCES_ENDPOINT = "users/me/preferences";
-const PREFERENCES_QUERY_KEY = ["userPreferences"] as const;
+export const PREFERENCES_ENDPOINT = "users/me/preferences";
+export const PREFERENCES_QUERY_KEY = ["userPreferences"] as const;
 
 export function useUserPreferences() {
   const { data: session } = useSession();

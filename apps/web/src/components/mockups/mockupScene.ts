@@ -9,7 +9,14 @@ import type {
   Vec3,
 } from "@/lib/mockups/types";
 import { buildDecalGeometry, createSelectionTexture, DesignDecal, TriangleSoup } from "./DesignDecal";
-import { composeSheet, sheetViewsFor, VIEW_AZIMUTH } from "./exportMockup";
+import {
+  composeSheet,
+  sheetViewsFor,
+  THUMBNAIL_SIZE,
+  VIEW_AZIMUTH,
+  type ComposeOptions,
+  type SheetView,
+} from "./exportMockup";
 import type { GarmentModel } from "./garmentModel";
 import { loadShirtModel } from "./ShirtModel";
 import { ContactShadows, createStudioEnvironment, StudioLightRig } from "./studioLighting";
@@ -223,6 +230,30 @@ export class MockupScene {
   }
 
   async exportSheet(): Promise<MockupExport> {
+    return this.exportComposite((layers) => sheetViewsFor(layers), {});
+  }
+
+  /**
+   * Miniatura de plantilla: sólo el frente, cuadrada (THUMBNAIL_SIZE) y en
+   * JPEG para que pese pocos KB (el backend acepta ≤ 300 KB).
+   */
+  async exportThumbnail(): Promise<MockupExport> {
+    return this.exportComposite(() => [{ view: "front", label: "Frente" }], {
+      width: THUMBNAIL_SIZE,
+      height: THUMBNAIL_SIZE,
+      padding: 16,
+      gap: 0,
+      labels: false,
+      supersample: 1.5,
+      mimeType: "image/jpeg",
+      quality: 0.86,
+    });
+  }
+
+  private async exportComposite(
+    viewsFor: (layers: MockupConfig["layers"]) => SheetView[],
+    options: ComposeOptions,
+  ): Promise<MockupExport> {
     await this.whenReady();
     // Si la prenda elegida no cargó (p. ej. falló el GLB), en pantalla sigue la
     // anterior: exportar guardaría la imagen de una prenda con la config de otra.
@@ -232,7 +263,7 @@ export class MockupScene {
     }
     this.rebuildDirtyDecals();
 
-    const views = sheetViewsFor(this.config.layers);
+    const views = viewsFor(this.config.layers);
     const prev = {
       pixelRatio: this.renderer.getPixelRatio(),
       position: this.camera.position.clone(),
@@ -253,7 +284,7 @@ export class MockupScene {
         this.lights.follow(this.camera);
         this.renderer.render(this.scene, this.camera);
         return this.renderer.domElement;
-      });
+      }, options);
     } finally {
       this.renderer.setPixelRatio(prev.pixelRatio);
       this.renderer.setSize(this.width, this.height, false);
@@ -302,8 +333,14 @@ export class MockupScene {
     const garment = config.garment;
     this.loadingGarment = garment;
     this.callbacks().onStatus?.("loading");
+    // Sólo playera y gorra tienen modelo (ver lib/mockups/garments.ts): una
+    // prenda sin modelo termina en "error" en vez de dibujar otra.
     const load: Promise<GarmentModel> =
-      garment === "tshirt" ? loadShirtModel(config.colors) : Promise.resolve(createTruckerCapModel(config.colors));
+      garment === "tshirt"
+        ? loadShirtModel(config.colors)
+        : garment === "cap"
+          ? Promise.resolve(createTruckerCapModel(config.colors))
+          : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
     this.garmentPromise = load.then(
       (model) => {
         if (this.disposed || token !== this.loadToken) {

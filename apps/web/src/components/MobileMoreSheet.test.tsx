@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { MobileMoreSheet } from "./MobileMoreSheet";
@@ -6,7 +6,18 @@ import { MobileMoreSheet } from "./MobileMoreSheet";
 const mocks = vi.hoisted(() => ({
   roles: ["superuser"] as string[],
   pathname: "/dashboard/orders",
+  navPrefs: { favorites: [], order: {}, hidden: [], expanded: false } as {
+    favorites: string[];
+    order: Record<string, string[]>;
+    hidden: string[];
+    expanded: boolean;
+  },
 }));
+
+vi.mock("@/hooks/useNavPreferences", () => ({
+  useNavPreferences: () => ({ prefs: mocks.navPrefs }),
+}));
+
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
@@ -47,6 +58,10 @@ function renderSheet() {
     </SidebarProvider>
   );
 }
+
+afterEach(() => {
+  mocks.navPrefs = { favorites: [], order: {}, hidden: [], expanded: false };
+});
 
 describe("MobileMoreSheet", () => {
   it("muestra la tarjeta de identidad: avatar, nombre completo, rol y username", () => {

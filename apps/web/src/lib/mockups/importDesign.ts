@@ -151,3 +151,41 @@ export async function importDesignFile(file: File): Promise<ImportedDesign> {
     URL.revokeObjectURL(url);
   }
 }
+
+/**
+ * Importa un diseño servido por la propia app (p. ej. una bandera de
+ * `public/flags/`): lo baja y lo pasa por el mismo camino que un archivo
+ * subido (SVG → PNG de MAX_DESIGN_PX).
+ */
+export async function importDesignFromUrl(url: string, name: string): Promise<ImportedDesign> {
+  let blob: Blob;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    blob = await res.blob();
+  } catch {
+    throw new DesignImportError(`No se pudo cargar «${name}». Revisa tu conexión e intenta de nuevo.`);
+  }
+  const ext = extensionOf(new URL(url, "http://local").pathname);
+  const type = EXTENSION_TYPES[ext] ?? blob.type;
+  const file = new File([blob], `${name}.${ext || "png"}`, { type });
+  const design = await importDesignFile(file);
+  return { ...design, name };
+}
+
+/**
+ * Diseño a partir de un PNG que ya viene reducido (logo de la biblioteca):
+ * sólo se lee su proporción, no se vuelve a codificar.
+ */
+export async function designFromDataUrl(name: string, dataUrl: string): Promise<ImportedDesign> {
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(dataUrl);
+  } catch {
+    throw new DesignImportError(`No se pudo leer «${name}».`);
+  }
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) throw new DesignImportError(`No se pudo leer «${name}».`);
+  return { name, dataUrl, aspect: width / height };
+}

@@ -82,6 +82,11 @@ export const PLACEMENT_PRESETS: Record<Garment, PlacementPreset[]> = {
       view: "back",
     },
   ],
+  // Sin modelo 3D todavía (ver lib/mockups/garments.ts): sus presets salen de
+  // raycasts sobre el GLB cuando llegue. Mientras, `defaultPlacement` usa los
+  // de la playera.
+  hoodie: [],
+  "dress-shirt": [],
 };
 
 /** Convierte un preset en `DesignPlacement` (copias: nunca comparte arreglos). */
@@ -96,12 +101,13 @@ export function presetPlacement(preset: PlacementPreset): DesignPlacement {
 
 /** Dónde cae un diseño nuevo: el primer preset de la prenda (centro del frente). */
 export function defaultPlacement(garment: Garment): DesignPlacement {
-  return presetPlacement(PLACEMENT_PRESETS[garment][0]);
+  const first = PLACEMENT_PRESETS[garment]?.[0] ?? PLACEMENT_PRESETS.tshirt[0];
+  return presetPlacement(first);
 }
 
 /** Busca un preset por id dentro de la prenda. */
 export function findPreset(garment: Garment, id: string): PlacementPreset | undefined {
-  return PLACEMENT_PRESETS[garment].find((p) => p.id === id);
+  return (PLACEMENT_PRESETS[garment] ?? []).find((p) => p.id === id);
 }
 
 /**

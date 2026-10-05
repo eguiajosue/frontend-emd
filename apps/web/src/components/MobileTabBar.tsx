@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { pickPrimaryTabUrls } from "@/lib/navPreferences";
 import { MobileMoreSheet } from "./MobileMoreSheet";
 
 /**
@@ -45,11 +47,17 @@ export function MobileTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
   const reducedMotion = useReducedMotion();
 
-  const primaryTabs = TAB_PRIORITY_URLS.map((url) =>
-    visibleItems.find((item) => item.url === url)
+  const { prefs } = useNavPreferences();
+
+  // Favoritos del usuario primero; luego la prioridad por defecto, sin ocultos.
+  const primaryTabs = pickPrimaryTabUrls(
+    visibleItems.map((item) => item.url),
+    prefs,
+    TAB_PRIORITY_URLS,
+    MAX_PRIMARY_TABS
   )
-    .filter((item): item is VisibleNavItem => Boolean(item))
-    .slice(0, MAX_PRIMARY_TABS);
+    .map((url) => visibleItems.find((item) => item.url === url))
+    .filter((item): item is VisibleNavItem => Boolean(item));
   // Activo por prefijo: el detalle de un pedido sigue marcando "Pedidos".
   const activeUrl = findActiveNavUrl(
     visibleItems.map((item) => item.url),

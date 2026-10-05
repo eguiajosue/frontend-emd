@@ -6,6 +6,7 @@ import type { MockupCanvasHandle, MockupCanvasProps } from "@/lib/mockups/types"
 const webgl = vi.hoisted(() => ({ available: true }));
 const fakeHandle: MockupCanvasHandle = {
   exportSheet: vi.fn(async () => ({ dataUrl: "data:image/png;base64,", width: 1600, height: 800 })),
+  exportThumbnail: vi.fn(async () => ({ dataUrl: "data:image/jpeg;base64,", width: 400, height: 400 })),
   setView: vi.fn(),
 };
 

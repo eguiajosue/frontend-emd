@@ -99,6 +99,9 @@ const withSerwist = require("@serwist/next").default({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   reloadOnOnline: true,
+  // Todo `public/` se precachea salvo las ~250 banderas de la biblioteca de
+  // mockups (≈ 2.4 MB, ver public/flags/README.md): bajan sólo cuando se ven.
+  globPublicPatterns: ["*", "!(flags)/**/*"],
 });
 
 module.exports = withSerwist(nextConfig);

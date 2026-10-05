@@ -1,6 +1,6 @@
 "use client";
 
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar, RAIL_OFFSET_COLLAPSED, RAIL_OFFSET_EXPANDED } from "@/components/app-sidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
@@ -13,6 +13,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { AppTopBar } from "@/components/AppTopBar";
 import { useBreadcrumbs } from "@/components/AppHeaderNav";
 import { pageTitleFromBreadcrumbs } from "@/lib/navMenu";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
 
 import { useEffect } from "react";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
@@ -27,6 +28,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { count } = useUnreadNotificationsCount();
   const crumbs = useBreadcrumbs();
   const pageTitle = pageTitleFromBreadcrumbs(crumbs);
+  // Barra expandida (con títulos): preferencia del usuario. También la
+  // controla Ctrl+B (atajo propio de `SidebarProvider`).
+  const { expanded, setExpanded } = useNavPreferences();
 
   // Pestaña con la página y las no leídas, ej. "(3) Pedidos #12 · EMD HUB":
   // con varias pestañas abiertas antes todas decían sólo "EMD HUB".
@@ -40,12 +44,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <ChatSocketContext.Provider value={socketRef}>
-      <SidebarProvider defaultOpen={false}>
+      <SidebarProvider open={expanded} onOpenChange={setExpanded}>
         <AppSidebar />
         <MobileTabBar />
         {/* Riel fijo a la izquierda (`AppSidebar`, sólo escritorio): el
-            contenido deja su ancho (3.75rem) + márgenes (1rem a cada lado). */}
-        <main className="relative w-full min-w-0 overflow-x-hidden md:pl-[5.75rem]">
+            contenido deja su ancho (3.75rem, o 14.5rem expandido) + márgenes
+            (1rem a cada lado). `--rail-offset` lo reutiliza `AppTopBar`. */}
+        <main
+          style={{ "--rail-offset": expanded ? RAIL_OFFSET_EXPANDED : RAIL_OFFSET_COLLAPSED } as React.CSSProperties}
+          className="relative w-full min-w-0 overflow-x-hidden transition-[padding] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
+        >
           <AppTopBar />
           <AnimatePresence mode="wait">
             <motion.div

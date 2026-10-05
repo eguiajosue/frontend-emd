@@ -6,7 +6,13 @@
  * el espacio local de la prenda (el mismo que usan los presets de cada modelo).
  */
 
-export type Garment = "tshirt" | "cap";
+/**
+ * Prendas del estudio. "hoodie" y "dress-shirt" ya existen en el contrato
+ * (plantillas, registro de prendas, generador de patrones) pero todavía no
+ * tienen modelo 3D: la UI sólo ofrece las de `ENABLED_GARMENTS`
+ * (`lib/mockups/garments.ts`).
+ */
+export type Garment = "tshirt" | "cap" | "hoodie" | "dress-shirt";
 
 export type Vec3 = [number, number, number];
 
@@ -40,10 +46,41 @@ export interface GarmentColors {
   visor?: string;
 }
 
+/** Tipo de tela: lisa, a rayas o a cuadros (camisa de vestir). */
+export type FabricPatternKind = "plain" | "stripes" | "plaid";
+
+/** Patrón de la tela. Ver `lib/mockups/fabricPattern.ts`. */
+export interface FabricPatternConfig {
+  kind: FabricPatternKind;
+  /** El primero es el fondo; los demás, las rayas (se repiten en orden). */
+  colors: string[];
+  /** Grosor de cada raya, en px de la textura. */
+  stripeWidth?: number;
+  /** Separación entre rayas, en px de la textura. */
+  spacing?: number;
+  direction?: "vertical" | "horizontal";
+}
+
+/**
+ * Ajustes propios de algunas prendas (todos opcionales: un mockup de playera o
+ * gorra no los lleva y las configs viejas siguen siendo válidas).
+ */
+export interface GarmentOptions {
+  /** Sudadera: con bolsa canguro. */
+  pocket?: boolean;
+  /** Camisa de vestir: manga larga o corta. */
+  sleeve?: "long" | "short";
+  /** Camisa de vestir: lisa / rayas / cuadros. */
+  pattern?: FabricPatternConfig;
+  /** Camisa de vestir: color de los botones (`#rrggbb`). */
+  buttonColor?: string;
+}
+
 export interface MockupConfig {
   garment: Garment;
   colors: GarmentColors;
   layers: DesignLayer[];
+  options?: GarmentOptions;
 }
 
 /** Vistas fijas de cámara (botones del estudio y láminas de exportación). */
@@ -67,11 +104,15 @@ export const MAX_MOCKUP_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_COLORS: Record<Garment, GarmentColors> = {
   tshirt: { body: "#ffffff" },
   cap: { body: "#1f2937", mesh: "#ffffff", visor: "#1f2937" },
+  hoodie: { body: "#b9bcc0" },
+  "dress-shirt": { body: "#ffffff" },
 };
 
 export const GARMENT_LABELS: Record<Garment, string> = {
   tshirt: "Playera",
   cap: "Gorra",
+  hoodie: "Sudadera",
+  "dress-shirt": "Camisa de vestir",
 };
 
 /** Resultado de exportar: lámina PNG lista para descargar o adjuntar. */
@@ -88,8 +129,71 @@ export interface MockupExport {
  */
 export interface MockupCanvasHandle {
   exportSheet: () => Promise<MockupExport>;
+  /**
+   * Miniatura chica (≈ 400 × 400, sólo la vista de frente, JPEG) para las
+   * plantillas: pesa muy poco (≤ MAX_TEMPLATE_THUMBNAIL_BYTES).
+   */
+  exportThumbnail: () => Promise<MockupExport>;
   setView: (view: MockupView) => void;
 }
+
+/* ------------------------------ Mis colores ------------------------------ */
+
+/**
+ * Colores propios del usuario en el estudio (preferencia por usuario,
+ * `PATCH /users/me/preferences { mockupColors }`). Hex `#rrggbb`.
+ */
+export interface MockupColorsPreference {
+  favorites: string[];
+  custom: string[];
+}
+
+/** Tope por lista que acepta el backend. */
+export const MAX_MY_COLORS = 48;
+
+/* ------------------------------- Plantillas ------------------------------- */
+
+/** Plantilla compartida por la empresa (`GET /mockup-templates`). */
+export interface MockupTemplateSummary {
+  id: number;
+  name: string;
+  garment: Garment;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: { id: number; name: string } | null;
+  /** Miniatura (`data:image/...`). */
+  thumbnailUrl: string;
+}
+
+export interface MockupTemplateDetail extends MockupTemplateSummary {
+  config: MockupConfig;
+}
+
+/** Cuerpo de `POST /mockup-templates`. */
+export interface CreateMockupTemplatePayload {
+  name: string;
+  garment: Garment;
+  config: MockupConfig;
+  thumbnailDataUrl: string;
+}
+
+/** La miniatura de una plantilla no puede pasar de esto (backend). */
+export const MAX_TEMPLATE_THUMBNAIL_BYTES = 300 * 1024;
+
+/* --------------------------------- Logos --------------------------------- */
+
+/** Logo de la biblioteca de la empresa (`GET /mockup-logos`, sin imagen). */
+export interface MockupLogoSummary {
+  id: number;
+  name: string;
+  createdAt: string;
+  createdBy: { id: number; name: string } | null;
+  useCount: number;
+  lastUsedAt: string | null;
+}
+
+/** Tope de la imagen de un logo (PNG). */
+export const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 /** Lo que el backend guarda por mockup (respuesta de GET /orders/:id/mockups). */
 export interface OrderMockupSummary {

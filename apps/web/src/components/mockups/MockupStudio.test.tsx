@@ -28,11 +28,11 @@ vi.mock("@/components/mockups/MockupCanvasLazy", async () => {
 /* --------------------------------- Presets -------------------------------- */
 
 const { placements, presets } = vi.hoisted(() => {
-  const placements: Record<Garment, DesignPlacement> = {
+  const placements: Record<"tshirt" | "cap", DesignPlacement> = {
     tshirt: { position: [0, 0.1, 0.2], normal: [0, 0, 1], scale: 0.3, rotation: 0 },
     cap: { position: [0, 0.05, 0.1], normal: [0, 0, 1], scale: 0.1, rotation: 0 },
   };
-  const presets: Record<Garment, PlacementPreset[]> = {
+  const presets: Partial<Record<Garment, PlacementPreset[]>> = {
     tshirt: [
       { id: "chest-left", label: "Pecho izq.", view: "front", placement: { position: [0.1, 0.2, 0.15], normal: [0, 0, 1], scale: 0.12 } },
       { id: "back-top", label: "Espalda alta", view: "back", placement: { position: [0, 0.3, -0.15], normal: [0, 0, -1], scale: 0.25 } },
@@ -43,7 +43,7 @@ const { placements, presets } = vi.hoisted(() => {
 });
 vi.mock("@/lib/mockups/presets", () => ({
   PLACEMENT_PRESETS: presets,
-  defaultPlacement: (garment: Garment) => ({ ...placements[garment] }),
+  defaultPlacement: (garment: Garment) => ({ ...placements[garment as "tshirt" | "cap"] }),
   applyPreset: (layer: DesignLayer, preset: PlacementPreset): DesignLayer => ({
     ...layer,
     placement: { ...preset.placement, rotation: preset.placement.rotation ?? 0 },

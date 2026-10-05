@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import type { LucideIcon } from "lucide-react";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
-import { OPERATIONAL_MENU, buildMenuItems, isNavItemVisible } from "@/lib/navMenu";
+import { OPERATIONAL_MENU, buildMenuItems, isNavItemVisible, type NavGroup } from "@/lib/navMenu";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
@@ -60,4 +60,20 @@ export function useVisibleNavItems(): VisibleNavItem[] {
     }
   }
   return items;
+}
+
+/**
+ * Grupos del menú ya filtrados por rol (sin grupos vacíos): la base sobre la
+ * que se aplican las preferencias de la barra (`lib/navPreferences.ts`).
+ */
+export function useVisibleNavGroups(): NavGroup[] {
+  const { data: session } = useSession();
+  const userRoles = session?.user?.roles || [];
+  const operationalOnly = isOperationalOnly(userRoles);
+  return (operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isNavItemVisible(item, userRoles, operationalOnly)),
+    }))
+    .filter((group) => group.items.length > 0);
 }

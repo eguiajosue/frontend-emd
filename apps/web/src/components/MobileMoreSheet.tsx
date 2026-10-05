@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { formatRoleList } from "@/lib/roles";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
+import { pickPrimaryTabUrls } from "@/lib/navPreferences";
 
 interface MobileMoreSheetProps {
   open: boolean;
@@ -37,13 +39,18 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const userRoles = session?.user?.roles || [];
   const visibleItems = useVisibleNavItems();
 
-  // Mismo criterio de prioridad que usa `MobileTabBar` para sus 4 tabs
-  // (fuente compartida en `navMenu.ts`): todo lo que no entra ahí, entra aquí,
-  // en el mismo orden relativo de `useVisibleNavItems()`.
+  const { prefs } = useNavPreferences();
+
+  // Mismo criterio que usa `MobileTabBar` para sus 4 tabs (favoritos primero,
+  // sin ocultos; `pickPrimaryTabUrls`): todo lo que no entra ahí — incluidos
+  // los ocultos — entra aquí, en el mismo orden relativo de `useVisibleNavItems()`.
   const primaryUrls = new Set(
-    TAB_PRIORITY_URLS.filter((url) =>
-      visibleItems.some((item) => item.url === url)
-    ).slice(0, MAX_PRIMARY_TABS)
+    pickPrimaryTabUrls(
+      visibleItems.map((item) => item.url),
+      prefs,
+      TAB_PRIORITY_URLS,
+      MAX_PRIMARY_TABS
+    )
   );
   const remainingItems = visibleItems.filter((item) => !primaryUrls.has(item.url));
   const activeUrl = findActiveNavUrl(visibleItems.map((item) => item.url), pathname);
