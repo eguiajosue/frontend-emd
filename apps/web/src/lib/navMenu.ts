@@ -16,6 +16,7 @@ import {
   Warehouse,
   House,
   Shirt,
+  ReceiptText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -51,6 +52,9 @@ export const INVENTORY_URL = "/dashboard/inventario";
 
 /** Creador de mockups 3D (playera / gorra) de Recepción. */
 export const MOCKUPS_URL = "/dashboard/mockups";
+
+/** Cotizaciones de Recepción: por enviar / enviadas (docs/plans/cotizaciones.md). */
+export const QUOTES_URL = "/dashboard/cotizaciones";
 
 /** Roles que ejecutan trabajo (Diseño + áreas de producción). */
 const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
@@ -147,6 +151,13 @@ export function buildMenuItems(): NavGroup[] {
           title: "Mockups",
           url: MOCKUPS_URL,
           icon: Shirt,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+        {
+          // Cotizaciones por enviar y enviadas: Recepción y administración.
+          title: "Cotizaciones",
+          url: QUOTES_URL,
+          icon: ReceiptText,
           roles: ["admin", "recepcion", "superuser"],
         },
         {

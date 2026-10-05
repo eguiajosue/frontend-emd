@@ -37,6 +37,8 @@ export const ENDPOINTS = {
   materialUnits: "material-units",
   // Existencias físicas por departamento + kardex (no es el catálogo de materiales).
   inventory: "inventory",
+  // Cotizaciones de Recepción (por enviar / enviadas).
+  quotes: "quotes",
 } as const;
 
 export type EntityKey = keyof typeof ENDPOINTS;
