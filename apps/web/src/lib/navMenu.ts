@@ -15,6 +15,7 @@ import {
   Truck,
   Warehouse,
   House,
+  Shirt,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +48,9 @@ const HOME_ITEM: NavItem = { title: "Inicio", url: HOME_URL, icon: House };
 
 /** Existencias físicas por departamento (no es el catálogo de Materiales). */
 export const INVENTORY_URL = "/dashboard/inventario";
+
+/** Creador de mockups 3D (playera / gorra) de Recepción. */
+export const MOCKUPS_URL = "/dashboard/mockups";
 
 /** Roles que ejecutan trabajo (Diseño + áreas de producción). */
 const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
@@ -137,6 +141,13 @@ export function buildMenuItems(): NavGroup[] {
           url: "/dashboard/orders",
           icon: Package,
           roles: ["admin", "superuser", "recepcion"],
+        },
+        {
+          // Mockups 3D para mostrarle al cliente: mismo acceso que Inventario.
+          title: "Mockups",
+          url: MOCKUPS_URL,
+          icon: Shirt,
+          roles: ["admin", "recepcion", "superuser"],
         },
         {
           // Quien gestiona Y además trabaja un área (ej. Recepción + Taller)
@@ -262,6 +273,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/admin/rendimiento",
   "/dashboard/hoja-materiales",
   "/dashboard/historial",
+  MOCKUPS_URL,
   "/dashboard/clientes",
   "/dashboard/materiales",
   "/dashboard/proveedores",

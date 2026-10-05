@@ -79,6 +79,33 @@ describe("buildMenuItems", () => {
   });
 });
 
+describe("Mockups", () => {
+  const groups = buildMenuItems();
+  const operacion = groups.find((g) => g.groupLabel === "Operación")!;
+  const mockups = operacion.items.find((i) => i.url === "/dashboard/mockups")!;
+
+  it("va en Operación justo después de Pedidos", () => {
+    const urls = operacion.items.map((i) => i.url);
+    expect(urls.indexOf("/dashboard/mockups")).toBe(urls.indexOf("/dashboard/orders") + 1);
+    expect(mockups.title).toBe("Mockups");
+  });
+
+  it("lo ven Recepción y administración; Diseño y Producción no", () => {
+    expect(isNavItemVisible(mockups, ["recepcion"], false)).toBe(true);
+    expect(isNavItemVisible(mockups, ["admin"], false)).toBe(true);
+    expect(isNavItemVisible(mockups, ["superuser"], false)).toBe(true);
+    for (const role of ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]) {
+      expect(isNavItemVisible(mockups, [role], false)).toBe(false);
+    }
+    // El menú operativo (Diseño/Producción) tampoco lo trae.
+    expect(OPERATIONAL_MENU.flatMap((g) => g.items.map((i) => i.url))).not.toContain("/dashboard/mockups");
+  });
+
+  it("migas: Operación › Mockups", () => {
+    expect(buildBreadcrumbs(groups, "/dashboard/mockups")).toEqual([{ label: "Operación" }, { label: "Mockups" }]);
+  });
+});
+
 describe("buildBreadcrumbs", () => {
   const groups = buildMenuItems();
 

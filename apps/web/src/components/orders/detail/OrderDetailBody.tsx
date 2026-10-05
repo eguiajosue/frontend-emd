@@ -5,6 +5,7 @@ import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { CollapsibleSection, DetailSection } from "@/components/orders/detail/DetailSection";
 import { OrderDetailsSection } from "@/components/orders/detail/OrderDetailsSection";
+import { OrderMockupsSection } from "@/components/orders/detail/OrderMockupsSection";
 import {
   OrderProgressPanel,
   type OrderDetailSectionTarget,
@@ -118,6 +119,12 @@ export function OrderDetailBody({
     </DetailSection>
   );
 
+  // Mockups 3D del pedido (referencia para Diseño y Producción): van pegados
+  // a los datos del pedido. Crear/eliminar sólo Recepción y admin.
+  const mockups = (
+    <OrderMockupsSection key="mockups" order={order} canManage={viewer.canManageOperations} />
+  );
+
   // Diseño arrancando un pedido nuevo necesita primero el brief (qué hay que
   // hacer y los archivos del cliente); con cambios pedidos, lo primero es
   // la sección de Diseño, que abre con lo que pidió el cliente.
@@ -131,6 +138,8 @@ export function OrderDetailBody({
         : [design, details, areas]
       : [areas, details, design];
 
+  const sections = ordered.flatMap((section) => (section === details ? [details, mockups] : [section]));
+
   return (
     <div className="space-y-4 sm:space-y-5">
       <OrderProgressPanel
@@ -139,7 +148,7 @@ export function OrderDetailBody({
         viewer={viewer}
         onGoToSection={goToSection}
       />
-      {ordered}
+      {sections}
       <OrderNotesSection orderId={order.id} />
       {permissions.canSeeHistory && <OrderActivitySection orderId={order.id} />}
     </div>

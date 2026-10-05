@@ -12,6 +12,7 @@ import {
   BookmarkPlus,
   CalendarDays,
   Check,
+  Download,
   Sparkles,
   FileText,
   Loader2,
@@ -19,6 +20,7 @@ import {
   Paperclip,
   Plus,
   RotateCcw,
+  Shirt,
   Trash2,
   UserPlus,
   X,
@@ -53,6 +55,11 @@ import { PreviewImage } from "@/components/ui/preview-image";
 import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { CreateClientDialog } from "@/components/orders/CreateClientDialog";
 import { SaveOrderTemplateDialog } from "@/components/orders/SaveOrderTemplateDialog";
+import { MockupStudioDialog } from "@/components/mockups/MockupStudioDialog";
+import { mockupErrorMessage, orderMockupsKey, postOrderMockup } from "@/hooks/useOrderMockups";
+import { downloadFromUrl } from "@/lib/download";
+import { buildMockupPayload, mockupFilename, type MockupStudioResult } from "@/lib/mockups/studio";
+import { GARMENT_LABELS, type CreateOrderMockupPayload } from "@/lib/mockups/types";
 import { CustomizeFrequentsDialog, resolveFrequents } from "@/components/orders/CustomizeFrequentsDialog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
@@ -457,6 +464,13 @@ export function CreateOrderDialog({
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   /** Hoja de materiales copiada de la base: se carga en el pedido nuevo al crearlo. */
   const [materials, setMaterials] = useState<RepeatMaterial[]>([]);
+  /**
+   * Mockups 3D armados desde aquí: se guardan en el pedido (POST aparte)
+   * después de crearlo. Si alguno falla, el pedido no se toca (R2).
+   */
+  const [pendingMockups, setPendingMockups] = useState<{ key: string; result: MockupStudioResult }[]>([]);
+  const [mockupStudioOpen, setMockupStudioOpen] = useState(false);
+  const mockupKeySeq = useRef(0);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   const [showAllPrevious, setShowAllPrevious] = useState(false);
   /** Invalida la carga de materiales de una base anterior (se cambió o se quitó). */
@@ -517,6 +531,7 @@ export function CreateOrderDialog({
     setMaterials([]);
     setMaterialsLoading(false);
     setShowAllPrevious(false);
+    setPendingMockups([]);
     baseRequestRef.current++;
     revokePreview();
     setClientResourceFile(null);
@@ -1066,6 +1081,48 @@ export function CreateOrderDialog({
     focusById("order-file-attach");
   };
 
+  /* -------------------------------- Mockups ------------------------------- */
+
+  const addPendingMockup = (result: MockupStudioResult) => {
+    setPendingMockups((prev) => [...prev, { key: `mockup-${++mockupKeySeq.current}`, result }]);
+    markDirty();
+  };
+
+  const removePendingMockup = (key: string) => {
+    setPendingMockups((prev) => prev.filter((m) => m.key !== key));
+    markDirty();
+  };
+
+  const downloadPendingMockup = (result: MockupStudioResult) => {
+    downloadFromUrl(result.image.dataUrl, mockupFilename(result.config.garment)).catch(() =>
+      toast.error("No se pudo descargar el mockup.")
+    );
+  };
+
+  /**
+   * Guarda un mockup en el pedido ya creado. Corre en segundo plano (no
+   * frena el cierre del diálogo); si falla, el toast trae "Reintentar", que
+   * reenvía el mismo cuerpo guardado en memoria.
+   */
+  const uploadMockup = (orderId: number, payload: CreateOrderMockupPayload, label: string) => {
+    postOrderMockup(token, orderId, payload).then(
+      () => {
+        queryClient.invalidateQueries({ queryKey: orderMockupsKey(orderId), exact: true });
+      },
+      (error) => {
+        toast.error(`El pedido #${orderId} se creó, pero no se pudo adjuntar ${label}.`, {
+          description: mockupErrorMessage(error),
+          duration: 20_000,
+          style: { pointerEvents: "auto" },
+          action: {
+            label: "Reintentar",
+            onClick: () => uploadMockup(orderId, payload, label),
+          },
+        });
+      }
+    );
+  };
+
   /* -------------------------------- Entrega ------------------------------- */
 
   // "Hoy" se fija al abrir: los atajos no cambian mientras se carga el pedido.
@@ -1240,6 +1297,17 @@ export function CreateOrderDialog({
       }
       queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
       if (base?.kind === "template") templateMutations.markUsed.mutate(base.id);
+
+      // Mockups: después de crear y sin esperar (pueden pesar varios MB).
+      if (order?.id && pendingMockups.length > 0) {
+        pendingMockups.forEach((m, index) =>
+          uploadMockup(
+            order.id,
+            buildMockupPayload(m.result),
+            pendingMockups.length > 1 ? `el mockup ${index + 1}` : "el mockup"
+          )
+        );
+      }
 
       // Se guardan ANTES de cerrar (el estado se limpia en la próxima apertura):
       // chip "Recientes", defaults del próximo pedido y "Crear otro para {cliente}".
@@ -2233,6 +2301,61 @@ export function CreateOrderDialog({
                         <Paperclip className="h-4 w-4" /> Adjuntar archivo del cliente
                       </Button>
                     )}
+
+                    {/* Mockups 3D: se guardan en el pedido al crearlo. */}
+                    <div className="space-y-2">
+                      {pendingMockups.length > 0 && (
+                        <ul className="flex flex-wrap gap-2" aria-label="Mockups para el pedido">
+                          {pendingMockups.map((m, index) => {
+                            const name = `Mockup ${index + 1}`;
+                            return (
+                              <li
+                                key={m.key}
+                                className="flex items-center gap-2 rounded-xl bg-muted/50 p-1.5 pr-1"
+                              >
+                                <PreviewImage
+                                  src={m.result.image.dataUrl}
+                                  alt={name}
+                                  className="h-10 w-20 rounded-md bg-white object-contain"
+                                />
+                                <span className="text-sm font-medium">
+                                  {GARMENT_LABELS[m.result.config.garment]}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-11 sm:size-8"
+                                  onClick={() => downloadPendingMockup(m.result)}
+                                  aria-label={`Descargar ${name.toLowerCase()}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-11 sm:size-8"
+                                  onClick={() => removePendingMockup(m.key)}
+                                  aria-label={`Quitar ${name.toLowerCase()}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn("-ml-2 gap-1.5 text-muted-foreground", TAP)}
+                        onClick={() => setMockupStudioOpen(true)}
+                      >
+                        <Shirt className="h-4 w-4" /> Crear mockup
+                      </Button>
+                    </div>
                   </Section>
 
                   {/* ───────────── Entrega ───────────── */}
@@ -2529,6 +2652,13 @@ export function CreateOrderDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MockupStudioDialog
+        open={mockupStudioOpen}
+        onOpenChange={setMockupStudioOpen}
+        attachLabel="Agregar al pedido"
+        onAttach={addPendingMockup}
+      />
 
       <CustomizeFrequentsDialog
         open={frequentsOpen}
