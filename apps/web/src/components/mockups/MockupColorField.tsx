@@ -279,13 +279,18 @@ export function MockupColorField({
       </div>
 
       {myColors && (
-        <div className="flex items-center gap-2 rounded-xl bg-muted/40 py-1.5 pl-3 pr-1.5">
-          <span className="shrink-0 text-meta">Mis colores</span>
+        <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-3 py-2">
+          <span className="shrink-0 pt-1.5 text-meta">Mis colores</span>
           <div
             role="group"
             aria-label={`${label}: mis colores`}
-            className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5"
           >
+            {myColors.entries.length === 0 && (
+              <span className="mr-auto pt-0.5 text-meta text-muted-foreground/80">
+                Guarda aquí los colores de tus clientes
+              </span>
+            )}
             {myColors.entries.map((entry) => (
               <ColorDot
                 key={entry.value}
@@ -296,32 +301,21 @@ export function MockupColorField({
                 onClick={() => onChange(entry.value)}
               />
             ))}
-            {myColors.entries.length === 0 && (
-              <span className="truncate text-meta text-muted-foreground/80">Guarda aquí los colores de tus clientes</span>
-            )}
           </div>
           <Popover open={panelOpen} onOpenChange={setPanelOpen}>
             <PopoverTrigger asChild>
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0 bg-card px-2.5"
+                title="Agregar color"
                 aria-label={`${label}: agregar color`}
+                className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-dashed border-foreground/30 bg-card text-foreground/70 transition-colors hover:border-ink/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=open]:border-solid data-[state=open]:border-ink"
               >
-                <Plus /> Agregar color
-              </Button>
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+              </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80">
               {panelOpen && (
-                <MyColorsPanel
-                  label={label}
-                  value={current}
-                  controls={myColors}
-                  onApply={(hex) => {
-                    onChange(hex);
-                  }}
-                />
+                <MyColorsPanel label={label} value={current} controls={myColors} onApply={(hex) => onChange(hex)} />
               )}
             </PopoverContent>
           </Popover>

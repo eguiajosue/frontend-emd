@@ -332,7 +332,7 @@ function RailItem({
         <DropdownMenuContent
           side="right"
           align="start"
-          sideOffset={expanded ? 12 : 14}
+          sideOffset={expanded ? 12 : 22}
           className="w-56"
           onCloseAutoFocus={(e) => {
             if (!expanded) {
@@ -393,6 +393,12 @@ function RailSection({
   if (!expanded) {
     return (
       <ul aria-label={label} className="flex flex-col items-center gap-1">
+        {/* Favoritos: una estrellita discreta marca la sección en el riel angosto. */}
+        {Icon && (
+          <li aria-hidden className="flex h-4 items-center justify-center">
+            <Icon className="h-2.5 w-2.5 fill-current text-amber-500" />
+          </li>
+        )}
         {children}
       </ul>
     );
@@ -557,6 +563,8 @@ export function AppSidebar() {
           aria-label="Secciones"
           className={cn(
             "flex min-h-0 w-full flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-2 [scrollbar-width:none]",
+            // Se desvanece al pie: si la lista no cabe, se nota que sigue.
+            "[mask-image:linear-gradient(to_bottom,black_calc(100%-1rem),transparent)]",
             expanded ? "items-stretch" : "items-center"
           )}
         >

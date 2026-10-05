@@ -160,7 +160,8 @@ export function SaveTemplateDialog({
 function formatDate(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString("es-MX", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
 }
 
 function TemplateCard({
@@ -232,7 +233,7 @@ function TemplateCard({
         ) : (
           <>
             <div className="min-w-0 flex-1 pt-0.5">
-              <p className="truncate text-sm font-semibold" title={template.name}>
+              <p className="line-clamp-2 break-words text-sm font-semibold leading-snug" title={template.name}>
                 {template.name}
               </p>
               <p className="truncate text-meta" title={meta}>

@@ -173,6 +173,8 @@ function SortableRow({
           <Star className={cn("!size-4", favorite && "fill-current")} aria-hidden />
         </Button>
       </SimpleTooltip>
+      {/* Sin ojo (Favoritos): hueco del mismo ancho para alinear la estrella. */}
+      {!showHide && <span aria-hidden className="w-8 shrink-0" />}
       {showHide && onToggleHidden && (
         <SimpleTooltip label={hideLabel}>
           <Button

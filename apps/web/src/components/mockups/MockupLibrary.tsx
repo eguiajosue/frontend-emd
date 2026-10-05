@@ -126,7 +126,7 @@ function LogoCard({
         ) : (
           <>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.8125rem] font-medium" title={logo.name}>
+              <p className="line-clamp-2 break-words text-[0.8125rem] font-medium leading-snug" title={logo.name}>
                 {logo.name}
               </p>
               <p className="truncate text-[0.6875rem] text-muted-foreground">
