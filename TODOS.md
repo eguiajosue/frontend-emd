@@ -18,4 +18,20 @@
 **Priority:** P3
 **Depends on:** Obtaining a licensed Richardson 112 (6-panel) GLB with separate front / mesh / visor meshes.
 
+### Hoodie and dress-shirt GLBs (pending: user provides the models)
+
+**What:** Add the 3D models for the hoodie (with and without kangaroo pocket) and the dress shirt (long and short sleeve), then enable them in `ENABLED_GARMENTS` (`apps/web/src/lib/mockups/`).
+
+**Why:** The user asked for hoodies and dress shirts in the mockup studio. The code-side infra (garment registry, fabric pattern generator for plain/stripes/plaid, backend garment allow-list `hoodie` / `dress-shirt`) already ships hidden; only the models are missing.
+
+**Pros:** Recepción can mock up two more garment types with patterns, colors and button color.
+
+**Cons:** Depends on the user downloading CC0/CC-BY glTF models (Sketchfab is blocked from the build environment). Patterns need clean UVs; pocket toggle needs the pocket as a separate mesh (or two hoodie models).
+
+**Context:** Deferred by the user ("Deja pendientes los .glb"). Model requirements: garment only (no mannequin), < ~100k tris, clean UVs, separate parts where possible (hood, pocket, collar, buttons). Drop files in `apps/web/public/models/`, add attribution to `apps/web/public/models/README.md`, measure presets against the real surface like `presetsSurface.test.ts` does for the shirt. Plan: `docs/plans/sidebar-y-mockups-v2.md`.
+
+**Effort:** M
+**Priority:** P2
+**Depends on:** the user providing the `.glb` files.
+
 ## Completed
