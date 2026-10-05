@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AlertCircle, Loader2, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +57,7 @@ export function AttachToOrderDialog({
   onAttached?: (orderId: number) => void;
 }) {
   const router = useRouter();
-  const { data: orders = [], isPending } = useOrders({ enabled: open });
+  const { data: orders = [], isPending, isError, refetch } = useOrders({ enabled: open });
   const createMockup = useCreateOrderMockup();
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -127,6 +128,13 @@ export function AttachToOrderDialog({
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-2 px-1 py-6 text-center text-sm text-muted-foreground">
+              <p>No se pudieron cargar los pedidos.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                Reintentar
+              </Button>
             </div>
           ) : results.length === 0 ? (
             <p className="px-1 py-6 text-center text-sm text-muted-foreground">

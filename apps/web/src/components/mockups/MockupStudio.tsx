@@ -162,6 +162,9 @@ export function MockupStudio({
   const [freeView, setFreeView] = useState(false);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState<null | "download" | "attach">(null);
+  // Mientras se exporta, arrastrar en el lienzo tampoco cambia el mockup.
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   const [dragging, setDragging] = useState(false);
   const canvasRef = useRef<MockupCanvasHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -218,7 +221,10 @@ export function MockupStudio({
   }, []);
 
   const handlePlacementChange = useCallback(
-    (id: string, placement: DesignPlacement) => updateLayer(id, (l) => ({ ...l, placement })),
+    (id: string, placement: DesignPlacement) => {
+      if (busyRef.current) return;
+      updateLayer(id, (l) => ({ ...l, placement }));
+    },
     [updateLayer]
   );
 
@@ -488,7 +494,8 @@ export function MockupStudio({
             : "lg:h-[70vh]"
         )}
       >
-        <div className="min-h-0 flex-1 lg:overflow-y-auto">
+        {/* Bloqueado mientras se exporta: la imagen y la config guardada deben coincidir. */}
+        <fieldset disabled={busy !== null} className="min-h-0 min-w-0 flex-1 lg:overflow-y-auto">
           <StudioSection title="Prenda">
             <ToggleGroup
               type="single"
@@ -605,7 +612,7 @@ export function MockupStudio({
               </div>
             </StudioSection>
           )}
-        </div>
+        </fieldset>
 
         {/* Acciones */}
         <div className="flex flex-col gap-2 border-t border-border/60 bg-card px-4 py-3 sm:flex-row sm:px-5 lg:flex-col xl:flex-row">

@@ -91,8 +91,15 @@ export async function loadShirtModel(colors: GarmentColors): Promise<GarmentMode
     viewElevation: 0.06,
     shadow: { size: 1.4, far: 0.75, blur: 2.6, opacity: 0.42 },
     dispose() {
-      // La geometría y las texturas son del GLB cacheado: sólo el material es propio.
       material.dispose();
+      // La geometría y las texturas son del GLB cacheado y se comparten entre
+      // lienzos. Cada renderer que las dibuja les cuelga un listener de
+      // "dispose" que sólo se quita al disparar el evento: sin esto, cada
+      // apertura del estudio deja vivo al renderer anterior. Los datos (arrays
+      // e imágenes) siguen en memoria y el siguiente renderer los vuelve a subir.
+      src.geometry.dispose();
+      baseMaterial.normalMap?.dispose();
+      baseMaterial.aoMap?.dispose();
     },
   };
 }

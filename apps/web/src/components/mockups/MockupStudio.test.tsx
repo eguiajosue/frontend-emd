@@ -226,6 +226,16 @@ describe("MockupStudio", () => {
     );
   });
 
+  it("mientras exporta, los controles quedan bloqueados para que imagen y config coincidan", async () => {
+    let finish: (v: typeof SHEET) => void = () => {};
+    exportSheet.mockImplementationOnce(() => new Promise((r) => (finish = r)));
+    render(<MockupStudio />);
+    await userEvent.click(screen.getByRole("button", { name: "Descargar imagen" }));
+    expect(screen.getByRole("radio", { name: "Gorra" })).toBeDisabled();
+    await act(async () => finish(SHEET));
+    expect(screen.getByRole("radio", { name: "Gorra" })).not.toBeDisabled();
+  });
+
   it("si exportar falla avisa con un toast", async () => {
     exportSheet.mockRejectedValueOnce(new Error("webgl"));
     render(<MockupStudio />);

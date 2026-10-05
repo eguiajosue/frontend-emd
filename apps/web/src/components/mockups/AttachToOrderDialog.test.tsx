@@ -10,8 +10,12 @@ const ORDERS = [
   { id: 87, statusId: 3, status: { id: 3, name: "en proceso" }, description: "Lonas", clientNameOverride: "Taquería El Güero" },
 ] as unknown as Order[];
 
+let mockOrdersState: { data?: Order[]; isPending: boolean; isError?: boolean; refetch?: () => void } = {
+  data: ORDERS,
+  isPending: false,
+};
 vi.mock("@/hooks/useOrders", () => ({
-  useOrders: () => ({ data: ORDERS, isPending: false }),
+  useOrders: () => mockOrdersState,
 }));
 
 const mutateAsync = vi.fn();
@@ -40,6 +44,7 @@ const RESULT = {
 };
 
 beforeEach(() => {
+  mockOrdersState = { data: ORDERS, isPending: false };
   mutateAsync.mockReset();
   mutateAsync.mockResolvedValue({ id: 5 });
   push.mockReset();
@@ -89,6 +94,16 @@ describe("AttachToOrderDialog", () => {
     render(<AttachToOrderDialog open onOpenChange={vi.fn()} result={RESULT} />);
     await userEvent.click(screen.getByRole("button", { name: /#102/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No tienes acceso a este pedido");
+  });
+
+  it("si no cargan los pedidos lo dice y deja reintentar", async () => {
+    const refetch = vi.fn();
+    mockOrdersState = { data: [], isPending: false, isError: true, refetch };
+    render(<AttachToOrderDialog open onOpenChange={vi.fn()} result={RESULT} />);
+    expect(screen.getByText("No se pudieron cargar los pedidos.")).toBeInTheDocument();
+    expect(screen.queryByText("No hay pedidos para elegir.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(refetch).toHaveBeenCalled();
   });
 
   it("sin coincidencias lo dice", async () => {

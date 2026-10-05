@@ -224,7 +224,12 @@ export class MockupScene {
 
   async exportSheet(): Promise<MockupExport> {
     await this.whenReady();
-    if (this.disposed || !this.current || !this.config) throw new Error("El modelo 3D todavía no está listo");
+    // Si la prenda elegida no cargó (p. ej. falló el GLB), en pantalla sigue la
+    // anterior: exportar guardaría la imagen de una prenda con la config de otra.
+    // El mensaje empieza con "El 3D" para que el estudio lo muestre tal cual.
+    if (this.disposed || !this.current || !this.config || this.current.garment !== this.config.garment) {
+      throw new Error("El 3D no terminó de cargar la prenda. Espera un momento o recarga la página.");
+    }
     this.rebuildDirtyDecals();
 
     const views = sheetViewsFor(this.config.layers);
