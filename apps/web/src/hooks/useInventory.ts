@@ -10,6 +10,7 @@ import type {
   InventoryArea,
   InventoryItem,
   InventoryMovement,
+  InventoryMovementResult,
   UpdateInventoryItemPayload,
 } from "@/types";
 
@@ -23,6 +24,8 @@ import type {
  * - `GET    /inventory/:id/movements`    kardex de un artículo
  * - `POST   /inventory/:id/movements`    entrada / salida / ajuste
  * - `GET    /inventory/export?area=`     CSV
+ * - `GET    /inventory/items/by-barcode/:code`            artículo por código de barras
+ * - `POST   /inventory/items/by-barcode/:code/movements`  movimiento al escanear
  */
 
 const inventoryKey = queryKeys.all("inventory");
@@ -99,7 +102,7 @@ export function useInventoryMutations() {
   });
 
   const registerMovement = useMutation<
-    { movement: InventoryMovement; item: InventoryItem },
+    InventoryMovementResult,
     ApiError,
     { id: number; payload: CreateInventoryMovementPayload }
   >({
@@ -109,7 +112,27 @@ export function useInventoryMutations() {
     meta,
   });
 
-  return { create, update, remove, registerMovement };
+  /** Escaneo: ubica el artículo por su código y registra el movimiento en una sola petición. */
+  const scanMovement = useMutation<
+    InventoryMovementResult,
+    ApiError,
+    { code: string; payload: CreateInventoryMovementPayload }
+  >({
+    mutationFn: ({ code, payload }) =>
+      request(inventoryBarcodePath(code, "/movements"), { token, method: "POST", body: payload }),
+    onSuccess: invalidate,
+    meta,
+  });
+
+  return { create, update, remove, registerMovement, scanMovement };
+}
+
+/**
+ * Ruta por código de barras. El código puede traer `/`, espacios o `#`
+ * (Code 128 admite todo el ASCII imprimible): siempre va codificado.
+ */
+export function inventoryBarcodePath(code: string, suffix = ""): string {
+  return `${ENDPOINTS.inventory}/items/by-barcode/${encodeURIComponent(code)}${suffix}`;
 }
 
 /** Descarga `GET /inventory/export` (CSV); requiere el Bearer, así que no puede ser un link directo. */

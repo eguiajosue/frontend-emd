@@ -103,7 +103,8 @@ export function truncateText(text: string, maxChars: number): string {
   const clean = text.replace(/\s+/g, " ").trim();
   const chars = Array.from(clean);
   if (chars.length <= maxChars) return clean;
-  if (maxChars <= 1) return "…".slice(0, maxChars);
+  if (maxChars <= 0) return "";
+  if (maxChars === 1) return "…";
   return chars.slice(0, maxChars - 1).join("").trimEnd() + "…";
 }
 
@@ -146,9 +147,12 @@ export interface Box {
 export interface LabelLayout {
   widthMm: number;
   heightMm: number;
+  /** "Propiedad de: EMD HUB", a la izquierda del primer renglón. */
   company: Box & { fontMm: number };
-  title: Box & { fontMm: number; maxChars: number };
+  /** Departamento, a la derecha del mismo renglón. */
   area: Box & { fontMm: number };
+  /** Nombre del artículo: todo el ancho, letra entre `maxFontMm` y `minFontMm`. */
+  title: Box & { maxFontMm: number; minFontMm: number };
   barcode: Box;
   code: Box & { fontMm: number };
 }
@@ -158,8 +162,6 @@ export interface LabelLayoutOptions {
   heightMm?: number;
   /** Margen blanco del borde de la etiqueta (la térmica no imprime pegado al corte). */
   paddingMm?: number;
-  /** Ancho reservado a la derecha del renglón del artículo para el departamento. */
-  areaWidthMm?: number;
 }
 
 /**
@@ -171,41 +173,27 @@ export function computeLabelLayout({
   widthMm = LABEL_WIDTH_MM,
   heightMm = LABEL_HEIGHT_MM,
   paddingMm = 2.5,
-  areaWidthMm = 18,
 }: LabelLayoutOptions = {}): LabelLayout {
   const inner = widthMm - paddingMm * 2;
-  const companyFont = ptToMm(7); // ≈ 2.5 mm
-  const titleFont = ptToMm(10); // ≈ 3.5 mm
-  const areaFont = ptToMm(7);
+  const smallFont = ptToMm(7); // ≈ 2.5 mm
+  const titleMax = ptToMm(11); // ≈ 3.9 mm
+  const titleMin = ptToMm(7.5); // ≈ 2.6 mm
   const codeFont = ptToMm(9); // ≈ 3.2 mm
-  const gap = 0.8;
 
   let y = paddingMm;
-  const company = { x: paddingMm, y, width: inner, height: companyFont * 1.2, fontMm: companyFont };
-  y += company.height + 0.4;
+  const rowHeight = smallFont * 1.2;
+  const areaWidth = inner * 0.38;
+  const company = { x: paddingMm, y, width: inner - areaWidth - 1, height: rowHeight, fontMm: smallFont };
+  const area = { x: widthMm - paddingMm - areaWidth, y, width: areaWidth, height: rowHeight, fontMm: smallFont };
+  y += rowHeight + 0.5;
 
-  const titleWidth = inner - areaWidthMm - 1.5;
-  const title = {
-    x: paddingMm,
-    y,
-    width: titleWidth,
-    height: titleFont * 1.25,
-    fontMm: titleFont,
-    maxChars: maxCharsForWidth(titleWidth, titleFont, 0.58),
-  };
-  const area = {
-    x: widthMm - paddingMm - areaWidthMm,
-    y: y + (title.height - areaFont * 1.2) / 2,
-    width: areaWidthMm,
-    height: areaFont * 1.2,
-    fontMm: areaFont,
-  };
-  y += title.height + gap;
+  const title = { x: paddingMm, y, width: inner, height: titleMax * 1.2, maxFontMm: titleMax, minFontMm: titleMin };
+  y += title.height + 0.8;
 
   const codeHeight = codeFont * 1.2;
-  const codeY = heightMm - paddingMm - codeHeight;
-  const barcode = { x: 1, y, width: widthMm - 2, height: Math.max(6, codeY - 0.3 - y) };
+  const codeY = heightMm - paddingMm - codeHeight + 0.6;
+  const barcode = { x: 1, y, width: widthMm - 2, height: Math.max(6, codeY - 0.4 - y) };
   const code = { x: paddingMm, y: codeY, width: inner, height: codeHeight, fontMm: codeFont };
 
-  return { widthMm, heightMm, company, title, area, barcode, code };
+  return { widthMm, heightMm, company, area, title, barcode, code };
 }
