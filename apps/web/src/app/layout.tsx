@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Space_Grotesk, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
@@ -62,11 +63,17 @@ export const viewport: Viewport = {
   interactiveWidget: "resizes-content",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Nonce de la CSP de esta request (lo genera `src/middleware.ts`). Los
+  // scripts inline propios (acento, tema de next-themes) lo necesitan para
+  // ejecutarse. Leer `headers()` vuelve dinámico el render de toda la app:
+  // es el costo de una CSP sin `'unsafe-inline'`.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html
       suppressHydrationWarning
@@ -74,8 +81,14 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${dmSans.variable}`}
     >
       <body className="font-sans antialiased">
-        <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
-        <Providers>
+        <script
+          nonce={nonce}
+          // El navegador oculta `nonce` del DOM tras cargar: sin esto React
+          // avisaría de un mismatch al hidratar.
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }}
+        />
+        <Providers nonce={nonce}>
           {children}
           <Toaster />
         </Providers>

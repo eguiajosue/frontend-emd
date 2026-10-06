@@ -1,4 +1,26 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
+
+export { expect };
+
+/**
+ * `test` de Playwright con un guardia de CSP automático: si el navegador
+ * reporta una violación de la Content-Security-Policy (script sin nonce, un
+ * `eval`, un fetch a un host no permitido…) el test falla aunque la pantalla
+ * "funcione". Todas las specs lo importan de aquí en vez de @playwright/test.
+ */
+export const test = base.extend<{ cspGuard: void }>({
+  cspGuard: [
+    async ({ page }, use) => {
+      const violations: string[] = [];
+      page.on("console", (message) => {
+        if (/Content Security Policy/i.test(message.text())) violations.push(message.text());
+      });
+      await use();
+      expect(violations, "violaciones de CSP en la consola").toEqual([]);
+    },
+    { auto: true },
+  ],
+});
 
 /**
  * Entra como Recepción (o como `username`, con los roles que le da el backend

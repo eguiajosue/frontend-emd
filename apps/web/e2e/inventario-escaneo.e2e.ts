@@ -1,9 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import { login } from "./helpers";
+import { type Page } from "@playwright/test";
+import { expect, test, login } from "./helpers";
 
 /**
  * Modo Escanear de Inventario con un lector USB "modo teclado" simulado:
- * Playwright teclea el código muy rápido (como el lector) y Enter, sin foco
+ * se manda el código muy rápido (como el lector) y Enter, sin foco
  * en ningún campo. Después se verifica el stock en el backend de mentira.
  */
 
@@ -15,11 +15,38 @@ async function stock(id: number): Promise<{ quantity: number; barcode: string }>
   return items.find((i) => i.id === id)!;
 }
 
-/** Lo que manda un lector: ráfaga de teclas (5 ms entre una y otra) + Enter. */
+/**
+ * Lo que manda un lector: ráfaga de teclas (5 ms entre una y otra) + Enter.
+ *
+ * Por CDP y con la hora de cada tecla explícita, no con `keyboard.type`:
+ * Playwright espera a que el navegador procese cada tecla antes de mandar la
+ * siguiente, así que una tarea larga en el hilo principal (hidratación, un
+ * prefetch de ruta) estiraba el hueco entre teclas a más de los 35 ms que
+ * tolera el detector y la primera letra se perdía. Un lector real manda las
+ * teclas con su propio reloj y el navegador las encola con esa hora.
+ */
 async function escanear(page: Page, code: string) {
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  await page.keyboard.type(code, { delay: 5 });
-  await page.keyboard.press("Enter");
+  const cdp = await page.context().newCDPSession(page);
+  const start = Date.now() / 1000;
+  const keys = [...code, "Enter"];
+  for (const [i, key] of keys.entries()) {
+    const timestamp = start + i * 0.005;
+    const isEnter = key === "Enter";
+    const base = {
+      key,
+      code: isEnter ? "Enter" : undefined,
+      windowsVirtualKeyCode: isEnter ? 13 : key.toUpperCase().charCodeAt(0),
+      timestamp,
+    };
+    await cdp.send("Input.dispatchKeyEvent", {
+      ...base,
+      type: "keyDown",
+      text: isEnter ? "\r" : key,
+    });
+    await cdp.send("Input.dispatchKeyEvent", { ...base, type: "keyUp" });
+  }
+  await cdp.detach();
 }
 
 test.beforeEach(async ({ page }) => {

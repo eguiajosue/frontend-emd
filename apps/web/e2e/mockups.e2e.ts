@@ -1,6 +1,5 @@
 import { deflateSync } from "node:zlib";
-import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { expect, test, login } from "./helpers";
 
 /**
  * Estudio de mockups 3D (docs/plans/mockups-3d.md, R4): el flujo de Recepción

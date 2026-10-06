@@ -1,8 +1,7 @@
-import { expect, test } from "@playwright/test";
-import { abrirTablero, login } from "./helpers";
+import { expect, test, abrirTablero, login } from "./helpers";
 
 /**
- * Los tres flujos que más duele que se rompan, y donde salieron los bugs de
+ * Los flujos que más duele que se rompan, y donde salieron los bugs de
  * esta semana: el tablero ubicaba los pedidos por un dato y escribía en otro,
  * el logout terminaba en un 404 de Vercel, y el detalle no decía de quién era
  * el trabajo.
@@ -84,4 +83,23 @@ test("3 · el logout vuelve al login y no a un 404", async ({ page }) => {
     .click();
   await expect(page).toHaveURL(/\/login/, { timeout: 20_000 });
   await expect(page.locator("#username")).toBeVisible();
+});
+
+test("4 · exportar a Excel descarga un .xlsx válido", async ({ page }) => {
+  // `xlsx` (SheetJS 0.18.5 de npm, sin parches) se cambió por
+  // `write-excel-file`: el archivo tiene que seguir saliendo igual.
+  await page.goto("/dashboard/orders");
+  await page.getByRole("button", { name: "Exportar" }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("menuitem", { name: /Excel/ }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^pedidos-\d{4}-\d{2}-\d{2}\.xlsx$/);
+
+  const path = await download.path();
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(path!);
+  // Un .xlsx es un zip (firma "PK") que trae xl/workbook.xml.
+  expect(bytes.subarray(0, 2).toString("latin1")).toBe("PK");
+  expect(bytes.includes(Buffer.from("xl/workbook.xml"))).toBe(true);
 });
