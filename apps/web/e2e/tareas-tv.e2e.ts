@@ -107,8 +107,11 @@ test("5 · tocar una tarjeta abre el detalle del pedido encima de la tele", asyn
   await page.goto("/dashboard/tareas?tv=1");
   const tarjeta = columna(page, "Pendiente").getByRole("article", { name: /Pedido #105/ });
 
-  // Con el mouse, en cualquier parte de la tarjeta (aquí, sobre la descripción).
-  await tarjeta.getByText("Mandiles con logo").click();
+  // Con el mouse, en cualquier parte de la tarjeta (aquí, sobre la
+  // descripción: el clic lo recibe la capa del botón que cubre la tarjeta).
+  await tarjeta.scrollIntoViewIfNeeded();
+  const texto = await tarjeta.getByText("Mandiles con logo").boundingBox();
+  await page.mouse.click(texto!.x + 20, texto!.y + texto!.height / 2);
   const detalle = page.getByRole("dialog", { name: /#105/ });
   await expect(detalle).toBeVisible();
   await expect(detalle).toContainText("Café Central");
@@ -121,17 +124,21 @@ test("5 · tocar una tarjeta abre el detalle del pedido encima de la tele", asyn
   );
   expect(arriba).toBe(true);
 
-  // Esc cierra sólo el detalle: la tele sigue abierta y el foco vuelve a la tarjeta.
+  // Esc cierra sólo el detalle: la tele sigue abierta.
   await page.keyboard.press("Escape");
   await expect(detalle).toHaveCount(0);
   await expect(tele(page)).toBeVisible();
-  await expect(tarjeta.getByRole("button", { name: "Ver detalle del pedido #105" })).toBeFocused();
 
-  // Con el teclado: Enter sobre el botón de la tarjeta.
+  // Con el teclado: Enter sobre el botón de la tarjeta; al cerrar, el foco vuelve ahí.
+  const verDetalle = tarjeta.getByRole("button", { name: "Ver detalle del pedido #105" });
+  await verDetalle.focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog", { name: /#105/ })).toBeVisible();
-  await page.keyboard.press("Escape");
+  const otraVez = page.getByRole("dialog", { name: /#105/ });
+  await expect(otraVez).toBeVisible();
+  await otraVez.getByRole("button", { name: "Cerrar", exact: true }).click();
+  await expect(otraVez).toHaveCount(0);
   await expect(tele(page)).toBeVisible();
+  await expect(verDetalle).toBeFocused();
 
   // El botón de acción no abre el detalle: hace lo suyo.
   await tarjeta.getByRole("button", { name: /Tomar y empezar/ }).click();

@@ -205,6 +205,16 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   // --- Detalle de un pedido encima de la tele (como en la vista normal). La
   // cola de llegadas espera mientras está abierto.
   const [detailId, setDetailId] = useState<number | null>(null);
+  // Sin <DialogTrigger>, Radix no sabe a quién devolver el foco al cerrar:
+  // se recuerda la tarjeta que lo abrió y se le devuelve (si nadie más lo tomó).
+  const detailOpener = useRef<HTMLElement | null>(null);
+  const closeDetail = useCallback(() => {
+    setDetailId(null);
+    setTimeout(() => {
+      const active = document.activeElement;
+      if (!active || active === document.body) detailOpener.current?.focus();
+    }, 350);
+  }, []);
 
   // --- Llegadas: cola → un paso a la vez (o la caja grande).
   const [queue, setQueue] = useState<PackageArrival[]>([]);
@@ -368,6 +378,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
     (orderId: number) => {
       // Los pedidos de la demo no existen en el backend.
       if (orderId > 9000 && demoTasks.some((t) => t.order.id === orderId)) return;
+      detailOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setDetailId(orderId);
     },
     [demoTasks]
@@ -597,7 +608,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         {/* Dentro del contenido de la tele (rama anidada de Radix): Esc cierra
             sólo el detalle y el foco vuelve a la tarjeta. Se monta después en
             el <body>, así que queda encima de la pantalla completa. */}
-        <OrderDetailDialog orderId={detailId} onClose={() => setDetailId(null)} />
+        <OrderDetailDialog orderId={detailId} onClose={closeDetail} />
       </DialogContent>
     </Dialog>
   );
