@@ -3,6 +3,7 @@ import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { CacheFirst, ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from "serwist";
 import { listPendingMutations, removePendingMutation } from "@/lib/offlineQueue";
+import { isSentryTunnelPath } from "@/lib/sentry";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -18,6 +19,15 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    // Túnel de Sentry (POST same-origin con el reporte de error, ver
+    // lib/sentry.ts): siempre a la red, nunca a Cache Storage. Va primero para
+    // que ninguna regla de abajo (ni `defaultCache`) lo intercepte.
+    ...(["POST", "GET"] as const).map((method) => ({
+      matcher: ({ url, sameOrigin }: { url: URL; sameOrigin: boolean }) =>
+        sameOrigin && isSentryTunnelPath(url.pathname),
+      method,
+      handler: new NetworkOnly(),
+    })),
     // Payloads pesados de mockups (plantilla con su config, imagen/miniatura
     // de un logo, detalle de un mockup del pedido): pueden pesar varios MB y
     // no sirven offline. Sólo red, nunca a Cache Storage (decisión R8).

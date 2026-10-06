@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { login } from "./helpers";
+import { expect, test, login } from "./helpers";
 
 /**
  * Barra lateral personalizable (docs/plans/sidebar-y-mockups-v2.md, lane B):

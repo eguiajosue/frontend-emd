@@ -173,13 +173,26 @@ function PreferencesSync() {
   return null;
 }
 
-export default function Providers({ children }: { children: ReactNode }) {
+export default function Providers({
+  children,
+  nonce,
+}: {
+  children: ReactNode;
+  /** Nonce de la CSP (ver `src/middleware.ts`) para el script inline de next-themes. */
+  nonce?: string;
+}) {
   // El QueryClient se crea una sola vez por montaje del árbol de React.
   const [queryClient] = useState(createQueryClient);
 
   return (
     <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem
+        disableTransitionOnChange
+        nonce={nonce}
+      >
         {/*
           reducedMotion="user": respeta prefers-reduced-motion del sistema para
           TODO lo animado con framer-motion en la app (springs, stagger, hover,

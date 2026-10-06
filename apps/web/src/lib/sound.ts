@@ -20,9 +20,19 @@ function getAudioContextCtor() {
   );
 }
 
+/**
+ * Mientras el Modo TV de Tareas está abierto, su campanita (ver `tvSound.ts`)
+ * reemplaza al "ding" de los avisos de pedido: sin esto sonaban los dos.
+ */
+let notificationSoundSuppressed = false;
+
+export function setNotificationSoundSuppressed(suppressed: boolean): void {
+  notificationSoundSuppressed = suppressed;
+}
+
 /** Dos tonos ascendentes tipo "ding", para eventos que requieren atención (nueva orden). */
 export function playNotificationSound(): void {
-  if (!isSoundEnabled()) return;
+  if (notificationSoundSuppressed || !isSoundEnabled()) return;
   try {
     const AudioContextCtor = getAudioContextCtor();
     if (!AudioContextCtor) return;

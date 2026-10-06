@@ -21,7 +21,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  reporter: [["list"]],
+  // En CI además el reporte HTML (con trazas de los fallos), que el workflow
+  // sube como artefacto cuando algo falla.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "retain-on-failure",
@@ -56,6 +58,8 @@ export default defineConfig({
         NEXT_PUBLIC_BACKEND_URL: `http://localhost:${MOCK_API_PORT}`,
         NEXTAUTH_SECRET: "secreto-solo-para-tests",
         NEXTAUTH_URL: `http://localhost:${PORT}`,
+        // Botones "Simular llegada" del Modo TV de Tareas (`?tv=1&demo=1`).
+        NEXT_PUBLIC_TV_DEMO: "1",
       },
     },
   ],

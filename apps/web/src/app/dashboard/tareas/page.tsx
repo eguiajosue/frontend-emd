@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Inbox, PartyPopper, UserRound, type LucideIcon } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Inbox, Monitor, PartyPopper, UserRound, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { GreetingHeader } from "@/components/admin/GreetingHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/feedback/states";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { TasksTvMode } from "@/components/tasks/tv/TasksTvMode";
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -16,9 +19,33 @@ import { useNow } from "@/hooks/useNow";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatRoleList } from "@/lib/roles";
 import { groupMyTasks, taskAreas, taskDeadline } from "@/lib/myTasks";
+import { cn } from "@/lib/utils";
 import type { MyTask } from "@/types";
 
 const ALL = "all";
+
+/**
+ * Escucha `?tv=1` (y `&demo=1`). Aparte y en `<Suspense>` porque
+ * `useSearchParams` lo exige, y porque la paleta ⌘K navega a
+ * `/dashboard/tareas?tv=1` estando ya aquí: la página no se vuelve a montar.
+ */
+function TareasUrlWatcher({ onChange }: { onChange: (params: URLSearchParams) => void }) {
+  const query = useSearchParams().toString();
+  useEffect(() => onChange(new URLSearchParams(query)), [query, onChange]);
+  return null;
+}
+
+/** Quita un parámetro de la URL sin navegar (al cerrar el Modo TV). */
+function clearUrlParams(...keys: string[]) {
+  try {
+    const url = new URL(window.location.href);
+    if (!keys.some((k) => url.searchParams.has(k))) return;
+    keys.forEach((k) => url.searchParams.delete(k));
+    window.history.replaceState(null, "", url.toString());
+  } catch {
+    // Sin acceso a la URL: no afecta a la pantalla.
+  }
+}
 
 /** Cabecera de grupo al estilo kanban: píldora con ícono, nombre y contador. */
 function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: LucideIcon; label: string; count: number }) {
@@ -50,6 +77,16 @@ export default function TareasPage() {
   const now = useNow(60_000);
   const [area, setArea] = useState<string>(ALL);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
+  const [tv, setTv] = useState<{ open: boolean; demo: boolean }>({ open: false, demo: false });
+
+  // `?tv=1` queda en la URL mientras la tele esté abierta (un F5 la reabre) y se limpia al salir.
+  const handleUrlParams = useCallback((params: URLSearchParams) => {
+    if (params.get("tv") === "1") setTv({ open: true, demo: params.get("demo") === "1" });
+  }, []);
+  const closeTv = useCallback(() => {
+    setTv({ open: false, demo: false });
+    clearUrlParams("tv", "demo");
+  }, []);
 
   const areas = useMemo(() => taskAreas(tasks, roles), [tasks, roles]);
   const activeArea = area !== ALL && areas.includes(area) ? area : null;
@@ -81,30 +118,44 @@ export default function TareasPage() {
 
   return (
     <div className="space-y-8">
+      <Suspense fallback={null}>
+        <TareasUrlWatcher onChange={handleUrlParams} />
+      </Suspense>
       <GreetingHeader firstName={session?.user?.first_name} subtitle={description} />
 
-      {areas.length > 1 && (
-        <ToggleGroup
-          type="single"
-          variant="segmented"
-          size="sm"
-          value={activeArea ?? ALL}
-          onValueChange={(v) => v && setArea(v)}
-          aria-label="Filtrar por área"
-          className="flex-wrap justify-start rounded-full border bg-card p-1 sm:inline-flex"
+      <div className={cn("flex-wrap items-center gap-3", areas.length > 1 ? "flex" : "hidden sm:flex")}>
+        {areas.length > 1 && (
+          <ToggleGroup
+            type="single"
+            variant="segmented"
+            size="sm"
+            value={activeArea ?? ALL}
+            onValueChange={(v) => v && setArea(v)}
+            aria-label="Filtrar por área"
+            className="flex-wrap justify-start rounded-full border bg-card p-1 sm:inline-flex"
+          >
+            <ToggleGroupItem value={ALL}>Todas</ToggleGroupItem>
+            {areas.map((value) => {
+              const Icon = getAreaIcon(value);
+              return (
+                <ToggleGroupItem key={value} value={value} className="gap-1.5">
+                  {Icon && <Icon aria-hidden />}
+                  {getAreaLabel(value)}
+                </ToggleGroupItem>
+              );
+            })}
+          </ToggleGroup>
+        )}
+        {/* La tele del área (todo el trabajo, no sólo lo tuyo): no tiene sentido en un teléfono. */}
+        <Button
+          variant="outline"
+          className="ml-auto hidden gap-2 sm:inline-flex"
+          onClick={() => setTv({ open: true, demo: false })}
         >
-          <ToggleGroupItem value={ALL}>Todas</ToggleGroupItem>
-          {areas.map((value) => {
-            const Icon = getAreaIcon(value);
-            return (
-              <ToggleGroupItem key={value} value={value} className="gap-1.5">
-                {Icon && <Icon aria-hidden />}
-                {getAreaLabel(value)}
-              </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
-      )}
+          <Monitor className="h-4 w-4" />
+          Modo TV
+        </Button>
+      </div>
 
       {isError ? (
         <ErrorState onRetry={() => refetch()} />
@@ -141,6 +192,7 @@ export default function TareasPage() {
         </div>
       )}
 
+      {tv.open && <TasksTvMode demo={tv.demo} onClose={closeTv} onOpenOrder={setOpenOrderId} />}
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Package, ClipboardList, Building2 } from "lucide-react";
+import { Package, ClipboardList, Building2, ListTodo } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "./CommandPalette";
 import type { Order } from "@/types";
 
@@ -13,8 +13,10 @@ vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ canManageOperations }),
 }));
 
+let extraNavItems: { title: string; group: string; url: string; icon: typeof Package; unreadCount: number }[] = [];
 vi.mock("@/hooks/useVisibleNavItems", () => ({
   useVisibleNavItems: () => [
+    ...extraNavItems,
     { title: "Pedidos", group: "Operación", url: "/dashboard/orders", icon: Package, unreadCount: 0 },
     {
       title: "Hoja de Materiales",
@@ -42,6 +44,7 @@ beforeEach(() => {
   localStorage.clear();
   push.mockReset();
   canManageOperations = true;
+  extraNavItems = [];
 });
 
 describe("CommandPalette", () => {
@@ -122,5 +125,21 @@ describe("CommandPalette fase 3", () => {
     act(() => openCommandPalette());
     await userEvent.click(screen.getByRole("option", { name: /Nuevo cliente/ }));
     expect(push).toHaveBeenCalledWith("/dashboard/clientes?new=1");
+  });
+
+  it("con Tareas asignadas en el menú ofrece el Modo TV de tareas", async () => {
+    extraNavItems = [
+      { title: "Tareas asignadas", group: "Operación", url: "/dashboard/tareas", icon: ListTodo, unreadCount: 0 },
+    ];
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.click(screen.getByRole("option", { name: /Modo TV de tareas/ }));
+    expect(push).toHaveBeenCalledWith("/dashboard/tareas?tv=1");
+  });
+
+  it("sin Tareas asignadas no ofrece el Modo TV de tareas", () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    expect(screen.queryByRole("option", { name: /Modo TV de tareas/ })).not.toBeInTheDocument();
   });
 });

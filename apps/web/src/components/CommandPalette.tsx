@@ -45,6 +45,7 @@ export function openCommandPalette() {
 }
 
 const ORDERS_URL = "/dashboard/orders";
+const TASKS_URL = "/dashboard/tareas";
 const CLIENTS_URL = "/dashboard/clientes";
 const CONFIG_URL = "/dashboard/configuracion";
 
@@ -86,6 +87,7 @@ export function CommandPalette() {
   const visibleUrls = useMemo(() => new Set(navItems.map((item) => item.url)), [navItems]);
   const canSeeOrders = visibleUrls.has(ORDERS_URL);
   const canSeeClients = visibleUrls.has(CLIENTS_URL);
+  const canSeeTasks = visibleUrls.has(TASKS_URL);
 
   // Sólo se piden pedidos/clientes con la paleta abierta: evita un fetch
   // extra en cada pantalla del dashboard sólo para tener la búsqueda lista.
@@ -156,6 +158,17 @@ export function CommandPalette() {
             icon: Monitor,
             keywords: "pedidos pantalla completa tele taller muro",
             run: () => go(`${ORDERS_URL}?tv=1`),
+          },
+        ]
+      : []),
+    ...(canSeeTasks
+      ? [
+          {
+            value: "action:tasks-tv",
+            label: "Modo TV de tareas",
+            icon: Monitor,
+            keywords: "tareas área pantalla completa tele taller tablero",
+            run: () => go(`${TASKS_URL}?tv=1`),
           },
         ]
       : []),

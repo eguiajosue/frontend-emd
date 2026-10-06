@@ -21,50 +21,13 @@ function resolveGitCommit() {
 }
 
 /**
- * Cabeceras de seguridad conservadoras.
+ * Cabeceras de seguridad estáticas.
  *
- * La CSP es deliberadamente permisiva en scripts (`'unsafe-inline'` y
- * `'unsafe-eval'`): Next.js inyecta scripts inline sin nonce y Tailwind/Recharts
- * usan estilos inline, así que una CSP estricta rompería la app. `connect-src`
- * se limita al backend del ambiente (ver `resolveConnectSrc`). Para endurecerla habría que migrar a nonces por request
- * (middleware) y fijar el host del backend por ambiente.
+ * La Content-Security-Policy NO va aquí: lleva un nonce distinto por request,
+ * así que la arma `src/middleware.ts` (ver `src/lib/csp.ts`). Ésta es la única
+ * fuente de la CSP.
  */
-/**
- * `connect-src`: sólo el propio origen y el del backend (NEXT_PUBLIC_BACKEND_URL,
- * más su variante ws/wss). Antes quedaba abierto a cualquier `https:`/`http:`,
- * lo que dejaba a un XSS exfiltrar el token de la sesión a cualquier host. Si
- * la variable falta o es inválida se conserva el comportamiento anterior para
- * no romper el build.
- */
-function resolveConnectSrc() {
-  const raw = process.env.NEXT_PUBLIC_BACKEND_URL;
-  try {
-    if (!raw) throw new Error("missing");
-    const url = new URL(raw);
-    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad");
-    const ws = `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`;
-    return `connect-src 'self' ${url.origin} ${ws}`;
-  } catch {
-    return "connect-src 'self' https: wss: http: ws:";
-  }
-}
-
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  resolveConnectSrc(),
-  "worker-src 'self'",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-].join("; ");
-
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -88,6 +51,9 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
     NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
+    // Entorno de Sentry también en el cliente (sin prefijo NEXT_PUBLIC_ no se
+    // incrustaría). Vacío = el SDK usa VERCEL_ENV / NODE_ENV.
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT ?? "",
   },
   /**
    * Rutas viejas que se fusionaron en pantallas unificadas. Se redirigen aquí
@@ -125,4 +91,42 @@ const withSerwist = require("@serwist/next").default({
   globPublicPatterns: ["*", "!(flags|models)/**/*"],
 });
 
-module.exports = withSerwist(nextConfig);
+/**
+ * Sentry (ver docs/monitoring.md): sin `NEXT_PUBLIC_SENTRY_DSN` la config de
+ * Next queda exactamente igual que sin Sentry — ni plugin de webpack, ni
+ * auto-instrumentación, ni túnel. El build no necesita ninguna variable de
+ * Sentry para pasar (CI, Vercel sin configurar, e2e).
+ *
+ * Con DSN:
+ * - `tunnelRoute`: el navegador manda los eventos al propio origen y Next los
+ *   reescribe al ingest de Sentry; la CSP (`connect-src`) no cambia. Debe
+ *   coincidir con `SENTRY_TUNNEL_ROUTE` de src/lib/sentry.ts (el middleware y
+ *   el Service Worker la excluyen de auth/CSP y de la caché).
+ * - Source maps: sólo se generan y suben si además hay `SENTRY_AUTH_TOKEN`
+ *   (+ `SENTRY_ORG` / `SENTRY_PROJECT`); sin token, nada de upload ni avisos.
+ */
+const SENTRY_TUNNEL_ROUTE = "/monitoring";
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+const uploadSourceMaps = sentryEnabled && Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+function withSentry(config: import("next").NextConfig): import("next").NextConfig {
+  if (!sentryEnabled) return config;
+  const { withSentryConfig } = require("@sentry/nextjs/config");
+  return withSentryConfig(config, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: !uploadSourceMaps,
+    telemetry: false,
+    tunnelRoute: SENTRY_TUNNEL_ROUTE,
+    sourcemaps: { disable: !uploadSourceMaps },
+    release: { create: uploadSourceMaps },
+    widenClientFileUpload: uploadSourceMaps,
+    webpack: {
+      automaticVercelMonitors: false,
+      treeshake: { removeDebugLogging: true },
+    },
+  });
+}
+
+module.exports = withSentry(withSerwist(nextConfig));

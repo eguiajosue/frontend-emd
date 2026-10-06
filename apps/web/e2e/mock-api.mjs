@@ -19,6 +19,7 @@
  * - `POST /__e2e/reset-inventory`: vuelve el inventario a sus 3 artículos iniciales.
  * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
  *   (barra lateral por defecto: `navPreferences: null`).
+ * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
  */
 import { createServer } from "node:http";
 
@@ -43,7 +44,82 @@ const estados = [
 ];
 
 /** Estado mutable: los tests cambian estas tareas y vuelven a pedir /orders. */
-let tareas = [{ id: 1, orderId: 101, area: "bordado", status: "pendiente", assignedUserId: 2, createdAt: "2026-09-01T10:00:00.000Z", assignedUser: usuarios[1] }];
+const tareasIniciales = () => [{ id: 1, orderId: 101, area: "bordado", status: "pendiente", assignedUserId: 2, createdAt: "2026-09-01T10:00:00.000Z", assignedUser: usuarios[1] }];
+let tareas = tareasIniciales();
+
+/**
+ * Más trabajo del área de Bordado, sólo para el Modo TV de Tareas
+ * (`/orders/my-area-tasks` y `/orders/my-tasks`). Sus pedidos no están en
+ * `GET /orders` para no mover los tableros que prueban los otros flujos. Las
+ * fechas son relativas a "ahora" para que cada columna tenga su semáforo.
+ */
+const companero = { id: 8, username: "luis", firstName: "Luis", lastName: "Paz", isSharedAccount: false };
+const enHoras = (h) => new Date(Date.now() + h * 3_600_000).toISOString();
+const pedidoTv = (id, clientNameOverride, description, deliveryDate) => ({
+  id, description, deliveryDate, statusId: 9, clientNameOverride, client: null,
+  creationDate: enHoras(-30), status: { id: 9, name: "autorizado" },
+});
+const tareasTvIniciales = () => [
+  { id: 2, orderId: 103, area: "bordado", status: "en_proceso", assignedUserId: 3, createdAt: enHoras(-20), startedAt: enHoras(-2), completedAt: null, assignedUser: usuarios[2], order: pedidoTv(103, "Club Deportivo Norte", "30 gorras con escudo bordado", enHoras(30)) },
+  { id: 3, orderId: 104, area: "bordado", status: "terminado", assignedUserId: 8, createdAt: enHoras(-40), startedAt: enHoras(-6), completedAt: enHoras(-1), assignedUser: companero, order: pedidoTv(104, "Hotel Las Palmas", "Batas con nombre bordado", enHoras(48 + 72)) },
+  { id: 4, orderId: 105, area: "bordado", status: "pendiente", assignedUserId: null, createdAt: enHoras(-5), startedAt: null, completedAt: null, assignedUser: null, order: pedidoTv(105, "Café Central", "Mandiles con logo", enHoras(24 * 6)) },
+  { id: 5, orderId: 106, area: "bordado", status: "pendiente", assignedUserId: 8, createdAt: enHoras(-8), startedAt: null, completedAt: null, assignedUser: companero, order: pedidoTv(106, "Taller Ruiz", "Overoles con parche", enHoras(20)) },
+];
+let tareasTv = tareasTvIniciales();
+
+/** Usuario del token (el `sub` del JWT de mentira). */
+function usuarioDe(req) {
+  try {
+    const payload = (req.headers.authorization ?? "").split(".")[1];
+    const { sub } = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return usuarios.find((u) => u.id === sub) ?? usuarios[0];
+  } catch {
+    return usuarios[0];
+  }
+}
+
+/** Todas las tareas de área con su pedido (forma de `findForUser`). */
+function tareasDelArea(u) {
+  const roles = u.roles.map((r) => r.name);
+  const deBase = tareas.map((t) => {
+    const p = pedidos().find((x) => x.id === t.orderId);
+    return {
+      startedAt: null, completedAt: null, ...t,
+      order: { id: p.id, description: p.description, deliveryDate: p.deliveryDate, statusId: p.statusId, clientNameOverride: p.clientNameOverride, client: null },
+    };
+  });
+  const sinExtras = tareasTv.map(({ order: { creationDate, status, ...order }, ...t }) => ({ ...t, order }));
+  return [...deBase, ...sinExtras].filter((t) => roles.includes(t.area));
+}
+
+/** Bandeja "Tareas asignadas" (forma de `findMyTasks`): lo mío y lo libre, sin terminar. */
+function misTareas(u) {
+  const roles = u.roles.map((r) => r.name);
+  const libre = (t) => t.assignedUserId == null || t.assignedUser?.isSharedAccount;
+  const mia = (t) => !u.isSharedAccount && t.assignedUserId === u.id;
+  const items = [];
+  if (roles.includes("diseno")) {
+    for (const p of pedidos().filter((x) => x.area === "diseno")) {
+      const asignado = p.assignedUser ?? null;
+      if (asignado && asignado.id !== u.id) continue;
+      items.push({
+        key: `design-${p.id}`, kind: "design", area: "diseno", taskId: null, status: p.status.name,
+        mine: asignado?.id === u.id, assignee: null, startedAt: null,
+        order: { id: p.id, description: p.description, deliveryDate: p.deliveryDate, creationDate: p.creationDate, statusId: p.statusId, clientNameOverride: p.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: p.status },
+      });
+    }
+  }
+  for (const t of [...tareas.map((x) => ({ ...x, order: pedidos().find((p) => p.id === x.orderId) })), ...tareasTv]) {
+    if (!roles.includes(t.area) || t.status === "terminado" || !(libre(t) || mia(t))) continue;
+    const o = t.order;
+    items.push({
+      key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
+      mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
+      order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
+    });
+  }
+  return items;
+}
 
 const pedidos = () => [
   {
@@ -287,6 +363,13 @@ createServer((req, res) => {
       preferencias = { ...PREFERENCIAS_INICIALES };
       return send(preferencias);
     }
+    if (req.method === "POST" && path === "/__e2e/reset-tareas") {
+      tareas = tareasIniciales();
+      tareasTv = tareasTvIniciales();
+      return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
+    if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
@@ -550,8 +633,23 @@ createServer((req, res) => {
     if (avance && req.method === "PATCH") {
       const id = Number(avance[1]);
       const { status } = JSON.parse(body || "{}");
-      tareas = tareas.map((t) => (t.id === id ? { ...t, status } : t));
-      return send(tareas.find((t) => t.id === id));
+      // Como el backend: empezar una tarea libre la deja a nombre de quien la empieza.
+      const u = usuarioDe(req);
+      const avanzar = (t) => {
+        if (t.id !== id) return t;
+        const libre = t.assignedUserId == null || t.assignedUser?.isSharedAccount;
+        const reclama = status === "en_proceso" && libre && u.roles.some((r) => r.name === t.area);
+        return {
+          ...t,
+          status,
+          ...(reclama && { assignedUserId: u.id, assignedUser: u }),
+          ...(status === "en_proceso" && { startedAt: new Date().toISOString() }),
+          ...(status === "terminado" && { completedAt: new Date().toISOString() }),
+        };
+      };
+      tareas = tareas.map(avanzar);
+      tareasTv = tareasTv.map(avanzar);
+      return send([...tareas, ...tareasTv].find((t) => t.id === id));
     }
 
     // Detalle de un pedido.

@@ -15,7 +15,7 @@
  * revoca aquí: rompería la vista previa que sigue en pantalla.
  *
  * Nada de `fetch()` sobre `data:`/`blob:`: la CSP (`connect-src` en
- * next.config.ts) no los permite y la descarga fallaba en producción.
+ * src/lib/csp.ts) no los permite y la descarga fallaba en producción.
  */
 export async function downloadFromUrl(url: string, filename: string): Promise<void> {
   let href = url;
