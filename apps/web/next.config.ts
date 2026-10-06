@@ -26,17 +26,36 @@ function resolveGitCommit() {
  * La CSP es deliberadamente permisiva en scripts (`'unsafe-inline'` y
  * `'unsafe-eval'`): Next.js inyecta scripts inline sin nonce y Tailwind/Recharts
  * usan estilos inline, así que una CSP estricta rompería la app. `connect-src`
- * queda abierto porque la URL del backend es una variable de entorno y cambia
- * por ambiente. Para endurecerla habría que migrar a nonces por request
+ * se limita al backend del ambiente (ver `resolveConnectSrc`). Para endurecerla habría que migrar a nonces por request
  * (middleware) y fijar el host del backend por ambiente.
  */
+/**
+ * `connect-src`: sólo el propio origen y el del backend (NEXT_PUBLIC_BACKEND_URL,
+ * más su variante ws/wss). Antes quedaba abierto a cualquier `https:`/`http:`,
+ * lo que dejaba a un XSS exfiltrar el token de la sesión a cualquier host. Si
+ * la variable falta o es inválida se conserva el comportamiento anterior para
+ * no romper el build.
+ */
+function resolveConnectSrc() {
+  const raw = process.env.NEXT_PUBLIC_BACKEND_URL;
+  try {
+    if (!raw) throw new Error("missing");
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad");
+    const ws = `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`;
+    return `connect-src 'self' ${url.origin} ${ws}`;
+  } catch {
+    return "connect-src 'self' https: wss: http: ws:";
+  }
+}
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https: wss: http: ws:",
+  resolveConnectSrc(),
   "worker-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
