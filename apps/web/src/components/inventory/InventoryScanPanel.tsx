@@ -250,8 +250,8 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
   }, [activeSession]);
 
   return (
-    <section data-scan-mode="on" aria-label="Modo escanear" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <div className="space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-5">
+    <section data-scan-mode="on" aria-label="Modo escanear" className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5" aria-hidden>
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60" />
@@ -320,7 +320,7 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
             <label htmlFor="scan-qty" className="text-sm font-medium">
               Cantidad por escaneo
             </label>
-            <div className="flex h-11 items-center rounded-full border border-border bg-card p-1">
+            <div className="flex h-11 w-fit items-center rounded-full border border-border bg-card p-1">
               <Button
                 type="button"
                 size="icon"

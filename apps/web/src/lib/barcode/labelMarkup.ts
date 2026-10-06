@@ -55,7 +55,7 @@ export function renderLabelHtml(data: LabelData, layout: LabelLayout = computeLa
   const title = fitText(data.name, layout.title.width, {
     maxFontMm: layout.title.maxFontMm,
     minFontMm: layout.title.minFontMm,
-    avgCharEm: 0.58,
+    avgCharEm: 0.54,
   });
   const area = truncateText(
     data.areaLabel.toUpperCase(),

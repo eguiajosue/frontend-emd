@@ -75,7 +75,7 @@ test("escanear: entrada, salida y código desconocido ligado a un artículo", as
   expect(tinta.quantity).toBe(2);
 });
 
-test("tecleo humano en el buscador no cuenta como escaneo", async ({ page }) => {
+test("tecleo humano en un campo no cuenta como escaneo", async ({ page }) => {
   await page.getByRole("button", { name: "Escanear" }).click();
   await page.getByLabel("Cantidad por escaneo").click();
   await page.keyboard.type("123", { delay: 120 });
