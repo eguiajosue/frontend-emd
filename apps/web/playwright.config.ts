@@ -58,6 +58,8 @@ export default defineConfig({
         NEXT_PUBLIC_BACKEND_URL: `http://localhost:${MOCK_API_PORT}`,
         NEXTAUTH_SECRET: "secreto-solo-para-tests",
         NEXTAUTH_URL: `http://localhost:${PORT}`,
+        // Botones "Simular llegada" del Modo TV de Tareas (`?tv=1&demo=1`).
+        NEXT_PUBLIC_TV_DEMO: "1",
       },
     },
   ],
