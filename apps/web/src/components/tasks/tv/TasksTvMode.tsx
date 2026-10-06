@@ -8,8 +8,11 @@ import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TONE_META } from "@/components/orders/OrderJobCard";
+import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TvTaskCard } from "@/components/tasks/tv/TvTaskCard";
 import { PackageArrivalStage, type ResolvedArrival } from "@/components/tasks/tv/PackageArrivalStage";
+import { PackageArrival3DStage } from "@/components/tasks/tv/PackageArrival3DStage";
+import { canUseWebGL, disposeArrival3D, loadArrivalScene } from "@/components/tasks/tv/arrival3d/runtime";
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
 import { useOrderArrivals } from "@/hooks/useOrderArrivals";
@@ -95,7 +98,6 @@ interface CurrentStep {
 
 interface TasksTvModeProps {
   onClose: () => void;
-  onOpenOrder: (orderId: number) => void;
   /** Muestra los botones para simular llegadas (sólo si `TV_DEMO_ENABLED`). */
   demo?: boolean;
 }
@@ -106,7 +108,7 @@ interface TasksTvModeProps {
  * grandes para tomar, empezar y terminar con el dedo, y cada trabajo nuevo
  * entra como un paquete que cae y se abre.
  */
-export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeProps) {
+export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   const { roles, session } = usePermissions();
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const { tasks: myTasks, isLoading, isError, refetch } = useMyTasks();
@@ -184,6 +186,26 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
     if (!next) unlockAudio();
   };
 
+  // --- Animación: 3D real (three.js) si hay WebGL; si no, o con
+  // prefers-reduced-motion, o si la escena falla, la versión SVG.
+  const [webgl, setWebgl] = useState(false);
+  const [force2d, setForce2d] = useState(false);
+  useEffect(() => {
+    const ok = canUseWebGL();
+    setWebgl(ok);
+    // Se baja el chunk de three con la tele abierta: la primera caja no espera la red.
+    if (ok && !reduced) void loadArrivalScene().catch(() => setForce2d(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // El renderer compartido vive mientras la tele esté abierta.
+  useEffect(() => () => disposeArrival3D(), []);
+  const use3d = webgl && !reduced && !force2d;
+  const fallBackTo2d = useCallback(() => setForce2d(true), []);
+
+  // --- Detalle de un pedido encima de la tele (como en la vista normal). La
+  // cola de llegadas espera mientras está abierto.
+  const [detailId, setDetailId] = useState<number | null>(null);
+
   // --- Llegadas: cola → un paso a la vez (o la caja grande).
   const [queue, setQueue] = useState<PackageArrival[]>([]);
   const [current, setCurrent] = useState<CurrentStep | null>(null);
@@ -194,7 +216,7 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
   useOrderArrivals(pushArrival);
 
   useEffect(() => {
-    if (current || queue.length === 0) return;
+    if (current || queue.length === 0 || detailId != null) return;
     const head = queue[0];
     const known = findArrivalTask(boardRef.current, head.orderId, head.area);
     // El aviso del socket llega antes que el refetch: se espera un poco a la
@@ -208,7 +230,7 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
     const resolved = step.arrivals.map((a) => resolveArrival(a, boardRef.current, Date.now()));
     setCurrent({ step, resolved, priority: topPriority(resolved.map((r) => r.priority)), delivered: false });
     setQueue(rest);
-  }, [current, queue, waitTick]);
+  }, [current, queue, waitTick, detailId]);
 
   // Tarjetas que esperan su paquete: invisibles (pero en su lugar) hasta que la hoja llega.
   const hiddenKeys = useMemo(() => {
@@ -344,11 +366,11 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
 
   const handleOpen = useCallback(
     (orderId: number) => {
+      // Los pedidos de la demo no existen en el backend.
       if (orderId > 9000 && demoTasks.some((t) => t.order.id === orderId)) return;
-      onClose();
-      onOpenOrder(orderId);
+      setDetailId(orderId);
     },
-    [demoTasks, onClose, onOpenOrder]
+    [demoTasks]
   );
 
   const live = [...board.pendiente, ...board.en_proceso];
@@ -543,20 +565,39 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
           )}
         </div>
 
-        {current && (
-          <PackageArrivalStage
-            key={current.step.arrivals[0].id}
-            step={current.step}
-            resolved={current.resolved}
-            priority={current.priority}
-            reduced={reduced}
-            timeFormat={timeFormat}
-            findTarget={findTarget}
-            onLand={handleLand}
-            onDelivered={handleDelivered}
-            onDone={handleDone}
-          />
-        )}
+        {current &&
+          (use3d ? (
+            <PackageArrival3DStage
+              key={`3d-${current.step.arrivals[0].id}`}
+              step={current.step}
+              resolved={current.resolved}
+              priority={current.priority}
+              timeFormat={timeFormat}
+              findTarget={findTarget}
+              onLand={handleLand}
+              onDelivered={handleDelivered}
+              onDone={handleDone}
+              onFallback={fallBackTo2d}
+            />
+          ) : (
+            <PackageArrivalStage
+              key={`2d-${current.step.arrivals[0].id}`}
+              step={current.step}
+              resolved={current.resolved}
+              priority={current.priority}
+              reduced={reduced}
+              timeFormat={timeFormat}
+              findTarget={findTarget}
+              onLand={handleLand}
+              onDelivered={handleDelivered}
+              onDone={handleDone}
+            />
+          ))}
+
+        {/* Dentro del contenido de la tele (rama anidada de Radix): Esc cierra
+            sólo el detalle y el foco vuelve a la tarjeta. Se monta después en
+            el <body>, así que queda encima de la pantalla completa. */}
+        <OrderDetailDialog orderId={detailId} onClose={() => setDetailId(null)} />
       </DialogContent>
     </Dialog>
   );

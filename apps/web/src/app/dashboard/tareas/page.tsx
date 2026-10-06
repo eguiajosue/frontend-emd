@@ -192,7 +192,8 @@ export default function TareasPage() {
         </div>
       )}
 
-      {tv.open && <TasksTvMode demo={tv.demo} onClose={closeTv} onOpenOrder={setOpenOrderId} />}
+      {/* El Modo TV abre el detalle de un pedido encima de sí mismo (sin cerrarse). */}
+      {tv.open && <TasksTvMode demo={tv.demo} onClose={closeTv} />}
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
     </div>
   );

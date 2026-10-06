@@ -94,13 +94,28 @@ export const TvTaskCard = memo(function TvTaskCard({
         data-tv-card={task.key}
         aria-label={`Pedido #${task.order.id} · ${getAreaLabel(task.area)}`}
         className={cn(
-          "relative flex flex-col gap-3 rounded-3xl border border-border bg-card p-5 transition-shadow duration-500",
+          "relative flex flex-col gap-3 rounded-3xl border border-border bg-card p-5 transition-[box-shadow,border-color] duration-500",
+          "hover:border-foreground/30",
           done && "opacity-75",
           glow && cn("ring-4", glow.ring)
         )}
       >
         <div className="flex items-start justify-between gap-3">
-          <span className="font-heading text-3xl font-bold tabular-nums leading-none">#{task.order.id}</span>
+          {/* Toda la tarjeta abre el detalle (el ::after la cubre entera), menos
+              el botón de acción, que queda por encima. Es un <button> de
+              verdad: se llega con Tab y se abre con Enter/Espacio. */}
+          <button
+            type="button"
+            onClick={() => onOpen(task.order.id)}
+            aria-label={`Ver detalle del pedido #${task.order.id}`}
+            className={cn(
+              "rounded-lg text-left font-heading text-3xl font-bold tabular-nums leading-none outline-none",
+              "after:absolute after:inset-0 after:cursor-pointer after:rounded-3xl after:content-['']",
+              "focus-visible:after:ring-4 focus-visible:after:ring-ring"
+            )}
+          >
+            #{task.order.id}
+          </button>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-base text-foreground/85">
             {AreaIcon && <AreaIcon className="h-4 w-4" aria-hidden />}
             {getAreaLabel(task.area)}
@@ -158,7 +173,7 @@ export const TvTaskCard = memo(function TvTaskCard({
             disabled={busy}
             onClick={() => (action.next ? onAdvance(task, action.next) : onOpen(task.order.id))}
             aria-label={`${action.label} · pedido #${task.order.id}`}
-            className="h-14 w-full gap-2 rounded-2xl text-lg [&_svg]:size-6"
+            className="relative z-10 h-14 w-full gap-2 rounded-2xl text-lg [&_svg]:size-6"
           >
             {busy ? <Loader2 className="animate-spin" /> : <ActionIcon />}
             {action.label}
