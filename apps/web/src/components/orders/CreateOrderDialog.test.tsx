@@ -449,6 +449,12 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("precarga la descripción (Convertir en pedido desde una cotización)", () => {
+    renderDialog({ initialClientNameOverride: "OFISDECO", initialDescription: "50 playeras bordadas" });
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("OFISDECO");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("50 playeras bordadas");
+  });
+
   it("pide confirmar antes de cerrar si hay datos cargados", async () => {
     const onClose = vi.fn();
     renderDialog({ onClose });

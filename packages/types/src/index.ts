@@ -758,6 +758,11 @@ export interface InventoryItem extends BaseEntity {
   area: InventoryArea;
   name: string;
   sku?: string | null;
+  /**
+   * Código de barras (Code 128) de la etiqueta: `EMD-000123` por omisión o
+   * uno propio (EAN/UPC del fabricante). Único en todo el inventario.
+   */
+  barcode?: string | null;
   category?: string | null;
   unit: string;
   color?: string | null;
@@ -783,6 +788,8 @@ export interface CreateInventoryItemPayload {
   name: string;
   unit: string;
   sku?: string;
+  /** Código propio (3–64 ASCII). Vacío o `null` = el automático `EMD-<id>`. */
+  barcode?: string | null;
   category?: string;
   color?: string;
   brand?: string;
@@ -814,6 +821,12 @@ export interface InventoryMovement extends BaseEntity {
   item?: { id: number; name: string; unit: string; area: InventoryArea } | null;
   order?: { id: number; description: string } | null;
   createdBy?: { id: number; firstName: string; lastName?: string | null } | null;
+}
+
+/** Respuesta de `POST /inventory/:id/movements` y de su variante por código de barras. */
+export interface InventoryMovementResult {
+  movement: InventoryMovement;
+  item: InventoryItem;
 }
 
 export interface CreateInventoryMovementPayload {
