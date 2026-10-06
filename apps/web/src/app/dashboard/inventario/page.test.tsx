@@ -26,6 +26,7 @@ vi.mock("@/hooks/useInventory", () => ({
     update: { mutateAsync: vi.fn() },
     remove: { mutateAsync: vi.fn() },
     registerMovement: { mutateAsync: vi.fn(), isPending: false },
+    scanMovement: { mutateAsync: vi.fn() },
   }),
   downloadInventoryExport: vi.fn(),
 }));
@@ -131,5 +132,44 @@ describe("InventarioPage", () => {
     areas = [];
     render(<InventarioPage />);
     expect(screen.getByText("No tienes un departamento con inventario")).toBeInTheDocument();
+  });
+
+  it("selecciona artículos y abre la vista previa de etiquetas en lote", async () => {
+    render(<InventarioPage />);
+    const table = screen.getAllByRole("table")[0];
+    await userEvent.click(within(table).getByRole("checkbox", { name: "Seleccionar Hilo rojo" }));
+    await userEvent.click(within(table).getByRole("checkbox", { name: "Seleccionar Tinta cyan" }));
+    const bar = screen.getByRole("region", { name: "Selección para etiquetas" });
+    expect(within(bar).getByText("2 seleccionados")).toBeInTheDocument();
+
+    await userEvent.click(within(bar).getByRole("button", { name: /Imprimir etiquetas/ }));
+    expect(await screen.findByRole("heading", { name: "Imprimir 2 etiquetas" })).toBeInTheDocument();
+    expect(await screen.findAllByTestId("label-preview")).toHaveLength(2);
+  });
+
+  it("“seleccionar todos” marca lo que está a la vista", async () => {
+    render(<InventarioPage />);
+    const table = screen.getAllByRole("table")[0];
+    await userEvent.click(within(table).getByRole("checkbox", { name: /Seleccionar todos/ }));
+    expect(screen.getByText("3 seleccionados")).toBeInTheDocument();
+  });
+
+  it("el buscador encuentra por código de barras", async () => {
+    items[1] = { ...items[1], barcode: "7501234567890" };
+    render(<InventarioPage />);
+    await userEvent.type(screen.getByLabelText("Buscar en el inventario"), "750123");
+    const table = screen.getAllByRole("table")[0];
+    expect(within(table).getByText("Hilo negro")).toBeInTheDocument();
+    expect(within(table).queryByText("Hilo rojo")).not.toBeInTheDocument();
+  });
+
+  it("Escanear abre el modo escaneo con Entrada/Salida y Salir vuelve a la tabla", async () => {
+    render(<InventarioPage />);
+    await userEvent.click(screen.getByRole("button", { name: /Escanear/ }));
+    expect(screen.getByRole("radiogroup", { name: "Tipo de movimiento" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Entrada/ })).toHaveAttribute("aria-checked", "true");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Salir/ }));
+    expect(screen.getAllByRole("table").length).toBeGreaterThan(0);
   });
 });

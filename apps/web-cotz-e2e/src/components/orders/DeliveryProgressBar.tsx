@@ -1,0 +1,85 @@
+"use client";
+
+import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { useDeliveryProgress, getProgressLevel, PROGRESS_LEVEL_COLORS } from "@/lib/deliveryProgress";
+import { Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface DeliveryProgressBarProps {
+  creationDate?: string | null;
+  deliveryDate?: string | null;
+  className?: string;
+  /**
+   * `"always"` mantiene el texto bajo la barra. `"at-risk"` (por defecto en la
+   * tarjeta del tablero) lo muestra sólo cuando el plazo ya aprieta: repetir
+   * "34% del plazo transcurrido" en cada tarjeta de cada columna es ruido que
+   * tapa justo a las que sí están en rojo. El dato sigue disponible en el
+   * `title` de la barra y en el detalle del pedido.
+   */
+  label?: "always" | "at-risk";
+}
+
+/**
+ * Barra de progreso de vencimiento (tiempo transcurrido entre
+ * creación y fecha de entrega). No se renderiza si el pedido no tiene
+ * `deliveryDate`.
+ */
+export function DeliveryProgressBar({
+  creationDate,
+  deliveryDate,
+  className,
+  label: labelMode = "always",
+}: DeliveryProgressBarProps) {
+  const progress = useDeliveryProgress(creationDate, deliveryDate);
+  if (progress === null) return null;
+
+  const clamped = Math.min(Math.max(progress, 0), 100);
+  const level = getProgressLevel(progress);
+  const color = PROGRESS_LEVEL_COLORS[level];
+  const deliveryIsToday =
+    !!deliveryDate && new Date(deliveryDate).toDateString() === new Date().toDateString();
+  // Un porcentaje como "Vencido (200%)" no dice nada: cuánto tiempo pasó
+  // vencido importa, no el número crudo. Se reemplaza por texto legible.
+  const label =
+    progress > 100 && deliveryDate
+      ? `Vencido ${formatDistanceToNow(new Date(deliveryDate), { addSuffix: true, locale: es })}`
+      : deliveryIsToday
+        ? "Vence hoy"
+        : `${Math.round(progress)}% del plazo transcurrido`;
+
+  const atRisk = level === "danger" || level === "critical";
+  const showLabel = labelMode === "always" || atRisk;
+
+  return (
+    <div className={cn("space-y-2", className)} title={label}>
+      {/* Fila "Plazo ··· valor" sobre una barra gruesa: mismo patrón que el
+          progreso de tareas de la tarjeta del muro. */}
+      <div className="flex items-center gap-1.5 text-[0.8125rem]">
+        <Clock className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <span className="text-muted-foreground">Plazo</span>
+        <span
+          className={cn(
+            "ml-auto truncate tabular-nums",
+            level === "critical" ? "font-medium text-destructive" : atRisk ? "font-medium text-orange-700 dark:text-orange-300" : "font-medium"
+          )}
+        >
+          {showLabel ? label : `${Math.round(clamped)}%`}
+        </span>
+      </div>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(clamped)}
+        aria-label="Plazo de entrega transcurrido"
+      >
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{ width: `${clamped}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}

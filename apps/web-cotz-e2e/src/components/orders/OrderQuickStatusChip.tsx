@@ -1,0 +1,99 @@
+"use client";
+
+import { useMemo } from "react";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useMoveOrderStatus } from "@/hooks/useOrders";
+import { usePermissions } from "@/hooks/usePermissions";
+import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import {
+  getNextStatusOption,
+  isDeliveredStatus,
+  isDesignFlowStatusName,
+} from "@/lib/orderStatus";
+import { getDesignStep } from "@/lib/designStep";
+import { cn } from "@/lib/utils";
+import type { Order } from "@/types";
+
+interface OrderQuickStatusChipProps {
+  order: Order;
+}
+
+/**
+ * Chip de acción rápida para avanzar el estado de un pedido directo desde la
+ * fila de la lista, sin abrir la tarjeta de detalle ni pasar por un
+ * dropdown: un solo click aplica el cambio (confirmación optimista vía
+ * `useChangeOrderStatus`, que ya dispara el toast de éxito/error).
+ *
+ * Sólo ofrece el "próximo" estado del flujo lineal (ver `getNextStatusOption`)
+ * — para saltar a cualquier otro estado a mano sigue estando el detalle del
+ * pedido (menú "Estado" del detalle). No se muestra nada si el usuario no puede
+ * cambiar el estado de este pedido, si ya está entregado, o si está en un
+ * estado del flujo de diseño (esos sólo se avanzan desde "Proceso de diseño").
+ */
+export function OrderQuickStatusChip({ order }: OrderQuickStatusChipProps) {
+  const { roles, isAdmin, canManageOperations } = usePermissions();
+  // Mismo camino que el tablero y el detalle: si el pedido tiene tareas de
+  // área, avanzar escribe la tarea, no `Order.statusId`.
+  const moveActor = useMemo(
+    () => ({
+      areas: roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      isManager: canManageOperations,
+    }),
+    [roles, canManageOperations]
+  );
+  const { move, isMoving } = useMoveOrderStatus(moveActor);
+
+  const myStageIds = statusIdsForRoles(roles);
+  const isInDesignLimbo =
+    !!order.requiresDesign && isDesignFlowStatusName(order.status?.name);
+  const canChange =
+    !isInDesignLimbo && (canManageOperations || myStageIds.includes(order.statusId));
+  const next = getNextStatusOption(order.statusId);
+  // No alcanza con poder tocar el estado ACTUAL: el próximo paso también
+  // tiene que ser uno que este rol pueda fijar (ej. producción llega a
+  // "terminado", que sí es suyo, pero el siguiente es "entregado", que es de
+  // Recepción — sin este chequeo se ofrecía "Marcar entregado" a producción,
+  // aunque el backend lo rechazaba con 403).
+  const canMoveToNext = canManageOperations || (!!next && myStageIds.includes(next.value));
+  const isChanging = isMoving;
+
+  // En diseño el estado no se mueve desde aquí, pero sí se dice de quién es el
+  // turno (antes era un "—" que no decía nada).
+  const designStep = getDesignStep(order, { roles, isAdmin });
+  if (designStep) {
+    return (
+      <span
+        className={cn(
+          "text-xs",
+          designStep.mine ? "font-semibold text-primary" : "text-muted-foreground",
+          designStep.returned && !designStep.mine && "text-orange-700 dark:text-orange-300"
+        )}
+      >
+        {designStep.label}
+      </span>
+    );
+  }
+
+  if (!canChange || !next || !canMoveToNext || isDeliveredStatus(order.statusId)) {
+    return <span className="text-xs text-muted-foreground">—</span>;
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-auto min-h-7 max-w-full gap-1.5 whitespace-normal px-2.5 py-1 text-xs"
+      disabled={isChanging}
+      onClick={(e) => {
+        e.stopPropagation();
+        void move(order, next.value);
+      }}
+    >
+      {isChanging && <Loader2 className="h-3 w-3 animate-spin" />}
+      Marcar {next.label}
+    </Button>
+  );
+}

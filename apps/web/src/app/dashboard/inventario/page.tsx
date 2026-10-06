@@ -361,143 +361,143 @@ export default function InventarioPage() {
       {scanMode ? (
         <InventoryScanPanel items={items} onCreateItem={openCreate} onExit={() => setScanMode(false)} />
       ) : (
-      <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
-        <div className="flex flex-wrap items-center gap-2">
-          <TabsList className="rounded-full">
-            <TabsTrigger value="stock" className="rounded-full px-4">
-              Existencias
-            </TabsTrigger>
-            <TabsTrigger value="movements" className="rounded-full px-4">
-              Movimientos
-            </TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-2 sm:ml-auto">
-            <Button
-              variant="secondary"
-              className="h-10 rounded-full px-4"
-              onClick={handleExport}
-              disabled={exporting || items.length === 0}
-            >
-              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              Exportar CSV
-            </Button>
-            {canManage && (
+        <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+          <div className="flex flex-wrap items-center gap-2">
+            <TabsList className="rounded-full">
+              <TabsTrigger value="stock" className="rounded-full px-4">
+                Existencias
+              </TabsTrigger>
+              <TabsTrigger value="movements" className="rounded-full px-4">
+                Movimientos
+              </TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2 sm:ml-auto">
               <Button
                 variant="secondary"
                 className="h-10 rounded-full px-4"
-                onClick={() => setScanMode(true)}
-                disabled={items.length === 0}
+                onClick={handleExport}
+                disabled={exporting || items.length === 0}
               >
-                <ScanBarcode className="h-4 w-4" /> Escanear
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                Exportar CSV
               </Button>
-            )}
-            {canManage && (
-              <Button className="h-10 px-5" onClick={() => openCreate()}>
-                <Plus className="h-4 w-4" /> Nuevo artículo
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <TabsContent value="stock" className="mt-4 space-y-4">
-          {items.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative w-full sm:w-72">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar artículo, código, color..."
-                  aria-label="Buscar en el inventario"
-                  className="h-10 rounded-full border-border/60 pl-10 text-sm shadow-soft"
-                />
-              </div>
-              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger
-                  className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
-                  aria-label="Estado"
+              {canManage && (
+                <Button
+                  variant="secondary"
+                  className="h-10 rounded-full px-4"
+                  onClick={() => setScanMode(true)}
+                  disabled={items.length === 0}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL}>Todos los estados</SelectItem>
-                  {(Object.keys(STOCK_STATUS_META) as InventoryStockStatus[]).map((key) => (
-                    <SelectItem key={key} value={key}>
-                      {STOCK_STATUS_META[key].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {categories.length > 0 && (
-                <Select value={category} onValueChange={setCategory}>
+                  <ScanBarcode className="h-4 w-4" /> Escanear
+                </Button>
+              )}
+              {canManage && (
+                <Button className="h-10 px-5" onClick={() => openCreate()}>
+                  <Plus className="h-4 w-4" /> Nuevo artículo
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <TabsContent value="stock" className="mt-4 space-y-4">
+            {items.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-72">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar artículo, código, color..."
+                    aria-label="Buscar en el inventario"
+                    className="h-10 rounded-full border-border/60 pl-10 text-sm shadow-soft"
+                  />
+                </div>
+                <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
                   <SelectTrigger
                     className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
-                    aria-label="Categoría"
+                    aria-label="Estado"
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={ALL}>Todas las categorías</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
+                    <SelectItem value={ALL}>Todos los estados</SelectItem>
+                    {(Object.keys(STOCK_STATUS_META) as InventoryStockStatus[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {STOCK_STATUS_META[key].label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-              {activeFilters > 0 && (
-                <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
-                  Limpiar filtros
-                </Button>
-              )}
-            </div>
-          )}
+                {categories.length > 0 && (
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger
+                      className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
+                      aria-label="Categoría"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL}>Todas las categorías</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c} value={c}>
+                          {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {activeFilters > 0 && (
+                  <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+            )}
 
-          {isPending || areasPending ? (
-            <TableSkeleton rows={5} />
-          ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
-          ) : items.length === 0 ? (
-            <EmptyState
-              icon={Warehouse}
-              title={`Todavía no hay inventario en ${scopeLabel}`}
-              description={
-                canManage
-                  ? "Carga lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
-                  : "Administración o Recepción cargan el inventario del departamento."
-              }
-              action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: () => openCreate() } : undefined}
-            />
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              title="Sin resultados"
-              description="Nada coincide con la búsqueda o los filtros elegidos."
-              secondaryAction={{ label: "Limpiar filtros", onClick: clearFilters }}
-            />
-          ) : (
-            <DataTable columns={columns} data={filtered} className="shadow-soft" />
-          )}
-        </TabsContent>
+            {isPending || areasPending ? (
+              <TableSkeleton rows={5} />
+            ) : isError ? (
+              <ErrorState onRetry={() => refetch()} />
+            ) : items.length === 0 ? (
+              <EmptyState
+                icon={Warehouse}
+                title={`Todavía no hay inventario en ${scopeLabel}`}
+                description={
+                  canManage
+                    ? "Carga lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
+                    : "Administración o Recepción cargan el inventario del departamento."
+                }
+                action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: () => openCreate() } : undefined}
+              />
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                title="Sin resultados"
+                description="Nada coincide con la búsqueda o los filtros elegidos."
+                secondaryAction={{ label: "Limpiar filtros", onClick: clearFilters }}
+              />
+            ) : (
+              <DataTable columns={columns} data={filtered} className="shadow-soft" />
+            )}
+          </TabsContent>
 
-        <TabsContent value="movements" className="mt-4">
-          {movements.isPending ? (
-            <TableSkeleton rows={5} />
-          ) : movements.isError ? (
-            <ErrorState onRetry={() => movements.refetch()} />
-          ) : (movements.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={History}
-              title="Sin movimientos todavía"
-              description="Cada entrada, salida o ajuste queda registrado aquí con quién lo hizo y cuándo."
-            />
-          ) : (
-            <div className="rounded-2xl border border-border/60 bg-card px-4 shadow-soft sm:px-5">
-              <InventoryMovementsList movements={movements.data ?? []} showItem />
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="movements" className="mt-4">
+            {movements.isPending ? (
+              <TableSkeleton rows={5} />
+            ) : movements.isError ? (
+              <ErrorState onRetry={() => movements.refetch()} />
+            ) : (movements.data ?? []).length === 0 ? (
+              <EmptyState
+                icon={History}
+                title="Sin movimientos todavía"
+                description="Cada entrada, salida o ajuste queda registrado aquí con quién lo hizo y cuándo."
+              />
+            ) : (
+              <div className="rounded-2xl border border-border/60 bg-card px-4 shadow-soft sm:px-5">
+                <InventoryMovementsList movements={movements.data ?? []} showItem />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Lote de etiquetas: aparece al seleccionar artículos en la tabla. */}

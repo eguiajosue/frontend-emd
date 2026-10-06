@@ -16,6 +16,7 @@
  * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
  * - `GET  /__e2e/mockup-templates`: plantillas guardadas, con su config.
  * - `GET  /__e2e/quotes`: las cotizaciones en memoria (para verificar lo guardado).
+ * - `POST /__e2e/reset-inventory`: vuelve el inventario a sus 3 artículos iniciales.
  * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
  *   (barra lateral por defecto: `navPreferences: null`).
  */
@@ -170,6 +171,73 @@ const ordenCotizaciones = (a, b) => {
   }
   return b.updatedAt.localeCompare(a.updatedAt) || b.id - a.id;
 };
+
+/**
+ * Inventario por departamento (`/inventory`) en memoria, con las reglas de
+ * códigos de barras del backend: `EMD-000123` por omisión, códigos propios de
+ * 3–64 ASCII, `EMD-<número>` reservado, únicos (409 con el nombre del dueño).
+ */
+const inventarioInicial = () => [
+  { id: 1, area: "bordado", name: "Hilo poliéster rojo 1147", sku: "HP-1147", barcode: null, category: "Hilos", unit: "cono", color: "Rojo", brand: "Madeira", location: "Estante A-3", quantity: 12, minStock: 5, unitCost: 48, notes: null, materialId: null, supplierId: null },
+  { id: 2, area: "impresiones", name: "Tinta cyan para plotter", sku: null, barcode: null, category: "Tintas", unit: "litro", color: "Cyan", brand: null, location: null, quantity: 3, minStock: 2, unitCost: 650, notes: null, materialId: null, supplierId: null },
+  { id: 3, area: "bordado", name: "Estabilizador cut-away 45 cm", sku: null, barcode: "7501234567890", category: "Estabilizador / entretela", unit: "rollo", color: null, brand: null, location: null, quantity: 0, minStock: 1, unitCost: null, notes: null, materialId: null, supplierId: null },
+];
+let inventario = inventarioInicial();
+let movimientosInventario = [];
+let siguienteArticuloId = 4;
+let siguienteMovimientoId = 1;
+
+const codigoPorOmision = (id) => `EMD-${String(id).padStart(6, "0")}`;
+const estadoStock = (q, min) => (q <= 0 ? "out" : min != null && q <= min ? "low" : "ok");
+const articuloJson = (a) => ({
+  ...a,
+  barcode: a.barcode ?? codigoPorOmision(a.id),
+  material: null,
+  supplier: null,
+  stockStatus: estadoStock(a.quantity, a.minStock),
+  totalValue: a.unitCost == null ? null : a.quantity * a.unitCost,
+});
+
+/** `{ code }` o `{ error, status }`, como `normalizeBarcode` + `assertBarcodeFree` del backend. */
+function validarCodigo(raw, ownId) {
+  const code = String(raw).trim();
+  if (code.length < 3 || code.length > 64) return { status: 400, error: "El código de barras debe tener entre 3 y 64 caracteres" };
+  if (!/^[\x20-\x7E]+$/.test(code)) return { status: 400, error: "El código de barras sólo admite letras sin acentos, números, espacios y símbolos ASCII" };
+  if (/^EMD-\d+$/.test(code) && code !== (ownId ? codigoPorOmision(ownId) : null)) {
+    return { status: 400, error: "Los códigos EMD-<número> los asigna el sistema; deja el campo vacío para usar el automático" };
+  }
+  const dueno = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
+  if (dueno && dueno.id !== ownId) return { status: 409, error: `Ese código ya está asignado a ${dueno.name}` };
+  return { code };
+}
+
+/** Mismo cálculo que `registerMovement` del backend; `{ status, body }`. */
+function registrarMovimiento(articulo, dto) {
+  const quantity = Number(dto.quantity);
+  if (!["ENTRADA", "SALIDA", "AJUSTE"].includes(dto.type) || !(quantity >= 0)) {
+    return { status: 400, body: { message: "Movimiento inválido" } };
+  }
+  const delta = dto.type === "ENTRADA" ? quantity : dto.type === "SALIDA" ? -quantity : quantity - articulo.quantity;
+  if (articulo.quantity + delta < 0) {
+    return { status: 400, body: { message: `Stock insuficiente: hay ${articulo.quantity} ${articulo.unit}` } };
+  }
+  articulo.quantity += delta;
+  const movement = {
+    id: siguienteMovimientoId++,
+    itemId: articulo.id,
+    type: dto.type,
+    delta,
+    balanceAfter: articulo.quantity,
+    unitCost: dto.unitCost ?? null,
+    note: dto.note ?? null,
+    orderId: dto.orderId ?? null,
+    createdAt: new Date().toISOString(),
+    item: { id: articulo.id, name: articulo.name, unit: articulo.unit, area: articulo.area },
+    createdBy: { id: 1, firstName: "Rita", lastName: "Ponce" },
+  };
+  movimientosInventario.unshift(movement);
+  return { status: 201, body: { movement, item: articuloJson(articulo) } };
+}
 
 const rutas = {
   "GET /orders": () => pedidos(),
@@ -404,6 +472,76 @@ createServer((req, res) => {
       if (req.method === "DELETE") {
         mockups = mockups.filter((m) => m !== existente);
         return send({ ok: true });
+      }
+    }
+
+    // Inventario: artículos, códigos de barras y movimientos (escaneo incluido).
+    if (req.method === "POST" && path === "/__e2e/reset-inventory") {
+      inventario = inventarioInicial();
+      movimientosInventario = [];
+      siguienteArticuloId = 4;
+      return send({ ok: true });
+    }
+    if (path === "/inventory/areas" && req.method === "GET") return send(["bordado", "impresiones"]);
+    if (path === "/inventory/movements" && req.method === "GET") return send(movimientosInventario);
+    const porCodigo = path.match(/^\/inventory\/items\/by-barcode\/([^/]+)(\/movements)?$/);
+    if (porCodigo) {
+      const code = decodeURIComponent(porCodigo[1]).trim();
+      if (code.length < 3 || code.length > 64 || !/^[\x20-\x7E]+$/.test(code)) {
+        return send({ message: `Código de barras inválido: ${code}` }, 400);
+      }
+      const articulo = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
+      if (!articulo) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
+      if (!porCodigo[2] && req.method === "GET") return send(articuloJson(articulo));
+      if (porCodigo[2] && req.method === "POST") {
+        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        return send(r.body, r.status);
+      }
+    }
+    const inventarioDe = path.match(/^\/inventory(?:\/(\d+)(\/movements)?)?$/);
+    if (inventarioDe) {
+      const id = inventarioDe[1] ? Number(inventarioDe[1]) : null;
+      if (id === null && req.method === "GET") {
+        const area = url.searchParams.get("area");
+        return send(inventario.filter((a) => !area || a.area === area).map(articuloJson));
+      }
+      if (id === null && req.method === "POST") {
+        const { initialQuantity = 0, barcode, ...datos } = JSON.parse(body || "{}");
+        let code = null;
+        if (barcode) {
+          const v = validarCodigo(barcode);
+          if (v.error) return send({ message: v.error }, v.status);
+          code = v.code;
+        }
+        const nuevo = { sku: null, category: null, color: null, brand: null, location: null, minStock: null, unitCost: null, notes: null, materialId: null, supplierId: null, ...datos, id: siguienteArticuloId++, barcode: code, quantity: 0 };
+        inventario.push(nuevo);
+        if (initialQuantity > 0) registrarMovimiento(nuevo, { type: "ENTRADA", quantity: initialQuantity, note: "Stock inicial" });
+        return send(articuloJson(nuevo), 201);
+      }
+      const articulo = inventario.find((a) => a.id === id);
+      if (!articulo) return send({ message: "Artículo no encontrado" }, 404);
+      if (inventarioDe[2] && req.method === "GET") return send(movimientosInventario.filter((m) => m.itemId === id));
+      if (inventarioDe[2] && req.method === "POST") {
+        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        return send(r.body, r.status);
+      }
+      if (req.method === "GET") return send(articuloJson(articulo));
+      if (req.method === "PATCH") {
+        const { barcode, ...datos } = JSON.parse(body || "{}");
+        if (barcode !== undefined) {
+          if (barcode === null || barcode === "") datos.barcode = null;
+          else {
+            const v = validarCodigo(barcode, id);
+            if (v.error) return send({ message: v.error }, v.status);
+            datos.barcode = v.code === codigoPorOmision(id) ? null : v.code;
+          }
+        }
+        Object.assign(articulo, datos);
+        return send(articuloJson(articulo));
+      }
+      if (req.method === "DELETE") {
+        inventario = inventario.filter((a) => a !== articulo);
+        return res.writeHead(204).end();
       }
     }
 

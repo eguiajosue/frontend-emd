@@ -71,7 +71,7 @@ export interface ModuleFit {
 export function fitBarcodeModules(
   modules: number,
   availableMm: number,
-  { dpi = THERMAL_DPI, maxModuleMm = 0.5 }: { dpi?: number; maxModuleMm?: number } = {}
+  { dpi = THERMAL_DPI, maxModuleMm = 0.51 }: { dpi?: number; maxModuleMm?: number } = {}
 ): ModuleFit {
   const dot = dotMm(dpi);
   const total = Math.max(1, modules) + QUIET_ZONE_MODULES * 2;
