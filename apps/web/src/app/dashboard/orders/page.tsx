@@ -76,6 +76,11 @@ import { ordersScreenCopy } from "@/lib/orderScreen";
 import { TASKS_URL } from "@/lib/navMenu";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
+import {
+  ORDERS_EXPORT_SHEET_NAME,
+  buildOrdersSheetData,
+  ordersExportFileName,
+} from "@/lib/ordersExcel";
 
 /** Deserializa filtros desde la URL (compartible/recargable), best-effort. */
 function filtersFromUrl(): OrdersFilters {
@@ -465,16 +470,13 @@ const OrdersPage = () => {
     }));
 
     try {
-      // `xlsx` se carga de forma dinámica (solo al exportar) para no meter
-      // esta librería pesada en el bundle inicial de la pantalla de pedidos.
-      const XLSX = await import("xlsx");
+      // `write-excel-file` se carga de forma dinámica (solo al exportar) para
+      // no meter la librería en el bundle inicial de la pantalla de pedidos.
+      const { default: writeExcelFile } = await import("write-excel-file/browser");
 
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
-
-      const today = new Date().toISOString().slice(0, 10);
-      XLSX.writeFile(workbook, `pedidos-${today}.xlsx`);
+      await writeExcelFile(buildOrdersSheetData(rows), {
+        sheet: ORDERS_EXPORT_SHEET_NAME,
+      }).toFile(ordersExportFileName());
     } catch {
       // Import dinámico: puede fallar por red (chunk viejo tras un deploy,
       // conexión inestable). Antes era un import estático, siempre disponible.
