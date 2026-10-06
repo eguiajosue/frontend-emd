@@ -12,7 +12,13 @@
  *
  * Rutas sólo para los tests (no existen en el backend real):
  * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
- * - `POST /__e2e/reset`:   vacía el almacén de mockups.
+ * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
+ * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
+ * - `GET  /__e2e/mockup-templates`: plantillas guardadas, con su config.
+ * - `GET  /__e2e/quotes`: las cotizaciones en memoria (para verificar lo guardado).
+ * - `POST /__e2e/reset-inventory`: vuelve el inventario a sus 3 artículos iniciales.
+ * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
+ *   (barra lateral por defecto: `navPreferences: null`).
  */
 import { createServer } from "node:http";
 
@@ -94,7 +100,144 @@ function login(body) {
   };
 }
 
-let preferencias = { hasSeenOnboarding: true };
+/** `navPreferences`: barra lateral del usuario; PATCH la guarda y GET la devuelve tal cual. */
+const PREFERENCIAS_INICIALES = { hasSeenOnboarding: true, navPreferences: null };
+let preferencias = { ...PREFERENCIAS_INICIALES };
+
+/** Plantillas y logos de mockups (compartidos por la empresa), en memoria. */
+let plantillas = [];
+let siguientePlantillaId = 1;
+let logos = [];
+let siguienteLogoId = 1;
+const autor = { id: 1, name: "Rita Ponce" };
+const resumenPlantilla = ({ config, ...resto }) => resto;
+const resumenLogo = ({ imageDataUrl, thumbnailDataUrl, ...resto }) => resto;
+
+/**
+ * Cotizaciones (`/quotes`) en memoria, con las reglas del backend real: el
+ * subestado decide la etapa, sólo la etapa toma el subestado por defecto, y
+ * se ordenan por fecha de prioridad (la más vieja primero) y luego por
+ * última modificación.
+ */
+const SUBESTADOS = {
+  por_enviar: ["lista", "pendiente_medidas", "info", "esperando_montaje"],
+  enviada: ["esperando_respuesta", "aceptada", "no_aceptada", "comentarios"],
+};
+const POR_DEFECTO = { por_enviar: "lista", enviada: "esperando_respuesta" };
+const etapaDe = (status) => (SUBESTADOS.por_enviar.includes(status) ? "por_enviar" : "enviada");
+let cotizaciones = [];
+let siguienteCotizacionId = 1;
+let reloj = 0;
+/** Marca de tiempo estrictamente creciente: dos cambios en el mismo ms igual se ordenan. */
+const ahoraIso = () => new Date(Date.now() + reloj++).toISOString();
+
+function etapaYSubestado(stage, status, actual) {
+  if (status) {
+    if (!etapaDe(status) || ![...SUBESTADOS.por_enviar, ...SUBESTADOS.enviada].includes(status)) throw new Error("Subestado inválido");
+    if (stage && etapaDe(status) !== stage) throw new Error(`El subestado "${status}" no corresponde a la etapa "${stage}"`);
+    return { stage: etapaDe(status), status };
+  }
+  if (stage) return actual && actual.stage === stage ? actual : { stage, status: POR_DEFECTO[stage] };
+  return actual ?? { stage: "por_enviar", status: "lista" };
+}
+
+function nuevaCotizacion(item) {
+  if (!item?.description?.trim()) throw new Error("La descripción es obligatoria (máx. 1000 caracteres)");
+  if (!item.clientName?.trim() && !item.clientId) throw new Error("El nombre del cliente es obligatorio (máx. 120 caracteres)");
+  const { stage, status } = etapaYSubestado(item.stage, item.status);
+  const ahora = ahoraIso();
+  return {
+    id: siguienteCotizacionId++,
+    clientId: item.clientId ?? null,
+    clientName: item.clientName.trim(),
+    description: item.description.trim(),
+    stage,
+    status,
+    comment: item.comment?.trim() || null,
+    priorityDate: item.priorityDate ?? null,
+    sentAt: stage === "enviada" ? ahora : null,
+    orderId: null,
+    createdAt: ahora,
+    updatedAt: ahora,
+    createdBy: autor,
+  };
+}
+
+const ordenCotizaciones = (a, b) => {
+  if (a.priorityDate !== b.priorityDate) {
+    if (!a.priorityDate) return 1;
+    if (!b.priorityDate) return -1;
+    return a.priorityDate < b.priorityDate ? -1 : 1;
+  }
+  return b.updatedAt.localeCompare(a.updatedAt) || b.id - a.id;
+};
+
+/**
+ * Inventario por departamento (`/inventory`) en memoria, con las reglas de
+ * códigos de barras del backend: `EMD-000123` por omisión, códigos propios de
+ * 3–64 ASCII, `EMD-<número>` reservado, únicos (409 con el nombre del dueño).
+ */
+const inventarioInicial = () => [
+  { id: 1, area: "bordado", name: "Hilo poliéster rojo 1147", sku: "HP-1147", barcode: null, category: "Hilos", unit: "cono", color: "Rojo", brand: "Madeira", location: "Estante A-3", quantity: 12, minStock: 5, unitCost: 48, notes: null, materialId: null, supplierId: null },
+  { id: 2, area: "impresiones", name: "Tinta cyan para plotter", sku: null, barcode: null, category: "Tintas", unit: "litro", color: "Cyan", brand: null, location: null, quantity: 3, minStock: 2, unitCost: 650, notes: null, materialId: null, supplierId: null },
+  { id: 3, area: "bordado", name: "Estabilizador cut-away 45 cm", sku: null, barcode: "7501234567890", category: "Estabilizador / entretela", unit: "rollo", color: null, brand: null, location: null, quantity: 0, minStock: 1, unitCost: null, notes: null, materialId: null, supplierId: null },
+];
+let inventario = inventarioInicial();
+let movimientosInventario = [];
+let siguienteArticuloId = 4;
+let siguienteMovimientoId = 1;
+
+const codigoPorOmision = (id) => `EMD-${String(id).padStart(6, "0")}`;
+const estadoStock = (q, min) => (q <= 0 ? "out" : min != null && q <= min ? "low" : "ok");
+const articuloJson = (a) => ({
+  ...a,
+  barcode: a.barcode ?? codigoPorOmision(a.id),
+  material: null,
+  supplier: null,
+  stockStatus: estadoStock(a.quantity, a.minStock),
+  totalValue: a.unitCost == null ? null : a.quantity * a.unitCost,
+});
+
+/** `{ code }` o `{ error, status }`, como `normalizeBarcode` + `assertBarcodeFree` del backend. */
+function validarCodigo(raw, ownId) {
+  const code = String(raw).trim();
+  if (code.length < 3 || code.length > 64) return { status: 400, error: "El código de barras debe tener entre 3 y 64 caracteres" };
+  if (!/^[\x20-\x7E]+$/.test(code)) return { status: 400, error: "El código de barras sólo admite letras sin acentos, números, espacios y símbolos ASCII" };
+  if (/^EMD-\d+$/.test(code) && code !== (ownId ? codigoPorOmision(ownId) : null)) {
+    return { status: 400, error: "Los códigos EMD-<número> los asigna el sistema; deja el campo vacío para usar el automático" };
+  }
+  const dueno = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
+  if (dueno && dueno.id !== ownId) return { status: 409, error: `Ese código ya está asignado a ${dueno.name}` };
+  return { code };
+}
+
+/** Mismo cálculo que `registerMovement` del backend; `{ status, body }`. */
+function registrarMovimiento(articulo, dto) {
+  const quantity = Number(dto.quantity);
+  if (!["ENTRADA", "SALIDA", "AJUSTE"].includes(dto.type) || !(quantity >= 0)) {
+    return { status: 400, body: { message: "Movimiento inválido" } };
+  }
+  const delta = dto.type === "ENTRADA" ? quantity : dto.type === "SALIDA" ? -quantity : quantity - articulo.quantity;
+  if (articulo.quantity + delta < 0) {
+    return { status: 400, body: { message: `Stock insuficiente: hay ${articulo.quantity} ${articulo.unit}` } };
+  }
+  articulo.quantity += delta;
+  const movement = {
+    id: siguienteMovimientoId++,
+    itemId: articulo.id,
+    type: dto.type,
+    delta,
+    balanceAfter: articulo.quantity,
+    unitCost: dto.unitCost ?? null,
+    note: dto.note ?? null,
+    orderId: dto.orderId ?? null,
+    createdAt: new Date().toISOString(),
+    item: { id: articulo.id, name: articulo.name, unit: articulo.unit, area: articulo.area },
+    createdBy: { id: 1, firstName: "Rita", lastName: "Ponce" },
+  };
+  movimientosInventario.unshift(movement);
+  return { status: 201, body: { movement, item: articuloJson(articulo) } };
+}
 
 const rutas = {
   "GET /orders": () => pedidos(),
@@ -140,11 +283,160 @@ createServer((req, res) => {
     }
 
     // Ganchos sólo para los tests.
+    if (req.method === "POST" && path === "/__e2e/reset-preferences") {
+      preferencias = { ...PREFERENCIAS_INICIALES };
+      return send(preferencias);
+    }
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
+    if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
+    if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
+    if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);
     if (req.method === "POST" && path === "/__e2e/reset") {
       mockups = [];
       recibidos = [];
+      plantillas = [];
+      logos = [];
+      cotizaciones = [];
+      // "Mis colores" de mockups; la barra lateral tiene su propio reset.
+      preferencias = { ...preferencias, mockupColors: null };
       return send({ ok: true });
+    }
+
+    // Cotizaciones: lista (filtros stage/status/q), alta, alta en bloque, edición, ligar pedido, baja.
+    const cotizacion = path.match(/^\/quotes(?:\/(bulk|\d+)(?:\/(link-order))?)?$/);
+    if (cotizacion) {
+      const datos = () => JSON.parse(body || "{}");
+      try {
+        if (!cotizacion[1] && req.method === "GET") {
+          const { stage, status } = Object.fromEntries(url.searchParams);
+          const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
+          return send(
+            cotizaciones
+              .filter((c) => (!stage || c.stage === stage) && (!status || c.status === status))
+              .filter((c) => !q || `${c.clientName} ${c.description}`.toLowerCase().includes(q))
+              .sort(ordenCotizaciones)
+          );
+        }
+        if (!cotizacion[1] && req.method === "POST") {
+          const nueva = nuevaCotizacion(datos());
+          cotizaciones.push(nueva);
+          return send(nueva, 201);
+        }
+        if (cotizacion[1] === "bulk" && req.method === "POST") {
+          const { items } = datos();
+          if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
+            return send({ message: "Agrega de 1 a 100 cotizaciones" }, 400);
+          }
+          const nuevas = items.map((item, i) => {
+            try {
+              return nuevaCotizacion(item);
+            } catch (e) {
+              throw new Error(`Cotización ${i + 1}: ${e.message}`);
+            }
+          });
+          cotizaciones.push(...nuevas);
+          return send(nuevas, 201);
+        }
+        const existente = cotizaciones.find((c) => c.id === Number(cotizacion[1]));
+        if (!existente) return send({ message: "Cotización no encontrada" }, 404);
+        if (cotizacion[2] === "link-order" && req.method === "POST") {
+          const { orderId } = datos();
+          if (existente.status !== "aceptada") return send({ message: "Sólo se puede ligar un pedido a una cotización aceptada" }, 400);
+          if (cotizaciones.some((c) => c.orderId === orderId && c.id !== existente.id)) {
+            return send({ message: `El pedido #${orderId} ya está ligado a otra cotización` }, 409);
+          }
+          existente.orderId = orderId;
+          return send(existente, 201);
+        }
+        if (!cotizacion[2] && req.method === "PATCH") {
+          const cambios = datos();
+          if (cambios.stage !== undefined || cambios.status !== undefined) {
+            const siguiente = etapaYSubestado(cambios.stage, cambios.status, { stage: existente.stage, status: existente.status });
+            if (siguiente.stage === "enviada" && !existente.sentAt) existente.sentAt = ahoraIso();
+            if (siguiente.stage === "por_enviar") existente.sentAt = null;
+            Object.assign(existente, siguiente);
+          }
+          for (const campo of ["clientId", "description", "priorityDate"]) {
+            if (cambios[campo] !== undefined) existente[campo] = cambios[campo];
+          }
+          if (cambios.clientName?.trim()) existente.clientName = cambios.clientName.trim();
+          if (cambios.comment !== undefined) existente.comment = cambios.comment?.trim() || null;
+          existente.updatedAt = ahoraIso();
+          return send(existente);
+        }
+        if (!cotizacion[2] && req.method === "DELETE") {
+          cotizaciones = cotizaciones.filter((c) => c !== existente);
+          return res.writeHead(204).end();
+        }
+      } catch (e) {
+        return send({ message: e.message }, 400);
+      }
+    }
+
+    // Plantillas de mockup: lista (con miniatura, sin config), detalle, alta, renombrar, baja.
+    const plantilla = path.match(/^\/mockup-templates(?:\/(\d+))?$/);
+    if (plantilla) {
+      const id = plantilla[1] ? Number(plantilla[1]) : null;
+      if (id === null && req.method === "GET") return send(plantillas.map(resumenPlantilla));
+      if (id === null && req.method === "POST") {
+        const { name, garment, config, thumbnailDataUrl } = JSON.parse(body || "{}");
+        if (!name || !garment || !config || typeof thumbnailDataUrl !== "string") {
+          return send({ message: "name, garment, config y thumbnailDataUrl son obligatorios" }, 400);
+        }
+        if (thumbnailDataUrl.length > 140_000) return send({ message: "Miniatura demasiado grande" }, 413);
+        const ahora = new Date().toISOString();
+        const nueva = { id: siguientePlantillaId++, name, garment, createdAt: ahora, updatedAt: ahora, createdBy: autor, thumbnailUrl: thumbnailDataUrl, config };
+        plantillas.unshift(nueva);
+        return send(resumenPlantilla(nueva), 201);
+      }
+      const existente = plantillas.find((p) => p.id === id);
+      if (!existente) return send({ message: "Plantilla no encontrada" }, 404);
+      if (req.method === "GET") return send(existente);
+      if (req.method === "PATCH") {
+        existente.name = JSON.parse(body || "{}").name ?? existente.name;
+        existente.updatedAt = new Date().toISOString();
+        return send(resumenPlantilla(existente));
+      }
+      if (req.method === "DELETE") {
+        plantillas = plantillas.filter((p) => p !== existente);
+        return res.writeHead(204).end();
+      }
+    }
+
+    // Biblioteca de logos: lista (más usados primero), miniatura, imagen, alta, renombrar, uso, baja.
+    const logo = path.match(/^\/mockup-logos(?:\/(\d+)(?:\/(image|thumbnail|use))?)?$/);
+    if (logo) {
+      const id = logo[1] ? Number(logo[1]) : null;
+      const accion = logo[2] ?? null;
+      if (id === null && req.method === "GET") {
+        return send([...logos].sort((a, b) => b.useCount - a.useCount || b.id - a.id).map(resumenLogo));
+      }
+      if (id === null && req.method === "POST") {
+        const { name, imageDataUrl, thumbnailDataUrl } = JSON.parse(body || "{}");
+        if (!name || typeof imageDataUrl !== "string" || typeof thumbnailDataUrl !== "string") {
+          return send({ message: "name, imageDataUrl y thumbnailDataUrl son obligatorios" }, 400);
+        }
+        const nuevo = { id: siguienteLogoId++, name, createdAt: new Date().toISOString(), createdBy: autor, useCount: 0, lastUsedAt: null, imageDataUrl, thumbnailDataUrl };
+        logos.push(nuevo);
+        return send(resumenLogo(nuevo), 201);
+      }
+      const existente = logos.find((l) => l.id === id);
+      if (!existente) return send({ message: "Logo no encontrado" }, 404);
+      if (accion === "image" && req.method === "GET") return send({ dataUrl: existente.imageDataUrl });
+      if (accion === "thumbnail" && req.method === "GET") return send({ dataUrl: existente.thumbnailDataUrl });
+      if (accion === "use" && req.method === "POST") {
+        existente.useCount += 1;
+        existente.lastUsedAt = new Date().toISOString();
+        return res.writeHead(204).end();
+      }
+      if (!accion && req.method === "PATCH") {
+        existente.name = JSON.parse(body || "{}").name ?? existente.name;
+        return send(resumenLogo(existente));
+      }
+      if (!accion && req.method === "DELETE") {
+        logos = logos.filter((l) => l !== existente);
+        return res.writeHead(204).end();
+      }
     }
 
     // Mockups de un pedido: lista, alta, detalle y baja.
@@ -180,6 +472,76 @@ createServer((req, res) => {
       if (req.method === "DELETE") {
         mockups = mockups.filter((m) => m !== existente);
         return send({ ok: true });
+      }
+    }
+
+    // Inventario: artículos, códigos de barras y movimientos (escaneo incluido).
+    if (req.method === "POST" && path === "/__e2e/reset-inventory") {
+      inventario = inventarioInicial();
+      movimientosInventario = [];
+      siguienteArticuloId = 4;
+      return send({ ok: true });
+    }
+    if (path === "/inventory/areas" && req.method === "GET") return send(["bordado", "impresiones"]);
+    if (path === "/inventory/movements" && req.method === "GET") return send(movimientosInventario);
+    const porCodigo = path.match(/^\/inventory\/items\/by-barcode\/([^/]+)(\/movements)?$/);
+    if (porCodigo) {
+      const code = decodeURIComponent(porCodigo[1]).trim();
+      if (code.length < 3 || code.length > 64 || !/^[\x20-\x7E]+$/.test(code)) {
+        return send({ message: `Código de barras inválido: ${code}` }, 400);
+      }
+      const articulo = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
+      if (!articulo) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
+      if (!porCodigo[2] && req.method === "GET") return send(articuloJson(articulo));
+      if (porCodigo[2] && req.method === "POST") {
+        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        return send(r.body, r.status);
+      }
+    }
+    const inventarioDe = path.match(/^\/inventory(?:\/(\d+)(\/movements)?)?$/);
+    if (inventarioDe) {
+      const id = inventarioDe[1] ? Number(inventarioDe[1]) : null;
+      if (id === null && req.method === "GET") {
+        const area = url.searchParams.get("area");
+        return send(inventario.filter((a) => !area || a.area === area).map(articuloJson));
+      }
+      if (id === null && req.method === "POST") {
+        const { initialQuantity = 0, barcode, ...datos } = JSON.parse(body || "{}");
+        let code = null;
+        if (barcode) {
+          const v = validarCodigo(barcode);
+          if (v.error) return send({ message: v.error }, v.status);
+          code = v.code;
+        }
+        const nuevo = { sku: null, category: null, color: null, brand: null, location: null, minStock: null, unitCost: null, notes: null, materialId: null, supplierId: null, ...datos, id: siguienteArticuloId++, barcode: code, quantity: 0 };
+        inventario.push(nuevo);
+        if (initialQuantity > 0) registrarMovimiento(nuevo, { type: "ENTRADA", quantity: initialQuantity, note: "Stock inicial" });
+        return send(articuloJson(nuevo), 201);
+      }
+      const articulo = inventario.find((a) => a.id === id);
+      if (!articulo) return send({ message: "Artículo no encontrado" }, 404);
+      if (inventarioDe[2] && req.method === "GET") return send(movimientosInventario.filter((m) => m.itemId === id));
+      if (inventarioDe[2] && req.method === "POST") {
+        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        return send(r.body, r.status);
+      }
+      if (req.method === "GET") return send(articuloJson(articulo));
+      if (req.method === "PATCH") {
+        const { barcode, ...datos } = JSON.parse(body || "{}");
+        if (barcode !== undefined) {
+          if (barcode === null || barcode === "") datos.barcode = null;
+          else {
+            const v = validarCodigo(barcode, id);
+            if (v.error) return send({ message: v.error }, v.status);
+            datos.barcode = v.code === codigoPorOmision(id) ? null : v.code;
+          }
+        }
+        Object.assign(articulo, datos);
+        return send(articuloJson(articulo));
+      }
+      if (req.method === "DELETE") {
+        inventario = inventario.filter((a) => a !== articulo);
+        return res.writeHead(204).end();
       }
     }
 

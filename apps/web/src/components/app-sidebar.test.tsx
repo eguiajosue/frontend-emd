@@ -13,6 +13,15 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/orders",
 }));
 
+// Sin preferencias de barra (`navPreferences: null`, como todo usuario hoy):
+// el menú debe verse igual que antes (contrato R16).
+vi.mock("@/hooks/useNavPreferences", () => ({
+  useNavPreferences: () => ({
+    prefs: { favorites: [], order: [], hidden: [], expanded: false },
+    expanded: false,
+  }),
+}));
+
 vi.mock("@/hooks/useChat", () => ({
   useChatUnreadCount: () => 0,
 }));

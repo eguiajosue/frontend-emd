@@ -20,6 +20,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import Title from "@/components/Title";
+import { SidebarPreferencesSection } from "@/components/SidebarPreferencesSection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -713,6 +714,7 @@ export default function ConfiguracionPage() {
           así tarjetas de alto distinto no dejan huecos); una sola en el resto. */}
       <div className="max-w-6xl gap-6 xl:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
         <AppearanceSection />
+        <SidebarPreferencesSection />
         <DensitySection />
         <TimeFormatSection />
         <SoundSection />

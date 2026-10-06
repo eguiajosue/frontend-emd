@@ -7,9 +7,12 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Printer,
   Scale,
   Trash2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { itemBarcode } from "@/lib/barcode/codes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
@@ -39,6 +42,15 @@ export interface InventoryColumnsArgs {
   onHistory: (item: InventoryItem) => void;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
+  onPrintLabel: (item: InventoryItem) => void;
+  /** Selección para imprimir etiquetas en lote. */
+  selection: {
+    isSelected: (id: number) => boolean;
+    toggle: (item: InventoryItem) => void;
+    /** "all" | "some" | "none" de las filas visibles. */
+    state: "all" | "some" | "none";
+    toggleAll: () => void;
+  };
 }
 
 const ROW_ACTION = "h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground";
@@ -69,8 +81,35 @@ export function getInventoryColumns({
   onHistory,
   onEdit,
   onDelete,
+  onPrintLabel,
+  selection,
 }: InventoryColumnsArgs): ColumnDef<InventoryItem>[] {
   const columns: ColumnDef<InventoryItem>[] = [
+    {
+      id: "select",
+      header: () => (
+        <Checkbox
+          checked={selection.state === "all" ? true : selection.state === "some" ? "indeterminate" : false}
+          onCheckedChange={selection.toggleAll}
+          aria-label="Seleccionar todos para imprimir etiquetas"
+          className="translate-y-[1px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <label className="flex cursor-pointer items-center gap-2">
+          <Checkbox
+            checked={selection.isSelected(row.original.id)}
+            onCheckedChange={() => selection.toggle(row.original)}
+            aria-label={`Seleccionar ${row.original.name}`}
+            className="translate-y-[1px]"
+          />
+          {/* En móvil cada fila es una tarjeta: el checkbox solo no se entiende. */}
+          <span className="text-meta md:hidden" aria-hidden>
+            Seleccionar para etiqueta
+          </span>
+        </label>
+      ),
+    },
     {
       id: "name",
       header: "Artículo",
@@ -80,6 +119,7 @@ export function getInventoryColumns({
         return (
           <div className="min-w-[12rem]">
             <p className="font-medium leading-snug">{item.name}</p>
+            <p className="mt-0.5 font-mono text-[11px] tracking-wide text-muted-foreground">{itemBarcode(item)}</p>
             {(details || item.material) && (
               <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-meta">
                 {details}
@@ -165,7 +205,18 @@ export function getInventoryColumns({
         const item = row.original;
         if (!canManage) {
           return (
-            <div className="flex items-center justify-end">
+            <div className="flex items-center justify-end gap-1">
+              <SimpleTooltip label="Imprimir etiqueta">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={ROW_ACTION}
+                  aria-label={`Imprimir etiqueta de ${item.name}`}
+                  onClick={() => onPrintLabel(item)}
+                >
+                  <Printer className="h-4 w-4" />
+                </Button>
+              </SimpleTooltip>
               <SimpleTooltip label="Ver movimientos">
                 <Button
                   size="icon"
@@ -217,6 +268,9 @@ export function getInventoryColumns({
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onHistory(item)}>
                   <History className="h-4 w-4" /> Ver movimientos
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onPrintLabel(item)}>
+                  <Printer className="h-4 w-4" /> Imprimir etiqueta
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onEdit(item)}>
                   <Pencil className="h-4 w-4" /> Editar

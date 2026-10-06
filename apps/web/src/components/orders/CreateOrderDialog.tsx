@@ -280,6 +280,8 @@ interface CreateOrderDialogProps {
   /** Precarga el cliente (ver "Crear otro pedido para este cliente" en el toast de éxito). */
   initialClientId?: number;
   initialClientNameOverride?: string;
+  /** Precarga la descripción (ej. "Convertir en pedido" desde una cotización aceptada). */
+  initialDescription?: string;
   /**
    * Se llama al tocar "Crear otro pedido para {cliente}" en el toast de
    * éxito — el padre decide cómo reabrir el diálogo (ver `orders/page.tsx`).
@@ -395,6 +397,7 @@ export function CreateOrderDialog({
   onCreated,
   initialClientId,
   initialClientNameOverride,
+  initialDescription,
   onCreateAnother,
   repeatFromOrderId,
   templateId,
@@ -572,6 +575,7 @@ export function CreateOrderDialog({
       setClientId(initialClientId);
       setClientNameOverride(initialClientNameOverride ?? "");
     }
+    if (initialDescription) setDescription(initialDescription);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

@@ -72,6 +72,8 @@ export function KeyboardShortcuts() {
       if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
       if (isTypingTarget(e.target)) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      // Modo Escanear de Inventario: las teclas son del lector de códigos.
+      if (document.querySelector("[data-scan-mode]")) return;
 
       if (e.key === "?") {
         e.preventDefault();
@@ -115,7 +117,10 @@ export function KeyboardShortcuts() {
       rows: goShortcuts.map((s) => ({ keys: ["G", s.key.toUpperCase()], label: s.label })),
     },
     ...(canManageOperations
-      ? [{ title: "En Pedidos", rows: [{ keys: ["N"], label: "Nuevo pedido" }] }]
+      ? [
+          { title: "En Pedidos", rows: [{ keys: ["N"], label: "Nuevo pedido" }] },
+          { title: "En Cotizaciones", rows: [{ keys: ["N"], label: "Nueva cotización" }] },
+        ]
       : []),
   ];
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Boxes, Loader2 } from "lucide-react";
+import { Boxes, Loader2, RotateCcw, ScanBarcode } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,13 @@ import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { useInventoryMutations } from "@/hooks/useInventory";
 import { getErrorMessage } from "@/lib/api";
 import { inventoryAreaLabel } from "@/lib/inventory";
+import {
+  barcodePatchValue,
+  defaultBarcode,
+  isBarcodeError,
+  validateCustomBarcode,
+} from "@/lib/barcode/codes";
+import { BarcodeSvg } from "@/components/inventory/BarcodeSvg";
 import type { InventoryArea, InventoryItem, Material, Supplier } from "@/types";
 
 /** Unidades frecuentes en el taller; se puede escribir cualquier otra. */
@@ -63,6 +70,8 @@ interface FormState {
   materialId?: number;
   name: string;
   sku: string;
+  /** Vacío = el automático (EMD-000123). */
+  barcode: string;
   category: string;
   unit: string;
   color: string;
@@ -77,12 +86,17 @@ interface FormState {
 
 const toText = (n?: number | null) => (n == null ? "" : String(n));
 
-function initialState(item: InventoryItem | null | undefined, defaultArea: InventoryArea | ""): FormState {
+function initialState(
+  item: InventoryItem | null | undefined,
+  defaultArea: InventoryArea | "",
+  initialBarcode = ""
+): FormState {
   return {
     area: item?.area ?? defaultArea,
     materialId: item?.materialId ?? undefined,
     name: item?.name ?? "",
     sku: item?.sku ?? "",
+    barcode: item ? (item.barcode ?? defaultBarcode(item.id)) : initialBarcode,
     category: item?.category ?? "",
     unit: item?.unit ?? "",
     color: item?.color ?? "",
@@ -115,6 +129,8 @@ interface InventoryItemDialogProps {
   /** Categorías ya usadas en el inventario, para sugerirlas. */
   knownCategories: string[];
   knownUnits: string[];
+  /** Alta desde un escaneo desconocido: el código ya viene cargado. */
+  initialBarcode?: string;
 }
 
 /**
@@ -136,6 +152,7 @@ export function InventoryItemDialog({
   defaultArea,
   knownCategories,
   knownUnits,
+  initialBarcode,
 }: InventoryItemDialogProps) {
   const isEditing = Boolean(item);
   const { create, update } = useInventoryMutations();
@@ -145,13 +162,15 @@ export function InventoryItemDialog({
     staleTime: CATALOG_STALE_TIME,
   });
 
-  const [form, setForm] = useState<FormState>(() => initialState(item, defaultArea ?? areas[0] ?? ""));
+  const [form, setForm] = useState<FormState>(() =>
+    initialState(item, defaultArea ?? areas[0] ?? "", initialBarcode)
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setForm(initialState(item, defaultArea ?? areas[0] ?? ""));
+    setForm(initialState(item, defaultArea ?? areas[0] ?? "", initialBarcode));
     setErrors({});
     // Sólo al abrir: un refetch de fondo no debe pisar lo que se está cargando.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,6 +180,9 @@ export function InventoryItemDialog({
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
   };
+
+  const autoBarcode =
+    form.barcode.trim() === "" || (isEditing && form.barcode.trim() === defaultBarcode(item!.id));
 
   const categoryOptions = useMemo(
     () =>
@@ -208,6 +230,11 @@ export function InventoryItemDialog({
     if (!isEditing && initialQuantity === undefined) {
       next.initialQuantity = "Debe ser un número mayor o igual a 0";
     }
+    const barcode = barcodePatchValue(form.barcode, item);
+    if (typeof barcode === "string") {
+      const check = validateCustomBarcode(barcode, item?.id);
+      if (!check.ok) next.barcode = check.error;
+    }
     if (Object.keys(next).length > 0) {
       setErrors(next);
       return;
@@ -227,6 +254,7 @@ export function InventoryItemDialog({
       unitCost,
       materialId: form.materialId ?? null,
       supplierId: form.supplierId ?? null,
+      ...(barcode !== undefined && { barcode }),
     };
 
     setSubmitting(true);
@@ -240,7 +268,9 @@ export function InventoryItemDialog({
       }
       onClose();
     } catch (error) {
-      toast.error(getErrorMessage(error, "No se pudo guardar el artículo."));
+      // Código repetido o con formato inválido: el error va en su campo.
+      if (isBarcodeError(error)) setErrors((prev) => ({ ...prev, barcode: error.message }));
+      else toast.error(getErrorMessage(error, "No se pudo guardar el artículo."));
     } finally {
       setSubmitting(false);
     }
@@ -327,6 +357,50 @@ export function InventoryItemDialog({
               onUseCustom={(text) => set("unit", text)}
               invalid={Boolean(errors.unit)}
             />
+          </FormField>
+
+          <FormField
+            label="Código de barras"
+            htmlFor="inv-barcode"
+            icon={ScanBarcode}
+            error={errors.barcode}
+            className="sm:col-span-2"
+            hint={
+              !errors.barcode &&
+              (autoBarcode
+                ? isEditing
+                  ? "Automático. Para usar el del fabricante (EAN/UPC), escanéalo o escríbelo aquí."
+                  : "Vacío = se asigna uno automático (EMD-…). También puedes escanear el del fabricante."
+                : "Código propio: es el que se imprime en la etiqueta y el que se escanea.")
+            }
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                id="inv-barcode"
+                value={form.barcode}
+                onChange={(e) => set("barcode", e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                placeholder={isEditing ? defaultBarcode(item!.id) : "Automático (EMD-…)"}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono sm:flex-1"
+                aria-invalid={Boolean(errors.barcode)}
+              />
+              {!autoBarcode && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start sm:self-auto"
+                  onClick={() => set("barcode", isEditing ? defaultBarcode(item!.id) : "")}
+                >
+                  <RotateCcw /> Usar automático
+                </Button>
+              )}
+              {isEditing && form.barcode.trim().length >= 3 && !errors.barcode && (
+                <BarcodeSvg code={form.barcode.trim()} className="h-10 w-40 shrink-0 rounded-sm px-1.5" />
+              )}
+            </div>
           </FormField>
 
           <FormField label="Código / SKU" htmlFor="inv-sku" hint="Único dentro del departamento.">

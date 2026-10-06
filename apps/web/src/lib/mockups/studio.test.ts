@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { DesignPlacement, Garment } from "./types";
 
-const placements: Record<Garment, DesignPlacement> = {
+const placements: Record<"tshirt" | "cap", DesignPlacement> = {
   tshirt: { position: [0, 0.1, 0.2], normal: [0, 0, 1], scale: 0.3, rotation: 0 },
   cap: { position: [0, 0.05, 0.1], normal: [0, 0, 1], scale: 0.1, rotation: 0 },
 };
 vi.mock("@/lib/mockups/presets", () => ({
-  defaultPlacement: (garment: Garment) => ({ ...placements[garment] }),
+  defaultPlacement: (garment: Garment) => ({ ...placements[garment as "tshirt" | "cap"] }),
   PLACEMENT_PRESETS: { tshirt: [], cap: [] },
   applyPreset: vi.fn(),
 }));

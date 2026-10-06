@@ -7,6 +7,7 @@ import {
   OPERATIONAL_MENU,
   isNavItemVisible,
   pageTitleFromBreadcrumbs,
+  QUOTES_URL,
 } from "./navMenu";
 
 describe("findActiveNavUrl", () => {
@@ -103,6 +104,22 @@ describe("Mockups", () => {
 
   it("migas: Operación › Mockups", () => {
     expect(buildBreadcrumbs(groups, "/dashboard/mockups")).toEqual([{ label: "Operación" }, { label: "Mockups" }]);
+  });
+});
+
+describe("Cotizaciones", () => {
+  const operacion = buildMenuItems().find((g) => g.groupLabel === "Operación")!;
+  const quotes = operacion.items.find((i) => i.url === QUOTES_URL)!;
+
+  it("va en Operación justo después de Mockups, con el mismo acceso", () => {
+    const urls = operacion.items.map((i) => i.url);
+    expect(QUOTES_URL).toBe("/dashboard/cotizaciones");
+    expect(quotes.title).toBe("Cotizaciones");
+    expect(urls.indexOf(QUOTES_URL)).toBe(urls.indexOf("/dashboard/mockups") + 1);
+    expect(isNavItemVisible(quotes, ["recepcion"], false)).toBe(true);
+    expect(isNavItemVisible(quotes, ["superuser"], false)).toBe(true);
+    expect(isNavItemVisible(quotes, ["diseno"], false)).toBe(false);
+    expect(buildBreadcrumbs(buildMenuItems(), QUOTES_URL)).toEqual([{ label: "Operación" }, { label: "Cotizaciones" }]);
   });
 });
 

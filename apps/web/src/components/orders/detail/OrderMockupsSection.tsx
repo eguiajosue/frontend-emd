@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
@@ -19,37 +19,11 @@ import {
   useOrderMockupDetail,
   useOrderMockups,
 } from "@/hooks/useOrderMockups";
+import { useInView } from "@/hooks/useInView";
 import { downloadFromUrl } from "@/lib/download";
 import { buildMockupPayload, mockupFilename, type MockupStudioResult } from "@/lib/mockups/studio";
 import { GARMENT_LABELS, type OrderMockupSummary } from "@/lib/mockups/types";
 import type { Order } from "@/types";
-
-/** Se vuelve `true` la primera vez que el elemento entra (o está por entrar) en pantalla. */
-function useInView<T extends Element>() {
-  const ref = useRef<T>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    if (inView) return;
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [inView]);
-  return [ref, inView] as const;
-}
 
 function mockupMeta(mockup: OrderMockupSummary): string {
   const date = new Date(mockup.createdAt);

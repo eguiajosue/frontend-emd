@@ -1,4 +1,5 @@
-import { MAX_DESIGN_PX } from "@/lib/mockups/types";
+import { dataUrlBytes } from "@/lib/mockups/dataUrl";
+import { LOGO_THUMBNAIL_PX, MAX_DESIGN_PX, MAX_LOGO_THUMBNAIL_BYTES } from "@/lib/mockups/types";
 
 /**
  * Importa el diseño de un cliente (logo/arte) para el creador de mockups.
@@ -150,4 +151,79 @@ export async function importDesignFile(file: File): Promise<ImportedDesign> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/**
+ * Importa un diseño servido por la propia app (p. ej. una bandera de
+ * `public/flags/`): lo baja y lo pasa por el mismo camino que un archivo
+ * subido (SVG → PNG de MAX_DESIGN_PX).
+ */
+export async function importDesignFromUrl(url: string, name: string): Promise<ImportedDesign> {
+  let blob: Blob;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    blob = await res.blob();
+  } catch {
+    throw new DesignImportError(`No se pudo cargar «${name}». Revisa tu conexión e intenta de nuevo.`);
+  }
+  const ext = extensionOf(new URL(url, "http://local").pathname);
+  const type = EXTENSION_TYPES[ext] ?? blob.type;
+  const file = new File([blob], `${name}.${ext || "png"}`, { type });
+  const design = await importDesignFile(file);
+  return { ...design, name };
+}
+
+/**
+ * Diseño a partir de un PNG que ya viene reducido (logo de la biblioteca):
+ * sólo se lee su proporción, no se vuelve a codificar.
+ */
+export async function designFromDataUrl(name: string, dataUrl: string): Promise<ImportedDesign> {
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(dataUrl);
+  } catch {
+    throw new DesignImportError(`No se pudo leer «${name}».`);
+  }
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) throw new DesignImportError(`No se pudo leer «${name}».`);
+  return { name, dataUrl, aspect: width / height };
+}
+
+/** Lados (px) que se prueban para la miniatura de un logo, del más nítido al más liviano. */
+export const LOGO_THUMBNAIL_STEPS = [LOGO_THUMBNAIL_PX, 128, 96, 64] as const;
+
+/**
+ * Miniatura PNG de un logo para la cuadrícula de la biblioteca (R7): lado
+ * mayor ≤ LOGO_THUMBNAIL_PX y ≤ MAX_LOGO_THUMBNAIL_BYTES (se achica si hace
+ * falta). La imagen completa sólo se baja al usar el logo.
+ */
+export async function makeLogoThumbnail(dataUrl: string): Promise<string> {
+  let img: HTMLImageElement;
+  try {
+    img = await loadImage(dataUrl);
+  } catch {
+    throw new DesignImportError("No se pudo preparar la miniatura del logo.");
+  }
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
+  if (!width || !height) throw new DesignImportError("No se pudo preparar la miniatura del logo.");
+  let last = "";
+  for (const side of LOGO_THUMBNAIL_STEPS) {
+    const scale = Math.min(1, side / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new DesignImportError("No se pudo preparar la miniatura del logo.");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(img, 0, 0, w, h);
+    last = canvas.toDataURL("image/png");
+    if (dataUrlBytes(last) <= MAX_LOGO_THUMBNAIL_BYTES) return last;
+  }
+  throw new DesignImportError("El logo tiene demasiado detalle para su miniatura. Prueba con una versión más simple.");
 }

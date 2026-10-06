@@ -11,14 +11,18 @@ import {
 } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { toast } from "sonner";
-import { Download, ImagePlus, Loader2, Paperclip, RotateCcw } from "lucide-react";
+import { BookImage, Download, ImagePlus, LayoutTemplate, Loader2, Paperclip, RotateCcw, Save } from "lucide-react";
 import MockupCanvasLazy from "@/components/mockups/MockupCanvasLazy";
-import { MockupColorField } from "@/components/mockups/MockupColorField";
+import { MockupColorField, type MyColorsControls } from "@/components/mockups/MockupColorField";
 import { MockupLayerList } from "@/components/mockups/MockupLayerList";
+import { MockupLibraryDialog } from "@/components/mockups/MockupLibrary";
+import { MockupTemplatesDialog, SaveTemplateDialog } from "@/components/mockups/MockupTemplates";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useMockupColors } from "@/hooks/useMockupColors";
 import { downloadFromUrl } from "@/lib/download";
-import { DESIGN_ACCEPT, importDesignFile, isDesignFile } from "@/lib/mockups/importDesign";
+import { enabledGarments, isGarmentEnabled } from "@/lib/mockups/garments";
+import { DESIGN_ACCEPT, importDesignFile, isDesignFile, type ImportedDesign } from "@/lib/mockups/importDesign";
 import { PLACEMENT_PRESETS, applyPreset, defaultPlacement } from "@/lib/mockups/presets";
 import {
   COLOR_FIELDS,
@@ -34,7 +38,6 @@ import {
   type MockupStudioResult,
 } from "@/lib/mockups/studio";
 import {
-  GARMENT_LABELS,
   type DesignLayer,
   type DesignPlacement,
   type Garment,
@@ -162,6 +165,14 @@ export function MockupStudio({
   const [freeView, setFreeView] = useState(false);
   const [importing, setImporting] = useState(false);
   const [busy, setBusy] = useState<null | "download" | "attach">(null);
+  const [dialog, setDialog] = useState<null | "templates" | "save-template" | "library">(null);
+  const myColors = useMockupColors();
+  const myColorsControls: MyColorsControls = {
+    entries: myColors.entries,
+    onAdd: myColors.addColor,
+    onToggleFavorite: (hex) => void myColors.toggleFavorite(hex),
+    onRemove: (hex) => void myColors.removeColor(hex),
+  };
   // Mientras se exporta, arrastrar en el lienzo tampoco cambia el mockup.
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -170,6 +181,8 @@ export function MockupStudio({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  const configRef = useRef(config);
+  configRef.current = config;
   const garment = config.garment;
   const selected = config.layers.find((l) => l.id === selectedId) ?? null;
   const baseScale = defaultPlacement(garment).scale || 1;
@@ -180,32 +193,38 @@ export function MockupStudio({
 
   /* ------------------------------ Diseños ------------------------------- */
 
+  /** Agrega diseños ya importados (archivo, logo de la biblioteca o bandera). */
+  const addDesigns = useCallback((designs: ImportedDesign[]) => {
+    if (designs.length === 0) return;
+    const garmentNow = configRef.current.garment;
+    const added: DesignLayer[] = designs.map((d) => createLayer(d, garmentNow));
+    setConfig((prev) => ({
+      ...prev,
+      // La prenda pudo cambiar mientras se leía el archivo.
+      layers: [
+        ...prev.layers,
+        ...added.map((l) => (prev.garment === garmentNow ? l : { ...l, placement: defaultPlacement(prev.garment) })),
+      ],
+    }));
+    setSelectedId(added[added.length - 1].id);
+  }, []);
+
   const addFiles = useCallback(
     async (files: File[]) => {
       if (files.length === 0) return;
       setImporting(true);
-      const added: DesignLayer[] = [];
+      const designs: ImportedDesign[] = [];
       for (const file of files) {
         try {
-          const design = await importDesignFile(file);
-          added.push(createLayer(design, config.garment));
+          designs.push(await importDesignFile(file));
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "No se pudo leer el diseño.");
         }
       }
       setImporting(false);
-      if (added.length === 0) return;
-      setConfig((prev) => ({
-        ...prev,
-        // La prenda pudo cambiar mientras se leía el archivo.
-        layers: [
-          ...prev.layers,
-          ...added.map((l) => (prev.garment === config.garment ? l : { ...l, placement: defaultPlacement(prev.garment) })),
-        ],
-      }));
-      setSelectedId(added[added.length - 1].id);
+      addDesigns(designs);
     },
-    [config.garment]
+    [addDesigns]
   );
 
   const updateLayer = useCallback((id: string, update: (layer: DesignLayer) => DesignLayer) => {
@@ -278,9 +297,23 @@ export function MockupStudio({
   };
 
   const changeGarment = (next: string) => {
-    if (next !== "tshirt" && next !== "cap") return;
+    // Sólo las prendas habilitadas (sudadera y camisa siguen ocultas).
+    if (!isGarmentEnabled(next)) return;
     setConfig((prev) => switchGarment(prev, next));
     goToView("front");
+  };
+
+  /** Plantilla aplicada: reemplaza todo el mockup. */
+  const applyTemplate = (next: MockupConfig) => {
+    setConfig(next);
+    setSelectedId(null);
+    goToView("front");
+  };
+
+  const exportThumbnail = () => {
+    const handle = canvasRef.current;
+    if (!handle) return Promise.reject(new Error("El 3D no está disponible en este navegador."));
+    return handle.exportThumbnail();
   };
 
   const setColor = (part: ColorPart, value: string) =>
@@ -462,16 +495,26 @@ export function MockupStudio({
 
         {config.layers.length === 0 && !dragging && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-4">
-            <Button
-              type="button"
-              variant="default"
-              className="pointer-events-auto h-11 px-5 shadow-soft-md"
-              onClick={openFilePicker}
-              disabled={importing}
-            >
-              {importing ? <Loader2 className="animate-spin" /> : <ImagePlus />}
-              Sube el diseño del cliente
-            </Button>
+            <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="default"
+                className="h-11 px-5 shadow-soft-md"
+                onClick={openFilePicker}
+                disabled={importing}
+              >
+                {importing ? <Loader2 className="animate-spin" /> : <ImagePlus />}
+                Sube el diseño del cliente
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 bg-card/95 px-4 shadow-soft-md backdrop-blur"
+                onClick={() => setDialog("library")}
+              >
+                <BookImage /> Logos y banderas
+              </Button>
+            </div>
           </div>
         )}
 
@@ -496,6 +539,27 @@ export function MockupStudio({
       >
         {/* Bloqueado mientras se exporta: la imagen y la config guardada deben coincidir. */}
         <fieldset disabled={busy !== null} className="min-h-0 min-w-0 flex-1 lg:overflow-y-auto">
+          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 flex-1"
+              onClick={() => setDialog("templates")}
+            >
+              <LayoutTemplate /> Plantillas
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 flex-1"
+              onClick={() => setDialog("save-template")}
+            >
+              <Save /> Guardar como plantilla
+            </Button>
+          </div>
+
           <StudioSection title="Prenda">
             <ToggleGroup
               type="single"
@@ -504,14 +568,14 @@ export function MockupStudio({
               aria-label="Prenda"
               className="grid grid-cols-2 gap-2"
             >
-              {(["tshirt", "cap"] as Garment[]).map((g) => (
+              {enabledGarments().map(({ id: g, label }) => (
                 <ToggleGroupItem
                   key={g}
                   value={g}
-                  aria-label={GARMENT_LABELS[g]}
+                  aria-label={label}
                   className="flex h-auto flex-col items-start gap-0 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
                 >
-                  <span className="text-sm font-semibold">{GARMENT_LABELS[g]}</span>
+                  <span className="text-sm font-semibold">{label}</span>
                   <span className="text-meta">{GARMENT_MODELS[g]}</span>
                 </ToggleGroupItem>
               ))}
@@ -526,6 +590,7 @@ export function MockupStudio({
                   label={label}
                   value={config.colors[part] ?? "#ffffff"}
                   onChange={(value) => setColor(part, value)}
+                  myColors={myColorsControls}
                 />
               ))}
             </div>
@@ -534,9 +599,20 @@ export function MockupStudio({
           <StudioSection
             title="Diseños"
             aside={
-              config.layers.length > 0 ? (
-                <span className="text-meta tabular-nums">{config.layers.length}</span>
-              ) : undefined
+              <div className="flex items-center gap-2">
+                {config.layers.length > 0 && (
+                  <span className="text-meta tabular-nums">{config.layers.length}</span>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-mr-2 h-8 px-2.5"
+                  onClick={() => setDialog("library")}
+                >
+                  <BookImage /> Biblioteca
+                </Button>
+              </div>
             }
           >
             <MockupLayerList
@@ -639,6 +715,24 @@ export function MockupStudio({
           )}
         </div>
       </aside>
+
+      <MockupTemplatesDialog
+        open={dialog === "templates"}
+        onOpenChange={(open) => setDialog(open ? "templates" : null)}
+        hasWork={config.layers.length > 0}
+        onApply={applyTemplate}
+      />
+      <SaveTemplateDialog
+        open={dialog === "save-template"}
+        onOpenChange={(open) => setDialog(open ? "save-template" : null)}
+        config={config}
+        exportThumbnail={exportThumbnail}
+      />
+      <MockupLibraryDialog
+        open={dialog === "library"}
+        onOpenChange={(open) => setDialog(open ? "library" : null)}
+        onAddDesign={(design) => addDesigns([design])}
+      />
     </div>
   );
 }

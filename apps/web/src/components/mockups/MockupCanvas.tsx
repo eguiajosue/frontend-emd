@@ -18,7 +18,8 @@ import { WebGLFallback } from "./WebGLFallback";
  *   (`onPlacementChange`, como mucho una vez por frame).
  * - Clic en el fondo (sin arrastrar) deselecciona.
  *
- * El ref expone `exportSheet()` y `setView(view)` (`MockupCanvasHandle`).
+ * El ref expone `exportSheet()`, `exportThumbnail()` y `setView(view)`
+ * (`MockupCanvasHandle`).
  */
 const MockupCanvas = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function MockupCanvas(props, ref) {
   const { config, selectedLayerId, view, className } = props;
@@ -76,6 +77,11 @@ const MockupCanvas = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function 
         const scene = sceneRef.current;
         if (!scene) return Promise.reject(new Error("El lienzo 3D no está disponible"));
         return scene.exportSheet();
+      },
+      exportThumbnail: () => {
+        const scene = sceneRef.current;
+        if (!scene) return Promise.reject(new Error("El lienzo 3D no está disponible"));
+        return scene.exportThumbnail();
       },
       setView: (v) => sceneRef.current?.setView(v),
     }),

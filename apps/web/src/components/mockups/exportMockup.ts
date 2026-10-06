@@ -150,10 +150,23 @@ export function fitScale(content: { width: number; height: number }, box: { widt
  * todas con la MISMA caja (la unión de lo visible) para aprovechar el espacio
  * sin que una prenda se vea más grande que otra.
  */
+export interface ComposeOptions extends SheetLayoutOptions {
+  supersample?: number;
+  /** false = sin etiquetas bajo cada vista (miniaturas). */
+  labels?: boolean;
+  /** Formato de salida (PNG por defecto; JPEG para miniaturas livianas). */
+  mimeType?: "image/png" | "image/jpeg";
+  /** Calidad del JPEG (0-1). */
+  quality?: number;
+}
+
+/** Miniatura de plantilla: cuadrada, sólo el frente, JPEG. */
+export const THUMBNAIL_SIZE = 400;
+
 export function composeSheet(
   views: SheetView[],
   renderPanel: RenderPanel,
-  { supersample = 2, ...layoutOpts }: SheetLayoutOptions & { supersample?: number } = {},
+  { supersample = 2, labels = true, mimeType = "image/png", quality, ...layoutOpts }: ComposeOptions = {},
 ): MockupExport {
   const width = layoutOpts.width ?? SHEET_WIDTH;
   const height = layoutOpts.height ?? SHEET_HEIGHT;
@@ -163,7 +176,12 @@ export function composeSheet(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo crear la imagen del mockup");
 
-  const panels = computeSheetLayout(views.length, { ...layoutOpts, width, height });
+  const panels = computeSheetLayout(views.length, {
+    ...layoutOpts,
+    ...(labels ? {} : { labelHeight: 0 }),
+    width,
+    height,
+  });
   const rw = Math.round((panels[0]?.width ?? 0) * supersample);
   const rh = Math.round((panels[0]?.height ?? 0) * supersample);
 
@@ -196,7 +214,7 @@ export function composeSheet(
   const scale = fitScale(crop, panels[0] ?? { width: 0, height: 0 });
   const drawW = crop.width * scale;
   const drawH = crop.height * scale;
-  const labelGap = 40;
+  const labelGap = labels ? 40 : 0;
   const blockH = drawH + labelGap;
   const top = Math.max((height - blockH) / 2, 0);
 
@@ -208,8 +226,8 @@ export function composeSheet(
     const p = panels[i];
     const x = p.x + (p.width - drawW) / 2;
     ctx.drawImage(shots[i].shot, crop.x, crop.y, crop.width, crop.height, x, top, drawW, drawH);
-    ctx.fillText(v.label, p.labelX, top + drawH + labelGap - 8);
+    if (labels) ctx.fillText(v.label, p.labelX, top + drawH + labelGap - 8);
   });
 
-  return { dataUrl: canvas.toDataURL("image/png"), width, height };
+  return { dataUrl: canvas.toDataURL(mimeType, quality), width, height };
 }

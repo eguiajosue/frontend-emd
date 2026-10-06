@@ -13,9 +13,9 @@ import { BugReportDialog } from "./BugReportDialog";
 import { ConfiguracionLink, InstallAppButton } from "./app-sidebar";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
-import { TAB_PRIORITY_URLS, MAX_PRIMARY_TABS, findActiveNavUrl } from "@/lib/navMenu";
 import { formatRoleList } from "@/lib/roles";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
+import { useNavLayout } from "@/hooks/useNavLayout";
 
 interface MobileMoreSheetProps {
   open: boolean;
@@ -37,16 +37,12 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const userRoles = session?.user?.roles || [];
   const visibleItems = useVisibleNavItems();
 
-  // Mismo criterio de prioridad que usa `MobileTabBar` para sus 4 tabs
-  // (fuente compartida en `navMenu.ts`): todo lo que no entra ahí, entra aquí,
-  // en el mismo orden relativo de `useVisibleNavItems()`.
-  const primaryUrls = new Set(
-    TAB_PRIORITY_URLS.filter((url) =>
-      visibleItems.some((item) => item.url === url)
-    ).slice(0, MAX_PRIMARY_TABS)
-  );
+  // Mismos tabs principales que `MobileTabBar` (fuente única `useNavLayout`:
+  // favoritos primero, sin ocultos): todo lo que no entra ahí — incluidos los
+  // ocultos — entra aquí, en el mismo orden relativo de `useVisibleNavItems()`.
+  const { primaryTabUrls, activeUrl } = useNavLayout();
+  const primaryUrls = new Set(primaryTabUrls);
   const remainingItems = visibleItems.filter((item) => !primaryUrls.has(item.url));
-  const activeUrl = findActiveNavUrl(visibleItems.map((item) => item.url), pathname);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

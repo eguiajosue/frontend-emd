@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { NetworkFirst, Serwist } from "serwist";
+import { CacheFirst, ExpirationPlugin, NetworkFirst, NetworkOnly, Serwist } from "serwist";
 import { listPendingMutations, removePendingMutation } from "@/lib/offlineQueue";
 
 declare global {
@@ -18,7 +18,27 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: [
+    // Payloads pesados de mockups (plantilla con su config, imagen/miniatura
+    // de un logo, detalle de un mockup del pedido): pueden pesar varios MB y
+    // no sirven offline. Sólo red, nunca a Cache Storage (decisión R8).
+    {
+      matcher: ({ url, sameOrigin }) =>
+        !sameOrigin &&
+        (/\/mockup-templates\/\d+\/?$/.test(url.pathname) ||
+          /\/mockup-logos\/\d+\/(image|thumbnail)\/?$/.test(url.pathname) ||
+          /\/orders\/\d+\/mockups\/\d+\/?$/.test(url.pathname)),
+      handler: new NetworkOnly(),
+    },
+    // Banderas y modelos 3D (fuera del precache, R9): se guardan al verlos.
+    {
+      matcher: ({ url, sameOrigin }) => sameOrigin && /^\/(flags|models)\//.test(url.pathname),
+      handler: new CacheFirst({
+        cacheName: "emd-mockup-assets",
+        plugins: [new ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 30 * 24 * 60 * 60 })],
+      }),
+    },
     // Datos vivos del kanban/pedidos: red primero, caché como respaldo offline.
+    // Con tope (R8) para que Cache Storage no crezca sin límite.
     {
       matcher: ({ url, sameOrigin }) =>
         !sameOrigin ||
@@ -26,6 +46,7 @@ const serwist = new Serwist({
       handler: new NetworkFirst({
         cacheName: "emd-live-data",
         networkTimeoutSeconds: 4,
+        plugins: [new ExpirationPlugin({ maxEntries: 300, maxAgeSeconds: 7 * 24 * 60 * 60 })],
       }),
     },
     // Dashboards/analíticas: red primero (igual que los pedidos en vivo). Con

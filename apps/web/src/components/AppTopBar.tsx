@@ -21,6 +21,8 @@ import { BugReportDialog } from "@/components/BugReportDialog";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { findActiveNavUrl } from "@/lib/navMenu";
+import { orderGroupItems } from "@/lib/navPreferences";
+import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { formatRoleList } from "@/lib/roles";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
@@ -57,8 +59,16 @@ function SectionNav() {
     items.map((i) => i.url),
     pathname
   );
+  const { prefs } = useNavPreferences();
   const activeGroup = items.find((i) => i.url === activeUrl)?.group;
-  const siblings = activeGroup ? items.filter((i) => i.group === activeGroup) : [];
+  // Mismo orden que el usuario eligió para el grupo en la barra lateral, sin
+  // sus ocultos (salvo la pantalla abierta, que siempre se ve).
+  const siblings = activeGroup
+    ? orderGroupItems(
+        { groupLabel: activeGroup, items: items.filter((i) => i.group === activeGroup) },
+        prefs
+      ).filter((i) => i.url === activeUrl || !prefs.hidden.includes(i.url))
+    : [];
   if (siblings.length < 2) return null;
 
   return (
@@ -162,7 +172,7 @@ function UserMenu() {
  */
 export function AppTopBar() {
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 md:-ml-[5.75rem] md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0">
+    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0">
       <BrandPill />
       <div className="flex min-w-0 flex-1 justify-center">
         <SectionNav />

@@ -56,7 +56,7 @@ export function ThemeToggle() {
  * opciones a la vista, la activa marcada, en vez de un único botón que
  * alterna sin decir en qué tema estás.
  */
-export function ThemeRailSwitch() {
+export function ThemeRailSwitch({ orientation = "vertical" }: { orientation?: "vertical" | "horizontal" } = {}) {
   const { resolvedTheme, setTheme } = useTheme();
   const { updatePreferences } = useUserPreferences();
   const [mounted, setMounted] = useState(false);
@@ -75,7 +75,12 @@ export function ThemeRailSwitch() {
   };
 
   return (
-    <div role="radiogroup" aria-label="Tema" className="flex flex-col items-center gap-1">
+    <div
+      role="radiogroup"
+      aria-label="Tema"
+      aria-orientation={orientation}
+      className={cn("flex items-center gap-1", orientation === "vertical" && "flex-col")}
+    >
       {(
         [
           { value: "light", label: "Modo claro", Icon: Sun },
@@ -84,7 +89,7 @@ export function ThemeRailSwitch() {
       ).map(({ value, label, Icon }) => {
         const active = current === value;
         return (
-          <SimpleTooltip key={value} label={label} side="right">
+          <SimpleTooltip key={value} label={label} side={orientation === "vertical" ? "right" : "bottom"}>
             <Button
               variant="ghost"
               size="icon"

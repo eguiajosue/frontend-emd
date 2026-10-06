@@ -1,3 +1,10 @@
+import {
+  ALL_GARMENTS,
+  GARMENTS,
+  assertGarmentEnabled,
+  defaultGarmentOptions,
+  type ColorPart,
+} from "@/lib/mockups/garments";
 import { defaultPlacement } from "@/lib/mockups/presets";
 import {
   DEFAULT_COLORS,
@@ -6,7 +13,6 @@ import {
   type CreateOrderMockupPayload,
   type DesignLayer,
   type Garment,
-  type GarmentColors,
   type MockupConfig,
   type MockupExport,
 } from "@/lib/mockups/types";
@@ -25,10 +31,9 @@ export interface MockupStudioResult {
 }
 
 /** Modelo de referencia de cada prenda (texto de apoyo en el selector). */
-export const GARMENT_MODELS: Record<Garment, string> = {
-  tshirt: "Gildan 5000",
-  cap: "Richardson 112",
-};
+export const GARMENT_MODELS = Object.fromEntries(
+  ALL_GARMENTS.map((g) => [g, GARMENTS[g].referenceModel])
+) as Record<Garment, string>;
 
 /** Colores rápidos de prenda más pedidos. */
 export const QUICK_SWATCHES: { label: string; value: string }[] = [
@@ -39,20 +44,16 @@ export const QUICK_SWATCHES: { label: string; value: string }[] = [
   { label: "Rojo", value: "#c8102e" },
 ];
 
-export type ColorPart = keyof GarmentColors;
+export type { ColorPart };
 
 /** Qué partes de la prenda llevan color propio, con su etiqueta. */
-export const COLOR_FIELDS: Record<Garment, { part: ColorPart; label: string }[]> = {
-  tshirt: [{ part: "body", label: "Color de la prenda" }],
-  cap: [
-    { part: "body", label: "Frente" },
-    { part: "mesh", label: "Malla" },
-    { part: "visor", label: "Visera" },
-  ],
-};
+export const COLOR_FIELDS = Object.fromEntries(
+  ALL_GARMENTS.map((g) => [g, GARMENTS[g].colorParts])
+) as Record<Garment, { part: ColorPart; label: string }[]>;
 
 export function initialMockupConfig(garment: Garment = "tshirt"): MockupConfig {
-  return { garment, colors: { ...DEFAULT_COLORS[garment] }, layers: [] };
+  const options = defaultGarmentOptions(garment);
+  return { garment, colors: { ...DEFAULT_COLORS[garment] }, layers: [], ...(options ? { options } : {}) };
 }
 
 let layerSeq = 0;
@@ -78,10 +79,13 @@ export function createLayer(design: ImportedDesign, garment: Garment, id = newLa
  */
 export function switchGarment(config: MockupConfig, garment: Garment): MockupConfig {
   if (config.garment === garment) return config;
+  // Los ajustes propios (bolsa, manga, patrón…) son de cada prenda: no viajan.
+  const options = defaultGarmentOptions(garment);
   return {
     garment,
     colors: { ...DEFAULT_COLORS[garment] },
     layers: config.layers.map((layer) => ({ ...layer, placement: defaultPlacement(garment) })),
+    ...(options ? { options } : {}),
   };
 }
 
@@ -103,10 +107,16 @@ export function normalizeHexColor(input: string): string | null {
 export function mockupFilename(garment: Garment, date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  return `mockup-${GARMENT_LABELS[garment].toLowerCase()}-${day}.png`;
+  const slug = GARMENT_LABELS[garment]
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-");
+  return `mockup-${slug}-${day}.png`;
 }
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {
+  assertGarmentEnabled(result.config.garment);
   return {
     garment: result.config.garment,
     imageDataUrl: result.image.dataUrl,
