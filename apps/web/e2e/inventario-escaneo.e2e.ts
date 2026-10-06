@@ -59,7 +59,7 @@ test("escanear: entrada, salida y código desconocido ligado a un artículo", as
 
   // Salida sin stock: aviso claro.
   await escanear(page, "7501234567890");
-  await expect(page.getByRole("alert")).toContainText("Stock insuficiente: hay 0 rollo");
+  await expect(page.getByTestId("scan-last")).toContainText("Stock insuficiente: hay 0 rollo");
 
   // Código que nadie tiene → ligarlo a la tinta y registrar la salida pendiente.
   await escanear(page, "TINTA-CY-01");
