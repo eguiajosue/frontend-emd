@@ -1,6 +1,7 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { withAuth } from "next-auth/middleware";
 import { buildContentSecurityPolicy, generateNonce } from "@/lib/csp";
+import { isSentryTunnelPath } from "@/lib/sentry";
 
 /**
  * Dos trabajos en un solo middleware (Next sólo admite uno):
@@ -37,11 +38,28 @@ function withCsp(request: NextRequest): NextResponse {
   return response;
 }
 
+/**
+ * Túnel de Sentry (`/monitoring`, ver `lib/sentry.ts`): Next lo reescribe al
+ * ingest de Sentry DESPUÉS del middleware, reenviando las cabeceras de la
+ * request. Sin auth (el reporte de un error en /login también debe llegar) ni
+ * CSP (no es HTML), y sin `Cookie`/`Authorization`: la cookie de sesión de
+ * NextAuth no tiene por qué salir hacia Sentry.
+ */
+function forSentryTunnel(request: NextRequest): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete("cookie");
+  requestHeaders.delete("authorization");
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 // Sólo corre si hay sesión válida; si no, `withAuth` ya respondió con el
 // redirect a /login (con callbackUrl), igual que antes.
 const authMiddleware = withAuth((request) => withCsp(request));
 
 export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  if (isSentryTunnelPath(request.nextUrl.pathname)) {
+    return forSentryTunnel(request);
+  }
   if (isProtectedPath(request.nextUrl.pathname)) {
     return authMiddleware(request as Parameters<typeof authMiddleware>[0], event);
   }

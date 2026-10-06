@@ -51,6 +51,9 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: appVersion,
     NEXT_PUBLIC_GIT_COMMIT: resolveGitCommit(),
+    // Entorno de Sentry también en el cliente (sin prefijo NEXT_PUBLIC_ no se
+    // incrustaría). Vacío = el SDK usa VERCEL_ENV / NODE_ENV.
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT ?? "",
   },
   /**
    * Rutas viejas que se fusionaron en pantallas unificadas. Se redirigen aquí
@@ -88,4 +91,42 @@ const withSerwist = require("@serwist/next").default({
   globPublicPatterns: ["*", "!(flags|models)/**/*"],
 });
 
-module.exports = withSerwist(nextConfig);
+/**
+ * Sentry (ver docs/monitoring.md): sin `NEXT_PUBLIC_SENTRY_DSN` la config de
+ * Next queda exactamente igual que sin Sentry — ni plugin de webpack, ni
+ * auto-instrumentación, ni túnel. El build no necesita ninguna variable de
+ * Sentry para pasar (CI, Vercel sin configurar, e2e).
+ *
+ * Con DSN:
+ * - `tunnelRoute`: el navegador manda los eventos al propio origen y Next los
+ *   reescribe al ingest de Sentry; la CSP (`connect-src`) no cambia. Debe
+ *   coincidir con `SENTRY_TUNNEL_ROUTE` de src/lib/sentry.ts (el middleware y
+ *   el Service Worker la excluyen de auth/CSP y de la caché).
+ * - Source maps: sólo se generan y suben si además hay `SENTRY_AUTH_TOKEN`
+ *   (+ `SENTRY_ORG` / `SENTRY_PROJECT`); sin token, nada de upload ni avisos.
+ */
+const SENTRY_TUNNEL_ROUTE = "/monitoring";
+const sentryEnabled = Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+const uploadSourceMaps = sentryEnabled && Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+function withSentry(config: import("next").NextConfig): import("next").NextConfig {
+  if (!sentryEnabled) return config;
+  const { withSentryConfig } = require("@sentry/nextjs");
+  return withSentryConfig(config, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    silent: !uploadSourceMaps,
+    telemetry: false,
+    tunnelRoute: SENTRY_TUNNEL_ROUTE,
+    sourcemaps: { disable: !uploadSourceMaps },
+    release: { create: uploadSourceMaps },
+    widenClientFileUpload: uploadSourceMaps,
+    webpack: {
+      automaticVercelMonitors: false,
+      treeshake: { removeDebugLogging: true },
+    },
+  });
+}
+
+module.exports = withSentry(withSerwist(nextConfig));
