@@ -193,6 +193,7 @@ describe("AppSidebar con preferencias de barra (favoritos, ocultos, expandida)",
       "Panel General",
       "Pedidos",
       "Mockups",
+      "Cotizaciones",
       "Calendario",
       "Historial",
     ]);

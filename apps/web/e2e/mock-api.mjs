@@ -15,6 +15,7 @@
  * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
  * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
  * - `GET  /__e2e/mockup-templates`: plantillas guardadas, con su config.
+ * - `GET  /__e2e/quotes`: las cotizaciones en memoria (para verificar lo guardado).
  * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
  *   (barra lateral por defecto: `navPreferences: null`).
  */
@@ -111,6 +112,65 @@ const autor = { id: 1, name: "Rita Ponce" };
 const resumenPlantilla = ({ config, ...resto }) => resto;
 const resumenLogo = ({ imageDataUrl, thumbnailDataUrl, ...resto }) => resto;
 
+/**
+ * Cotizaciones (`/quotes`) en memoria, con las reglas del backend real: el
+ * subestado decide la etapa, sólo la etapa toma el subestado por defecto, y
+ * se ordenan por fecha de prioridad (la más vieja primero) y luego por
+ * última modificación.
+ */
+const SUBESTADOS = {
+  por_enviar: ["lista", "pendiente_medidas", "info", "esperando_montaje"],
+  enviada: ["esperando_respuesta", "aceptada", "no_aceptada", "comentarios"],
+};
+const POR_DEFECTO = { por_enviar: "lista", enviada: "esperando_respuesta" };
+const etapaDe = (status) => (SUBESTADOS.por_enviar.includes(status) ? "por_enviar" : "enviada");
+let cotizaciones = [];
+let siguienteCotizacionId = 1;
+let reloj = 0;
+/** Marca de tiempo estrictamente creciente: dos cambios en el mismo ms igual se ordenan. */
+const ahoraIso = () => new Date(Date.now() + reloj++).toISOString();
+
+function etapaYSubestado(stage, status, actual) {
+  if (status) {
+    if (!etapaDe(status) || ![...SUBESTADOS.por_enviar, ...SUBESTADOS.enviada].includes(status)) throw new Error("Subestado inválido");
+    if (stage && etapaDe(status) !== stage) throw new Error(`El subestado "${status}" no corresponde a la etapa "${stage}"`);
+    return { stage: etapaDe(status), status };
+  }
+  if (stage) return actual && actual.stage === stage ? actual : { stage, status: POR_DEFECTO[stage] };
+  return actual ?? { stage: "por_enviar", status: "lista" };
+}
+
+function nuevaCotizacion(item) {
+  if (!item?.description?.trim()) throw new Error("La descripción es obligatoria (máx. 1000 caracteres)");
+  if (!item.clientName?.trim() && !item.clientId) throw new Error("El nombre del cliente es obligatorio (máx. 120 caracteres)");
+  const { stage, status } = etapaYSubestado(item.stage, item.status);
+  const ahora = ahoraIso();
+  return {
+    id: siguienteCotizacionId++,
+    clientId: item.clientId ?? null,
+    clientName: item.clientName.trim(),
+    description: item.description.trim(),
+    stage,
+    status,
+    comment: item.comment?.trim() || null,
+    priorityDate: item.priorityDate ?? null,
+    sentAt: stage === "enviada" ? ahora : null,
+    orderId: null,
+    createdAt: ahora,
+    updatedAt: ahora,
+    createdBy: autor,
+  };
+}
+
+const ordenCotizaciones = (a, b) => {
+  if (a.priorityDate !== b.priorityDate) {
+    if (!a.priorityDate) return 1;
+    if (!b.priorityDate) return -1;
+    return a.priorityDate < b.priorityDate ? -1 : 1;
+  }
+  return b.updatedAt.localeCompare(a.updatedAt) || b.id - a.id;
+};
+
 const rutas = {
   "GET /orders": () => pedidos(),
   "GET /status": () => estados,
@@ -162,14 +222,87 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
+    if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);
     if (req.method === "POST" && path === "/__e2e/reset") {
       mockups = [];
       recibidos = [];
       plantillas = [];
       logos = [];
+      cotizaciones = [];
       // "Mis colores" de mockups; la barra lateral tiene su propio reset.
       preferencias = { ...preferencias, mockupColors: null };
       return send({ ok: true });
+    }
+
+    // Cotizaciones: lista (filtros stage/status/q), alta, alta en bloque, edición, ligar pedido, baja.
+    const cotizacion = path.match(/^\/quotes(?:\/(bulk|\d+)(?:\/(link-order))?)?$/);
+    if (cotizacion) {
+      const datos = () => JSON.parse(body || "{}");
+      try {
+        if (!cotizacion[1] && req.method === "GET") {
+          const { stage, status } = Object.fromEntries(url.searchParams);
+          const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
+          return send(
+            cotizaciones
+              .filter((c) => (!stage || c.stage === stage) && (!status || c.status === status))
+              .filter((c) => !q || `${c.clientName} ${c.description}`.toLowerCase().includes(q))
+              .sort(ordenCotizaciones)
+          );
+        }
+        if (!cotizacion[1] && req.method === "POST") {
+          const nueva = nuevaCotizacion(datos());
+          cotizaciones.push(nueva);
+          return send(nueva, 201);
+        }
+        if (cotizacion[1] === "bulk" && req.method === "POST") {
+          const { items } = datos();
+          if (!Array.isArray(items) || items.length === 0 || items.length > 100) {
+            return send({ message: "Agrega de 1 a 100 cotizaciones" }, 400);
+          }
+          const nuevas = items.map((item, i) => {
+            try {
+              return nuevaCotizacion(item);
+            } catch (e) {
+              throw new Error(`Cotización ${i + 1}: ${e.message}`);
+            }
+          });
+          cotizaciones.push(...nuevas);
+          return send(nuevas, 201);
+        }
+        const existente = cotizaciones.find((c) => c.id === Number(cotizacion[1]));
+        if (!existente) return send({ message: "Cotización no encontrada" }, 404);
+        if (cotizacion[2] === "link-order" && req.method === "POST") {
+          const { orderId } = datos();
+          if (existente.status !== "aceptada") return send({ message: "Sólo se puede ligar un pedido a una cotización aceptada" }, 400);
+          if (cotizaciones.some((c) => c.orderId === orderId && c.id !== existente.id)) {
+            return send({ message: `El pedido #${orderId} ya está ligado a otra cotización` }, 409);
+          }
+          existente.orderId = orderId;
+          return send(existente, 201);
+        }
+        if (!cotizacion[2] && req.method === "PATCH") {
+          const cambios = datos();
+          if (cambios.stage !== undefined || cambios.status !== undefined) {
+            const siguiente = etapaYSubestado(cambios.stage, cambios.status, { stage: existente.stage, status: existente.status });
+            if (siguiente.stage === "enviada" && !existente.sentAt) existente.sentAt = ahoraIso();
+            if (siguiente.stage === "por_enviar") existente.sentAt = null;
+            Object.assign(existente, siguiente);
+          }
+          for (const campo of ["clientId", "description", "priorityDate"]) {
+            if (cambios[campo] !== undefined) existente[campo] = cambios[campo];
+          }
+          if (cambios.clientName?.trim()) existente.clientName = cambios.clientName.trim();
+          if (cambios.comment !== undefined) existente.comment = cambios.comment?.trim() || null;
+          existente.updatedAt = ahoraIso();
+          return send(existente);
+        }
+        if (!cotizacion[2] && req.method === "DELETE") {
+          cotizaciones = cotizaciones.filter((c) => c !== existente);
+          return res.writeHead(204).end();
+        }
+      } catch (e) {
+        return send({ message: e.message }, 400);
+      }
     }
 
     // Plantillas de mockup: lista (con miniatura, sin config), detalle, alta, renombrar, baja.

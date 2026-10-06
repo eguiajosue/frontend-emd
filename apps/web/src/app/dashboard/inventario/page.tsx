@@ -10,7 +10,10 @@ import {
   Package,
   PackageX,
   Plus,
+  Printer,
+  ScanBarcode,
   Search,
+  X,
   Wallet,
   Warehouse,
   type LucideIcon,
@@ -34,6 +37,8 @@ import { InventoryItemDialog } from "@/components/inventory/InventoryItemDialog"
 import { InventoryMovementDialog } from "@/components/inventory/InventoryMovementDialog";
 import { InventoryHistorySheet } from "@/components/inventory/InventoryHistorySheet";
 import { InventoryMovementsList } from "@/components/inventory/InventoryMovementsList";
+import { InventoryScanPanel } from "@/components/inventory/InventoryScanPanel";
+import { LabelPrintDialog } from "@/components/inventory/LabelPrintDialog";
 import { useAuthToken } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
@@ -44,6 +49,7 @@ import {
   useInventoryMutations,
 } from "@/hooks/useInventory";
 import { getErrorMessage } from "@/lib/api";
+import { itemBarcode } from "@/lib/barcode/codes";
 import { formatCurrencyMXN } from "@/lib/format";
 import {
   INVENTORY_AREA_OPTIONS,
@@ -153,6 +159,11 @@ export default function InventarioPage() {
   const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null);
   const [deleting, setDeleting] = useState<InventoryItem | null>(null);
   const [exporting, setExporting] = useState(false);
+  /** Alta desde un escaneo de código desconocido: el código ya cargado. */
+  const [createBarcode, setCreateBarcode] = useState<string | undefined>();
+  const [scanMode, setScanMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [labelItems, setLabelItems] = useState<InventoryItem[] | null>(null);
 
   const summary = useMemo(() => summarizeInventory(items), [items]);
   const categories = useMemo(
@@ -171,7 +182,16 @@ export default function InventarioPage() {
         if (status !== ALL && item.stockStatus !== status) return false;
         if (category !== ALL && item.category !== category) return false;
         if (!q) return true;
-        return [item.name, item.sku, item.category, item.color, item.brand, item.location, item.material?.name]
+        return [
+          item.name,
+          item.sku,
+          itemBarcode(item),
+          item.category,
+          item.color,
+          item.brand,
+          item.location,
+          item.material?.name,
+        ]
           .filter(Boolean)
           .some((v) => v!.toLowerCase().includes(q));
       })
@@ -191,10 +211,31 @@ export default function InventarioPage() {
     setCategory(ALL);
   };
 
-  const openCreate = () => {
+  const openCreate = (barcode?: string) => {
     setEditing(null);
+    setCreateBarcode(barcode);
     setFormOpen(true);
   };
+
+  // Selección para etiquetas en lote: sólo cuenta lo que existe en la lista actual.
+  const selectedItems = useMemo(() => items.filter((i) => selectedIds.has(i.id)), [items, selectedIds]);
+  const visibleSelected = filtered.filter((i) => selectedIds.has(i.id)).length;
+  const selectionState: "all" | "some" | "none" =
+    visibleSelected === 0 ? "none" : visibleSelected === filtered.length ? "all" : "some";
+  const toggleSelected = (item: InventoryItem) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.id)) next.delete(item.id);
+      else next.add(item.id);
+      return next;
+    });
+  const toggleAllVisible = () =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selectionState === "all") filtered.forEach((i) => next.delete(i.id));
+      else filtered.forEach((i) => next.add(i.id));
+      return next;
+    });
 
   const columns = getInventoryColumns({
     showArea: !effectiveArea,
@@ -206,6 +247,13 @@ export default function InventarioPage() {
       setFormOpen(true);
     },
     onDelete: setDeleting,
+    onPrintLabel: (item) => setLabelItems([item]),
+    selection: {
+      isSelected: (id) => selectedIds.has(id),
+      toggle: toggleSelected,
+      state: selectionState,
+      toggleAll: toggleAllVisible,
+    },
   });
 
   const handleExport = async () => {
@@ -310,6 +358,9 @@ export default function InventarioPage() {
         />
       </div>
 
+      {scanMode ? (
+        <InventoryScanPanel items={items} onCreateItem={openCreate} onExit={() => setScanMode(false)} />
+      ) : (
       <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
         <div className="flex flex-wrap items-center gap-2">
           <TabsList className="rounded-full">
@@ -331,7 +382,17 @@ export default function InventarioPage() {
               Exportar CSV
             </Button>
             {canManage && (
-              <Button className="h-10 px-5" onClick={openCreate}>
+              <Button
+                variant="secondary"
+                className="h-10 rounded-full px-4"
+                onClick={() => setScanMode(true)}
+                disabled={items.length === 0}
+              >
+                <ScanBarcode className="h-4 w-4" /> Escanear
+              </Button>
+            )}
+            {canManage && (
+              <Button className="h-10 px-5" onClick={() => openCreate()}>
                 <Plus className="h-4 w-4" /> Nuevo artículo
               </Button>
             )}
@@ -406,7 +467,7 @@ export default function InventarioPage() {
                   ? "Carga lo que el departamento tiene en estante: conos de hilo, tintas, estabilizador, refacciones o materiales del catálogo."
                   : "Administración o Recepción cargan el inventario del departamento."
               }
-              action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: openCreate } : undefined}
+              action={canManage ? { label: "Nuevo artículo", icon: Plus, onClick: () => openCreate() } : undefined}
             />
           ) : filtered.length === 0 ? (
             <EmptyState
@@ -437,6 +498,32 @@ export default function InventarioPage() {
           )}
         </TabsContent>
       </Tabs>
+      )}
+
+      {/* Lote de etiquetas: aparece al seleccionar artículos en la tabla. */}
+      {!scanMode && selectedItems.length > 0 && (
+        <div
+          role="region"
+          aria-label="Selección para etiquetas"
+          className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 mx-auto flex w-fit max-w-full items-center gap-2 rounded-full border border-border/60 bg-card py-1.5 pl-4 pr-1.5 shadow-lg md:bottom-4"
+        >
+          <span className="whitespace-nowrap text-sm font-medium tabular-nums">
+            {selectedItems.length === 1 ? "1 seleccionado" : `${selectedItems.length} seleccionados`}
+          </span>
+          <Button className="h-9 px-4" onClick={() => setLabelItems(selectedItems)}>
+            <Printer className="h-4 w-4" /> Imprimir etiquetas
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9"
+            onClick={() => setSelectedIds(new Set())}
+            aria-label="Quitar selección"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {formOpen && (
         <InventoryItemDialog
@@ -447,6 +534,7 @@ export default function InventarioPage() {
           defaultArea={effectiveArea}
           knownCategories={categories}
           knownUnits={units}
+          initialBarcode={createBarcode}
         />
       )}
 
@@ -457,6 +545,8 @@ export default function InventarioPage() {
       />
 
       <InventoryHistorySheet item={historyItem} onClose={() => setHistoryItem(null)} />
+
+      <LabelPrintDialog items={labelItems} onClose={() => setLabelItems(null)} />
 
       <ConfirmDeleteDialog
         open={deleting !== null}
