@@ -111,8 +111,40 @@ function getShared(): Shared {
   return shared;
 }
 
+/** Escena de precalentamiento: mantiene vivos los programas compilados hasta la primera llegada. */
+let warmPlayer: ArrivalPlayer | null = null;
+let warming: Promise<void> | null = null;
+
+/**
+ * Precalienta la escena con la tele abierta y en reposo: crea el renderer
+ * compartido, hornea el entorno, pinta el cartón y compila los shaders de la
+ * caja, las chispas y los brillos. En una GPU floja (o WebGL por software)
+ * eso son segundos; así la primera caja cae enseguida en vez de esperar.
+ */
+export function prewarmArrivalScene(): Promise<void> {
+  if (warmPlayer || (shared && !warming)) return Promise.resolve();
+  if (!warming) {
+    warming = createArrivalPlayer(document.createElement("div"), {
+      priority: "overdue",
+      batch: false,
+      labelTitle: "#0",
+      labelSubtitle: "",
+      sheets: [],
+    })
+      .then((p) => {
+        warmPlayer = p;
+      })
+      .finally(() => {
+        warming = null;
+      });
+  }
+  return warming;
+}
+
 /** Libera el renderer y todo lo compartido (al salir del Modo TV, o si se pierde el contexto). */
 export function disposeSharedRenderer() {
+  warmPlayer?.stop();
+  warmPlayer = null;
   const s = shared;
   if (!s) return;
   shared = null;
@@ -456,6 +488,12 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
   sheets.forEach((r) => (r.group.visible = true));
   await renderer.compileAsync(scene, camera);
   sheets.forEach((r) => (r.group.visible = false));
+  // Los programas ya quedaron tomados por esta escena: la de precalentamiento
+  // puede soltarlos.
+  if (warmPlayer && opts.sheets.length > 0) {
+    warmPlayer.stop();
+    warmPlayer = null;
+  }
 
   const token = {};
   return {

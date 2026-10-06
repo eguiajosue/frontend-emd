@@ -75,12 +75,26 @@ test("3 · una llegada simulada cae como paquete y queda en Pendiente", async ({
   await page.goto("/dashboard/tareas?tv=1&demo=1");
   await expect(columna(page, "Pendiente")).toBeVisible();
 
+  // ¿Este navegador tiene WebGL? (la misma prueba que `arrival3d/runtime.ts`).
+  const webgl = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    return Boolean(c.getContext("webgl2") ?? c.getContext("webgl"));
+  });
+  // Con WebGL la tele precalienta la escena 3D (renderer + shaders) en cuanto abre.
+  if (webgl) await expect(tele(page)).toHaveAttribute("data-arrival-3d", "ready", { timeout: 20_000 });
+
   await tele(page).getByRole("button", { name: "Simular vencido" }).click();
   const aviso = page.getByRole("status").filter({ hasText: /Nuevo pedido #9001/ });
   await expect(aviso).toBeAttached();
-  // Con WebGL, la caja es 3D: un <canvas> de three sobre el tablero.
-  await expect(aviso).toHaveAttribute("data-arrival-mode", "3d");
-  await expect(aviso.locator("[data-arrival-canvas] canvas")).toBeAttached({ timeout: 5_000 });
+  if (webgl) {
+    // La caja es 3D: un <canvas> de three sobre el tablero.
+    await expect(aviso).toHaveAttribute("data-arrival-mode", "3d");
+    await expect(aviso.locator("[data-arrival-canvas] canvas")).toBeAttached({ timeout: 5_000 });
+  } else {
+    // Sin WebGL: la versión SVG, sin lienzo.
+    await expect(aviso).toHaveAttribute("data-arrival-mode", "2d");
+    await expect(aviso.locator("canvas")).toHaveCount(0);
+  }
 
   // Al terminar la animación (~4 s) queda la tarjeta en su columna y el paquete se va.
   const nueva = columna(page, "Pendiente").getByRole("article", { name: /Pedido #9001/ });

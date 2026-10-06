@@ -61,6 +61,10 @@ cuando entra trabajo nuevo, sólo dentro del Modo TV.
   se abre con Enter/Espacio); el botón de acción queda por encima (`z-10`).
 - El diálogo se renderiza dentro del contenido de la tele (rama anidada de
   Radix): Esc cierra sólo el detalle y el foco vuelve a la tarjeta.
+- `OrderDetailDialog` (también en la vista normal): anota quién tenía el foco
+  al abrirse y se lo devuelve en `onCloseAutoFocus` (sin `<DialogTrigger>`,
+  Radix lo dejaba en `<body>`), y al abrir pone el foco en el diálogo y no en
+  "Más acciones" (su tooltip se abría y el primer Esc sólo lo cerraba).
 - El `DialogContent fullscreen` pasó de `z-[60]` a `z-50`: lo que se abre
   encima (detalle, selects, tooltips, todos `z-50`) se monta después en el
   `<body>` y gana por orden de documento.
@@ -92,8 +96,15 @@ cuando entra trabajo nuevo, sólo dentro del Modo TV.
   esquinas a pantalla (`quadToScreenSheet`), la hoja DOM aparece justo ahí
   (misma escala y giro) y hace el FLIP a su tarjeta mientras la caja se
   hunde y el lienzo se apaga.
+- Precalentamiento: al abrir la tele (con WebGL y sin reduced-motion) se
+  carga three, se crea el renderer, se hornea el entorno y se compilan los
+  shaders de una escena de prueba (en SwiftShader son ~3 s; en una GPU floja,
+  más de lo que se quiere esperar con la caja ya anunciada). La tele expone
+  `data-arrival-3d="warming" | "ready" | "off"` y la primera llegada espera
+  hasta 6 s a que esté lista.
 - Respaldo: `PackageArrivalStage` (SVG + framer) con `prefers-reduced-motion`,
-  sin WebGL, o si la escena no arranca en 2,5 s o falla.
+  sin WebGL o si la escena falla (2D para siempre). Si sólo tarda más de
+  2,5 s en arrancar, esa llegada va en 2D y la siguiente vuelve a probar 3D.
 - CSP: sin `eval`, sin `<style>`/`<script>` inline; las texturas son
   `CanvasTexture` (sin blob:) y los íconos de la hoja van como `data:` SVG
   (`img-src` ya permite `data:`).

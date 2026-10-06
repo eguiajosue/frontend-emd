@@ -24,8 +24,11 @@ interface PackageArrival3DStageProps {
   onLand: () => void;
   onDelivered: () => void;
   onDone: () => void;
-  /** La escena 3D no pudo arrancar (sin WebGL de verdad, error): usar la 2D. */
-  onFallback: () => void;
+  /**
+   * La escena 3D no arrancó: `"timeout"` (tardó demasiado: esta llegada va
+   * en 2D, la próxima vuelve a probar) o `"error"` (no hay caso: 2D siempre).
+   */
+  onFallback: (reason: "timeout" | "error") => void;
 }
 
 interface Flight {
@@ -85,7 +88,7 @@ export function PackageArrival3DStage({
     const giveUp = setTimeout(() => {
       if (started) return;
       cancelled = true;
-      callbacks.current.onFallback();
+      callbacks.current.onFallback("timeout");
     }, START_TIMEOUT_MS);
 
     void (async () => {
@@ -119,7 +122,7 @@ export function PackageArrival3DStage({
         if (!cancelled) {
           cancelled = true;
           clearTimeout(giveUp);
-          callbacks.current.onFallback();
+          callbacks.current.onFallback("error");
         }
       }
     })();

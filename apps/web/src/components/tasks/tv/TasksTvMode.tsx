@@ -12,7 +12,7 @@ import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TvTaskCard } from "@/components/tasks/tv/TvTaskCard";
 import { PackageArrivalStage, type ResolvedArrival } from "@/components/tasks/tv/PackageArrivalStage";
 import { PackageArrival3DStage } from "@/components/tasks/tv/PackageArrival3DStage";
-import { canUseWebGL, disposeArrival3D, loadArrivalScene } from "@/components/tasks/tv/arrival3d/runtime";
+import { canUseWebGL, disposeArrival3D, prewarmArrival3D } from "@/components/tasks/tv/arrival3d/runtime";
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
 import { useOrderArrivals } from "@/hooks/useOrderArrivals";
@@ -52,6 +52,8 @@ const TV_REFRESH_MS = 30_000;
 const ALL_AREAS = "all";
 /** Cuánto se espera a que el pedido de un aviso aparezca en el tablero antes de animarlo igual. */
 const ARRIVAL_WAIT_MS = 1500;
+/** Cuánto puede esperar la primera llegada a que la escena 3D termine de precalentarse. */
+const WARM_WAIT_MS = 6000;
 /** Cuánto brilla una tarjeta recién llegada. */
 const HIGHLIGHT_MS = 3000;
 const KPI_TONES: DeadlineTone[] = ["overdue", "at_risk", "on_time", "no_date"];
@@ -190,31 +192,42 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   // prefers-reduced-motion, o si la escena falla, la versión SVG.
   const [webgl, setWebgl] = useState(false);
   const [force2d, setForce2d] = useState(false);
+  // "warming" mientras se precalienta la escena; "ready" cuando la primera
+  // caja ya no tiene que esperar a compilar shaders.
+  const [warm3d, setWarm3d] = useState<"off" | "warming" | "ready">("off");
+  const warmStart = useRef(0);
   useEffect(() => {
     const ok = canUseWebGL();
     setWebgl(ok);
-    // Se baja el chunk de three con la tele abierta: la primera caja no espera la red.
-    if (ok && !reduced) void loadArrivalScene().catch(() => setForce2d(true));
+    if (!ok || reduced) return;
+    setWarm3d("warming");
+    warmStart.current = Date.now();
+    let alive = true;
+    // Con la tele ya pintada: three se baja y compila sin trabar la apertura.
+    const t = setTimeout(() => {
+      prewarmArrival3D()
+        .then(() => alive && setWarm3d("ready"))
+        .catch((err) => {
+          console.error("[modo TV] no se pudo preparar la escena 3D; se usa la 2D", err);
+          if (alive) setForce2d(true);
+        });
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // El renderer compartido vive mientras la tele esté abierta.
   useEffect(() => () => disposeArrival3D(), []);
   const use3d = webgl && !reduced && !force2d;
-  const fallBackTo2d = useCallback(() => setForce2d(true), []);
+  // Llegada que tardó en arrancar en 3D: ésa sigue en 2D (la próxima reintenta).
+  const [timedOutStep, setTimedOutStep] = useState<string | null>(null);
 
   // --- Detalle de un pedido encima de la tele (como en la vista normal). La
   // cola de llegadas espera mientras está abierto.
   const [detailId, setDetailId] = useState<number | null>(null);
-  // Sin <DialogTrigger>, Radix no sabe a quién devolver el foco al cerrar:
-  // se recuerda la tarjeta que lo abrió y se le devuelve (si nadie más lo tomó).
-  const detailOpener = useRef<HTMLElement | null>(null);
-  const closeDetail = useCallback(() => {
-    setDetailId(null);
-    setTimeout(() => {
-      const active = document.activeElement;
-      if (!active || active === document.body) detailOpener.current?.focus();
-    }, 350);
-  }, []);
+  const closeDetail = useCallback(() => setDetailId(null), []);
 
   // --- Llegadas: cola → un paso a la vez (o la caja grande).
   const [queue, setQueue] = useState<PackageArrival[]>([]);
@@ -227,6 +240,11 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
 
   useEffect(() => {
     if (current || queue.length === 0 || detailId != null) return;
+    // La primera caja espera (un rato) a que la escena 3D esté precalentada.
+    if (use3d && warm3d === "warming" && Date.now() - warmStart.current < WARM_WAIT_MS) {
+      const t = setTimeout(() => setWaitTick((n) => n + 1), 250);
+      return () => clearTimeout(t);
+    }
     const head = queue[0];
     const known = findArrivalTask(boardRef.current, head.orderId, head.area);
     // El aviso del socket llega antes que el refetch: se espera un poco a la
@@ -240,7 +258,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
     const resolved = step.arrivals.map((a) => resolveArrival(a, boardRef.current, Date.now()));
     setCurrent({ step, resolved, priority: topPriority(resolved.map((r) => r.priority)), delivered: false });
     setQueue(rest);
-  }, [current, queue, waitTick, detailId]);
+  }, [current, queue, waitTick, detailId, use3d, warm3d]);
 
   // Tarjetas que esperan su paquete: invisibles (pero en su lugar) hasta que la hoja llega.
   const hiddenKeys = useMemo(() => {
@@ -378,7 +396,6 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
     (orderId: number) => {
       // Los pedidos de la demo no existen en el backend.
       if (orderId > 9000 && demoTasks.some((t) => t.order.id === orderId)) return;
-      detailOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setDetailId(orderId);
     },
     [demoTasks]
@@ -405,6 +422,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         fullscreen
         className="dark overflow-hidden"
         data-accent={accent}
+        data-arrival-3d={use3d ? warm3d : "off"}
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -577,7 +595,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         </div>
 
         {current &&
-          (use3d ? (
+          (use3d && timedOutStep !== current.step.arrivals[0].id ? (
             <PackageArrival3DStage
               key={`3d-${current.step.arrivals[0].id}`}
               step={current.step}
@@ -588,7 +606,9 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
               onLand={handleLand}
               onDelivered={handleDelivered}
               onDone={handleDone}
-              onFallback={fallBackTo2d}
+              onFallback={(reason) =>
+                reason === "error" ? setForce2d(true) : setTimedOutStep(current.step.arrivals[0].id)
+              }
             />
           ) : (
             <PackageArrivalStage

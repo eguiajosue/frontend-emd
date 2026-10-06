@@ -48,3 +48,8 @@ export function loadArrivalScene(): Promise<SceneModule> {
 export function disposeArrival3D() {
   modulePromise?.then((m) => m.disposeSharedRenderer()).catch(() => {});
 }
+
+/** Precalienta la escena 3D (carga three, crea el renderer y compila los shaders). */
+export function prewarmArrival3D(): Promise<void> {
+  return loadArrivalScene().then((m) => m.prewarmArrivalScene());
+}
