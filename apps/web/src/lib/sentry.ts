@@ -84,13 +84,20 @@ export function buildSentryOptions(dsn: string) {
   // Sin entorno explícito el SDK usa VERCEL_ENV / NODE_ENV. Ojo: la clave no
   // debe ir con `undefined`, el SDK la esparce encima de su propio default.
   const environment = process.env.SENTRY_ENVIRONMENT || undefined;
+  // Con muestreo 0 la clave se omite: así el SDK ni siquiera crea spans (con
+  // `tracesSampleRate: 0` los crea, los descarta y manda un "client report"
+  // por cada página) ni agrega `sentry-trace`/`baggage` a las requests.
+  const tracesSampleRate = parseSampleRate(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE);
   return {
     dsn,
     ...(environment ? { environment } : {}),
-    tracesSampleRate: parseSampleRate(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
+    ...(tracesSampleRate > 0 ? { tracesSampleRate } : {}),
     // Sin IPs, cookies ni cuerpos de request; sin Session Replay (no se
     // agrega `replayIntegration`) ni Sentry Logs.
     sendDefaultPii: false,
+    // Sin "client reports" (estadísticas de eventos descartados): sólo
+    // generan un POST extra al túnel en cada navegación.
+    sendClientReports: false,
     beforeSend: scrubEvent,
     beforeSendTransaction: scrubEvent,
   };

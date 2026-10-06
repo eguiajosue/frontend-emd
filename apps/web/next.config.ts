@@ -111,7 +111,7 @@ const uploadSourceMaps = sentryEnabled && Boolean(process.env.SENTRY_AUTH_TOKEN)
 
 function withSentry(config: import("next").NextConfig): import("next").NextConfig {
   if (!sentryEnabled) return config;
-  const { withSentryConfig } = require("@sentry/nextjs");
+  const { withSentryConfig } = require("@sentry/nextjs/config");
   return withSentryConfig(config, {
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,

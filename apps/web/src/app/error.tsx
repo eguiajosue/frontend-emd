@@ -1,7 +1,7 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { reportErrorToSentry } from "@/lib/reportErrorToSentry";
 import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default function GlobalError({
   useEffect(() => {
     // El boundary se "come" el error: sin esto Sentry no lo vería. Sin DSN
     // configurado no hace nada (ver lib/sentry.ts).
-    Sentry.captureException(error);
+    reportErrorToSentry(error);
     // No se loguea el error completo en producción para no exponer datos sensibles.
     if (process.env.NODE_ENV === "development") {
       console.error(error);

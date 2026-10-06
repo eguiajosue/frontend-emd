@@ -1,7 +1,7 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { reportErrorToSentry } from "@/lib/reportErrorToSentry";
 import "./globals.css";
 
 /**
@@ -9,8 +9,7 @@ import "./globals.css";
  * `app/error.tsx`). Reemplaza al layout, por eso trae su propio `<html>` y
  * `<body>` y no usa providers ni componentes que dependan de ellos.
  *
- * Reporta a Sentry sólo si está configurado (sin DSN `captureException` no
- * hace nada).
+ * Reporta a Sentry sólo si está configurado (ver lib/reportErrorToSentry.ts).
  */
 export default function GlobalError({
   error,
@@ -18,7 +17,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    reportErrorToSentry(error);
   }, [error]);
 
   return (

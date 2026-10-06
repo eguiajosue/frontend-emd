@@ -85,7 +85,7 @@ describe("getSentryDsn / buildSentryOptions", () => {
     expect(getSentryDsn()).toBeUndefined();
   });
 
-  it("con DSN arma opciones sin PII y con muestreo 0 por defecto", () => {
+  it("con DSN arma opciones sin PII y sin trazas por defecto", () => {
     vi.stubEnv("NEXT_PUBLIC_SENTRY_DSN", "https://abc@o0.ingest.sentry.io/0");
     vi.stubEnv("SENTRY_ENVIRONMENT", "");
     vi.stubEnv("NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE", "");
@@ -94,7 +94,9 @@ describe("getSentryDsn / buildSentryOptions", () => {
 
     const options = buildSentryOptions(dsn!);
     expect(options.sendDefaultPii).toBe(false);
-    expect(options.tracesSampleRate).toBe(0);
+    // Muestreo 0 = sin la clave: el SDK no crea spans.
+    expect("tracesSampleRate" in options).toBe(false);
+    expect(options.sendClientReports).toBe(false);
     expect("environment" in options).toBe(false);
     expect(options.beforeSend).toBe(scrubEvent);
     expect(options.beforeSendTransaction).toBe(scrubEvent);
