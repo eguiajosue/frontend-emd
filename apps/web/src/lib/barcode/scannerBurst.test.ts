@@ -8,7 +8,10 @@ import {
 } from "./scannerBurst";
 
 /** Teclea `text` (+ Enter) empezando en `start`, con `gap` ms entre teclas. */
-function typeAll(text: string, { start = 1000, gap = 10, enterGap = gap } = {}): BurstResult[] {
+function typeAll(
+  text: string,
+  { start = 1000, gap = 10, enterGap }: { start?: number; gap?: number; enterGap?: number } = {}
+): BurstResult[] {
   const detector = createBurstDetector();
   const results: BurstResult[] = [];
   let t = start;
@@ -16,7 +19,7 @@ function typeAll(text: string, { start = 1000, gap = 10, enterGap = gap } = {}):
     results.push(detector.push(ch, t));
     t += gap;
   }
-  results.push(detector.push("Enter", t - gap + enterGap));
+  results.push(detector.push("Enter", t - gap + (enterGap ?? gap)));
   return results;
 }
 

@@ -53,6 +53,7 @@ function since(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
+  if (Date.now() - date.getTime() < 60_000) return "hace un momento";
   return formatDistanceToNowStrict(date, { locale: es, addSuffix: true });
 }
 
