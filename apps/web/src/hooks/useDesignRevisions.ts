@@ -49,22 +49,19 @@ function designRevisionsPath(orderId: number) {
 }
 
 /**
- * Rondas de diseño de un pedido, ordenadas por el backend (ronda 1 primero),
- * más las 3 mutations del flujo. Invalida revisiones + pedido (detalle y
- * lista) tras cada acción, así el estado/área del pedido se refresca solo.
+ * Sólo la LISTA de rondas (sin las mutations): lo que necesita quien nada más
+ * mira, p. ej. la hoja de autorización del detalle. Misma queryKey que
+ * `useDesignRevisions`, así que si los dos están montados hay un solo GET.
+ * Un 404 (servidor sin el flujo) se absorbe como "sin rondas".
  */
-export function useDesignRevisions(
+export function useDesignRevisionList(
   orderId: number | null,
   options: { enabled?: boolean } = {},
 ) {
   const token = useAuthToken();
-  const queryClient = useQueryClient();
-  // `options.enabled` deja apagar el flujo entero para un pedido que NO
-  // requiere diseño: el panel no se renderiza, así que pedir las rondas era
-  // un GET al pepe por cada pedido abierto.
   const enabled = (options.enabled ?? true) && Boolean(token) && orderId !== null;
 
-  const query = useQuery<DesignRevision[]>({
+  return useQuery<DesignRevision[]>({
     queryKey: ["designRevisions", orderId],
     enabled,
     queryFn: async () => {
@@ -79,6 +76,23 @@ export function useDesignRevisions(
     },
     retry: (failureCount, error) => !isNotFound(error) && failureCount < 2,
   });
+}
+
+/**
+ * Rondas de diseño de un pedido, ordenadas por el backend (ronda 1 primero),
+ * más las 3 mutations del flujo. Invalida revisiones + pedido (detalle y
+ * lista) tras cada acción, así el estado/área del pedido se refresca solo.
+ */
+export function useDesignRevisions(
+  orderId: number | null,
+  options: { enabled?: boolean } = {},
+) {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  // `options.enabled` deja apagar el flujo entero para un pedido que NO
+  // requiere diseño: el panel no se renderiza, así que pedir las rondas era
+  // un GET al pepe por cada pedido abierto.
+  const query = useDesignRevisionList(orderId, options);
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["designRevisions", orderId] });
@@ -277,6 +291,33 @@ export function useDesignRevisionFileContent(
     queryFn: () =>
       request<DesignRevisionFileContent>(
         `${designRevisionsPath(orderId as number)}/${revisionId}/files/${fileId}`,
+        { token }
+      ),
+  });
+}
+
+/**
+ * Montaje de una ronda vieja que todavía no tiene `montageFiles` (servidor
+ * anterior a la lista de archivos): `GET .../montage` devuelve el PRIMER
+ * archivo con la misma forma que `/files/:fileId` (`{ filename, mimeType,
+ * dataUrl }`).
+ */
+export function useDesignRevisionLegacyMontage(
+  orderId: number | null,
+  revisionId: number | null,
+  enabled: boolean
+) {
+  const token = useAuthToken();
+  const active = enabled && Boolean(token) && orderId !== null && revisionId !== null;
+
+  return useQuery<DesignRevisionFileContent>({
+    queryKey: ["designRevisionLegacyMontage", orderId, revisionId],
+    enabled: active,
+    staleTime: Infinity,
+    gcTime: 15 * 60 * 1000,
+    queryFn: () =>
+      request<DesignRevisionFileContent>(
+        `${designRevisionsPath(orderId as number)}/${revisionId}/montage`,
         { token }
       ),
   });

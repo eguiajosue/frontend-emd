@@ -22,6 +22,7 @@
  * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
  */
 import { createServer } from "node:http";
+import { deflateSync } from "node:zlib";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 4010);
 
@@ -120,6 +121,86 @@ function misTareas(u) {
   }
   return items;
 }
+
+/**
+ * PNG de un color liso (con una franja más oscura arriba), generado a mano para
+ * no versionar binarios: alcanza para ver la hoja de autorización en pantalla.
+ */
+function pngLiso(ancho, alto, [r, g, b]) {
+  const crcTabla = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf) => {
+    let c = 0xffffffff;
+    for (const byte of buf) c = crcTabla[(c ^ byte) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (tipo, datos) => {
+    const largo = Buffer.alloc(4);
+    largo.writeUInt32BE(datos.length);
+    const cuerpo = Buffer.concat([Buffer.from(tipo, "ascii"), datos]);
+    const suma = Buffer.alloc(4);
+    suma.writeUInt32BE(crc(cuerpo));
+    return Buffer.concat([largo, cuerpo, suma]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(ancho, 0);
+  ihdr.writeUInt32BE(alto, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  const filas = [];
+  for (let y = 0; y < alto; y++) {
+    const oscuro = y < alto / 5 ? 0.7 : 1;
+    const fila = Buffer.alloc(1 + ancho * 3);
+    for (let x = 0; x < ancho; x++) fila.set([r * oscuro, g * oscuro, b * oscuro].map(Math.round), 1 + x * 3);
+    filas.push(fila);
+  }
+  const png = Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", deflateSync(Buffer.concat(filas))),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+  return `data:image/png;base64,${png.toString("base64")}`;
+}
+
+/** PDF mínimo de una página (sólo para el botón Abrir / Descargar). */
+const PDF_MINIMO = `data:application/pdf;base64,${Buffer.from(
+  "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"
+).toString("base64")}`;
+
+/**
+ * Rondas de diseño por pedido (`GET /orders/:id/design-revisions`) y el
+ * contenido de cada archivo (`.../files/:fileId`). El #101 ya está autorizado
+ * en la ronda 2 (dos imágenes); el #103 (Modo TV) en un PDF; el #105 tiene la
+ * ronda 1 enviada, todavía sin respuesta del cliente.
+ */
+const archivosDiseno = {
+  1001: { filename: "ronda1-frente.png", mimeType: "image/png", dataUrl: pngLiso(320, 200, [148, 163, 184]) },
+  1002: { filename: "hoja-frente.png", mimeType: "image/png", dataUrl: pngLiso(480, 320, [37, 99, 235]) },
+  1003: { filename: "hoja-espalda.png", mimeType: "image/png", dataUrl: pngLiso(480, 320, [5, 150, 105]) },
+  1004: { filename: "hoja-gorras.pdf", mimeType: "application/pdf", dataUrl: PDF_MINIMO },
+  1005: { filename: "mandil-propuesta.png", mimeType: "image/png", dataUrl: pngLiso(480, 320, [217, 119, 6]) },
+};
+const ronda = (id, orderId, round, fileIds, extra = {}) => ({
+  id, orderId, round, approved: false, approvedAt: null, feedbackText: null, feedbackAt: null,
+  sentAt: "2026-09-02T12:00:00.000Z", createdAt: "2026-09-02T12:00:00.000Z",
+  hasFeedbackFile: false, feedbackFiles: [],
+  hasMontageFile: fileIds.length > 0,
+  montageFileName: archivosDiseno[fileIds[0]]?.filename ?? null,
+  montageFileMime: archivosDiseno[fileIds[0]]?.mimeType ?? null,
+  montageFiles: fileIds.map((fid) => ({ id: fid, filename: archivosDiseno[fid].filename, mimeType: archivosDiseno[fid].mimeType })),
+  ...extra,
+});
+const rondasDiseno = {
+  101: [
+    ronda(11, 101, 1, [1001], { feedbackText: "El logo más grande", feedbackAt: "2026-09-03T10:00:00.000Z" }),
+    ronda(12, 101, 2, [1002, 1003], { sentAt: "2026-09-04T12:00:00.000Z", approved: true, approvedAt: "2026-09-05T16:30:00.000Z" }),
+  ],
+  103: [ronda(13, 103, 1, [1004], { approved: true, approvedAt: "2026-09-05T16:30:00.000Z" })],
+  105: [ronda(15, 105, 1, [1005])],
+};
 
 const pedidos = () => [
   {
@@ -652,16 +733,40 @@ createServer((req, res) => {
       return send([...tareas, ...tareasTv].find((t) => t.id === id));
     }
 
-    // Detalle de un pedido.
+    // Hoja de autorización: rondas de diseño y sus archivos (sólo lectura).
+    const rondas = path.match(/^\/orders\/(\d+)\/design-revisions(?:\/(\d+)\/(montage|files\/(\d+)))?$/);
+    if (rondas && req.method === "GET") {
+      const lista = rondasDiseno[Number(rondas[1])] ?? [];
+      if (!rondas[2]) return send(lista);
+      const r = lista.find((x) => x.id === Number(rondas[2]));
+      const fileId = rondas[3] === "montage" ? r?.montageFiles[0]?.id : Number(rondas[4]);
+      const archivo = r?.montageFiles.some((f) => f.id === fileId) ? archivosDiseno[fileId] : null;
+      return archivo ? send(archivo) : send({ message: "Archivo de la ronda no encontrado" }, 404);
+    }
+
+    // Detalle de un pedido (también los del Modo TV, que no están en GET /orders).
     const detalle = path.match(/^\/orders\/(\d+)$/);
     if (detalle && req.method === "GET") {
-      const pedido = pedidos().find((p) => p.id === Number(detalle[1]));
-      return pedido ? send(pedido) : send({ message: "Pedido no encontrado" }, 404);
+      const id = Number(detalle[1]);
+      const pedido = pedidos().find((p) => p.id === id);
+      if (pedido) return send(pedido);
+      const tv = tareasTv.find((t) => t.orderId === id);
+      if (tv) {
+        return send({
+          ...tv.order, deliveredAt: null, area: tv.area, productionArea: tv.area, requiresDesign: true,
+          areaTasks: tareasTv.filter((t) => t.orderId === id).map(({ order, ...t }) => t), orderProducts: [], assignedUser: null,
+        });
+      }
+      return send({ message: "Pedido no encontrado" }, 404);
     }
 
     const match = rutas[`${req.method} ${path}`];
     if (match) return send(match());
-    if (path.startsWith("/orders/") && path.endsWith("/area-tasks")) return send(tareas);
+    const tareasDe = path.match(/^\/orders\/(\d+)\/area-tasks$/);
+    if (tareasDe) {
+      const id = Number(tareasDe[1]);
+      return send([...tareas, ...tareasTv].filter((t) => t.orderId === id).map(({ order, ...t }) => t));
+    }
     if (req.method === "GET") return send([]);
     return send({}, 200);
   });
