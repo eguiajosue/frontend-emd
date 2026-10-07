@@ -4,7 +4,7 @@ import { expect, login, test } from "./helpers";
 /**
  * Modo TV de "Tareas asignadas": la tele del área. José (Diseño + Bordado) ve
  * TODO Bordado, también lo de sus compañeros, en tres columnas; puede tomar y
- * terminar desde la tele, y una llegada simulada cae como paquete y queda
+ * terminar desde la tele, y una llegada simulada sale impresa como ticket y queda
  * como tarjeta en "Pendiente". El guardia de CSP de `helpers` vale también
  * para la animación (framer pone `style=""`, que la política permite).
  */
@@ -71,7 +71,7 @@ test("2 · desde la tele se toma, se empieza y se termina una tarea", async ({ p
   await expect(tarjeta("Terminado")).toContainText(/Terminó hace|Recién terminada/);
 });
 
-test("3 · una llegada simulada cae como paquete y queda en Pendiente", async ({ page }) => {
+test("3 · una llegada simulada sale impresa como ticket y queda en Pendiente", async ({ page }) => {
   await page.goto("/dashboard/tareas?tv=1&demo=1");
   await expect(columna(page, "Pendiente")).toBeVisible();
 
@@ -87,23 +87,24 @@ test("3 · una llegada simulada cae como paquete y queda en Pendiente", async ({
   const aviso = page.getByRole("status").filter({ hasText: /Nuevo pedido #9001/ });
   await expect(aviso).toBeAttached();
   if (webgl) {
-    // La caja es 3D: un <canvas> de three sobre el tablero.
+    // La impresora es 3D: un <canvas> de three sobre el tablero.
     await expect(aviso).toHaveAttribute("data-arrival-mode", "3d");
     await expect(aviso.locator("[data-arrival-canvas] canvas")).toBeAttached({ timeout: 5_000 });
   } else {
-    // Sin WebGL: la versión SVG, sin lienzo.
+    // Sin WebGL: la impresora plana en SVG, sin lienzo.
+    await expect(aviso.locator("svg").first()).toBeAttached();
     await expect(aviso).toHaveAttribute("data-arrival-mode", "2d");
     await expect(aviso.locator("canvas")).toHaveCount(0);
   }
 
-  // Al terminar la animación (~4 s) queda la tarjeta en su columna y el paquete se va.
+  // Al terminar la animación (~4 s) queda la tarjeta en su columna y la impresora se va.
   const nueva = columna(page, "Pendiente").getByRole("article", { name: /Pedido #9001/ });
   await expect(nueva).toBeVisible({ timeout: 10_000 });
   await expect(aviso).toHaveCount(0, { timeout: 10_000 });
   // Vencida: va primero (urgencia) y con el semáforo rojo.
   await expect(nueva).toContainText("Vencido");
 
-  // Varias juntas: una sola caja grande "N pedidos nuevos".
+  // Varias juntas: una tanda de tickets "N pedidos nuevos".
   await tele(page).getByRole("button", { name: "Simular 5 pedidos" }).click();
   await expect(page.getByRole("status").filter({ hasText: "5 pedidos nuevos" })).toBeAttached();
   await expect(columna(page, "Pendiente").getByRole("article", { name: /Pedido #9006/ })).toBeVisible({ timeout: 12_000 });

@@ -57,7 +57,7 @@ export function createThermalPrinter(opts: { color: string; logo: THREE.Texture 
     new THREE.MeshPhysicalMaterial({ color: "#23272e", roughness: 0.48, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.45 })
   );
   const cover = mat(
-    new THREE.MeshPhysicalMaterial({ color: "#d5d9df", roughness: 0.32, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.25 })
+    new THREE.MeshPhysicalMaterial({ color: "#b9bec6", roughness: 0.36, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.25 })
   );
   const rubber = mat(new THREE.MeshStandardMaterial({ color: "#101215", roughness: 0.92 }));
   const gap = mat(new THREE.MeshStandardMaterial({ color: "#07080a", roughness: 0.8 }));

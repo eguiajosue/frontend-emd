@@ -88,6 +88,7 @@ function resolveArrival(arrival: PackageArrival, board: TvBoard, now: number): R
     area: task?.area ?? arrival.area,
     deliveryDate,
     priority: arrivalPriority({ deliveryDate, changes: arrival.changes || (task ? isReturnedDesign(task) : false) }, now),
+    receivedAt: arrival.receivedAt,
   };
 }
 

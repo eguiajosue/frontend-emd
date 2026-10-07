@@ -43,7 +43,9 @@ import { createThermalPrinter, PRINTER } from "./thermalPrinter";
 const FOV = 30;
 const BASE_DISTANCE = 9.2;
 const LOOK_AT = new THREE.Vector3(0, 1.35, 0);
-const CAMERA_HEIGHT = 3.6;
+const CAMERA_HEIGHT = 4.6;
+/** Giro de la impresora en reposo: tres cuartos, para que se lea el volumen. */
+const REST_YAW = -0.32;
 const MAX_DPR = 1.75;
 /** Ancho del papel (mundo) mientras sale por la ranura. */
 const FEED_WIDTH = PRINTER.slotWidth - 0.14;
@@ -348,7 +350,7 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     // Impresora.
     const pose = printerPose(ms, c, tl);
     printer.root.position.set(pose.x, pose.y, 0);
-    printer.root.rotation.set(0, pose.rotY, pose.rotZ);
+    printer.root.rotation.set(0, REST_YAW + pose.rotY, pose.rotZ);
     printer.body.scale.set(pose.sx, pose.sy, pose.sz);
     printer.root.updateMatrixWorld(true);
     printer.feedFrame.getWorldPosition(slotPos);
@@ -420,7 +422,7 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     const spread = 1 + air * 0.22;
     const fade = 1 / (1 + air * 0.9);
     shadowCore.position.x = shadowSoft.position.x = pose.x;
-    shadowCore.rotation.z = shadowSoft.rotation.z = pose.rotY;
+    shadowCore.rotation.z = shadowSoft.rotation.z = REST_YAW + pose.rotY;
     shadowCore.scale.set(PRINTER.width * 1.15 * spread * pose.sx, PRINTER.depth * 1.15 * spread * pose.sz, 1);
     shadowSoft.scale.set(PRINTER.width * 1.9 * spread, PRINTER.depth * 2 * spread, 1);
     shadowCore.material.opacity = 0.85 * fade;

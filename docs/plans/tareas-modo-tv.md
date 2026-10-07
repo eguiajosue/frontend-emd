@@ -40,12 +40,13 @@ cuando entra trabajo nuevo, sólo dentro del Modo TV.
 - Prioridad por plazo (`getDeadlineState`): vencido → rojo, caída rápida +
   sacudida + brillo pulsante; en riesgo → ámbar, rebote moderado; a tiempo /
   sin fecha → azul, flotación suave; cambios solicitados → violeta.
-- Cola: uno a la vez (~4 s); con más de 3 en cola, una caja grande "N pedidos
-  nuevos" que se abre en abanico de hojas.
-- Secuencia: cae la caja → aterriza → se abren las solapas → sube la hoja
-  (#pedido, cliente, área, entrega) → se desvanece la caja → la hoja vuela a
-  su tarjeta (FLIP sólo con transform) y la tarjeta brilla un momento.
-- `prefers-reduced-motion`: la hoja aparece y se va con un fundido.
+- Cola: uno a la vez (~4 s); con más de 3 en cola, "N pedidos nuevos": una
+  tanda de tickets cortos que terminan en abanico.
+- Secuencia: entra la impresora → imprime el ticket línea por línea
+  (#pedido, cliente, área, entrega, prioridad, código, hora) → la guillotina
+  corta → el ticket vuela a su tarjeta (FLIP sólo con transform) y la tarjeta
+  brilla un momento; la impresora se hunde y desaparece.
+- `prefers-reduced-motion`: el ticket aparece y se va con un fundido.
 - Sonido sólo en TV: campanita Web Audio sintetizada, más insistente si está
   vencido; mute en localStorage (try/catch); se desbloquea con el primer
   toque y muestra "Activar sonido" mientras tanto. El "ding" global se calla
@@ -82,27 +83,34 @@ cuando entra trabajo nuevo, sólo dentro del Modo TV.
   pestaña oculta y la pose se calcula por tiempo transcurrido (al volver
   salta al momento correcto). Con WebGL por software (SwiftShader/llvmpipe)
   baja la calidad (sin MSAA, la mitad de partículas).
-- Caja procedural (ver `public/models/README.md`), luz de `RoomEnvironment`
-  + llave cálida + contraluz del color de la prioridad, sombra de contacto
-  con dos manchas suaves, destello + partículas + ondas en el piso.
-- Coreografía pura en `lib/arrival3d.ts` (con tests): mismos tiempos que la
-  2D (`arrivalTimeline`). Vencido: cae fuerte, aplastón, sacudida, temblor
-  de cámara, cinta y contraluz que laten, dos ondas, más chispas. Urgente:
-  rebota. A tiempo / sin fecha: baja flotando y queda flotando. Cambios:
-  vuelve deslizándose desde el costado con sello "CAMBIOS". Lote: caja
-  grande y abanico de hojas.
-- La hoja 3D es una copia exacta de la hoja DOM (se pinta en canvas desde el
-  DOM ya renderizado, con la fuente de la app). Al volar se proyectan sus
-  esquinas a pantalla (`quadToScreenSheet`), la hoja DOM aparece justo ahí
-  (misma escala y giro) y hace el FLIP a su tarjeta mientras la caja se
-  hunde y el lienzo se apaga.
+- Impresora térmica procedural (ver `public/models/README.md`), luz de
+  `RoomEnvironment` + llave cálida + contraluz del color de la prioridad,
+  sombra de contacto con dos manchas suaves. El ticket sale por la ranura a
+  pasos de motor (recortado con un plano de clipping en la boca: lo que sale
+  ya está impreso), curvado hacia atrás como el rollo; la guillotina cruza,
+  destello y papelitos, y el ticket se aplana y sube hasta mirar a la cámara.
+- Coreografía pura en `lib/arrival3d.ts` (con tests): `printTimeline` usa los
+  tiempos grandes de `arrivalTimeline` y reparte avance → corte → subida de
+  cada ticket. Vencido: cae fuerte con sacudida y temblor de cámara, LED rojo
+  que parpadea, avance rápido, encabezado "VENCIDO" en tinta roja. Urgente:
+  LED ámbar fijo, rebote corto. A tiempo / sin fecha: baja flotando, LED azul
+  que respira, avance tranquilo. Cambios: entra deslizándose, encabezado
+  "CAMBIOS" en violeta. Lote (> 3): varios tickets cortos seguidos, cada uno
+  cortado y en abanico mientras sale el siguiente.
+- Sonido (sólo en la tele, respeta el silencio): motor de avance a pasos
+  sincronizado con el papel y "clic" de la guillotina (`lib/tvSound.ts`).
+- El ticket 3D es una copia exacta del ticket DOM (`TicketContent`, estilo
+  recibo monoespaciado), pintado en canvas desde el DOM ya renderizado. Al
+  volar se proyectan sus esquinas a pantalla (`quadToScreenSheet`), el ticket
+  DOM aparece justo ahí (misma escala y giro) y hace el FLIP a su tarjeta
+  mientras la impresora se hunde y el lienzo se apaga.
 - Precalentamiento: al abrir la tele (con WebGL y sin reduced-motion) se
   carga three, se crea el renderer, se hornea el entorno y se compilan los
   shaders de una escena de prueba (en SwiftShader son ~3 s; en una GPU floja,
-  más de lo que se quiere esperar con la caja ya anunciada). La tele expone
+  más de lo que se quiere esperar con la impresora ya anunciada). La tele expone
   `data-arrival-3d="warming" | "ready" | "off"` y la primera llegada espera
   hasta 6 s a que esté lista.
-- Respaldo: `PackageArrivalStage` (SVG + framer) con `prefers-reduced-motion`,
+- Respaldo: `PackageArrivalStage` (impresora plana en SVG + framer, mismo horario, ticket con `clip-path`) con `prefers-reduced-motion`,
   sin WebGL o si la escena falla (2D para siempre). Si sólo tarda más de
   2,5 s en arrancar, esa llegada va en 2D y la siguiente vuelve a probar 3D.
 - CSP: sin `eval`, sin `<style>`/`<script>` inline; las texturas son
