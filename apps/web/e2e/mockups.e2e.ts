@@ -23,7 +23,8 @@ test.use({
 });
 
 /** PNG RGBA de `size`×`size`: un cuadrado de color con borde transparente. */
-function tinyPng(size = 32): Buffer {
+type Pixel = [number, number, number, number];
+function tinyPng(size = 32, pixel?: (x: number, y: number) => Pixel): Buffer {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -53,7 +54,7 @@ function tinyPng(size = 32): Buffer {
     const row = Buffer.alloc(1 + size * 4); // filtro 0 + píxeles
     for (let x = 0; x < size; x++) {
       const inside = x >= 4 && y >= 4 && x < size - 4 && y < size - 4;
-      row.set(inside ? [220, 38, 38, 255] : [0, 0, 0, 0], 1 + x * 4);
+      row.set(pixel ? pixel(x, y) : inside ? [220, 38, 38, 255] : [0, 0, 0, 0], 1 + x * 4);
     }
     rows.push(row);
   }
@@ -238,4 +239,89 @@ test("3 · Mis colores, plantilla guardada y aplicada, y bandera de México como
   await expect(disenos.getByRole("listitem")).toHaveCount(1);
   await expect(disenos.getByRole("button", { name: "Seleccionar Bandera de México" })).toBeVisible();
   await expect(lienzo.getByText("Cargando prenda…")).toHaveCount(0, { timeout: 30_000 });
+});
+
+/** Logo de prueba: anillo negro con una barra, sobre fondo transparente. */
+function ringLogo(): Buffer {
+  const S = 160;
+  return tinyPng(S, (x, y) => {
+    const d = Math.hypot(x - S / 2, y - S / 2);
+    const ring = d < 74 && d > 54;
+    const bar = Math.abs(x - S / 2) < 60 && Math.abs(y - S / 2) < 12;
+    return ring || bar ? [10, 10, 10, 255] : [0, 0, 0, 0];
+  });
+}
+
+test("4 · termo: el diseño se graba con láser (acero sobre pintura y sobre acero) y taza a color", async ({ page }) => {
+  test.setTimeout(240_000);
+  const shots = process.env.E2E_SHOTS_DIR;
+  const shot = async (name: string) => {
+    if (shots) await page.getByRole("img", { name: "Vista 3D de la prenda con los diseños" }).screenshot({ path: `${shots}/${name}.png` });
+  };
+  await login(page);
+  await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
+  await page.goto("/dashboard/mockups");
+  const lienzo = page.getByRole("img", { name: "Vista 3D de la prenda con los diseños" });
+  const cargado = () => expect(lienzo.getByText("Cargando prenda…")).toHaveCount(0, { timeout: 60_000 });
+  await expect(lienzo.locator("canvas")).toBeVisible({ timeout: 30_000 });
+  await cargado();
+
+  const prenda = page.getByRole("radiogroup", { name: "Prenda" });
+  await prenda.getByRole("radio", { name: "Termo" }).click();
+  await cargado();
+  const host = lienzo.locator("div.absolute").first();
+  await expect(host).toHaveAttribute("data-garment", "termo");
+
+  await page.getByLabel("Subir diseño").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: ringLogo() });
+  await expect(host).toHaveAttribute("data-engraved-layers", "1");
+  const panel = page.getByTestId("laser-engrave-panel");
+  await expect(panel).toBeVisible();
+  await expect(page.getByTestId("laser-preview")).toBeVisible();
+  await page.waitForTimeout(1500);
+  await shot("termo-grabado-negro");
+
+  // Ajustes: umbral, invertir y difuminado siguen mostrando el grabado.
+  await panel.getByRole("switch", { name: "Invertir grabado" }).click();
+  await panel.getByRole("switch", { name: "Difuminado Floyd–Steinberg" }).click();
+  await panel.getByRole("button", { name: "Restablecer" }).click();
+  await expect(panel.getByRole("switch", { name: "Invertir grabado" })).toHaveAttribute("aria-checked", "false");
+
+  // Otro color y acero natural.
+  await page.getByRole("button", { name: "Pintura electrostática" }).click();
+  await page.getByRole("textbox", { name: "Color del termo (código hex)" }).fill("1f4fa3");
+  await page.getByRole("textbox", { name: "Color del termo (código hex)" }).press("Enter");
+  await page.waitForTimeout(1200);
+  await shot("termo-grabado-azul");
+  await page.getByRole("button", { name: "Acero natural" }).click();
+  await page.waitForTimeout(1200);
+  await shot("termo-grabado-acero");
+  await expect(page.getByText("Sobre acero")).toBeVisible();
+
+  // La lámina se exporta sobre pintura (el grabado plateado resalta más).
+  await page.getByRole("button", { name: "Pintura electrostática" }).click();
+  await page.waitForTimeout(800);
+  // Presets del termo y exportación de la lámina con el efecto.
+  await page.getByRole("group", { name: "Posiciones predeterminadas" }).getByRole("button", { name: "Reverso" }).click();
+  const [descarga] = await Promise.all([
+    page.waitForEvent("download", { timeout: 90_000 }),
+    page.getByRole("button", { name: "Descargar imagen" }).click(),
+  ]);
+  expect(descarga.suggestedFilename()).toMatch(/^mockup-termo-.*\.png$/);
+  if (shots) await descarga.saveAs(`${shots}/termo-lamina.png`);
+
+  // Taza: impresión a todo color, sin panel de láser.
+  await prenda.getByRole("radio", { name: "Taza" }).click();
+  await cargado();
+  await expect(host).toHaveAttribute("data-garment", "taza");
+  await expect(host).toHaveAttribute("data-engraved-layers", "0");
+  await expect(page.getByTestId("laser-engrave-panel")).toHaveCount(0);
+  await page.getByLabel("Subir diseño").setInputFiles({ name: "color.png", mimeType: "image/png", buffer: tinyPng(96) });
+  const presets = page.getByRole("group", { name: "Posiciones predeterminadas" });
+  await expect(presets.getByRole("button", { name: "Alrededor" })).toBeVisible();
+  await presets.getByRole("button", { name: "Alrededor" }).click();
+  await page.waitForTimeout(1200);
+  await shot("taza-alrededor");
+  await presets.getByRole("button", { name: "Frente" }).click();
+  await page.waitForTimeout(1200);
+  await shot("taza-frente");
 });

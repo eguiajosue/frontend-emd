@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName, type TimeFormatPreference } from "@/lib/format";
@@ -321,6 +322,7 @@ export const OrderJobCard = memo(function OrderJobCard({
 
       <footer className="pointer-events-none relative flex items-center gap-2 border-t border-border/60 px-5 py-3">
         <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+        <BranchBadge order={order} />
         {!wall && (
           <div className="pointer-events-auto relative z-10 ml-auto flex min-w-0 items-center">
             <OrderQuickStatusChip order={order} />

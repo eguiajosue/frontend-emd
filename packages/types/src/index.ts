@@ -47,6 +47,29 @@ export interface User extends BaseEntity {
   roles?: Role[];
   /** Cuenta de área/departamento compartida por todo un equipo (ej. "taller", "dtf"), no de una persona. */
   isSharedAccount?: boolean;
+  /** Sucursal de la cuenta (sólo rol "sucursal", ej. "Punto Madero"). */
+  branchId?: number | null;
+  branch?: BranchRef | null;
+}
+
+/** Sucursal u empleado de sucursal embebidos en un pedido (sólo `id` + `name`). */
+export interface BranchRef extends BaseEntity {
+  name: string;
+}
+
+/** Empleado de una sucursal: quien levanta los pedidos desde la cuenta compartida. */
+export interface BranchEmployee extends BaseEntity {
+  branchId?: number;
+  name: string;
+  /** Inactivo = ya no se puede elegir al crear pedidos (los viejos lo conservan). */
+  active: boolean;
+}
+
+/** Sucursal (extensión de la matriz) con sus empleados (GET /branches). */
+export interface Branch extends BaseEntity {
+  name: string;
+  active: boolean;
+  employees?: BranchEmployee[];
 }
 
 /** Versión resumida de `User` que devuelve el backend embebida en `order.assignedUser`. */
@@ -62,7 +85,20 @@ export interface OrderProduct {
   /** Nombre del producto: escrito a mano o elegido de `OrderProductPreset`. */
   customName: string;
   quantity: number;
+  /**
+   * Desglose de tallas de prendas (corte → talla → piezas), ej.
+   * `{ general: { S: 5, M: 2 }, mujer: { S: 3 } }`. null/ausente = sin tallas
+   * (pedidos viejos o productos que no son prenda). Si existe, suma `quantity`.
+   */
+  sizes?: SizeBreakdown | null;
 }
+
+/** Talla de prenda (ver GARMENT_SIZES en apps/web/src/lib/garmentSizes.ts). */
+export type GarmentSize = "XS" | "S" | "M" | "L" | "XL" | "2XL" | "3XL";
+/** Corte: general (unisex), mujer (dama) o youth (juvenil). */
+export type GarmentFit = "general" | "mujer" | "youth";
+/** Desglose de tallas: corte → talla → piezas (enteros > 0). */
+export type SizeBreakdown = Partial<Record<GarmentFit, Partial<Record<GarmentSize, number>>>>;
 
 /** Preset de nombre de producto frecuente (GET /order-product-presets). */
 export interface OrderProductPreset extends BaseEntity {
@@ -161,6 +197,74 @@ export interface UploadedFileInput {
 /** Avance de un área dentro de un pedido. */
 export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
 
+/** Origen de los insumos de un área: los trae el cliente o los ponemos nosotros. */
+export type SupplySource = "cliente" | "nosotros";
+
+/** Línea de la hoja de materiales de un área. `inventoryItemId` sólo en origen "nosotros". */
+export interface AreaSupplyLine {
+  id: number;
+  inventoryItemId: number | null;
+  description: string;
+  /** El backend serializa Decimal: puede llegar como string. */
+  quantity: number | string;
+  /** Cuándo se descontó del stock; null = apartado. */
+  discountedAt: string | null;
+  inventoryItem?: { id: number; name: string; unit: string; area: string; barcode?: string | null } | null;
+}
+
+/** Hoja de materiales de UNA tarea de área (se captura al autorizar). */
+export interface AreaSupply {
+  id: number;
+  source: SupplySource;
+  lines: AreaSupplyLine[];
+}
+
+/** Entrada para `PATCH .../approve` y `PUT /orders/:id/area-supplies`. */
+export interface AreaSupplyInput {
+  area: string;
+  source: SupplySource;
+  lines: { inventoryItemId?: number; description?: string; quantity: number }[];
+}
+
+/** `GET /orders/:id/area-supplies`: hoja por área con estado de stock y movimientos. */
+export interface AreaSupplySheet {
+  areas: {
+    taskId: number;
+    area: string;
+    status: AreaTaskStatus;
+    supply:
+      | (Omit<AreaSupply, "lines"> & {
+          lines: (AreaSupplyLine & {
+            state?: "apartado" | "descontado";
+            /**
+             * La tarea ya terminó pero esta línea no se descontó por falta de
+             * existencia (sigue apartada). Backends viejos no lo mandan.
+             */
+            pendingDiscount?: boolean;
+            /** Cuánto falta de existencia para descontarla (0 = ya alcanza, sólo falta reintentar). */
+            shortfall?: number;
+            stock: { quantity: number; reserved: number; available: number } | null;
+          })[];
+        })
+      | null;
+    /** Alguna línea del área quedó con el descuento pendiente. */
+    pendingDiscount?: boolean;
+  }[];
+  movements: {
+    id: number;
+    itemId: number;
+    type: "ENTRADA" | "SALIDA" | "AJUSTE";
+    delta: number;
+    balanceAfter: number;
+    note?: string | null;
+    areaTaskId: number | null;
+    createdAt: string;
+    item: { id: number; name: string; unit: string };
+    createdBy?: { id: number; firstName?: string | null; lastName?: string | null } | null;
+  }[];
+  warnings?: string[];
+}
+
 /**
  * Trabajo que le toca a UN área dentro de un pedido. Varias áreas conviven en
  * el mismo pedido y avanzan en paralelo, sin esperarse entre sí.
@@ -176,10 +280,18 @@ export interface OrderAreaTask {
   startedAt?: string | null;
   completedAt?: string | null;
   assignedUser?: AssignedUser | null;
+  /** Origen de insumos del área; ausente/null en pedidos anteriores a la hoja. */
+  supply?: AreaSupply | null;
 }
 
 export interface Order extends BaseEntity {
   clientId?: number | null;
+  /** Sucursal desde la que se levantó (ej. "Punto Madero"); `null`/ausente = pedido de la matriz. */
+  branchId?: number | null;
+  branchEmployeeId?: number | null;
+  branch?: BranchRef | null;
+  /** Empleado de la sucursal que lo levantó. */
+  branchEmployee?: BranchRef | null;
   /** Quien CREÓ el pedido (la recepcionista del alta). No cambia nunca. */
   userId?: number;
   /**
@@ -323,6 +435,8 @@ export interface CreateOrderPayload {
   clientNameOverride?: string;
   userId: number;
   assignedUserId?: number;
+  /** Empleado de la sucursal que levanta el pedido (obligatorio desde la cuenta de sucursal). */
+  branchEmployeeId?: number;
   statusId: number;
   /**
    * Área destino (ver `AREA_OPTIONS` en `@/lib/areas`). Obligatoria cuando
@@ -356,6 +470,8 @@ export interface UpdateOrderPayload {
   productionArea?: string | null;
   /** Recursos que manda el cliente (logo, referencias) para que Diseño trabaje. */
   clientResourceFile?: UploadedFileInput;
+  /** Reemplaza TODAS las líneas del pedido (el backend borra y recrea). Se usa al editar tallas. */
+  orderProducts?: Array<{ customName: string; quantity: number; sizes?: SizeBreakdown | null }>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -641,7 +757,8 @@ export interface CalendarTask extends BaseEntity {
   completedAt?: string | null;
   /** Pedido relacionado, opcional (ej. "confirmar medidas" de un pedido puntual). */
   orderId?: number | null;
-  order?: { id: number; description: string } | null;
+  /** Las áreas sólo reciben el `id` (sin descripción del pedido). */
+  order?: { id: number; description?: string } | null;
   createdById: number;
   createdAt: string;
   createdBy?: AssignedUser | null;
@@ -769,6 +886,10 @@ export interface InventoryItem extends BaseEntity {
   brand?: string | null;
   location?: string | null;
   quantity: number;
+  /** Apartado por hojas de materiales de pedidos (aún sin descontar). */
+  reserved?: number;
+  /** quantity − reserved. */
+  available?: number;
   minStock?: number | null;
   unitCost?: number | null;
   notes?: string | null;
@@ -808,18 +929,42 @@ export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload
 /** ENTRADA suma, SALIDA resta, AJUSTE fija el stock al conteo físico. */
 export type InventoryMovementType = "ENTRADA" | "SALIDA" | "AJUSTE";
 
+/** `orden`: descuento/devolución por la hoja de materiales de un pedido. */
+export type InventoryMovementSource = "recepcion" | "area" | "scan" | "inicial" | "orden";
+
+/** Filtros de la bitácora global (`GET /inventory/movements`). */
+export interface InventoryMovementsFilter {
+  itemId?: number;
+  area?: InventoryArea;
+  userId?: number;
+  type?: InventoryMovementType;
+  /** ISO (fecha o fecha+hora). */
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface InventoryMovement extends BaseEntity {
   itemId: number;
   type: InventoryMovementType;
   /** Cambio con signo aplicado al stock. */
   delta: number;
   balanceAfter: number;
+  /** Stock antes del movimiento (bitácora); null en movimientos antiguos. */
+  balanceBefore?: number | null;
+  /** Departamento del artículo al moverse. */
+  area?: InventoryArea | null;
+  /** Motivo capturado por quien lo registró. */
+  reason?: string | null;
+  /** Origen: gestión de Recepción, usuario del área, escáner o stock inicial. */
+  source?: InventoryMovementSource | null;
   unitCost?: number | null;
   note?: string | null;
   orderId?: number | null;
   createdAt: string;
   item?: { id: number; name: string; unit: string; area: InventoryArea } | null;
-  order?: { id: number; description: string } | null;
+  /** Las áreas sólo reciben el `id` (sin descripción del pedido). */
+  order?: { id: number; description?: string } | null;
   createdBy?: { id: number; firstName: string; lastName?: string | null } | null;
 }
 
@@ -835,7 +980,50 @@ export interface CreateInventoryMovementPayload {
   quantity: number;
   unitCost?: number;
   note?: string;
+  /** Motivo para la bitácora. */
+  reason?: string;
   orderId?: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Solicitudes de reabasto (`/inventory/restock-requests`)                    */
+/* -------------------------------------------------------------------------- */
+
+export type RestockRequestStatus = "PENDIENTE" | "EN_CAMINO" | "COMPRADO" | "RESUELTO";
+export type RestockRequestUrgency = "NORMAL" | "URGENTE";
+
+export interface RestockRequest {
+  id: number;
+  area: InventoryArea;
+  itemId?: number | null;
+  itemName: string;
+  quantity?: number | null;
+  unit?: string | null;
+  comment?: string | null;
+  urgency: RestockRequestUrgency;
+  status: RestockRequestStatus;
+  statusNote?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  item?: { id: number; name: string; unit: string; quantity: number; area: InventoryArea } | null;
+  requestedBy: { id: number; firstName: string; lastName?: string | null };
+  handledBy?: { id: number; firstName: string; lastName?: string | null } | null;
+}
+
+export interface CreateRestockRequestPayload {
+  itemId?: number;
+  itemName?: string;
+  area?: InventoryArea;
+  quantity?: number;
+  unit?: string;
+  comment?: string;
+  urgency?: RestockRequestUrgency;
+}
+
+export interface UpdateRestockRequestStatusPayload {
+  status: RestockRequestStatus;
+  note?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -890,6 +1078,8 @@ export interface MyTask {
   mine: boolean;
   assignee: { id: number; firstName?: string | null; lastName?: string | null; username: string } | null;
   startedAt: string | null;
+  /** Origen de insumos del área (sólo tareas de producción). */
+  supply?: AreaSupply | null;
   order: {
     id: number;
     description: string;
@@ -900,7 +1090,11 @@ export interface MyTask {
     designStartedAt: string | null;
     designStartedByName: string | null;
     client: { first_name: string; last_name?: string | null } | null;
+    /** Sucursal de origen ("Punto Madero"); null/ausente = pedido de la matriz. */
+    branch?: BranchRef | null;
     status: { id: number; name: string };
+    /** Líneas del pedido con su desglose de tallas (backends viejos no lo mandan). */
+    orderProducts?: OrderProduct[];
   };
 }
 

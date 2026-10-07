@@ -3,6 +3,7 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AuthorizationSheet } from "@/components/orders/AuthorizationSheet";
+import { AreaSuppliesPanel } from "@/components/orders/AreaSuppliesPanel";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { CollapsibleSection, DetailSection } from "@/components/orders/detail/DetailSection";
 import { OrderDetailsSection } from "@/components/orders/detail/OrderDetailsSection";
@@ -13,6 +14,7 @@ import {
 } from "@/components/orders/detail/OrderProgressPanel";
 import { OrderActivitySection, OrderNotesSection } from "@/components/orders/detail/OrderActivitySections";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { isBranchOnly } from "@/lib/roles";
 import { usePermissions } from "@/hooks/usePermissions";
 import { buildOrderHandoff } from "@/lib/orderHandoff";
 import {
@@ -73,6 +75,7 @@ export function OrderDetailBody({
   const handoff = buildOrderHandoff(order, tasks);
   const stage = handoff.current.key;
 
+  const isBranchViewer = isBranchOnly(viewer.roles);
   const isManager = permissions.canEdit;
   const isDesigner = !isManager && viewer.roles.includes("diseno");
 
@@ -117,6 +120,8 @@ export function OrderDetailBody({
   const areas = (
     <DetailSection key="areas" id={SECTION_IDS.areas} title="Producción">
       <AreaTasksSection order={order} embedded />
+      {/* La hoja de materiales no es para la sucursal (el backend responde 403). */}
+      {!isBranchViewer && <AreaSuppliesPanel orderId={order.id} />}
     </DetailSection>
   );
 
@@ -153,7 +158,8 @@ export function OrderDetailBody({
           es con lo que Producción trabaja. Sin diseño no se renderiza. */}
       <AuthorizationSheet order={order} />
       {sections}
-      <OrderNotesSection orderId={order.id} />
+      {/* La sucursal sólo lee: sin notas internas. */}
+      {!isBranchViewer && <OrderNotesSection orderId={order.id} />}
       {permissions.canSeeHistory && <OrderActivitySection orderId={order.id} />}
     </div>
   );

@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import {
   AlertTriangle,
   Download,
-  History,
   Loader2,
   Package,
+  PackagePlus,
   PackageX,
   Plus,
   Printer,
@@ -36,7 +36,9 @@ import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { InventoryItemDialog } from "@/components/inventory/InventoryItemDialog";
 import { InventoryMovementDialog } from "@/components/inventory/InventoryMovementDialog";
 import { InventoryHistorySheet } from "@/components/inventory/InventoryHistorySheet";
-import { InventoryMovementsList } from "@/components/inventory/InventoryMovementsList";
+import { InventoryAuditLog } from "@/components/inventory/InventoryAuditLog";
+import { RestockRequestDialog } from "@/components/inventory/RestockRequestDialog";
+import { RestockRequestsPanel } from "@/components/inventory/RestockRequestsPanel";
 import { InventoryScanPanel } from "@/components/inventory/InventoryScanPanel";
 import { LabelPrintDialog } from "@/components/inventory/LabelPrintDialog";
 import { useAuthToken } from "@/hooks/useEntity";
@@ -45,9 +47,10 @@ import {
   downloadInventoryExport,
   useInventoryAreas,
   useInventoryItems,
-  useInventoryMovements,
   useInventoryMutations,
+  useRestockCount,
 } from "@/hooks/useInventory";
+import { Badge } from "@/components/ui/badge";
 import { getErrorMessage } from "@/lib/api";
 import { itemBarcode } from "@/lib/barcode/codes";
 import { formatCurrencyMXN } from "@/lib/format";
@@ -68,6 +71,9 @@ import type {
 import { getInventoryColumns } from "./components/inventoryColumns";
 
 const ALL = "__all__";
+
+/** Roles de producción con inventario propio (Diseño no lleva insumos aquí). */
+const AREA_INVENTORY_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
 
 function StatTile({
   icon: Icon,
@@ -127,16 +133,19 @@ function StatTile({
  * vinculado a un material del catálogo, pero muchos consumibles sólo existen
  * aquí.
  *
- * Admin/superuser/recepción ven todos los departamentos y son los únicos que
- * crean, editan, borran y mueven stock; cada área sólo consulta el suyo (el
- * backend recorta, ver `GET /inventory/areas`).
+ * Admin/superuser/recepción ven todos los departamentos, gestionan los
+ * artículos, ajustan, consultan la bitácora y atienden las "Solicitudes de
+ * reabasto". Cada área de producción ve SÓLO sus artículos (el backend
+ * recorta, ver `GET /inventory/areas`) con acciones simples: avisar reabasto,
+ * registrar entrada y registrar consumo.
  */
 export default function InventarioPage() {
   const token = useAuthToken();
-  // El inventario es sólo de Recepción y administración (el backend lo hace
-  // cumplir igual); las áreas de producción y Diseño no entran.
+  // Recepción y administración gestionan todo; las áreas de producción
+  // entran a lo suyo (el backend lo hace cumplir igual); Diseño no entra.
   const { canManageOperations: canManage, isSessionLoading, roles } = usePermissions();
-  const noAccess = !isSessionLoading && roles.length > 0 && !canManage;
+  const isArea = !canManage && roles.some((role) => AREA_INVENTORY_ROLES.includes(role));
+  const noAccess = !isSessionLoading && roles.length > 0 && !canManage && !isArea;
 
   const { data: areas = [], isPending: areasPending } = useInventoryAreas();
   const [area, setArea] = useState<InventoryArea | typeof ALL>(ALL);
@@ -145,10 +154,10 @@ export default function InventarioPage() {
     area !== ALL ? area : areas.length === 1 ? areas[0] : undefined;
 
   const { data: items, isPending, isError, refetch } = useInventoryItems(effectiveArea);
-  const movements = useInventoryMovements({ area: effectiveArea, limit: 100 });
+  const restockCount = useRestockCount({ enabled: canManage || isArea });
   const { remove } = useInventoryMutations();
 
-  const [view, setView] = useState<"stock" | "movements">("stock");
+  const [view, setView] = useState<"stock" | "movements" | "restock">("stock");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<InventoryStockStatus | typeof ALL>(ALL);
   const [category, setCategory] = useState<string>(ALL);
@@ -164,6 +173,8 @@ export default function InventarioPage() {
   const [scanMode, setScanMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [labelItems, setLabelItems] = useState<InventoryItem[] | null>(null);
+  /** Aviso de reabasto: `item` null = insumo en texto libre. */
+  const [restock, setRestock] = useState<{ item: InventoryItem | null } | null>(null);
 
   const summary = useMemo(() => summarizeInventory(items), [items]);
   const categories = useMemo(
@@ -240,6 +251,8 @@ export default function InventarioPage() {
   const columns = getInventoryColumns({
     showArea: !effectiveArea,
     canManage,
+    areaMode: isArea,
+    onRestock: (item) => setRestock({ item }),
     onMove: (item, type) => setMoving({ item, type }),
     onHistory: setHistoryItem,
     onEdit: (item) => {
@@ -281,6 +294,15 @@ export default function InventarioPage() {
 
   const scopeLabel = effectiveArea ? inventoryAreaLabel(effectiveArea) : "todos los departamentos";
 
+  if (noAccess) {
+    return (
+      <EmptyState
+        title="Sin acceso al inventario"
+        description="El inventario lo manejan Recepción, administración y las áreas de producción."
+      />
+    );
+  }
+
   if (!areasPending && areas.length === 0) {
     return (
       <div className="space-y-4">
@@ -291,15 +313,6 @@ export default function InventarioPage() {
           description="El inventario se lleva por área. Pide a administración que te asigne a un departamento."
         />
       </div>
-    );
-  }
-
-  if (noAccess) {
-    return (
-      <EmptyState
-        title="Sin acceso al inventario"
-        description="El inventario lo manejan Recepción y administración."
-      />
     );
   }
 
@@ -350,16 +363,26 @@ export default function InventarioPage() {
             toggleStatus("out");
           }}
         />
-        <StatTile
-          icon={Wallet}
-          label="Valor del inventario"
-          value={formatCurrencyMXN(summary.value)}
-          hint={summary.withoutCost > 0 ? `${summary.withoutCost} sin costo cargado` : "Existencia × costo"}
-        />
+        {!isArea && (
+          <StatTile
+            icon={Wallet}
+            label="Valor del inventario"
+            value={formatCurrencyMXN(summary.value)}
+            hint={summary.withoutCost > 0 ? `${summary.withoutCost} sin costo cargado` : "Existencia × costo"}
+          />
+        )}
       </div>
 
       {scanMode ? (
-        <InventoryScanPanel items={items} onCreateItem={openCreate} onExit={() => setScanMode(false)} />
+        <InventoryScanPanel
+          items={items}
+          onCreateItem={(code) =>
+            isArea
+              ? toast.info(`El código ${code} no está en tu inventario. Avisa a Recepción para darlo de alta.`)
+              : openCreate(code)
+          }
+          onExit={() => setScanMode(false)}
+        />
       ) : (
         <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
           <div className="flex flex-wrap items-center gap-2">
@@ -367,21 +390,41 @@ export default function InventarioPage() {
               <TabsTrigger value="stock" className="rounded-full px-4">
                 Existencias
               </TabsTrigger>
-              <TabsTrigger value="movements" className="rounded-full px-4">
-                Movimientos
+              {canManage && (
+                <TabsTrigger value="movements" className="rounded-full px-4">
+                  Bitácora
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="restock" className="rounded-full px-4">
+                {canManage ? "Solicitudes de reabasto" : "Mis avisos de reabasto"}
+                {canManage && (restockCount.data?.pending ?? 0) > 0 && (
+                  <Badge
+                    aria-label={`${restockCount.data?.pending} pendientes`}
+                    className="ml-2 border-transparent bg-rose-500 px-1.5 py-0 text-[11px] text-white"
+                  >
+                    {restockCount.data?.pending}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-2 sm:ml-auto">
-              <Button
-                variant="secondary"
-                className="h-10 rounded-full px-4"
-                onClick={handleExport}
-                disabled={exporting || items.length === 0}
-              >
-                {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Exportar CSV
-              </Button>
               {canManage && (
+                <Button
+                  variant="secondary"
+                  className="h-10 rounded-full px-4"
+                  onClick={handleExport}
+                  disabled={exporting || items.length === 0}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Exportar CSV
+                </Button>
+              )}
+              {isArea && (
+                <Button className="h-10 rounded-full px-4" onClick={() => setRestock({ item: null })}>
+                  <PackagePlus className="h-4 w-4" /> Avisar reabasto
+                </Button>
+              )}
+              {(canManage || isArea) && (
                 <Button
                   variant="secondary"
                   className="h-10 rounded-full px-4"
@@ -480,28 +523,20 @@ export default function InventarioPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="movements" className="mt-4">
-            {movements.isPending ? (
-              <TableSkeleton rows={5} />
-            ) : movements.isError ? (
-              <ErrorState onRetry={() => movements.refetch()} />
-            ) : (movements.data ?? []).length === 0 ? (
-              <EmptyState
-                icon={History}
-                title="Sin movimientos todavía"
-                description="Cada entrada, salida o ajuste queda registrado aquí con quién lo hizo y cuándo."
-              />
-            ) : (
-              <div className="rounded-2xl border border-border/60 bg-card px-4 shadow-soft sm:px-5">
-                <InventoryMovementsList movements={movements.data ?? []} showItem />
-              </div>
-            )}
+          {canManage && (
+            <TabsContent value="movements" className="mt-4">
+              <InventoryAuditLog areas={areas} />
+            </TabsContent>
+          )}
+
+          <TabsContent value="restock" className="mt-4">
+            <RestockRequestsPanel canManage={canManage} />
           </TabsContent>
         </Tabs>
       )}
 
       {/* Lote de etiquetas: aparece al seleccionar artículos en la tabla. */}
-      {!scanMode && selectedItems.length > 0 && (
+      {!scanMode && !isArea && selectedItems.length > 0 && (
         <div
           role="region"
           aria-label="Selección para etiquetas"
@@ -540,8 +575,16 @@ export default function InventarioPage() {
 
       <InventoryMovementDialog
         item={moving?.item ?? null}
+        areaMode={isArea}
         initialType={moving?.type}
         onClose={() => setMoving(null)}
+      />
+
+      <RestockRequestDialog
+        open={restock !== null}
+        item={restock?.item ?? null}
+        areas={areas}
+        onClose={() => setRestock(null)}
       />
 
       <InventoryHistorySheet item={historyItem} onClose={() => setHistoryItem(null)} />

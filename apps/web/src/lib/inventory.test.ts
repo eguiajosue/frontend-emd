@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { InventoryItem } from "@/types";
 import {
+  MAX_QUANTITY,
+  MOVEMENT_SOURCE_LABEL,
   formatDelta,
   inventoryAreaLabel,
   projectedBalance,
@@ -55,5 +57,17 @@ describe("inventory helpers", () => {
   it("formatea el delta con signo", () => {
     expect(formatDelta(5)).toBe("+5");
     expect(formatDelta(-2.5)).toBe("−2.5");
+  });
+});
+
+describe("tope de cantidad y origen 'orden'", () => {
+  it("projectedBalance rechaza cantidades arriba del tope del backend (999999)", () => {
+    expect(projectedBalance(0, "ENTRADA", MAX_QUANTITY)).toBe(MAX_QUANTITY);
+    expect(projectedBalance(0, "ENTRADA", MAX_QUANTITY + 1)).toBeNull();
+    expect(projectedBalance(5, "AJUSTE", 1_000_000)).toBeNull();
+  });
+
+  it("los movimientos de la hoja de materiales se leen 'Hoja de materiales'", () => {
+    expect(MOVEMENT_SOURCE_LABEL.orden).toBe("Hoja de materiales");
   });
 });

@@ -119,8 +119,7 @@ describe("OrderProgressPanel", () => {
 });
 
 describe("OrderDetailsSection", () => {
-  function renderDetails(viewer: OrderDetailViewer) {
-    const o = order(3, "en proceso");
+  function renderDetails(viewer: OrderDetailViewer, o: Order = order(3, "en proceso")) {
     let editing = false;
     const onEditingChange = vi.fn((next: boolean) => {
       editing = next;
@@ -165,5 +164,15 @@ describe("OrderDetailsSection", () => {
       deliveryDate: new Date(2026, 9, 3, 21, 30).toISOString(),
       assignedUserId: 7,
     });
+  });
+
+  it("al agregar tallas a una línea sin ellas avisa que la cantidad pasa al total de tallas", async () => {
+    const o = order(3, "en proceso", { orderProducts: [{ quantity: 2, customName: "Playera" }] as Order["orderProducts"] });
+    renderDetails(recepcion, o);
+    await userEvent.click(screen.getByRole("button", { name: /Editar/ }));
+    expect(screen.queryByTestId("order-edit-sizes-hint-0")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("General M de Playera"), "5");
+    expect(screen.getByTestId("order-edit-sizes-hint-0")).toHaveTextContent("pasará de 2 a 5");
   });
 });

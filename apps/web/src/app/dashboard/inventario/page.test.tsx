@@ -9,6 +9,8 @@ let items: InventoryItem[] = [];
 const requestedAreas: (InventoryArea | undefined)[] = [];
 let roles: string[] = ["admin"];
 
+const createRestock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
+
 vi.mock("@/hooks/useInventory", () => ({
   useInventoryAreas: () => ({ data: areas, isPending: false }),
   useInventoryItems: (area?: InventoryArea) => {
@@ -20,6 +22,12 @@ vi.mock("@/hooks/useInventory", () => ({
       refetch: vi.fn(),
     };
   },
+  useRestockCount: () => ({ data: { pending: 2, open: 3 } }),
+  useRestockRequests: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
+  useRestockMutations: () => ({
+    create: { mutateAsync: createRestock, isPending: false },
+    updateStatus: { mutateAsync: vi.fn(), isPending: false },
+  }),
   useInventoryMovements: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
   useInventoryMutations: () => ({
     create: { mutateAsync: vi.fn() },
@@ -116,15 +124,55 @@ describe("InventarioPage", () => {
     }
   });
 
-  it("un área de producción o Diseño no tiene acceso: el inventario es de Recepción y administración", () => {
-    for (const r of [["bordado"], ["diseno", "dtf", "bordado"], ["taller"]]) {
-      roles = r;
-      areas = ["bordado"];
-      const { unmount } = render(<InventarioPage />);
-      expect(screen.getByText("Sin acceso al inventario")).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
-      unmount();
-    }
+  it("Diseño no tiene acceso al inventario", () => {
+    roles = ["diseno"];
+    areas = [];
+    render(<InventarioPage />);
+    expect(screen.getByText("Sin acceso al inventario")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
+  });
+
+  it("un área de producción ve sólo lo suyo con acciones simples (sin gestión, valor ni exportar)", () => {
+    roles = ["bordado"];
+    // `items` conserva también el inventario de Impresiones: el mock sólo filtra
+    // por el departamento que la página PIDE, así que si la página no se acota
+    // a su único departamento, "Tinta cyan" aparecería.
+    areas = ["bordado"];
+    render(<InventarioPage />);
+    expect(requestedAreas.at(-1)).toBe("bordado");
+    const table = screen.getAllByRole("table")[0];
+    expect(within(table).getByText("Hilo rojo")).toBeInTheDocument();
+    expect(within(table).queryByText("Tinta cyan")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Impresiones" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Registrar entrada de Hilo rojo/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /Registrar consumo de Hilo rojo/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /Avisar reabasto de Hilo rojo/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /Nuevo artículo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Exportar CSV/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Más acciones/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Valor del inventario")).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Bitácora" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Mis avisos de reabasto/ })).toBeInTheDocument();
+  });
+
+  it("el área avisa reabasto de un artículo y el aviso se envía", async () => {
+    roles = ["bordado"];
+    areas = ["bordado"];
+    render(<InventarioPage />);
+    await userEvent.click(screen.getAllByRole("button", { name: /Avisar reabasto de Hilo rojo/ })[0]);
+    await userEvent.type(screen.getByLabelText("Comentario"), "ya no queda");
+    await userEvent.click(screen.getByRole("button", { name: "Enviar aviso" }));
+    expect(createRestock).toHaveBeenCalledWith(
+      expect.objectContaining({ itemId: 1, comment: "ya no queda", urgency: "NORMAL" })
+    );
+  });
+
+  it("Recepción ve la pestaña de solicitudes con badge de pendientes y la bitácora", () => {
+    roles = ["recepcion"];
+    render(<InventarioPage />);
+    expect(screen.getByRole("tab", { name: /Solicitudes de reabasto/ })).toBeInTheDocument();
+    expect(screen.getByLabelText("2 pendientes")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Bitácora" })).toBeInTheDocument();
   });
 
   it("sin departamentos asignados avisa en vez de mostrar una tabla vacía", () => {

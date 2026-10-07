@@ -1,3 +1,4 @@
+import { MAX_QUANTITY } from "@/lib/inventory";
 /**
  * Piezas puras del modo Escanear: qué movimiento deshace a cuál, cómo se
  * clasifica la respuesta del backend y cómo se lee la cantidad.
@@ -40,7 +41,7 @@ export function classifyScanError(error: unknown): ScanErrorKind {
  */
 export function parseScanQuantity(raw: string): number | null {
   const n = Number(raw.replace(",", ".").trim());
-  if (!raw.trim() || !Number.isFinite(n) || n <= 0) return null;
+  if (!raw.trim() || !Number.isFinite(n) || n <= 0 || n > MAX_QUANTITY) return null;
   return n;
 }
 

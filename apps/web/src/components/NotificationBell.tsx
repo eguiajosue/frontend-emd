@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useNotifications, useUnreadNotificationsCount } from "@/hooks/useNotifications";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
@@ -38,6 +39,8 @@ function relativeTime(value: string): string {
  */
 export function NotificationBell() {
   const router = useRouter();
+  // La cuenta de sucursal no tiene la pantalla de notificaciones (ruta muerta).
+  const { isBranch } = usePermissions();
   const { reduced } = useMotionPreset();
   const { count } = useUnreadNotificationsCount();
   const { notifications, markAsRead, markAllAsRead, isMarkingAll } =
@@ -204,19 +207,21 @@ export function NotificationBell() {
             ))
           )}
         </div>
-        <div className="border-t p-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-center text-xs"
-            onClick={() => {
-              setOpen(false);
-              router.push("/dashboard/notificaciones");
-            }}
-          >
-            Ver todas
-          </Button>
-        </div>
+        {!isBranch && (
+          <div className="border-t p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-center text-xs"
+              onClick={() => {
+                setOpen(false);
+                router.push("/dashboard/notificaciones");
+              }}
+            >
+              Ver todas
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

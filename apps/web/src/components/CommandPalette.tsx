@@ -78,7 +78,9 @@ export function CommandPalette() {
   const [search, setSearch] = useState("");
   const [recents, setRecents] = useState<PaletteRecent[]>([]);
   const router = useRouter();
-  const { canManageOperations } = usePermissions();
+  const { canManageOperations, isBranch } = usePermissions();
+  // Mismo criterio que el atajo `N` de Pedidos: Recepción/admin y la sucursal crean pedidos.
+  const canCreateOrders = canManageOperations || isBranch;
   const navItems = useVisibleNavItems();
   const { reduced } = useMotionPreset();
   const { resolvedTheme, setTheme } = useTheme();
@@ -127,7 +129,7 @@ export function CommandPalette() {
 
   const isDark = resolvedTheme === "dark";
   const actions: PaletteAction[] = [
-    ...(canManageOperations && canSeeOrders
+    ...(canCreateOrders && canSeeOrders
       ? [
           {
             value: "action:new-order",
@@ -150,7 +152,8 @@ export function CommandPalette() {
           },
         ]
       : []),
-    ...(canSeeOrders
+    // El Modo TV de pedidos no está en el alcance de la sucursal.
+    ...(canSeeOrders && !isBranch
       ? [
           {
             value: "action:tv",

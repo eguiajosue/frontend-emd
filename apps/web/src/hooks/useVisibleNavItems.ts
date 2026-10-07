@@ -3,7 +3,8 @@
 import { useSession } from "next-auth/react";
 import type { LucideIcon } from "lucide-react";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
-import { OPERATIONAL_MENU, buildMenuItems, isNavItemVisible, type NavGroup } from "@/lib/navMenu";
+import { isBranchOnly } from "@/lib/roles";
+import { BRANCH_MENU, OPERATIONAL_MENU, buildMenuItems, isNavItemVisible, type NavGroup } from "@/lib/navMenu";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 
@@ -20,6 +21,7 @@ export interface VisibleNavItem {
 export function useNavGroups() {
   const { data: session } = useSession();
   const userRoles = session?.user?.roles || [];
+  if (isBranchOnly(userRoles)) return BRANCH_MENU;
   return isOperationalOnly(userRoles) ? OPERATIONAL_MENU : buildMenuItems();
 }
 
@@ -62,10 +64,15 @@ export function useVisibleNavItems(): VisibleNavItem[] {
  * que se aplican las preferencias de la barra (`lib/navPreferences.ts`).
  */
 export function useVisibleNavGroups(): NavGroup[] {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const userRoles = session?.user?.roles || [];
-  const operationalOnly = isOperationalOnly(userRoles);
-  return (operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
+  // Mientras la sesión carga no se sabe el rol: sin ítems en vez de pintar el
+  // menú completo y cambiarlo (la cuenta de sucursal veía parpadear opciones
+  // que no puede abrir, y un clic podía perderse al re-renderizar la lista).
+  if (status === "loading") return [];
+  const branchOnly = isBranchOnly(userRoles);
+  const operationalOnly = branchOnly || isOperationalOnly(userRoles);
+  return (branchOnly ? BRANCH_MENU : operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => isNavItemVisible(item, userRoles, operationalOnly)),

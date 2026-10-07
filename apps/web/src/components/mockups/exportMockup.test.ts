@@ -84,3 +84,23 @@ describe("recorte de la lámina", () => {
     expect(fitScale({ width: 10, height: 10 }, { width: 100, height: 100 }, 3)).toBe(3);
   });
 });
+
+import { sizeTableLayout } from "./exportMockup";
+
+describe("sizeTableLayout (tallas en la lámina)", () => {
+  it("sin tallas no agrega alto (mockups viejos)", () => {
+    expect(sizeTableLayout(null, 1600).height).toBe(0);
+    expect(sizeTableLayout({}, 1600).height).toBe(0);
+  });
+
+  it("arma encabezado, filas y total", () => {
+    const l = sizeTableLayout({ general: { S: 5, M: 2 }, mujer: { S: 3 } }, 1600);
+    expect(l.height).toBeGreaterThan(0);
+    expect(l.header).toEqual(["Corte", "S", "M", "Total"]);
+    expect(l.rows).toEqual([
+      ["General", "5", "2", "7"],
+      ["Mujer", "3", "–", "3"],
+      ["Total", "", "", "10 pzas"],
+    ]);
+  });
+});

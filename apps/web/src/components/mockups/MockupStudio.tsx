@@ -1,8 +1,10 @@
 "use client";
 
+import { MockupSizesPanel } from "@/components/mockups/MockupSizesPanel";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -15,13 +17,15 @@ import { BookImage, Download, ImagePlus, LayoutTemplate, Loader2, Paperclip, Rot
 import MockupCanvasLazy from "@/components/mockups/MockupCanvasLazy";
 import { MockupColorField, type MyColorsControls } from "@/components/mockups/MockupColorField";
 import { MockupLayerList } from "@/components/mockups/MockupLayerList";
+import { GarmentIcon } from "@/components/mockups/GarmentIcon";
+import { LaserEngravePanel, TermoFinishPicker } from "@/components/mockups/LaserEngravePanel";
 import { MockupLibraryDialog } from "@/components/mockups/MockupLibrary";
 import { MockupTemplatesDialog, SaveTemplateDialog } from "@/components/mockups/MockupTemplates";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMockupColors } from "@/hooks/useMockupColors";
 import { downloadFromUrl } from "@/lib/download";
-import { enabledGarments, isGarmentEnabled } from "@/lib/mockups/garments";
+import { enabledGarments, isGarmentEnabled, isLaserEngraved } from "@/lib/mockups/garments";
 import { DESIGN_ACCEPT, importDesignFile, isDesignFile, type ImportedDesign } from "@/lib/mockups/importDesign";
 import { PLACEMENT_PRESETS, applyPreset, defaultPlacement } from "@/lib/mockups/presets";
 import {
@@ -29,6 +33,7 @@ import {
   GARMENT_MODELS,
   MOCKUP_TOO_LARGE_MESSAGE,
   buildMockupPayload,
+  garmentHasSizes,
   createLayer,
   exceedsMockupLimit,
   initialMockupConfig,
@@ -45,6 +50,8 @@ import {
   type MockupConfig,
   type MockupView,
   type PlacementPreset,
+  DEFAULT_COLORS,
+  isRawSteel,
 } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +191,12 @@ export function MockupStudio({
   const configRef = useRef(config);
   configRef.current = config;
   const garment = config.garment;
+  // El 3D no usa las tallas: sin esto, tipear en la grilla re-aplicaría la
+  // config a la escena en cada tecla.
+  const canvasConfig = useMemo<MockupConfig>(
+    () => ({ garment: config.garment, colors: config.colors, layers: config.layers, options: config.options }),
+    [config.garment, config.colors, config.layers, config.options]
+  );
   const selected = config.layers.find((l) => l.id === selectedId) ?? null;
   const baseScale = defaultPlacement(garment).scale || 1;
 
@@ -344,7 +357,7 @@ export function MockupStudio({
   const exportImage = async (): Promise<MockupStudioResult> => {
     const handle = canvasRef.current;
     if (!handle) throw new Error("El 3D no está disponible en este navegador.");
-    const image = await handle.exportSheet();
+    const image = await handle.exportSheet(garmentHasSizes(config.garment) ? config.sizes : null);
     return { image, config };
   };
 
@@ -438,7 +451,7 @@ export function MockupStudio({
       >
         <MockupCanvasLazy
           ref={canvasRef}
-          config={config}
+          config={canvasConfig}
           selectedLayerId={selectedId}
           onSelectLayer={setSelectedId}
           onPlacementChange={handlePlacementChange}
@@ -573,10 +586,13 @@ export function MockupStudio({
                   key={g}
                   value={g}
                   aria-label={label}
-                  className="flex h-auto flex-col items-start gap-0 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
+                  className="flex h-auto items-center justify-start gap-2.5 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
                 >
-                  <span className="text-sm font-semibold">{label}</span>
-                  <span className="text-meta">{GARMENT_MODELS[g]}</span>
+                  <GarmentIcon garment={g} className="shrink-0 text-muted-foreground" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-semibold">{label}</span>
+                    <span className="text-meta">{GARMENT_MODELS[g]}</span>
+                  </span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -584,6 +600,13 @@ export function MockupStudio({
 
           <StudioSection title="Color">
             <div className="space-y-4">
+              {garment === "termo" && (
+                <TermoFinishPicker
+                  body={config.colors.body}
+                  paintColor={DEFAULT_COLORS.termo.body}
+                  onChange={(hex) => setColor("body", hex)}
+                />
+              )}
               {COLOR_FIELDS[garment].map(({ part, label }) => (
                 <MockupColorField
                   key={`${garment}-${part}`}
@@ -595,6 +618,13 @@ export function MockupStudio({
               ))}
             </div>
           </StudioSection>
+
+          {garmentHasSizes(config.garment) && (
+            <MockupSizesPanel
+              sizes={config.sizes}
+              onChange={(sizes) => setConfig((prev) => ({ ...prev, sizes }))}
+            />
+          )}
 
           <StudioSection
             title="Diseños"
@@ -624,6 +654,18 @@ export function MockupStudio({
               onUpload={openFilePicker}
             />
           </StudioSection>
+
+          {selected && isLaserEngraved(garment) && (
+            <StudioSection
+              title="Grabado láser"
+              aside={<span className="text-meta">{isRawSteel(config.colors.body) ? "Sobre acero" : "Sobre pintura"}</span>}
+            >
+              <LaserEngravePanel
+                layer={selected}
+                onChange={(engrave) => updateLayer(selected.id, (l) => ({ ...l, engrave }))}
+              />
+            </StudioSection>
+          )}
 
           {selected && (
             <StudioSection title="Ajustar diseño" aside={<span className="truncate text-meta">{selected.name}</span>}>

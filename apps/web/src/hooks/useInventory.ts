@@ -11,6 +11,11 @@ import type {
   InventoryItem,
   InventoryMovement,
   InventoryMovementResult,
+  InventoryMovementsFilter,
+  CreateRestockRequestPayload,
+  RestockRequest,
+  RestockRequestStatus,
+  UpdateRestockRequestStatusPayload,
   UpdateInventoryItemPayload,
 } from "@/types";
 
@@ -48,7 +53,7 @@ export function useInventoryAreas() {
 
 /** Kardex de un artículo (`itemId`) o últimos movimientos de los departamentos visibles. */
 export function useInventoryMovements(
-  filter: { itemId?: number; area?: InventoryArea; limit?: number },
+  filter: InventoryMovementsFilter,
   options: { enabled?: boolean } = {}
 ) {
   const token = useAuthToken();
@@ -62,9 +67,72 @@ export function useInventoryMovements(
           })
         : request<InventoryMovement[]>(`${ENDPOINTS.inventory}/movements`, {
             token,
-            params: { area: filter.area, limit: filter.limit },
+            params: {
+              area: filter.area,
+              limit: filter.limit,
+              userId: filter.userId,
+              type: filter.type,
+              from: filter.from,
+              to: filter.to,
+            },
           }),
   });
+}
+
+/** Solicitudes de reabasto (Recepción todas; cada área las suyas). */
+export function useRestockRequests(
+  filter: { status?: RestockRequestStatus; open?: boolean; area?: InventoryArea } = {},
+  options: { enabled?: boolean } = {}
+) {
+  const token = useAuthToken();
+  return useQuery<RestockRequest[]>({
+    queryKey: [...inventoryKey, "restock", filter],
+    enabled: Boolean(token) && (options.enabled ?? true),
+    queryFn: () =>
+      request<RestockRequest[]>(`${ENDPOINTS.inventory}/restock-requests`, {
+        token,
+        params: {
+          status: filter.status,
+          open: filter.open === undefined ? undefined : String(filter.open),
+          area: filter.area,
+        },
+      }),
+  });
+}
+
+/** Para el badge de la pestaña: pendientes y abiertas. */
+export function useRestockCount(options: { enabled?: boolean } = {}) {
+  const token = useAuthToken();
+  return useQuery<{ pending: number; open: number }>({
+    queryKey: [...inventoryKey, "restock-count"],
+    enabled: Boolean(token) && (options.enabled ?? true),
+    queryFn: () => request(`${ENDPOINTS.inventory}/restock-requests/count`, { token }),
+  });
+}
+
+export function useRestockMutations() {
+  const token = useAuthToken();
+  const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: inventoryKey });
+  const meta = { ownErrorToast: true };
+
+  const create = useMutation<RestockRequest, ApiError, CreateRestockRequestPayload>({
+    mutationFn: (payload) =>
+      request(`${ENDPOINTS.inventory}/restock-requests`, { token, method: "POST", body: payload }),
+    onSuccess: invalidate,
+    meta,
+  });
+  const updateStatus = useMutation<
+    RestockRequest,
+    ApiError,
+    { id: number; payload: UpdateRestockRequestStatusPayload }
+  >({
+    mutationFn: ({ id, payload }) =>
+      request(`${ENDPOINTS.inventory}/restock-requests/${id}`, { token, method: "PATCH", body: payload }),
+    onSuccess: invalidate,
+    meta,
+  });
+  return { create, updateStatus };
 }
 
 export function useInventoryMutations() {

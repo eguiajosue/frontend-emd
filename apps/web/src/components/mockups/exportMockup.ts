@@ -1,10 +1,12 @@
 import type { DesignLayer, MockupExport, MockupView } from "@/lib/mockups/types";
+import { parseSizeBreakdown, piecesLabel, sizeTableRows, type SizeBreakdown } from "@/lib/garmentSizes";
 
 /**
  * Lámina de exportación: 3 vistas (Frente / Espalda / Lado) lado a lado sobre
  * fondo claro, ≈ 1600 × 800 (decisión R1: imagen acotada para guardar en el
  * pedido). La composición es 2D pura; el lienzo 3D sólo aporta cada vista.
  */
+
 
 export const SHEET_WIDTH = 1600;
 export const SHEET_HEIGHT = 800;
@@ -158,6 +160,74 @@ export interface ComposeOptions extends SheetLayoutOptions {
   mimeType?: "image/png" | "image/jpeg";
   /** Calidad del JPEG (0-1). */
   quality?: number;
+  /** Desglose de tallas: si tiene piezas se imprime como tabla al pie de la lámina. */
+  sizes?: SizeBreakdown | null;
+}
+
+/** Medidas de la tabla de tallas al pie de la lámina. */
+export const SIZE_TABLE_ROW_HEIGHT = 44;
+export const SIZE_TABLE_PADDING = 32;
+
+export interface SizeTableLayout {
+  /** Alto extra que se suma a la lámina (0 = sin tabla). */
+  height: number;
+  /** Encabezados: "Corte", tallas usadas, "Total". */
+  header: string[];
+  /** Filas de texto (corte + piezas por talla + total) y la fila final de total. */
+  rows: string[][];
+  colX: number[];
+  colWidth: number;
+  tableX: number;
+}
+
+/**
+ * Tabla de tallas de la lámina, en puro (testeable sin canvas): sólo cortes
+ * y tallas con piezas, más una fila de "Total". Sin tallas → alto 0.
+ */
+export function sizeTableLayout(sizes: SizeBreakdown | null | undefined, width: number): SizeTableLayout {
+  const t = sizeTableRows(parseSizeBreakdown(sizes));
+  if (!t.total) return { height: 0, header: [], rows: [], colX: [], colWidth: 0, tableX: 0 };
+  const header = ["Corte", ...t.sizes, "Total"];
+  const rows = [
+    ...t.rows.map((r) => [r.label, ...r.cells.map((c) => (c ? String(c) : "–")), String(r.total)]),
+    ["Total", ...t.sizes.map(() => ""), piecesLabel(t.total)],
+  ];
+  const colWidth = Math.min(160, Math.floor((width - SIZE_TABLE_PADDING * 2) / header.length));
+  const tableX = Math.round((width - colWidth * header.length) / 2);
+  const colX = header.map((_, i) => tableX + i * colWidth);
+  const height = SIZE_TABLE_PADDING * 2 + SIZE_TABLE_ROW_HEIGHT * (rows.length + 1) + 28;
+  return { height, header, rows, colX, colWidth, tableX };
+}
+
+function drawSizeTable(ctx: CanvasRenderingContext2D, layout: SizeTableLayout, top: number) {
+  const font = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const rowH = SIZE_TABLE_ROW_HEIGHT;
+  let y = top + SIZE_TABLE_PADDING;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#18181b";
+  ctx.font = `600 22px ${font}`;
+  ctx.fillText("Tallas", layout.tableX, y + 10);
+  y += 28;
+  const tableW = layout.colWidth * layout.header.length;
+  const all = [layout.header, ...layout.rows];
+  all.forEach((row, r) => {
+    const isHeader = r === 0;
+    const isTotal = r === all.length - 1;
+    ctx.fillStyle = isHeader ? "#e4e4e7" : isTotal ? "#f4f4f5" : "#ffffff";
+    ctx.fillRect(layout.tableX, y, tableW, rowH);
+    ctx.strokeStyle = "#d4d4d8";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(layout.tableX + 0.5, y + 0.5, tableW - 1, rowH - 1);
+    ctx.fillStyle = "#18181b";
+    ctx.font = `${isHeader || isTotal ? 600 : 400} 20px ${font}`;
+    row.forEach((cell, c) => {
+      ctx.textAlign = c === 0 ? "left" : "center";
+      const x = c === 0 ? layout.colX[c] + 12 : layout.colX[c] + layout.colWidth / 2;
+      ctx.fillText(cell, x, y + rowH / 2);
+    });
+    y += rowH;
+  });
 }
 
 /** Miniatura de plantilla: cuadrada, sólo el frente, JPEG. */
@@ -166,13 +236,16 @@ export const THUMBNAIL_SIZE = 400;
 export function composeSheet(
   views: SheetView[],
   renderPanel: RenderPanel,
-  { supersample = 2, labels = true, mimeType = "image/png", quality, ...layoutOpts }: ComposeOptions = {},
+  { supersample = 2, labels = true, mimeType = "image/png", quality, sizes, ...layoutOpts }: ComposeOptions = {},
 ): MockupExport {
   const width = layoutOpts.width ?? SHEET_WIDTH;
   const height = layoutOpts.height ?? SHEET_HEIGHT;
+  // La tabla de tallas va DEBAJO de las vistas: la lámina crece hacia abajo
+  // y el área de las vistas queda igual que sin tallas.
+  const sizeTable = sizeTableLayout(sizes, width);
   const canvas = document.createElement("canvas");
   canvas.width = width;
-  canvas.height = height;
+  canvas.height = height + sizeTable.height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo crear la imagen del mockup");
 
@@ -208,7 +281,7 @@ export function composeSheet(
 
   // 3) Fondo, vistas centradas y etiquetas justo debajo del contenido.
   ctx.fillStyle = SHEET_BACKGROUND;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, width, height + sizeTable.height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
   const scale = fitScale(crop, panels[0] ?? { width: 0, height: 0 });
@@ -229,5 +302,7 @@ export function composeSheet(
     if (labels) ctx.fillText(v.label, p.labelX, top + drawH + labelGap - 8);
   });
 
-  return { dataUrl: canvas.toDataURL(mimeType, quality), width, height };
+  if (sizeTable.height) drawSizeTable(ctx, sizeTable, height);
+
+  return { dataUrl: canvas.toDataURL(mimeType, quality), width, height: height + sizeTable.height };
 }

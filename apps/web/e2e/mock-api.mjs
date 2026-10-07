@@ -11,6 +11,7 @@
  * una lista vacía, que es lo que la app espera de un catálogo sin datos.
  *
  * Rutas sólo para los tests (no existen en el backend real):
+ * - `GET  /__e2e/orders`: los POST /orders recibidos (alta de pedido con tallas).
  * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
  * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
  * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
@@ -30,7 +31,32 @@ const usuarios = [
   { id: 1, username: "recepcion1", firstName: "Rita", lastName: "Ponce", isSharedAccount: false, roles: [{ id: 1, name: "recepcion" }] },
   { id: 2, username: "bordado", firstName: "Bordado", lastName: "", isSharedAccount: true, roles: [{ id: 2, name: "bordado" }] },
   { id: 3, username: "jeguia1", firstName: "José", lastName: "Eguía", isSharedAccount: false, roles: [{ id: 3, name: "diseno" }, { id: 2, name: "bordado" }] },
+  { id: 10, username: "admin1", firstName: "Ada", lastName: "Mora", isSharedAccount: false, roles: [{ id: 30, name: "admin" }] },
+  // Cuenta compartida de la sucursal "Punto Madero" (rol sucursal + branchId).
+  { id: 9, username: "puntomadero", firstName: "Punto Madero", lastName: "", isSharedAccount: true, roles: [{ id: 20, name: "sucursal" }], branchId: 1, branch: { id: 1, name: "Punto Madero" } },
 ];
+
+const roles = [
+  { id: 1, name: "recepcion" }, { id: 2, name: "bordado" }, { id: 3, name: "diseno" },
+  { id: 20, name: "sucursal" }, { id: 30, name: "admin" },
+];
+
+/** Sucursales y empleados (en memoria; `/__e2e/reset-branches` los restaura). */
+const sucursalesIniciales = () => [
+  {
+    id: 1, name: "Punto Madero", active: true,
+    employees: [
+      { id: 1, branchId: 1, name: "Ana López", active: true },
+      { id: 2, branchId: 1, name: "Beto Ruiz", active: false },
+      { id: 3, branchId: 1, name: "Carla Díaz", active: true },
+    ],
+  },
+];
+let sucursales = sucursalesIniciales();
+let siguienteEmpleadoId = 10;
+/** Cuerpos de los POST /orders hechos desde la sucursal (los lee el test). */
+let pedidosSucursalCreados = [];
+let siguientePedidoSucursalId = 200;
 
 const estados = [
   { id: 1, name: "pendiente" },
@@ -68,7 +94,96 @@ const tareasTvIniciales = () => [
 ];
 let tareasTv = tareasTvIniciales();
 
+/**
+ * Pedido #110 "esperando autorización" para el flujo autorizar → hoja de
+ * materiales → producción. NO está en `GET /orders` (para no mover los
+ * tableros de los otros flujos): se abre con `?openOrderId=110`. Imita al
+ * backend: autorizar + hoja en una sola petición; los insumos "nosotros"
+ * quedan apartados y se descuentan al terminar la tarea de bordado.
+ */
+const ORDEN_AUTORIZAR = 110;
+/** Veces que una cuenta de sucursal pidió la hoja de materiales (debe ser 0). */
+let hojasPedidasPorSucursal = 0;
+const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
+let autorizar = autorizarInicial();
+const pedidoAutorizar = () => ({
+  id: ORDEN_AUTORIZAR,
+  statusId: autorizar.aprobada ? 9 : 7,
+  status: autorizar.aprobada ? { id: 9, name: "autorizado" } : { id: 7, name: "esperando autorización" },
+  clientNameOverride: "Escuela Primaria Benito Juárez",
+  description: "40 playeras con escudo bordado",
+  creationDate: "2026-09-10T10:00:00.000Z",
+  deliveryDate: "2026-10-25T18:00:00.000Z",
+  deliveredAt: null,
+  area: autorizar.aprobada ? "bordado" : "diseno",
+  productionArea: "bordado",
+  requiresDesign: true,
+  areaTasks: [tareaAutorizar()],
+  orderProducts: [],
+  assignedUser: null,
+});
+const tareaAutorizar = () =>
+  autorizar.tarea ?? { id: 90, orderId: ORDEN_AUTORIZAR, area: "bordado", status: "pendiente", assignedUserId: 2, createdAt: "2026-09-10T10:00:00.000Z", assignedUser: usuarios[1], supply: null };
+const rondaAutorizar = () => [
+  ronda(20, ORDEN_AUTORIZAR, 1, [1005], autorizar.aprobada ? { approved: true, approvedAt: new Date().toISOString() } : {}),
+];
+/** Apartado por artículo: líneas "nosotros" sin descontar. */
+const apartado = (itemId) =>
+  autorizar.supply?.source === "nosotros"
+    ? autorizar.supply.lines.filter((l) => l.inventoryItemId === itemId && !l.discountedAt).reduce((t, l) => t + l.quantity, 0)
+    : 0;
+const hojaAutorizar = () => {
+  const terminada = tareaAutorizar().status === "terminado";
+  const lines = autorizar.supply?.lines.map((l) => {
+    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    const pendingDiscount = Boolean(terminada && a && !l.discountedAt && autorizar.supply.source === "nosotros");
+    return {
+      ...l, state: l.discountedAt ? "descontado" : "apartado",
+      pendingDiscount, shortfall: pendingDiscount ? Math.max(0, l.quantity - a.quantity) : 0,
+      stock: a ? { quantity: a.quantity, reserved: apartado(a.id), available: a.quantity - apartado(a.id) } : null,
+    };
+  });
+  return {
+    areas: [
+      {
+        taskId: 90, area: "bordado", status: tareaAutorizar().status,
+        supply: autorizar.supply && { ...autorizar.supply, lines },
+        pendingDiscount: Boolean(lines?.some((l) => l.pendingDiscount)),
+      },
+    ],
+    movements: autorizar.movimientos,
+  };
+};
+/**
+ * Terminar descuenta (SALIDA); regresar de terminado devuelve (ENTRADA). Como
+ * el backend, terminar NUNCA falla por falta de stock: la línea que no alcanza
+ * queda apartada ("descuento pendiente") y se reintenta con `descontarPendientes`.
+ */
+function aplicarInsumos(anterior, nuevo) {
+  const terminando = nuevo === "terminado" && anterior !== "terminado";
+  const reabriendo = anterior === "terminado" && nuevo !== "terminado";
+  if (!terminando && !reabriendo) return;
+  descontarLineas(terminando ? "terminando" : "reabriendo");
+}
+function descontarLineas(modo) {
+  const lines = autorizar.supply?.source === "nosotros" ? autorizar.supply.lines.filter((l) => l.inventoryItemId) : [];
+  const terminando = modo !== "reabriendo";
+  for (const l of lines.filter((x) => (terminando ? !x.discountedAt : x.discountedAt))) {
+    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    if (terminando && l.quantity > a.quantity) continue; // sin existencia: se queda pendiente
+    const delta = terminando ? -l.quantity : l.quantity;
+    a.quantity += delta;
+    l.discountedAt = terminando ? new Date().toISOString() : null;
+    autorizar.movimientos.unshift({
+      id: 900 + autorizar.movimientos.length, itemId: a.id, type: terminando ? "SALIDA" : "ENTRADA", delta, balanceAfter: a.quantity,
+      note: null, areaTaskId: 90, createdAt: new Date().toISOString(), item: { id: a.id, name: a.name, unit: a.unit }, createdBy: { id: 2, firstName: "Bordado" },
+    });
+  }
+}
+
 /** Usuario del token (el `sub` del JWT de mentira). */
+const esSucursal = (u) => u.roles.some((r) => r.name === "sucursal");
+
 function usuarioDe(req) {
   try {
     const payload = (req.headers.authorization ?? "").split(".")[1];
@@ -116,6 +231,15 @@ function misTareas(u) {
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
+      order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
+    });
+  }
+  const t90 = tareaAutorizar();
+  if (autorizar.aprobada && roles.includes("bordado") && t90.status !== "terminado" && (libre(t90) || mia(t90))) {
+    const o = pedidoAutorizar();
+    items.push({
+      key: "task-90", kind: "production", area: "bordado", taskId: 90, status: t90.status,
+      mine: mia(t90), assignee: libre(t90) ? null : t90.assignedUser, startedAt: null, supply: autorizar.supply,
       order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
     });
   }
@@ -216,7 +340,7 @@ const pedidos = () => [
     productionArea: "bordado",
     requiresDesign: true,
     areaTasks: tareas,
-    orderProducts: [{ customName: "Polo", quantity: 24 }],
+    orderProducts: [{ customName: "Polo", quantity: 24, sizes: { general: { M: 10, L: 14 } } }],
     assignedUser: null,
   },
   {
@@ -234,6 +358,26 @@ const pedidos = () => [
     orderProducts: [],
     assignedUser: usuarios[2],
   },
+  {
+    id: 110,
+    statusId: 6,
+    status: { id: 6, name: "en diseño" },
+    clientNameOverride: "Escuela Madero",
+    description: "Sudaderas con escudo (Punto Madero)",
+    creationDate: "2026-09-04T09:00:00.000Z",
+    deliveryDate: "2026-09-28T18:00:00.000Z",
+    deliveredAt: null,
+    area: "diseno",
+    requiresDesign: true,
+    areaTasks: [],
+    orderProducts: [{ customName: "Sudadera", quantity: 12 }],
+    assignedUser: usuarios[2],
+    branchId: 1,
+    branch: { id: 1, name: "Punto Madero" },
+    branchEmployeeId: 1,
+    branchEmployee: { id: 1, name: "Ana López" },
+  },
+  ...pedidosSucursalCreados,
 ];
 
 /**
@@ -343,6 +487,17 @@ let inventario = inventarioInicial();
 let movimientosInventario = [];
 let siguienteArticuloId = 4;
 let siguienteMovimientoId = 1;
+let solicitudesReabasto = [];
+let siguienteSolicitudId = 1;
+
+const GESTORES = ["recepcion", "admin", "superuser"];
+const AREAS_INVENTARIO = ["taller", "dtf", "bordado", "laser", "impresiones"];
+/** Áreas de inventario que ve un usuario (como `areasFor` del backend). */
+function areasDe(u) {
+  const nombres = u.roles.map((x) => x.name);
+  if (nombres.some((n) => GESTORES.includes(n))) return ["bordado", "impresiones"];
+  return nombres.filter((n) => AREAS_INVENTARIO.includes(n));
+}
 
 const codigoPorOmision = (id) => `EMD-${String(id).padStart(6, "0")}`;
 const estadoStock = (q, min) => (q <= 0 ? "out" : min != null && q <= min ? "low" : "ok");
@@ -351,6 +506,8 @@ const articuloJson = (a) => ({
   barcode: a.barcode ?? codigoPorOmision(a.id),
   material: null,
   supplier: null,
+  reserved: apartado(a.id),
+  available: a.quantity - apartado(a.id),
   stockStatus: estadoStock(a.quantity, a.minStock),
   totalValue: a.unitCost == null ? null : a.quantity * a.unitCost,
 });
@@ -369,7 +526,7 @@ function validarCodigo(raw, ownId) {
 }
 
 /** Mismo cálculo que `registerMovement` del backend; `{ status, body }`. */
-function registrarMovimiento(articulo, dto) {
+function registrarMovimiento(articulo, dto, usuario = usuarios[0]) {
   const quantity = Number(dto.quantity);
   if (!["ENTRADA", "SALIDA", "AJUSTE"].includes(dto.type) || !(quantity >= 0)) {
     return { status: 400, body: { message: "Movimiento inválido" } };
@@ -378,23 +535,32 @@ function registrarMovimiento(articulo, dto) {
   if (articulo.quantity + delta < 0) {
     return { status: 400, body: { message: `Stock insuficiente: hay ${articulo.quantity} ${articulo.unit}` } };
   }
+  const antes = articulo.quantity;
   articulo.quantity += delta;
+  const esArea = !usuario.roles.some((x) => ["recepcion", "admin", "superuser"].includes(x.name));
   const movement = {
     id: siguienteMovimientoId++,
     itemId: articulo.id,
     type: dto.type,
     delta,
     balanceAfter: articulo.quantity,
+    balanceBefore: antes,
+    area: articulo.area,
+    reason: dto.reason ?? dto.note ?? null,
+    source: esArea ? "area" : "recepcion",
     unitCost: dto.unitCost ?? null,
     note: dto.note ?? null,
     orderId: dto.orderId ?? null,
     createdAt: new Date().toISOString(),
     item: { id: articulo.id, name: articulo.name, unit: articulo.unit, area: articulo.area },
-    createdBy: { id: 1, firstName: "Rita", lastName: "Ponce" },
+    createdBy: { id: usuario.id, firstName: usuario.firstName, lastName: usuario.lastName },
   };
   movimientosInventario.unshift(movement);
   return { status: 201, body: { movement, item: articuloJson(articulo) } };
 }
+
+/** POST /orders recibidos (alta de pedido). */
+const pedidosCreados = [];
 
 const rutas = {
   "GET /orders": () => pedidos(),
@@ -406,6 +572,27 @@ const rutas = {
   // Tour de bienvenida ya visto: si no, su capa (fixed, z-110) tapa la
   // pantalla y se come los clicks de los tests.
   "GET /users/me/preferences": () => preferencias,
+  // Tableros de "Inicio". Sin esto el mock contestaba `[]`, la pantalla de
+  // Inicio tronaba al llegar los datos (`totals` indefinido) y esa caída le
+  // ganaba al primer clic del menú: la URL se quedaba en /dashboard/inicio.
+  "GET /dashboard/reception": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z",
+    totals: { active: 0, inDesign: 0, waitingClient: 0, inProduction: 0, ready: 0, noDate: 0 },
+    deadlines: { overdue: 0, atRisk: 0, onTime: 0, noDate: 0 },
+    today: { created: 0, delivered: 0, tasksCompleted: 0, designsApproved: 0 },
+    areas: [], attention: [], attentionTotal: 0, throughput: [], clientsDue: [],
+    alerts: { lowStock: 0, outOfStock: 0, lowStockItems: [], purchasesDue: 0 },
+  }),
+  "GET /dashboard/design": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z",
+    counters: { changesRequested: 0, notStarted: 0, inProgress: 0, waitingClient: 0, overdue: 0, atRisk: 0, approvedToday: 0, approvedWeek: 0 },
+    items: [], waitingClient: [], team: [], rounds: { avgToApproval: null, approvedLast30: 0, manyRounds: 0 },
+  }),
+  "GET /dashboard/production": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z", areas: [],
+    counters: { overdue: 0, atRisk: 0, notStarted: 0, inProgress: 0, doneToday: 0, upcoming: 0 },
+    items: [], upcoming: [], team: [], events: [],
+  }),
 };
 
 /** JWT sin firmar de verdad: sólo necesita un `exp` futuro que `jose` pueda leer. */
@@ -439,6 +626,14 @@ createServer((req, res) => {
       return send(preferencias);
     }
 
+    // La hoja de materiales no es de la sucursal: 403 (y se cuenta, para que el
+    // test compruebe que la pantalla ni siquiera la pide).
+    if (req.method === "GET" && /^\/orders\/\d+\/area-supplies$/.test(path) && esSucursal(usuarioDe(req))) {
+      hojasPedidasPorSucursal++;
+      return send({ message: "Forbidden" }, 403);
+    }
+    if (req.method === "GET" && path === "/__e2e/area-supplies-sucursal") return send({ pedidas: hojasPedidasPorSucursal });
+
     // Ganchos sólo para los tests.
     if (req.method === "POST" && path === "/__e2e/reset-preferences") {
       preferencias = { ...PREFERENCIAS_INICIALES };
@@ -447,11 +642,47 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-tareas") {
       tareas = tareasIniciales();
       tareasTv = tareasTvIniciales();
+      autorizar = autorizarInicial();
+      inventario = inventarioInicial();
+      movimientosInventario = [];
       return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/autorizacion") return send({ recibido: autorizar.recibido });
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-supplies` && req.method === "GET") return send(hojaAutorizar());
+    // Reintenta el descuento de lo pendiente (sólo Recepción/admin).
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-supplies/bordado/discount-pending` && req.method === "POST") {
+      if (!usuarioDe(req).roles.some((r) => GESTORES.includes(r.name))) return send({ message: "Forbidden" }, 403);
+      descontarLineas("terminando");
+      return send(hojaAutorizar());
+    }
+    // Entrada de stock sin pasar por la pantalla de inventario (prepara el reintento).
+    if (req.method === "POST" && path === "/__e2e/reponer-stock") {
+      const { itemId, quantity } = JSON.parse(body || "{}");
+      inventario.find((a) => a.id === itemId).quantity += quantity;
+      return send({ ok: true });
+    }
+    if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions` && req.method === "GET") return send(rondaAutorizar());
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-tasks` && req.method === "GET") return send([tareaAutorizar()].map(({ supply, ...t }) => t));
+    if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions/20/approve` && req.method === "PATCH") {
+      const dto = JSON.parse(body || "{}");
+      autorizar.recibido = dto;
+      const hoja = (dto.supplies ?? []).find((x) => x.area === "bordado");
+      if (!hoja) return send({ message: "Captura la hoja de materiales (origen de insumos) de: Bordado" }, 400);
+      autorizar.aprobada = true;
+      autorizar.supply = {
+        id: 1, source: hoja.source,
+        lines: hoja.lines.map((l, i) => {
+          const a = inventario.find((x) => x.id === l.inventoryItemId);
+          return { id: i + 1, inventoryItemId: l.inventoryItemId ?? null, description: l.description ?? a?.name ?? "", quantity: l.quantity, discountedAt: null, inventoryItem: a ? { id: a.id, name: a.name, unit: a.unit, area: a.area } : null };
+        }),
+      };
+      autorizar.tarea = { ...tareaAutorizar(), supply: autorizar.supply };
+      return send({ ...rondaAutorizar()[0], supplyWarnings: [] });
     }
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
+    if (req.method === "GET" && path === "/__e2e/orders") return send(pedidosCreados);
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
     if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);
@@ -643,11 +874,52 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-inventory") {
       inventario = inventarioInicial();
       movimientosInventario = [];
+      solicitudesReabasto = [];
       siguienteArticuloId = 4;
       return send({ ok: true });
     }
-    if (path === "/inventory/areas" && req.method === "GET") return send(["bordado", "impresiones"]);
-    if (path === "/inventory/movements" && req.method === "GET") return send(movimientosInventario);
+    const quien = usuarioDe(req);
+    const misAreas = areasDe(quien);
+    const esGestor = quien.roles.some((x) => GESTORES.includes(x.name));
+    if (path.startsWith("/inventory") && misAreas.length === 0 && !esGestor) return send({ message: "Forbidden" }, 403);
+    if (path === "/inventory/areas" && req.method === "GET") return send(misAreas);
+    if (path === "/inventory/movements" && req.method === "GET") {
+      if (!esGestor) return send({ message: "Forbidden" }, 403);
+      return send(movimientosInventario);
+    }
+    if (path === "/inventory/restock-requests/count" && req.method === "GET") {
+      const mias = solicitudesReabasto.filter((x) => misAreas.includes(x.area));
+      return send({ pending: mias.filter((x) => x.status === "PENDIENTE").length, open: mias.filter((x) => x.status !== "RESUELTO").length });
+    }
+    if (path === "/inventory/restock-requests" && req.method === "GET") {
+      const st = url.searchParams.get("status");
+      const abiertas = url.searchParams.get("open") === "true";
+      return send(solicitudesReabasto.filter((x) => misAreas.includes(x.area) && (!st || x.status === st) && (!abiertas || x.status !== "RESUELTO")));
+    }
+    if (path === "/inventory/restock-requests" && req.method === "POST") {
+      const dto = JSON.parse(body || "{}");
+      const art = dto.itemId ? inventario.find((a) => a.id === dto.itemId) : null;
+      if (dto.itemId && (!art || !misAreas.includes(art.area))) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
+      const nueva = {
+        id: siguienteSolicitudId++, area: art ? art.area : dto.area ?? misAreas[0], itemId: art?.id ?? null,
+        itemName: art ? art.name : dto.itemName, quantity: dto.quantity ?? null, unit: dto.unit ?? art?.unit ?? null,
+        comment: dto.comment ?? null, urgency: dto.urgency ?? "NORMAL", status: "PENDIENTE", statusNote: null,
+        resolvedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        item: art ? { id: art.id, name: art.name, unit: art.unit, quantity: art.quantity, area: art.area } : null,
+        requestedBy: { id: quien.id, firstName: quien.firstName, lastName: quien.lastName }, handledBy: null,
+      };
+      solicitudesReabasto.unshift(nueva);
+      return send(nueva, 201);
+    }
+    const solicitud = path.match(/^\/inventory\/restock-requests\/(\d+)$/);
+    if (solicitud && req.method === "PATCH") {
+      if (!esGestor) return send({ message: "Forbidden" }, 403);
+      const x = solicitudesReabasto.find((y) => y.id === Number(solicitud[1]));
+      if (!x) return send({ message: "La solicitud no existe" }, 404);
+      const dto = JSON.parse(body || "{}");
+      Object.assign(x, { status: dto.status, statusNote: dto.note ?? null, handledBy: { id: quien.id, firstName: quien.firstName, lastName: quien.lastName }, updatedAt: new Date().toISOString() });
+      return send(x);
+    }
     const porCodigo = path.match(/^\/inventory\/items\/by-barcode\/([^/]+)(\/movements)?$/);
     if (porCodigo) {
       const code = decodeURIComponent(porCodigo[1]).trim();
@@ -655,10 +927,12 @@ createServer((req, res) => {
         return send({ message: `Código de barras inválido: ${code}` }, 400);
       }
       const articulo = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
-      if (!articulo) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
+      if (!articulo || !misAreas.includes(articulo.area)) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
       if (!porCodigo[2] && req.method === "GET") return send(articuloJson(articulo));
       if (porCodigo[2] && req.method === "POST") {
-        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        const dto = JSON.parse(body || "{}");
+        if (!esGestor && dto.type === "AJUSTE") return send({ message: "Las áreas sólo pueden registrar entradas o consumos" }, 403);
+        const r = registrarMovimiento(articulo, dto, quien);
         return send(r.body, r.status);
       }
     }
@@ -667,7 +941,11 @@ createServer((req, res) => {
       const id = inventarioDe[1] ? Number(inventarioDe[1]) : null;
       if (id === null && req.method === "GET") {
         const area = url.searchParams.get("area");
-        return send(inventario.filter((a) => !area || a.area === area).map(articuloJson));
+        if (area && !misAreas.includes(area)) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
+        return send(inventario.filter((a) => misAreas.includes(a.area) && (!area || a.area === area)).map(articuloJson));
+      }
+      if (!esGestor && (req.method !== "GET" || inventarioDe[2]) && !(inventarioDe[2] && req.method === "POST")) {
+        return send({ message: "Forbidden" }, 403);
       }
       if (id === null && req.method === "POST") {
         const { initialQuantity = 0, barcode, ...datos } = JSON.parse(body || "{}");
@@ -684,9 +962,12 @@ createServer((req, res) => {
       }
       const articulo = inventario.find((a) => a.id === id);
       if (!articulo) return send({ message: "Artículo no encontrado" }, 404);
+      if (!misAreas.includes(articulo.area)) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
       if (inventarioDe[2] && req.method === "GET") return send(movimientosInventario.filter((m) => m.itemId === id));
       if (inventarioDe[2] && req.method === "POST") {
-        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        const dto = JSON.parse(body || "{}");
+        if (!esGestor && dto.type === "AJUSTE") return send({ message: "Las áreas sólo pueden registrar entradas o consumos" }, 403);
+        const r = registrarMovimiento(articulo, dto, quien);
         return send(r.body, r.status);
       }
       if (req.method === "GET") return send(articuloJson(articulo));
@@ -711,6 +992,12 @@ createServer((req, res) => {
 
     // Avance de una tarea de área: es lo que el flujo 3 verifica.
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
+    if (avance && Number(avance[1]) === 90 && req.method === "PATCH") {
+      const { status } = JSON.parse(body || "{}");
+      aplicarInsumos(tareaAutorizar().status, status);
+      autorizar.tarea = { ...tareaAutorizar(), status, supply: autorizar.supply };
+      return send(autorizar.tarea);
+    }
     if (avance && req.method === "PATCH") {
       const id = Number(avance[1]);
       const { status } = JSON.parse(body || "{}");
@@ -744,10 +1031,94 @@ createServer((req, res) => {
       return archivo ? send(archivo) : send({ message: "Archivo de la ronda no encontrado" }, 404);
     }
 
+    // ── Sucursales ──────────────────────────────────────────────────────────
+    // (`quien` ya está declarado arriba, en el bloque de Inventario.)
+    if (req.method === "POST" && path === "/__e2e/reset-branches") {
+      hojasPedidasPorSucursal = 0;
+      sucursales = sucursalesIniciales();
+      pedidosSucursalCreados = [];
+      return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/branch-orders") return send(pedidosSucursalCreados);
+    if (req.method === "GET" && path === "/roles") return send(roles);
+    if (req.method === "GET" && path === "/branches/me") {
+      const b = sucursales.find((x) => x.id === quien.branchId);
+      if (!esSucursal(quien) || !b) return send({ message: "Sin permisos para acceder a esta sección" }, 403);
+      return send({ id: b.id, name: b.name, active: b.active, employees: b.employees.filter((e) => e.active).map(({ id, name }) => ({ id, name })) });
+    }
+    if (path.startsWith("/branches") && esSucursal(quien)) {
+      return send({ message: "Sin permisos para acceder a esta sección" }, 403);
+    }
+    if (req.method === "GET" && path === "/branches") return send(sucursales);
+    if (req.method === "POST" && path === "/branches") {
+      const { name } = JSON.parse(body || "{}");
+      const nueva = { id: sucursales.length + 1, name, active: true, employees: [] };
+      sucursales.push(nueva);
+      return send(nueva, 201);
+    }
+    const sucursalRuta = path.match(/^\/branches\/(\d+)(?:\/employees(?:\/(\d+))?)?$/);
+    if (sucursalRuta) {
+      const b = sucursales.find((x) => x.id === Number(sucursalRuta[1]));
+      if (!b) return send({ message: "Sucursal no encontrada" }, 404);
+      const datos = JSON.parse(body || "{}");
+      if (path.endsWith("/employees") && req.method === "POST") {
+        if (b.employees.some((e) => e.name === datos.name)) return send({ message: "Ya hay un empleado con ese nombre en la sucursal" }, 409);
+        const nuevo = { id: siguienteEmpleadoId++, branchId: b.id, name: datos.name, active: true };
+        b.employees.push(nuevo);
+        return send(nuevo, 201);
+      }
+      if (sucursalRuta[2] && req.method === "PATCH") {
+        const e = b.employees.find((x) => x.id === Number(sucursalRuta[2]));
+        if (!e) return send({ message: "Empleado no encontrado" }, 404);
+        Object.assign(e, datos);
+        return send(e);
+      }
+      if (!path.includes("/employees") && req.method === "PATCH") {
+        Object.assign(b, datos);
+        return send(b);
+      }
+    }
+
+    // Pedidos: la sucursal sólo ve (y levanta) los suyos; el empleado es obligatorio.
+    if (path === "/orders" && req.method === "GET" && esSucursal(quien)) {
+      return send(pedidos().filter((p) => p.branchId === quien.branchId));
+    }
+    if (path === "/orders" && req.method === "POST") {
+      const dto = JSON.parse(body || "{}");
+      if (esSucursal(quien)) {
+        if (!dto.branchEmployeeId) return send({ message: "Elige qué empleado de la sucursal levanta el pedido" }, 400);
+        const b = sucursales.find((x) => x.id === quien.branchId);
+        const e = b?.employees.find((x) => x.id === dto.branchEmployeeId);
+        if (!e) return send({ message: "El empleado no pertenece a la sucursal" }, 400);
+        if (!e.active) return send({ message: "El empleado está inactivo" }, 400);
+        const creado = {
+          id: siguientePedidoSucursalId++, statusId: 6, status: { id: 6, name: "en diseño" },
+          clientNameOverride: dto.clientNameOverride ?? "Cliente", description: dto.description,
+          creationDate: new Date().toISOString(), deliveryDate: dto.deliveryDate ?? null, deliveredAt: null,
+          area: "diseno", requiresDesign: true, areaTasks: [], orderProducts: dto.orderProducts ?? [],
+          assignedUser: usuarios[2], branchId: b.id, branch: { id: b.id, name: b.name },
+          branchEmployeeId: e.id, branchEmployee: { id: e.id, name: e.name },
+        };
+        pedidosSucursalCreados.push(creado);
+        return send(creado, 201);
+      }
+      // Pedido de la matriz: se registra tal cual llegó (lo consulta /__e2e/orders).
+      pedidosCreados.push(dto);
+      return send({ id: 777, ...dto }, 201);
+    }
+    {
+      const ped = path.match(/^\/orders\/(\d+)(?:\/|$)/);
+      if (ped && esSucursal(quien) && req.method === "GET") {
+        const propio = pedidos().find((p) => p.id === Number(ped[1]) && p.branchId === quien.branchId);
+        if (!propio) return send({ message: "Sin acceso a este pedido" }, 403);
+      }
+    }
+
     // Detalle de un pedido (también los del Modo TV, que no están en GET /orders).
     const detalle = path.match(/^\/orders\/(\d+)$/);
     if (detalle && req.method === "GET") {
       const id = Number(detalle[1]);
+      if (id === ORDEN_AUTORIZAR) return send(pedidoAutorizar());
       const pedido = pedidos().find((p) => p.id === id);
       if (pedido) return send(pedido);
       const tv = tareasTv.find((t) => t.orderId === id);

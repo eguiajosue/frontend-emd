@@ -1,6 +1,6 @@
 import { compareByUrgency } from "@/lib/orderDeadline";
 import { taskDeadline } from "@/lib/myTasks";
-import type { AreaTaskStatus, MyTask } from "@/types";
+import type { AreaSupply, AreaTaskStatus, MyTask } from "@/types";
 
 /**
  * Tablero del Modo TV de "Tareas asignadas": TODO el trabajo de las áreas del
@@ -24,6 +24,8 @@ export interface AreaBoardTask {
     username: string;
     isSharedAccount?: boolean;
   } | null;
+  /** Origen de insumos del área (hoja de materiales). */
+  supply?: AreaSupply | null;
   order: {
     id: number;
     description: string;
@@ -31,6 +33,8 @@ export interface AreaBoardTask {
     statusId: number;
     clientNameOverride: string | null;
     client: { first_name: string; last_name?: string | null } | null;
+    /** Sucursal de origen ("Punto Madero"); null/ausente = pedido de la matriz. */
+    branch?: { id: number; name: string } | null;
     /** Hoy no los manda el backend; se aprovechan si algún día llegan. */
     creationDate?: string;
     status?: { id: number; name: string };
@@ -86,6 +90,7 @@ export function areaTaskToTvTask(task: AreaBoardTask, userId: number | null): Tv
         : null,
     startedAt: task.startedAt ?? null,
     completedAt: task.completedAt ?? null,
+    supply: task.supply ?? null,
     order: {
       ...order,
       creationDate: creationDate ?? task.createdAt,
@@ -143,6 +148,7 @@ export function buildTvBoard({
             status: fromArea.status,
             completedAt: fromArea.completedAt,
             startedAt: fromArea.startedAt,
+            supply: fromArea.supply ?? fromMine.supply ?? null,
             // Lo que trae el área pisa (es la misma fila); lo que no trae, queda.
             order: {
               ...fromMine.order,

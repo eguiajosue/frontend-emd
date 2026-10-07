@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SimpleTooltip } from "@/components/ui/tooltip";
+import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -201,8 +202,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
           ? `${getAreaLabel(task.area)} terminó su parte`
           : `${getAreaLabel(task.area)} en proceso`
       );
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+    } catch {
+      // El aviso con el mensaje del backend sale en `onError` de `setStatus`.
     }
   };
 
@@ -429,6 +430,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                         tiene y desde cuándo está así. */}
                     {timing && <span className="pl-[1.125rem]">{timing}</span>}
                   </span>
+
+                  <AreaSupplySummary supply={task.supply} clamp={false} className="order-last basis-full" />
 
                   <span className="ml-auto flex items-center gap-1.5">
                     {/* Tomar una tarea que está a nombre del área. */}

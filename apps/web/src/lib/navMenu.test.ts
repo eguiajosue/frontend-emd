@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BRANCH_MENU,
   buildBreadcrumbs,
   buildMenuItems,
+  isBranchAllowedPath,
   findActiveNavUrl,
   homePathForRoles,
   OPERATIONAL_MENU,
@@ -154,5 +156,36 @@ describe("buildBreadcrumbs", () => {
     expect(buildBreadcrumbs(groups, "/dashboard/configuracion")).toEqual([{ label: "Configuración" }]);
     expect(buildBreadcrumbs(groups, "/dashboard/no-existe")).toEqual([]);
     expect(pageTitleFromBreadcrumbs([])).toBeNull();
+  });
+});
+
+describe("cuenta de sucursal (Punto Madero)", () => {
+  it("su menú sólo tiene Nuevo pedido, Mis pedidos y Mockups", () => {
+    const titles = BRANCH_MENU.flatMap((g) => g.items.map((i) => i.title));
+    expect(titles).toEqual(["Nuevo pedido", "Mis pedidos", "Mockups"]);
+  });
+
+  it("el menú completo no la deja ver nada de gestión (cada ítem exige otros roles)", () => {
+    const visible = buildMenuItems()
+      .flatMap((g) => g.items)
+      .filter((item) => isNavItemVisible(item, ["sucursal"], false))
+      .map((item) => item.title);
+    expect(visible).not.toContain("Pedidos");
+    expect(visible).not.toContain("Clientes");
+    expect(visible).not.toContain("Usuarios");
+    expect(visible).not.toContain("Inventario");
+  });
+
+  it("sólo puede entrar a Pedidos, Mockups y Configuración", () => {
+    for (const ok of ["/dashboard/orders", "/dashboard/orders/12", "/dashboard/mockups", "/dashboard/configuracion"]) {
+      expect(isBranchAllowedPath(ok)).toBe(true);
+    }
+    for (const no of ["/dashboard/usuarios", "/dashboard/clientes", "/dashboard/admin", "/dashboard/chat", "/dashboard/orders-x"]) {
+      expect(isBranchAllowedPath(no)).toBe(false);
+    }
+  });
+
+  it("entra directo a Mis pedidos", () => {
+    expect(homePathForRoles(["sucursal"])).toBe("/dashboard/orders");
   });
 });

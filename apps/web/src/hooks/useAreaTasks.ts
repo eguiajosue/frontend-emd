@@ -1,7 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, request } from "@/lib/api";
+import { toast } from "sonner";
+import { ApiError, getErrorMessage, request } from "@/lib/api";
+import { invalidateSupplyData, showSupplyWarnings } from "@/hooks/useAreaSupplies";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
@@ -62,6 +64,8 @@ export function useAreaTasks(orderId: number | null) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: areaTasksKey(orderId ?? 0) });
     queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    // Terminar/regresar una tarea descuenta o devuelve insumos del inventario.
+    invalidateSupplyData(queryClient);
   };
 
   const setStatus = useMutation({
@@ -71,7 +75,12 @@ export function useAreaTasks(orderId: number | null) {
         { status },
         token
       ),
-    onSuccess: invalidate,
+    onSuccess: (data) => {
+      invalidate();
+      showSupplyWarnings(data);
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "No se pudo actualizar la tarea.")),
+    meta: { ownErrorToast: true },
   });
 
   const assign = useMutation({

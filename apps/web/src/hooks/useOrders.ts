@@ -7,6 +7,7 @@ import { ApiError, getErrorMessage, request, type Paginated } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken, useEntityDetail, useEntityList } from "@/hooks/useEntity";
+import { invalidateSupplyData } from "@/hooks/useAreaSupplies";
 import type {
   AreaTaskStatus,
   Order,
@@ -207,6 +208,8 @@ export function useMoveOrderStatus(actor: MoveActor) {
     onSuccess: ({ orderId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      // Mover tareas a "terminado" descuenta insumos del inventario.
+      invalidateSupplyData(queryClient);
       toast.success(orderStatusUpdatedMessage(orderId));
     },
     onError: (error) => {
@@ -768,6 +771,7 @@ export function useForceFinishOrder() {
     onSuccess: (orderId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orderHistories") });
+      invalidateSupplyData(queryClient);
       toast.success(`Pedido #${orderId} listo para entregar`);
     },
     onError: (error) => toast.error(getErrorMessage(error)),

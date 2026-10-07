@@ -14,6 +14,9 @@ import { DownloadFileButton } from "@/components/ui/download-file-button";
 import { OrderAttendance } from "@/components/orders/OrderAttendance";
 import { DetailField, DetailSection } from "@/components/orders/detail/DetailSection";
 import { useEntityList, useEntityMutations } from "@/hooks/useEntity";
+import { SizeSummary } from "@/components/sizes/SizeSummary";
+import { SizeGrid } from "@/components/sizes/SizeGrid";
+import { isGarmentName, parseSizeBreakdown, sizeBreakdownTotal, type SizeBreakdown } from "@/lib/garmentSizes";
 import { combineDateAndTime, getAssignedUserName, getOrderProductName } from "@/lib/format";
 import { splitDeliveryDate, type OrderDetailPermissions } from "@/lib/orderDetail";
 import type { Order, UpdateOrderPayload, User } from "@/types";
@@ -92,9 +95,12 @@ export function OrderDetailsSection({
               <p className="text-label">Productos</p>
               <ul className="divide-y divide-border/60 rounded-xl bg-muted/50">
                 {products.map((op, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                    <span className="min-w-0 truncate">{getOrderProductName(op)}</span>
-                    <span className="shrink-0 rounded-full bg-card px-2.5 py-0.5 text-xs font-semibold tabular-nums shadow-soft">× {op.quantity}</span>
+                  <li key={i} className="px-4 py-2.5 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate">{getOrderProductName(op)}</span>
+                      <span className="shrink-0 rounded-full bg-card px-2.5 py-0.5 text-xs font-semibold tabular-nums shadow-soft">× {op.quantity}</span>
+                    </div>
+                    <SizeSummary sizes={op.sizes} className="mt-1" />
                   </li>
                 ))}
               </ul>
@@ -158,6 +164,13 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
   const [assignedUserId, setAssignedUserId] = useState<number | undefined>(
     order.assignedUserId ?? undefined
   );
+  const products = order.orderProducts ?? [];
+  const [productSizes, setProductSizes] = useState<Array<SizeBreakdown | null>>(() =>
+    products.map((op) => parseSizeBreakdown(op.sizes))
+  );
+  const sizesChanged = productSizes.some(
+    (sz, i) => JSON.stringify(sz) !== JSON.stringify(parseSizeBreakdown(products[i]?.sizes))
+  );
 
   // Mientras está en Diseño sólo puede tenerlo alguien de Diseño (el backend
   // lo exige): ofrecer Taller o un admin era un "Guardar" que sólo fallaba.
@@ -176,6 +189,14 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
         description,
         deliveryDate: combineDateAndTime(deliveryDate, deliveryTime),
         assignedUserId: assignedUserId ?? null,
+        // Sólo si se tocaron tallas: reenviar las líneas las recrea.
+        ...(sizesChanged && {
+          orderProducts: products.map((op, i) => {
+            const sizes = productSizes[i];
+            const total = sizeBreakdownTotal(sizes);
+            return { customName: op.customName, quantity: total > 0 ? total : op.quantity, sizes: total > 0 ? sizes : null };
+          }),
+        }),
       });
       toast.success("Pedido actualizado");
       onDone();
@@ -238,6 +259,32 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
           </Select>
         </FormField>
       </div>
+      {products.some((op, i) => isGarmentName(op.customName) || productSizes[i]) && (
+        <div className="space-y-3">
+          <p className="text-label">Tallas</p>
+          {products.map((op, i) =>
+            isGarmentName(op.customName) || productSizes[i] ? (
+              <div key={i} className="rounded-lg border border-border/60 p-2">
+                <p className="mb-1 text-sm font-medium">{getOrderProductName(op)}</p>
+                <SizeGrid
+                  idPrefix={`order-edit-sizes-${i}`}
+                  label={op.customName}
+                  value={productSizes[i]}
+                  onChange={(next) =>
+                    setProductSizes((prev) => prev.map((sz, j) => (j === i ? parseSizeBreakdown(next) : sz)))
+                  }
+                />
+                {sizeBreakdownTotal(productSizes[i]) > 0 && sizeBreakdownTotal(productSizes[i]) !== op.quantity && (
+                  <p className="mt-1.5 text-meta" data-testid={`order-edit-sizes-hint-${i}`}>
+                    La cantidad de esta línea pasará de {op.quantity} a {sizeBreakdownTotal(productSizes[i])}: se toma
+                    el total de las tallas.
+                  </p>
+                )}
+              </div>
+            ) : null
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Button type="submit" size="sm" disabled={isMutating}>
           {isMutating && <Loader2 className="h-4 w-4 animate-spin" />}
