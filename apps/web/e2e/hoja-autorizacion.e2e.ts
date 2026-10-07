@@ -57,9 +57,23 @@ test("2 · hoja en PDF: se abre y se descarga", async ({ page }) => {
   await expect(hoja(page)).toContainText("Autorizada");
   await expect(hoja(page)).toContainText("hoja-gorras.pdf");
   // Se abre en una pestaña nueva como blob URL (la CSP no deja incrustarlo).
+  // Se mira la URL que pide la app y no la de la pestaña: el Chromium headless
+  // reciente no trae visor de PDF y esa pestaña nunca confirma la navegación
+  // (su URL queda en ""), aunque en un navegador de verdad el PDF abre.
+  await page.evaluate(() => {
+    const w = window as typeof window & { __abiertas?: string[] };
+    w.__abiertas = [];
+    const open = window.open.bind(window);
+    window.open = (url, ...rest) => {
+      w.__abiertas!.push(String(url));
+      return open(url, ...rest);
+    };
+  });
   const pestana = page.waitForEvent("popup");
   await hoja(page).getByRole("button", { name: "Abrir hoja-gorras.pdf" }).click();
-  expect((await pestana).url()).toMatch(/^blob:/);
+  await pestana;
+  const abiertas = await page.evaluate(() => (window as typeof window & { __abiertas?: string[] }).__abiertas);
+  expect(abiertas).toEqual([expect.stringMatching(/^blob:/)]);
 
   const descarga = page.waitForEvent("download");
   await hoja(page).getByRole("button", { name: "Descargar hoja-gorras.pdf" }).click();

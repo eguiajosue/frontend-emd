@@ -197,24 +197,34 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   const [warm3d, setWarm3d] = useState<"off" | "warming" | "ready">("off");
   const warmStart = useRef(0);
   useEffect(() => {
-    const ok = canUseWebGL();
-    setWebgl(ok);
-    if (!ok || reduced) return;
-    setWarm3d("warming");
-    warmStart.current = Date.now();
+    // Con movimiento reducido la llegada es 2D: ni se sondea WebGL. Crear el
+    // primer contexto puede trabar el hilo principal varios segundos (sin
+    // GPU, WebGL por software), así que tampoco va en el mismo tick que abre
+    // la tele: primero se pinta.
+    if (reduced) return;
     let alive = true;
-    // Con la tele ya pintada: three se baja y compila sin trabar la apertura.
-    const t = setTimeout(() => {
-      prewarmArrival3D()
-        .then(() => alive && setWarm3d("ready"))
-        .catch((err) => {
-          console.error("[modo TV] no se pudo preparar la escena 3D; se usa la 2D", err);
-          if (alive) setForce2d(true);
-        });
-    }, 300);
+    let warmTimer: ReturnType<typeof setTimeout> | undefined;
+    const probeTimer = setTimeout(() => {
+      if (!alive) return;
+      const ok = canUseWebGL();
+      setWebgl(ok);
+      if (!ok) return;
+      setWarm3d("warming");
+      warmStart.current = Date.now();
+      // Con la tele ya pintada: three se baja y compila sin trabar la apertura.
+      warmTimer = setTimeout(() => {
+        prewarmArrival3D()
+          .then(() => alive && setWarm3d("ready"))
+          .catch((err) => {
+            console.error("[modo TV] no se pudo preparar la escena 3D; se usa la 2D", err);
+            if (alive) setForce2d(true);
+          });
+      }, 300);
+    }, 150);
     return () => {
       alive = false;
-      clearTimeout(t);
+      clearTimeout(probeTimer);
+      clearTimeout(warmTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

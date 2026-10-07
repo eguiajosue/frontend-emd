@@ -110,6 +110,11 @@ test("3 · una llegada simulada cae como paquete y queda en Pendiente", async ({
 });
 
 test("4 · la paleta ⌘K abre el Modo TV de tareas", async ({ page }) => {
+  // Aquí sólo importa la navegación de la paleta. Sin GPU (CI) la tele, al
+  // abrir, sondea WebGL y prepara la llegada 3D por software, lo que traba el
+  // hilo principal ~5 s: justo lo que espera el `toBeVisible`. Con movimiento
+  // reducido la tele no toca WebGL (el 3D lo cubren las pruebas 3 y 6).
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/dashboard/tareas");
   await page.keyboard.press("Control+k");
   await page.getByRole("option", { name: /Modo TV de tareas/ }).click();
