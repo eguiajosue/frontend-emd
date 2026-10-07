@@ -297,6 +297,9 @@ test("4 · termo: el diseño se graba con láser (acero sobre pintura y sobre ac
   await shot("termo-grabado-acero");
   await expect(page.getByText("Sobre acero")).toBeVisible();
 
+  // La lámina se exporta sobre pintura (el grabado plateado resalta más).
+  await page.getByRole("button", { name: "Pintura electrostática" }).click();
+  await page.waitForTimeout(800);
   // Presets del termo y exportación de la lámina con el efecto.
   await page.getByRole("group", { name: "Posiciones predeterminadas" }).getByRole("button", { name: "Reverso" }).click();
   const [descarga] = await Promise.all([

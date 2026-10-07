@@ -196,7 +196,18 @@ function laserTexture(image: CanvasImageSource & { width: number; height: number
   const mask = laserMask(src, settings);
   maskToRgba(mask, src.data);
   ctx.putImageData(src, 0, 0);
-  const tex = new THREE.CanvasTexture(canvas);
+  // Bordes esmerilados: el láser no corta la pintura con filo de navaja.
+  const soft = document.createElement("canvas");
+  soft.width = canvas.width;
+  soft.height = canvas.height;
+  const sctx = soft.getContext("2d");
+  let out = canvas;
+  if (sctx) {
+    sctx.filter = `blur(${Math.max(0.6, canvas.width / 400).toFixed(2)}px)`;
+    sctx.drawImage(canvas, 0, 0);
+    out = soft;
+  }
+  const tex = new THREE.CanvasTexture(out);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
@@ -216,6 +227,8 @@ export class DesignDecal {
   private finish: DecalFinish = PRINT_FINISH;
   private appliedKey = "";
   private brushed: THREE.Texture | null = null;
+  /** Copia girada 90°: vetas verticales (el cepillado corre a lo largo del termo). */
+  private brushedV: THREE.Texture | null = null;
 
   constructor(layer: DesignLayer, private readonly anisotropy: number, private readonly onChange: () => void) {
     this.layer = layer;
@@ -268,7 +281,10 @@ export class DesignDecal {
       mat.metalness = 0;
       mat.roughness = 0.85;
       mat.roughnessMap = null;
+      mat.bumpMap = null;
       mat.clearcoat = 0;
+      mat.anisotropy = 0;
+      mat.emissive.set("#000000");
       mat.envMapIntensity = 1;
     } else {
       this.laserTex?.dispose();
@@ -277,23 +293,40 @@ export class DesignDecal {
         this.laserTex.anisotropy = this.anisotropy;
       }
       if (!this.brushed) this.brushed = acquireBrushedTexture();
+      if (!this.brushedV) {
+        this.brushedV = this.brushed.clone();
+        this.brushedV.center.set(0.5, 0.5);
+        this.brushedV.rotation = Math.PI / 2;
+        this.brushedV.repeat.set(2, 2);
+        this.brushedV.needsUpdate = true;
+      }
       mat.map = this.laserTex ?? tex;
-      mat.roughnessMap = this.brushed;
-      mat.clearcoat = 0;
+      mat.roughnessMap = this.brushedV;
+      mat.bumpMap = this.brushedV;
+      mat.bumpScale = 0.5;
       if (f.onSteel) {
         // Sobre acero natural el láser "quema" el pulido: esmerilado, más oscuro.
         mat.color.set("#6f747b");
         mat.metalness = 0.75;
         mat.roughness = 0.85;
         mat.envMapIntensity = 1;
+        mat.anisotropy = 0;
+        mat.clearcoat = 0;
+        mat.emissive.set("#000000");
       } else {
-        // Se quita la pintura: aparece el acero, claro, metálico y algo rugoso.
-        // Medio metálico: de frente un metal puro sólo refleja el entorno oscuro
-        // y se vería negro; la parte difusa lo mantiene claro como aluminio.
-        mat.color.set("#d9dde2");
-        mat.metalness = 0.55;
-        mat.roughness = 0.46;
-        mat.envMapIntensity = 1.8;
+        // Se quita la pintura: aparece el aluminio, claro y cepillado en
+        // vertical. Metal alto + anisotropía: el brillo corre y cambia al girar
+        // el termo; un poco de emisivo evita que de frente refleje el estudio
+        // oscuro y se vea gris; el barniz suave da el velo de brillo.
+        mat.color.set("#e6e9ed");
+        mat.metalness = 0.92;
+        mat.roughness = 0.36;
+        mat.envMapIntensity = 3.2;
+        mat.anisotropy = 0.75;
+        mat.anisotropyRotation = Math.PI / 2;
+        mat.emissive.set("#4a4e55");
+        mat.clearcoat = 0.25;
+        mat.clearcoatRoughness = 0.5;
       }
     }
     mat.needsUpdate = true;
@@ -338,6 +371,7 @@ export class DesignDecal {
     this.mesh.geometry.dispose();
     this.printTexture?.dispose();
     this.laserTex?.dispose();
+    this.brushedV?.dispose();
     if (this.brushed) releaseBrushedTexture();
     this.mesh.material.dispose();
   }
