@@ -54,6 +54,9 @@ async function captura(target: Page | Locator, nombre: string) {
 async function cargada(img: Locator) {
   await expect(img).toBeVisible();
   await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+  // `decoding="async"`: se espera a que esté decodificada (y pintada) antes de capturar.
+  await img.evaluate((el: HTMLImageElement) => el.decode());
+  await img.page().evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 }
 
 /** Las <img> del logo que se VEN (la otra variante queda con display:none). */
@@ -101,7 +104,8 @@ test("1 · el admin sube, valida y quita los dos logos de Punto Madero", async (
   await expect(sucursal).toBeVisible();
   await expect(sucursal.getByText("Logo para fondos claros (negro)")).toBeVisible();
   await expect(sucursal.getByText("Logo para fondos oscuros (blanco)")).toBeVisible();
-  await expect(sucursal.getByText("Sin logo")).toHaveCount(2);
+  await expect(sucursal.getByTestId("logo-preview-onLight")).toContainText("Sin logo");
+  await expect(sucursal.getByTestId("logo-preview-onDark")).toContainText("Sin logo");
 
   // Validaciones del cliente, sin llegar al backend.
   const claro = sucursal.getByLabel("Logo para fondos claros (negro) de Punto Madero");
@@ -163,7 +167,8 @@ test("2 · Recepción ve el logo en la lista, el detalle y la hoja de un pedido 
   await expect(hoja).toContainText("Autorizada");
   await cargada(logoVisible(hoja));
   await expect(logoVisible(hoja)).toHaveAttribute("alt", "Punto Madero");
-  const encabezado = logoVisible(detalle.locator("header").first());
+  // Encabezado del pedido: el logo grande va junto al título (#111 Escuela Madero).
+  const encabezado = logoVisible(detalle.getByRole("heading", { name: /#111/ }).locator("xpath=../.."));
   await expect(encabezado).toHaveCount(1);
   await cargada(encabezado);
   expect((await encabezado.boundingBox())!.height).toBe(48);
@@ -289,6 +294,7 @@ test("4 · tarea en la bandeja y en el Modo TV: la tele usa el logo BLANCO", asy
   // Bandeja (fondo de tarjeta según el tema): tema claro = logo negro.
   const bandeja = page.locator("article").filter({ has: page.getByRole("button", { name: /Ver pedido #111/ }) });
   await expect(bandeja).toBeVisible();
+  await bandeja.scrollIntoViewIfNeeded();
   await cargada(logoVisible(bandeja));
   expect(await logoVisible(bandeja).evaluate((el: HTMLImageElement) => el.dataset.variant)).toBe("light");
   await captura(page, "tareas-bandeja-claro");
@@ -300,6 +306,7 @@ test("4 · tarea en la bandeja y en el Modo TV: la tele usa el logo BLANCO", asy
   await expect(tarjeta).toBeVisible();
   const logo = logoVisible(tarjeta);
   await expect(logo).toHaveCount(1);
+  await tarjeta.scrollIntoViewIfNeeded();
   await cargada(logo);
   expect(await logo.evaluate((el: HTMLImageElement) => el.dataset.variant)).toBe("dark");
   expect(await tarjeta.getByTestId("branch-logo").getAttribute("data-surface")).toBe("dark");

@@ -56,7 +56,7 @@ function BranchHistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number
         <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
         <span className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 truncate text-sm font-medium">{client}</span>
-          <BranchBadge order={order} size="sm" />
+          <BranchBadge order={order} size="md" />
         </span>
         <span className="col-start-2 min-w-0 truncate text-sm text-muted-foreground sm:col-span-2 lg:col-span-1 lg:col-start-auto">
           {order.description || "—"}

@@ -125,7 +125,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
             <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
               <span className="tabular-nums">#{task.order.id}</span> · {clientName(task)}
             </p>
-            <BranchBadge order={task.order} size="sm" />
+            <BranchBadge order={task.order} size="md" />
           </div>
           <OrderSizesList products={task.order.orderProducts} />
         </div>

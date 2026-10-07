@@ -159,7 +159,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
         <span className="min-w-0">
           <span className="flex items-center gap-2">
             <span className="min-w-0 truncate text-sm font-medium">{client}</span>
-            <BranchBadge order={order} size="sm" />
+            <BranchBadge order={order} size="md" />
           </span>
           <span className="block truncate text-xs text-muted-foreground">{order.description}</span>
         </span>
