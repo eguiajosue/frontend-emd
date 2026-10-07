@@ -12,7 +12,6 @@ import {
   loftBody,
   mirrorX,
   placeOnEdge,
-  ribbon,
   roundedBox,
   sideHalfWidth,
   sideWindow,

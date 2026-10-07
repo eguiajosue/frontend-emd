@@ -340,3 +340,139 @@ test("4 · termo: el diseño se graba con láser (acero sobre pintura y sobre ac
   await page.waitForTimeout(1200);
   await shot("taza-frente");
 });
+
+test("5 · Rotulaciones: cada vehículo carga, lleva un logo, cambia de vista, el tráiler por partes, descarga y adjunta", async ({ page, request }) => {
+  test.setTimeout(480_000);
+  const shots = process.env.E2E_SHOTS_DIR;
+  const errores: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && !/favicon|404/.test(m.text())) errores.push(m.text());
+  });
+  page.on("pageerror", (e) => errores.push(e.message));
+  await login(page);
+  await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
+  await page.goto("/dashboard/mockups");
+  const lienzo = page.getByRole("img", { name: "Vista 3D de la prenda con los diseños" });
+  const cargado = () => expect(lienzo.getByText("Cargando prenda…")).toHaveCount(0, { timeout: 90_000 });
+  const host = lienzo.locator("div.absolute").first();
+  await expect(lienzo.locator("canvas")).toBeVisible({ timeout: 30_000 });
+  await cargado();
+  const shot = async (name: string) => {
+    if (shots) await page.waitForTimeout(1200), await lienzo.screenshot({ path: `${shots}/${name}.png` });
+  };
+  const vistas = page.getByRole("group", { name: "Vista" });
+  const presets = page.getByRole("group", { name: "Posiciones predeterminadas" });
+
+  // Categoría Rotulaciones: los cinco vehículos, sin tallas ni panel láser.
+  await page.getByRole("radiogroup", { name: "Categoría" }).getByRole("radio", { name: "Rotulaciones" }).click();
+  const vehiculos = page.getByRole("radiogroup", { name: "Vehículo" });
+  await expect(vehiculos.getByRole("radio")).toHaveText([/Carro/, /Minivan/, /Pickup/, /Tráiler/, /Bicicleta/]);
+  await cargado();
+  await expect(host).toHaveAttribute("data-garment", "car");
+  await expect(page.getByRole("button", { name: "Lado izquierdo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Arriba" })).toBeVisible();
+  await expect(page.getByText("Tallas", { exact: true })).toHaveCount(0);
+
+  const casos: [string, string, string, string][] = [
+    ["Carro", "car", "Puerta izquierda", "carro"],
+    ["Minivan", "minivan", "Puerta corrediza izquierda", "minivan"],
+    ["Pickup", "pickup", "Caja – lateral izquierdo", "pickup"],
+    ["Bicicleta", "bicycle", "Tubo diagonal izquierdo", "bicicleta"],
+  ];
+  let primero = true;
+  for (const [nombre, id, preset, slug] of casos) {
+    await vehiculos.getByRole("radio", { name: nombre }).click();
+    await cargado();
+    await expect(host).toHaveAttribute("data-garment", id);
+    if (primero) {
+      await page.getByLabel("Subir diseño").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: ringLogo() });
+      primero = false;
+    }
+    await expect(page.getByRole("list", { name: "Diseños del mockup" }).getByRole("listitem")).toHaveCount(1);
+    await presets.getByRole("button", { name: preset }).click();
+    await expect(presets.getByRole("button", { name: preset })).toHaveAttribute("aria-pressed", "true");
+    await expect(vistas.getByRole("button", { name: "Lado izquierdo" })).toHaveAttribute("aria-pressed", "true");
+    await shot(`${slug}-lado`);
+    await vistas.getByRole("button", { name: "Frente" }).click();
+    await shot(`${slug}-frente`);
+  }
+
+  // Tráiler: completo, sólo cabina y sólo caja.
+  await vehiculos.getByRole("radio", { name: "Tráiler" }).click();
+  await cargado();
+  const parte = page.getByRole("radiogroup", { name: "Parte del tráiler" });
+  await expect(parte.getByRole("radio", { name: "Completo" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("radiogroup", { name: "Categoría" }).getByRole("radio", { name: "Prendas" }).click();
+  await expect(page.getByRole("radiogroup", { name: "Parte del tráiler" })).toHaveCount(0);
+  await page.getByRole("radiogroup", { name: "Categoría" }).getByRole("radio", { name: "Rotulaciones" }).click();
+  await page.getByRole("radiogroup", { name: "Vehículo" }).getByRole("radio", { name: "Tráiler" }).click();
+  await cargado();
+  await presets.getByRole("button", { name: "Caja – lateral izquierdo" }).click();
+  await shot("trailer-completo-lado");
+  await parte.getByRole("radio", { name: "Solo cabina" }).click();
+  await cargado();
+  await expect(presets.getByRole("button", { name: "Caja – lateral izquierdo" })).toHaveCount(0);
+  await expect(presets.getByRole("button", { name: "Cabina – puerta izquierda" })).toBeVisible();
+  await shot("trailer-cabina-lado");
+  await parte.getByRole("radio", { name: "Solo caja" }).click();
+  await cargado();
+  await expect(presets.getByRole("button", { name: "Caja – puerta trasera" })).toBeVisible();
+  await expect(presets.getByRole("button", { name: "Cabina – puerta izquierda" })).toHaveCount(0);
+  await shot("trailer-caja-lado");
+  await parte.getByRole("radio", { name: "Completo" }).click();
+  await cargado();
+
+  // Una vista y la lámina completa.
+  await presets.getByRole("button", { name: "Caja – lateral izquierdo" }).click();
+  await page.getByRole("button", { name: "Elegir la vista a descargar" }).click();
+  const [lado] = await Promise.all([
+    page.waitForEvent("download", { timeout: 120_000 }),
+    page.getByRole("menuitem", { name: /Solo Lado izquierdo/ }).click(),
+  ]);
+  expect(lado.suggestedFilename()).toMatch(/^mockup-trailer-.*-lado-izquierdo\.png$/);
+  const pngLado = readFileSync((await lado.path())!);
+  expect(pngLado.readUInt32BE(16)).toBeGreaterThan(pngLado.readUInt32BE(20));
+  if (shots) await lado.saveAs(`${shots}/lamina-trailer-lado-izquierdo.png`);
+  const [lamina] = await Promise.all([
+    page.waitForEvent("download", { timeout: 180_000 }),
+    page.getByRole("button", { name: "Descargar imagen" }).click(),
+  ]);
+  const pngLamina = readFileSync((await lamina.path())!);
+  expect(pngLamina.subarray(1, 4).toString()).toBe("PNG");
+  expect(pngLamina.readUInt32BE(16)).toBe(1600);
+  expect(pngLamina.readUInt32BE(20)).toBeGreaterThan(900);
+  if (shots) await lamina.saveAs(`${shots}/lamina-trailer.png`);
+
+  // Adjuntar a un pedido: el backend de mentira recibe el tráiler y su parte.
+  await parte.getByRole("radio", { name: "Solo cabina" }).click();
+  await cargado();
+  await page.getByRole("button", { name: "Adjuntar a pedido" }).click();
+  const dialogo = page.getByRole("dialog", { name: "Adjuntar a pedido" });
+  await expect(dialogo).toBeVisible({ timeout: 120_000 });
+  await dialogo.getByRole("list", { name: "Pedidos" }).getByRole("button", { name: /#101.*Colegio San Marcos/ }).click();
+  await expect(page.getByText("Mockup adjuntado al pedido #101")).toBeVisible({ timeout: 60_000 });
+  const recibidos = (await (await request.get(`${MOCK_API}/__e2e/mockups`)).json()) as Array<{
+    garment: string;
+    config: { garment: string; vehiclePart?: string; sizes?: unknown };
+  }>;
+  expect(recibidos).toHaveLength(1);
+  expect(recibidos[0].garment).toBe("trailer");
+  expect(recibidos[0].config.vehiclePart).toBe("cab");
+  expect(recibidos[0].config.sizes).toBeUndefined();
+
+  // Plantilla de vehículo: miniatura chica y la parte se conserva.
+  await page.getByRole("button", { name: "Guardar como plantilla" }).click();
+  const guardar = page.getByRole("dialog", { name: "Guardar como plantilla" });
+  await guardar.getByRole("textbox", { name: "Nombre de la plantilla" }).fill("Tráiler cabina");
+  await guardar.getByRole("button", { name: "Guardar plantilla" }).click();
+  await expect(page.getByText("Plantilla «Tráiler cabina» guardada")).toBeVisible({ timeout: 90_000 });
+  const guardadas = (await (await request.get(`${MOCK_API}/__e2e/mockup-templates`)).json()) as Array<{
+    garment: string;
+    thumbnailUrl: string;
+    config: { vehiclePart?: string };
+  }>;
+  expect(guardadas[0]).toMatchObject({ garment: "trailer", config: { vehiclePart: "cab" } });
+  expect(guardadas[0].thumbnailUrl).toMatch(/^data:image\/jpeg;base64,/);
+  expect(guardadas[0].thumbnailUrl.length).toBeLessThan(96 * 1024 * 1.4);
+  expect(errores).toEqual([]);
+});

@@ -156,8 +156,8 @@ export const PLACEMENT_PRESETS: Record<Garment, PlacementPreset[]> = {
     { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.094, 0.078, 0.05], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
     { id: "cofre", label: "Cofre", placement: { position: [0, 0.11184, 0.17], normal: [0, 0.99954, 0.03028], scale: 0.09, rotation: Math.PI }, view: "top" },
     { id: "techo", label: "Techo", placement: { position: [0, 0.18, -0.02], normal: [0, 1, 0], scale: 0.07, rotation: Math.PI }, view: "top" },
-    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.095, 0.085, -0.18], normal: [1, 0, 0], scale: 0.12 }, view: "left" },
-    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.095, 0.085, -0.18], normal: [-1, 0, 0], scale: 0.12 }, view: "right" },
+    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.095, 0.095, -0.18], normal: [1, 0, 0], scale: 0.12 }, view: "left" },
+    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.095, 0.095, -0.18], normal: [-1, 0, 0], scale: 0.12 }, view: "right" },
     { id: "caja-compuerta", label: "Caja – compuerta", placement: { position: [0, 0.082, -0.2655], normal: [0, 0, -1], scale: 0.1 }, view: "back" },
   ],
   trailer: [

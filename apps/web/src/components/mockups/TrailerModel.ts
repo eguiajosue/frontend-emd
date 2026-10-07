@@ -85,7 +85,6 @@ function buildCab(group: THREE.Group, d: Disposer, mats: VehicleMaterials, targe
     [1.94, 3.3],
     [1.94, yBase],
   ];
-  const cabOpts = { halfWidth: 1.2, taper: 0.07, bevel: 0.06, yBase, yTop, taperFrom: 2.4 };
   const lower: Pt[] = [
     [5.0, yBase],
     [5.0, 2.42],

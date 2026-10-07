@@ -405,6 +405,9 @@ function login(body) {
 const PREFERENCIAS_INICIALES = { hasSeenOnboarding: true, navPreferences: null };
 let preferencias = { ...PREFERENCIAS_INICIALES };
 
+/** Prendas que acepta el backend para un mockup (MOCKUP_GARMENTS). */
+const PRENDAS_MOCKUP = ["tshirt", "cap", "hoodie", "dress-shirt", "termo", "taza", "car", "minivan", "pickup", "trailer", "bicycle"];
+
 /** Plantillas y logos de mockups (compartidos por la empresa), en memoria. */
 let plantillas = [];
 let siguientePlantillaId = 1;
@@ -848,6 +851,15 @@ createServer((req, res) => {
         recibidos.push({ orderId, ...payload });
         if (!payload.garment || typeof payload.imageDataUrl !== "string") {
           return send({ message: "garment e imageDataUrl son obligatorios" }, 400);
+        }
+        // Mismas reglas que el backend (src/common/mockup-garments.ts): prendas
+        // conocidas y `config.vehiclePart` ('full' | 'cab' | 'box') sólo en el tráiler.
+        if (!PRENDAS_MOCKUP.includes(payload.garment)) {
+          return send({ message: "La prenda no es válida" }, 400);
+        }
+        const parte = payload.config?.vehiclePart;
+        if (parte !== undefined && (payload.garment !== "trailer" || !["full", "cab", "box"].includes(parte))) {
+          return send({ message: "La parte del tráiler debe ser completo (full), cabina (cab) o caja (box)" }, 400);
         }
         const nuevo = {
           id: siguienteMockupId++,
