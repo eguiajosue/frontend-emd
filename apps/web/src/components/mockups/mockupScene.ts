@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { SizeBreakdown } from "@/lib/garmentSizes";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type {
   DesignPlacement,
@@ -231,8 +232,8 @@ export class MockupScene {
     }
   }
 
-  async exportSheet(): Promise<MockupExport> {
-    return this.exportComposite((layers) => sheetViewsFor(layers), {});
+  async exportSheet(sizes?: SizeBreakdown | null): Promise<MockupExport> {
+    return this.exportComposite((layers) => sheetViewsFor(layers), { sizes });
   }
 
   /**

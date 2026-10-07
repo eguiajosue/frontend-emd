@@ -1,3 +1,4 @@
+import type { SizeBreakdown } from "@/lib/garmentSizes";
 /**
  * Contrato compartido del creador de mockups 3D (ver docs/plans/mockups-3d.md).
  *
@@ -81,6 +82,8 @@ export interface MockupConfig {
   colors: GarmentColors;
   layers: DesignLayer[];
   options?: GarmentOptions;
+  /** Desglose de tallas (panel "Tallas"); se imprime como tabla en la lámina. Opcional: mockups viejos no lo traen. */
+  sizes?: SizeBreakdown | null;
 }
 
 /** Vistas fijas de cámara (botones del estudio y láminas de exportación). */
@@ -128,7 +131,8 @@ export interface MockupExport {
  * `exportSheet` renderiza las vistas Frente / Espalda / Lado en una lámina.
  */
 export interface MockupCanvasHandle {
-  exportSheet: () => Promise<MockupExport>;
+  /** `sizes`: desglose de tallas a imprimir como tabla al pie (opcional). */
+  exportSheet: (sizes?: SizeBreakdown | null) => Promise<MockupExport>;
   /**
    * Miniatura chica (≈ 400 × 400, sólo la vista de frente, JPEG) para las
    * plantillas: pesa muy poco (≤ MAX_TEMPLATE_THUMBNAIL_BYTES, 96 KB).

@@ -274,6 +274,26 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(onCreated).toHaveBeenCalledWith({ id: 123 });
   });
 
+  it("las tallas de una prenda viajan en la línea y su total es la cantidad", async () => {
+    renderDialog();
+    await pickClientByFreeText("Juan Pérez");
+    await chooseWithoutDesign();
+    await toggleArea("Taller");
+    await addProduct("Playera");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Playeras con tallas");
+    await userEvent.click(screen.getByRole("button", { name: "Tallas" }));
+    fireEvent.change(screen.getByLabelText(/^General M/), { target: { value: "5" } });
+    await userEvent.click(screen.getByRole("button", { name: /Mujer \(dama\)/ }));
+    fireEvent.change(screen.getByLabelText(/^Mujer S/), { target: { value: "3" } });
+    expect(screen.getByLabelText("Cantidad de Playera")).toHaveValue("8");
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderProducts: [{ customName: "Playera", quantity: 8, sizes: { general: { M: 5 }, mujer: { S: 3 } } }],
+      })
+    );
+  });
+
   it("con diseño, propone 'Cualquier diseñador' (cuenta compartida) y lo manda como asignación", async () => {
     mockData.users = [DESIGN_SHARED];
     renderDialog();

@@ -1,8 +1,10 @@
 "use client";
 
+import { MockupSizesPanel } from "@/components/mockups/MockupSizesPanel";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -184,6 +186,12 @@ export function MockupStudio({
   const configRef = useRef(config);
   configRef.current = config;
   const garment = config.garment;
+  // El 3D no usa las tallas: sin esto, tipear en la grilla re-aplicaría la
+  // config a la escena en cada tecla.
+  const canvasConfig = useMemo<MockupConfig>(
+    () => ({ garment: config.garment, colors: config.colors, layers: config.layers, options: config.options }),
+    [config.garment, config.colors, config.layers, config.options]
+  );
   const selected = config.layers.find((l) => l.id === selectedId) ?? null;
   const baseScale = defaultPlacement(garment).scale || 1;
 
@@ -344,7 +352,7 @@ export function MockupStudio({
   const exportImage = async (): Promise<MockupStudioResult> => {
     const handle = canvasRef.current;
     if (!handle) throw new Error("El 3D no está disponible en este navegador.");
-    const image = await handle.exportSheet();
+    const image = await handle.exportSheet(config.sizes);
     return { image, config };
   };
 
@@ -438,7 +446,7 @@ export function MockupStudio({
       >
         <MockupCanvasLazy
           ref={canvasRef}
-          config={config}
+          config={canvasConfig}
           selectedLayerId={selectedId}
           onSelectLayer={setSelectedId}
           onPlacementChange={handlePlacementChange}
@@ -595,6 +603,11 @@ export function MockupStudio({
               ))}
             </div>
           </StudioSection>
+
+          <MockupSizesPanel
+            sizes={config.sizes}
+            onChange={(sizes) => setConfig((prev) => ({ ...prev, sizes }))}
+          />
 
           <StudioSection
             title="Diseños"
