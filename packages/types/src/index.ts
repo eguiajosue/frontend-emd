@@ -808,12 +808,34 @@ export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload
 /** ENTRADA suma, SALIDA resta, AJUSTE fija el stock al conteo físico. */
 export type InventoryMovementType = "ENTRADA" | "SALIDA" | "AJUSTE";
 
+export type InventoryMovementSource = "recepcion" | "area" | "scan" | "inicial";
+
+/** Filtros de la bitácora global (`GET /inventory/movements`). */
+export interface InventoryMovementsFilter {
+  itemId?: number;
+  area?: InventoryArea;
+  userId?: number;
+  type?: InventoryMovementType;
+  /** ISO (fecha o fecha+hora). */
+  from?: string;
+  to?: string;
+  limit?: number;
+}
+
 export interface InventoryMovement extends BaseEntity {
   itemId: number;
   type: InventoryMovementType;
   /** Cambio con signo aplicado al stock. */
   delta: number;
   balanceAfter: number;
+  /** Stock antes del movimiento (bitácora); null en movimientos antiguos. */
+  balanceBefore?: number | null;
+  /** Departamento del artículo al moverse. */
+  area?: InventoryArea | null;
+  /** Motivo capturado por quien lo registró. */
+  reason?: string | null;
+  /** Origen: gestión de Recepción, usuario del área, escáner o stock inicial. */
+  source?: InventoryMovementSource | null;
   unitCost?: number | null;
   note?: string | null;
   orderId?: number | null;
@@ -835,7 +857,50 @@ export interface CreateInventoryMovementPayload {
   quantity: number;
   unitCost?: number;
   note?: string;
+  /** Motivo para la bitácora. */
+  reason?: string;
   orderId?: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Solicitudes de reabasto (`/inventory/restock-requests`)                    */
+/* -------------------------------------------------------------------------- */
+
+export type RestockRequestStatus = "PENDIENTE" | "EN_CAMINO" | "COMPRADO" | "RESUELTO";
+export type RestockRequestUrgency = "NORMAL" | "URGENTE";
+
+export interface RestockRequest {
+  id: number;
+  area: InventoryArea;
+  itemId?: number | null;
+  itemName: string;
+  quantity?: number | null;
+  unit?: string | null;
+  comment?: string | null;
+  urgency: RestockRequestUrgency;
+  status: RestockRequestStatus;
+  statusNote?: string | null;
+  resolvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  item?: { id: number; name: string; unit: string; quantity: number; area: InventoryArea } | null;
+  requestedBy: { id: number; firstName: string; lastName?: string | null };
+  handledBy?: { id: number; firstName: string; lastName?: string | null } | null;
+}
+
+export interface CreateRestockRequestPayload {
+  itemId?: number;
+  itemName?: string;
+  area?: InventoryArea;
+  quantity?: number;
+  unit?: string;
+  comment?: string;
+  urgency?: RestockRequestUrgency;
+}
+
+export interface UpdateRestockRequestStatusPayload {
+  status: RestockRequestStatus;
+  note?: string;
 }
 
 /* -------------------------------------------------------------------------- */
