@@ -1,4 +1,4 @@
-import type { DesignLayer, DesignPlacement, Garment, PlacementPreset } from "./types";
+import type { DesignLayer, DesignPlacement, Garment, PlacementPreset, VehiclePart } from "./types";
 
 /**
  * Posiciones predeterminadas por prenda, en el espacio local de cada modelo
@@ -126,6 +126,58 @@ export const PLACEMENT_PRESETS: Record<Garment, PlacementPreset[]> = {
       view: "right",
     },
   ],
+  // Rotulaciones (vehículos): las posiciones salen de raycasts sobre las
+  // superficies rotulables de cada modelo (`components/mockups/*Model.ts`, los
+  // tests de `vehiclePresets.test.ts` verifican que sigan sobre la pintura).
+  // Izquierda / derecha son las del vehículo (la izquierda del conductor está
+  // en +X). Los diseños de techo, cofre y cajuela giran 180° para leerse
+  // derechos en la vista "Arriba" (frente del vehículo hacia arriba).
+  car: [
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.092, 0.062, 0.02], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.092, 0.062, 0.02], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
+    { id: "costado-izquierdo", label: "Costado completo izquierdo", placement: { position: [0.092, 0.062, -0.035], normal: [1, 0, 0], scale: 0.14 }, view: "left" },
+    { id: "costado-derecho", label: "Costado completo derecho", placement: { position: [-0.092, 0.062, -0.035], normal: [-1, 0, 0], scale: 0.14 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.08577, 0.14], normal: [0, 0.98739, 0.15832], scale: 0.08, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.146, -0.05], normal: [0, 1, 0], scale: 0.08, rotation: Math.PI }, view: "top" },
+    { id: "cajuela", label: "Cajuela", placement: { position: [0, 0.1, -0.19], normal: [0, 1, 0], scale: 0.07, rotation: Math.PI }, view: "top" },
+    { id: "trasera", label: "Parte trasera", placement: { position: [0, 0.09, -0.2363], normal: [0, 0.40891, -0.91257], scale: 0.07 }, view: "back" },
+  ],
+  minivan: [
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.099, 0.072, 0.06], normal: [1, 0, 0], scale: 0.07 }, view: "left" },
+    { id: "puerta-corrediza-izquierda", label: "Puerta corrediza izquierda", placement: { position: [0.099, 0.072, -0.06], normal: [1, 0, 0], scale: 0.09 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.099, 0.072, 0.06], normal: [-1, 0, 0], scale: 0.07 }, view: "right" },
+    { id: "puerta-corrediza-derecha", label: "Puerta corrediza derecha", placement: { position: [-0.099, 0.072, -0.06], normal: [-1, 0, 0], scale: 0.09 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.08866, 0.18], normal: [0, 0.98695, 0.16101], scale: 0.08, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.176, -0.09], normal: [0, 1, 0], scale: 0.1, rotation: Math.PI }, view: "top" },
+    { id: "trasera", label: "Puerta trasera", placement: { position: [0, 0.095, -0.25475], normal: [0, 0.05327, -0.99858], scale: 0.08 }, view: "back" },
+  ],
+  pickup: [
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.094, 0.078, 0.05], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.094, 0.078, 0.05], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.11184, 0.17], normal: [0, 0.99954, 0.03028], scale: 0.09, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.18, -0.02], normal: [0, 1, 0], scale: 0.07, rotation: Math.PI }, view: "top" },
+    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.095, 0.085, -0.18], normal: [1, 0, 0], scale: 0.12 }, view: "left" },
+    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.095, 0.085, -0.18], normal: [-1, 0, 0], scale: 0.12 }, view: "right" },
+    { id: "caja-compuerta", label: "Caja – compuerta", placement: { position: [0, 0.082, -0.2655], normal: [0, 0, -1], scale: 0.1 }, view: "back" },
+  ],
+  trailer: [
+    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.13, 0.26, -0.6], normal: [1, 0, 0], scale: 0.5 }, view: "left", parts: ["full", "box"] },
+    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.13, 0.26, -0.6], normal: [-1, 0, 0], scale: 0.5 }, view: "right", parts: ["full", "box"] },
+    { id: "caja-puerta-trasera", label: "Caja – puerta trasera", placement: { position: [0, 0.26, -1.255], normal: [0, 0, -1], scale: 0.16 }, view: "back", parts: ["full", "box"] },
+    { id: "caja-techo", label: "Caja – techo", placement: { position: [0, 0.405, -0.6], normal: [0, 1, 0], scale: 0.16, rotation: Math.PI }, view: "top", parts: ["full", "box"] },
+    { id: "caja-frente", label: "Caja – frente", placement: { position: [0, 0.26, 0.085], normal: [0, 0, 1], scale: 0.16 }, view: "front", parts: ["box"] },
+    { id: "cabina-puerta-izquierda", label: "Cabina – puerta izquierda", placement: { position: [0.12, 0.18, 0.43], normal: [1, 0, 0], scale: 0.07 }, view: "left", parts: ["full", "cab"] },
+    { id: "cabina-puerta-derecha", label: "Cabina – puerta derecha", placement: { position: [-0.12, 0.18, 0.43], normal: [-1, 0, 0], scale: 0.07 }, view: "right", parts: ["full", "cab"] },
+    { id: "cabina-cofre", label: "Cabina – cofre", placement: { position: [0, 0.22901, 0.6], normal: [0, 0.99501, 0.09976], scale: 0.12, rotation: Math.PI }, view: "top", parts: ["full", "cab"] },
+    { id: "cabina-techo", label: "Cabina – techo", placement: { position: [0, 0.3409, 0.3], normal: [0, 0.99249, 0.12236], scale: 0.12, rotation: Math.PI }, view: "top", parts: ["full", "cab"] },
+  ],
+  bicycle: [
+    { id: "tubo-diagonal-izquierdo", label: "Tubo diagonal izquierdo", placement: { position: [0.00563, 0.12875, 0.05], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
+    { id: "tubo-diagonal-derecho", label: "Tubo diagonal derecho", placement: { position: [-0.00562, 0.12875, 0.05], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
+    { id: "guardafango-trasero", label: "Guardafango trasero", placement: { position: [0, 0.177, -0.14], normal: [0, 1, 0], scale: 0.045, rotation: Math.PI }, view: "top" },
+    { id: "canastilla-frente", label: "Canastilla (frente)", placement: { position: [0, 0.2425, 0.194], normal: [0, 0, 1], scale: 0.07 }, view: "front" },
+    { id: "canastilla-izquierda", label: "Canastilla (lado)", placement: { position: [0.044, 0.2425, 0.16], normal: [1, 0, 0], scale: 0.05 }, view: "left" },
+  ],
 };
 
 /** Convierte un preset en `DesignPlacement` (copias: nunca comparte arreglos). */
@@ -138,9 +190,19 @@ export function presetPlacement(preset: PlacementPreset): DesignPlacement {
   };
 }
 
+/**
+ * Presets de una prenda. En el tráiler sólo salen los de la parte que se ve
+ * (completo, cabina o caja); el resto de las prendas ignora `part`.
+ */
+export function presetsFor(garment: Garment, part?: VehiclePart): PlacementPreset[] {
+  const all = PLACEMENT_PRESETS[garment] ?? [];
+  if (!part) return all;
+  return all.filter((p) => !p.parts || p.parts.includes(part));
+}
+
 /** Dónde cae un diseño nuevo: el primer preset de la prenda (centro del frente). */
-export function defaultPlacement(garment: Garment): DesignPlacement {
-  const first = PLACEMENT_PRESETS[garment]?.[0] ?? PLACEMENT_PRESETS.tshirt[0];
+export function defaultPlacement(garment: Garment, part?: VehiclePart): DesignPlacement {
+  const first = presetsFor(garment, part)[0] ?? PLACEMENT_PRESETS.tshirt[0];
   return presetPlacement(first);
 }
 

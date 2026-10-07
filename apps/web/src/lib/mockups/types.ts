@@ -15,8 +15,25 @@ import type { LaserEngraveSettings } from "./laserEngrave";
  * tienen modelo 3D: la UI sólo ofrece las de `ENABLED_GARMENTS`
  * (`lib/mockups/garments.ts`). "termo" y "taza" no son prendas sino
  * productos promocionales, pero viven en el mismo registro y contrato.
+ *
+ * "car", "minivan", "pickup", "trailer" y "bicycle" son las ROTULACIONES
+ * (vinil sobre vehículos): modelos 100 % procedurales, sin tallas.
  */
-export type Garment = "tshirt" | "cap" | "hoodie" | "dress-shirt" | "termo" | "taza";
+export type Garment =
+  | "tshirt"
+  | "cap"
+  | "hoodie"
+  | "dress-shirt"
+  | "termo"
+  | "taza"
+  | "car"
+  | "minivan"
+  | "pickup"
+  | "trailer"
+  | "bicycle";
+
+/** Parte del tráiler que se rotula: completo, sólo la cabina o sólo la caja. */
+export type VehiclePart = "full" | "cab" | "box";
 
 export type Vec3 = [number, number, number];
 
@@ -94,10 +111,15 @@ export interface MockupConfig {
   options?: GarmentOptions;
   /** Desglose de tallas (panel "Tallas"); se imprime como tabla en la lámina. Opcional: mockups viejos no lo traen. */
   sizes?: SizeBreakdown | null;
+  /** Tráiler: qué parte se rotula ("full" por defecto). Sólo la lleva el tráiler. */
+  vehiclePart?: VehiclePart;
 }
 
-/** Vistas fijas de cámara (botones del estudio y láminas de exportación). */
-export type MockupView = "front" | "back" | "left" | "right";
+/**
+ * Vistas fijas de cámara (botones del estudio y láminas de exportación).
+ * "top" (arriba) sólo existe para vehículos.
+ */
+export type MockupView = "front" | "back" | "left" | "right" | "top";
 
 /** Posición predeterminada para colocar un diseño con un botón. */
 export interface PlacementPreset {
@@ -106,6 +128,8 @@ export interface PlacementPreset {
   placement: Omit<DesignPlacement, "rotation"> & { rotation?: number };
   /** Vista a la que conviene girar la cámara al aplicar el preset. */
   view: MockupView;
+  /** Tráiler: en qué partes ("full", "cab", "box") tiene sentido. Sin esto, en todas. */
+  parts?: VehiclePart[];
 }
 
 /** Lado mayor máximo de un diseño importado (R1). */
@@ -121,6 +145,13 @@ export const DEFAULT_COLORS: Record<Garment, GarmentColors> = {
   "dress-shirt": { body: "#ffffff" },
   termo: { body: "#2b2e34" },
   taza: { body: "#ffffff" },
+  // Rotulaciones: vehículos blancos (el vinil resalta) salvo la cabina del
+  // tráiler (`body`), que va en azul marino; su caja (`mesh`) es blanca.
+  car: { body: "#f4f4f5" },
+  minivan: { body: "#f4f4f5" },
+  pickup: { body: "#f4f4f5" },
+  trailer: { body: "#1f2a44", mesh: "#ffffff" },
+  bicycle: { body: "#f4f4f5" },
 };
 
 /**
@@ -140,6 +171,11 @@ export const GARMENT_LABELS: Record<Garment, string> = {
   "dress-shirt": "Camisa de vestir",
   termo: "Termo",
   taza: "Taza",
+  car: "Carro",
+  minivan: "Minivan",
+  pickup: "Pickup",
+  trailer: "Tráiler",
+  bicycle: "Bicicleta",
 };
 
 /** Resultado de exportar: lámina PNG lista para descargar o adjuntar. */
@@ -150,8 +186,12 @@ export interface MockupExport {
   height: number;
 }
 
-/** Qué descargar: la lámina con las tres vistas o una sola. */
-export type DownloadViewKey = "all" | "front" | "back" | "side";
+/**
+ * Qué descargar: la lámina con todas las vistas o una sola. "side" es el lado
+ * de las prendas (el que tenga diseños); "left", "right" y "top" son de los
+ * vehículos.
+ */
+export type DownloadViewKey = "all" | "front" | "back" | "side" | "left" | "right" | "top";
 
 /**
  * API imperativa que expone el lienzo 3D al estudio (vía ref).
