@@ -269,6 +269,26 @@ describe("MockupStudio", () => {
     );
   });
 
+  it("el menú de descarga permite bajar una sola vista", async () => {
+    render(<MockupStudio />);
+    await userEvent.click(screen.getByRole("button", { name: "Elegir la vista a descargar" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /Solo Espalda/ }));
+    expect(exportSheet).toHaveBeenCalledTimes(1);
+    expect(exportSheet).toHaveBeenCalledWith(undefined, "back");
+    expect(downloadFromUrl).toHaveBeenCalledWith(
+      SHEET.dataUrl,
+      expect.stringMatching(/^mockup-playera-\d{4}-\d{2}-\d{2}-espalda\.png$/)
+    );
+  });
+
+  it("el menú también ofrece todas las vistas (la lámina completa)", async () => {
+    render(<MockupStudio />);
+    await userEvent.click(screen.getByRole("button", { name: "Elegir la vista a descargar" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: /Todas las vistas/ }));
+    expect(exportSheet).toHaveBeenCalledWith(undefined, "all");
+    expect(downloadFromUrl).toHaveBeenCalledWith(SHEET.dataUrl, expect.stringMatching(/^mockup-playera-\d{4}-\d{2}-\d{2}\.png$/));
+  });
+
   it("mientras exporta, los controles quedan bloqueados para que imagen y config coincidan", async () => {
     let finish: (v: typeof SHEET) => void = () => {};
     exportSheet.mockImplementationOnce(() => new Promise((r) => (finish = r)));

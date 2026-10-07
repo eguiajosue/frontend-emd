@@ -13,7 +13,7 @@ import {
 } from "react";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { toast } from "sonner";
-import { BookImage, Download, ImagePlus, LayoutTemplate, Loader2, Paperclip, RotateCcw, Save } from "lucide-react";
+import { BookImage, ChevronDown, Download, ImagePlus, LayoutTemplate, Loader2, Paperclip, RotateCcw, Save } from "lucide-react";
 import MockupCanvasLazy from "@/components/mockups/MockupCanvasLazy";
 import { MockupColorField, type MyColorsControls } from "@/components/mockups/MockupColorField";
 import { MockupLayerList } from "@/components/mockups/MockupLayerList";
@@ -22,6 +22,13 @@ import { LaserEngravePanel, TermoFinishPicker } from "@/components/mockups/Laser
 import { MockupLibraryDialog } from "@/components/mockups/MockupLibrary";
 import { MockupTemplatesDialog, SaveTemplateDialog } from "@/components/mockups/MockupTemplates";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DOWNLOAD_VIEW_OPTIONS } from "@/components/mockups/exportMockup";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMockupColors } from "@/hooks/useMockupColors";
 import { downloadFromUrl } from "@/lib/download";
@@ -48,6 +55,7 @@ import {
   type Garment,
   type MockupCanvasHandle,
   type MockupConfig,
+  type DownloadViewKey,
   type MockupView,
   type PlacementPreset,
   DEFAULT_COLORS,
@@ -354,18 +362,18 @@ export function MockupStudio({
 
   /* ------------------------------ Exportar ------------------------------ */
 
-  const exportImage = async (): Promise<MockupStudioResult> => {
+  const exportImage = async (only: DownloadViewKey = "all"): Promise<MockupStudioResult> => {
     const handle = canvasRef.current;
     if (!handle) throw new Error("El 3D no está disponible en este navegador.");
-    const image = await handle.exportSheet(garmentHasSizes(config.garment) ? config.sizes : null);
+    const image = await handle.exportSheet(garmentHasSizes(config.garment) ? config.sizes : null, only);
     return { image, config };
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (only: DownloadViewKey = "all") => {
     setBusy("download");
     try {
-      const { image } = await exportImage();
-      await downloadFromUrl(image.dataUrl, mockupFilename(garment));
+      const { image } = await exportImage(only);
+      await downloadFromUrl(image.dataUrl, mockupFilename(garment, new Date(), only));
     } catch (error) {
       toast.error(
         error instanceof Error && error.message.startsWith("El 3D")
@@ -734,16 +742,44 @@ export function MockupStudio({
 
         {/* Acciones */}
         <div className="flex flex-col gap-2 border-t border-border/60 bg-card px-4 py-3 sm:flex-row sm:px-5 lg:flex-col xl:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 flex-1"
-            onClick={handleDownload}
-            disabled={busy !== null}
-          >
-            {busy === "download" ? <Loader2 className="animate-spin" /> : <Download />}
-            Descargar imagen
-          </Button>
+          <div className="flex flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 flex-1 rounded-r-none border-r-0"
+              onClick={() => handleDownload("all")}
+              disabled={busy !== null}
+            >
+              {busy === "download" ? <Loader2 className="animate-spin" /> : <Download />}
+              Descargar imagen
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-l-none"
+                  aria-label="Elegir la vista a descargar"
+                  disabled={busy !== null}
+                >
+                  <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                {DOWNLOAD_VIEW_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.key}
+                    className="flex-col items-start gap-0"
+                    onSelect={() => handleDownload(option.key)}
+                  >
+                    <span className="font-medium">{option.label}</span>
+                    <span className="text-xs text-muted-foreground">{option.description}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           {onAttach && (
             <Button
               type="button"

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { expect, test, login } from "./helpers";
 
@@ -133,6 +134,20 @@ test("1 · Recepción arma un mockup, lo descarga y lo adjunta a un pedido", asy
   ]);
   expect(descarga.suggestedFilename()).toMatch(/^mockup-.*\.png$/);
   expect(await descarga.failure()).toBeNull();
+
+  // Una sola vista: menú junto al botón; baja una imagen cuadrada y con el nombre de la vista.
+  await page.getByRole("button", { name: "Elegir la vista a descargar" }).click();
+  const [vista] = await Promise.all([
+    page.waitForEvent("download", { timeout: 60_000 }),
+    page.getByRole("menuitem", { name: /Solo Espalda/ }).click(),
+  ]);
+  expect(vista.suggestedFilename()).toMatch(/^mockup-.*-espalda\.png$/);
+  const archivo = await vista.path();
+  expect(archivo).toBeTruthy();
+  const png = readFileSync(archivo!);
+  // La lámina completa es apaisada (1600 de ancho); una vista sola es cuadrada.
+  expect(png.readUInt32BE(16)).toBe(png.readUInt32BE(20));
+  expect(png.readUInt32BE(16)).toBeLessThan(1600);
 
   // Adjuntar a un pedido elegido de la lista.
   await page.getByRole("button", { name: "Adjuntar a pedido" }).click();

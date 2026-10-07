@@ -73,10 +73,10 @@ const MockupCanvas = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function 
   useImperativeHandle(
     ref,
     () => ({
-      exportSheet: (sizes) => {
+      exportSheet: (sizes, only) => {
         const scene = sceneRef.current;
         if (!scene) return Promise.reject(new Error("El lienzo 3D no está disponible"));
-        return scene.exportSheet(sizes);
+        return scene.exportSheet(sizes, only);
       },
       exportThumbnail: () => {
         const scene = sceneRef.current;

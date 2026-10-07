@@ -79,3 +79,60 @@ test("pegar de WhatsApp, cambiar a Aceptada y copiar para WhatsApp", async ({ pa
   expect(lines).toContain("* OFISDECO . ✅enviada - en espera de montajes");
   expect(lines).toContain("* ESTEBAN TALAMAS . ☑️pendiente medidas - pendiente lleve la camioneta para medir");
 });
+
+test("Agregar comentario desde el menú ⋯ deja el cuadro abierto y se guarda", async ({ page, request }) => {
+  await request.post(`${MOCK_API}/quotes`, { data: { clientName: "TNL", description: "Lona 2x1" } });
+  await login(page);
+  await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
+  const rail = page.getByRole("navigation", { name: "Secciones" });
+  await expect(rail.getByRole("link", { name: "Cotizaciones" })).toBeVisible({ timeout: 30_000 });
+  await expect(async () => {
+    await rail.getByRole("link", { name: "Cotizaciones" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/cotizaciones/, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
+
+  const tarjeta = page.getByRole("article", { name: "TNL" });
+  await expect(tarjeta).toBeVisible({ timeout: 30_000 });
+  await tarjeta.getByRole("button", { name: "Más acciones de TNL" }).click();
+  await page.getByRole("menuitem", { name: "Agregar comentario" }).click();
+
+  // El menú devuelve el foco a su botón al cerrarse; el cuadro no debe cerrarse por eso.
+  const cuadro = tarjeta.getByRole("textbox", { name: "Comentario" });
+  await expect(cuadro).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(cuadro).toBeVisible();
+  await expect(cuadro).toBeFocused();
+
+  await cuadro.fill("Pidió descuento");
+  await cuadro.press("Enter");
+  await expect(tarjeta.getByRole("button", { name: /Comentario: Pidió descuento/ })).toBeVisible();
+  await expect
+    .poll(async () => ((await (await request.get(`${MOCK_API}/__e2e/quotes`)).json()) as Array<{ comment: string | null }>)[0]?.comment)
+    .toBe("Pidió descuento");
+});
+
+test("pasar una enviada a Comentarios abre el cuadro y no se cierra solo", async ({ page, request }) => {
+  await request.post(`${MOCK_API}/quotes`, {
+    data: { clientName: "OFISDECO", description: "Montajes", stage: "enviada", status: "esperando_respuesta" },
+  });
+  await login(page);
+  await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
+  const rail = page.getByRole("navigation", { name: "Secciones" });
+  await expect(rail.getByRole("link", { name: "Cotizaciones" })).toBeVisible({ timeout: 30_000 });
+  await expect(async () => {
+    await rail.getByRole("link", { name: "Cotizaciones" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/cotizaciones/, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
+  await page.getByRole("tab", { name: /Enviadas/ }).click();
+
+  const tarjeta = page.getByRole("article", { name: "OFISDECO" });
+  await expect(tarjeta).toBeVisible({ timeout: 30_000 });
+  await tarjeta.getByRole("button", { name: /Subestado: .* Cambiar/ }).click();
+  await page.getByRole("menuitemradio", { name: "Comentarios", exact: true }).click();
+
+  const cuadro = tarjeta.getByRole("textbox", { name: "Comentario" });
+  await expect(cuadro).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(cuadro).toBeVisible();
+  await expect(cuadro).toBeFocused();
+});

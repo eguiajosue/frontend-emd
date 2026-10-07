@@ -81,6 +81,9 @@ describe("termo y taza", () => {
     const payload = buildMockupPayload({ image: { dataUrl: "data:image/png;base64,AA", width: 1, height: 1 }, config });
     expect(payload.garment).toBe("termo");
     expect(mockupFilename("taza", new Date(2026, 9, 5))).toBe("mockup-taza-2026-10-05.png");
+    expect(mockupFilename("taza", new Date(2026, 9, 5), "front")).toBe("mockup-taza-2026-10-05-frente.png");
+    expect(mockupFilename("taza", new Date(2026, 9, 5), "back")).toBe("mockup-taza-2026-10-05-espalda.png");
+    expect(mockupFilename("taza", new Date(2026, 9, 5), "side")).toBe("mockup-taza-2026-10-05-lado.png");
   });
 
   it("una config vieja de playera sigue igual (sin `engrave`)", () => {

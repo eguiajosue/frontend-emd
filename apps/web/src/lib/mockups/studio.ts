@@ -12,6 +12,7 @@ import {
   MAX_MOCKUP_BYTES,
   type CreateOrderMockupPayload,
   type DesignLayer,
+  type DownloadViewKey,
   type Garment,
   type MockupConfig,
   type MockupExport,
@@ -115,7 +116,14 @@ export function normalizeHexColor(input: string): string | null {
 }
 
 /** `mockup-playera-2026-10-05.png` (fecha local). */
-export function mockupFilename(garment: Garment, date = new Date()): string {
+const VIEW_FILENAME_SUFFIX: Record<DownloadViewKey, string> = {
+  all: "",
+  front: "-frente",
+  back: "-espalda",
+  side: "-lado",
+};
+
+export function mockupFilename(garment: Garment, date = new Date(), only: DownloadViewKey = "all"): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const slug = GARMENT_LABELS[garment]
@@ -123,7 +131,7 @@ export function mockupFilename(garment: Garment, date = new Date()): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-");
-  return `mockup-${slug}-${day}.png`;
+  return `mockup-${slug}-${day}${VIEW_FILENAME_SUFFIX[only]}.png`;
 }
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {

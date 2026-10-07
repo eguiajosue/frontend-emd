@@ -5,6 +5,7 @@ import type {
   DesignPlacement,
   Garment,
   MockupConfig,
+  DownloadViewKey,
   MockupExport,
   MockupView,
   Vec3,
@@ -14,7 +15,8 @@ import { dataUrlBytes } from "@/lib/mockups/dataUrl";
 import { buildDecalGeometry, createSelectionTexture, DesignDecal, TriangleSoup } from "./DesignDecal";
 import {
   composeSheet,
-  sheetViewsFor,
+  selectSheetViews,
+  SINGLE_VIEW_SIZE,
   THUMBNAIL_SIZE,
   VIEW_AZIMUTH,
   type ComposeOptions,
@@ -237,8 +239,12 @@ export class MockupScene {
     }
   }
 
-  async exportSheet(sizes?: SizeBreakdown | null): Promise<MockupExport> {
-    return this.exportComposite((layers) => sheetViewsFor(layers), { sizes });
+  async exportSheet(sizes?: SizeBreakdown | null, only: DownloadViewKey = "all"): Promise<MockupExport> {
+    const single = only !== "all";
+    return this.exportComposite(
+      (layers) => selectSheetViews(layers, only),
+      single ? { sizes, width: SINGLE_VIEW_SIZE, height: SINGLE_VIEW_SIZE } : { sizes },
+    );
   }
 
   /**

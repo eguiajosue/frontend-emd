@@ -4,6 +4,7 @@ import {
   computeSheetLayout,
   fitScale,
   pickSideView,
+  selectSheetViews,
   SHEET_HEIGHT,
   SHEET_WIDTH,
   sheetViewsFor,
@@ -102,5 +103,25 @@ describe("sizeTableLayout (tallas en la lámina)", () => {
       ["Mujer", "3", "–", "3"],
       ["Total", "", "", "10 pzas"],
     ]);
+  });
+});
+
+describe("selectSheetViews", () => {
+  const layers = [{ placement: { position: [0.3, 0, 0], normal: [1, 0, 0], scale: 0.2, rotation: 0 } as unknown as never }];
+
+  it("sin elegir, devuelve las tres vistas de la lámina", () => {
+    expect(selectSheetViews(layers).map((v) => v.label)).toEqual(["Frente", "Espalda", "Lado"]);
+    expect(selectSheetViews(layers, "all")).toHaveLength(3);
+  });
+
+  it("una vista elegida devuelve sólo esa", () => {
+    expect(selectSheetViews(layers, "front")).toEqual([{ view: "front", label: "Frente" }]);
+    expect(selectSheetViews(layers, "back")).toEqual([{ view: "back", label: "Espalda" }]);
+  });
+
+  it("el lado usa la vista con diseños (no siempre la izquierda)", () => {
+    const [side] = selectSheetViews(layers, "side");
+    expect(side.label).toBe("Lado");
+    expect(side.view).toBe(sheetViewsFor(layers)[2].view);
   });
 });
