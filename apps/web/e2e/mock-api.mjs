@@ -630,11 +630,6 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
     if (req.method === "GET" && path === "/__e2e/orders") return send(pedidosCreados);
-    if (req.method === "POST" && path === "/orders") {
-      const payload = JSON.parse(body || "{}");
-      pedidosCreados.push(payload);
-      return send({ id: 777, ...payload }, 201);
-    }
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
     if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);
@@ -985,7 +980,7 @@ createServer((req, res) => {
     }
 
     // ── Sucursales ──────────────────────────────────────────────────────────
-    const quien = usuarioDe(req);
+    // (`quien` ya está declarado arriba, en el bloque de Inventario.)
     if (req.method === "POST" && path === "/__e2e/reset-branches") {
       sucursales = sucursalesIniciales();
       pedidosSucursalCreados = [];
@@ -1054,7 +1049,9 @@ createServer((req, res) => {
         pedidosSucursalCreados.push(creado);
         return send(creado, 201);
       }
-      return send({ id: 999, ...dto }, 201);
+      // Pedido de la matriz: se registra tal cual llegó (lo consulta /__e2e/orders).
+      pedidosCreados.push(dto);
+      return send({ id: 777, ...dto }, 201);
     }
     {
       const ped = path.match(/^\/orders\/(\d+)(?:\/|$)/);
