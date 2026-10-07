@@ -343,6 +343,17 @@ let inventario = inventarioInicial();
 let movimientosInventario = [];
 let siguienteArticuloId = 4;
 let siguienteMovimientoId = 1;
+let solicitudesReabasto = [];
+let siguienteSolicitudId = 1;
+
+const GESTORES = ["recepcion", "admin", "superuser"];
+const AREAS_INVENTARIO = ["taller", "dtf", "bordado", "laser", "impresiones"];
+/** Áreas de inventario que ve un usuario (como `areasFor` del backend). */
+function areasDe(u) {
+  const nombres = u.roles.map((x) => x.name);
+  if (nombres.some((n) => GESTORES.includes(n))) return ["bordado", "impresiones"];
+  return nombres.filter((n) => AREAS_INVENTARIO.includes(n));
+}
 
 const codigoPorOmision = (id) => `EMD-${String(id).padStart(6, "0")}`;
 const estadoStock = (q, min) => (q <= 0 ? "out" : min != null && q <= min ? "low" : "ok");
@@ -369,7 +380,7 @@ function validarCodigo(raw, ownId) {
 }
 
 /** Mismo cálculo que `registerMovement` del backend; `{ status, body }`. */
-function registrarMovimiento(articulo, dto) {
+function registrarMovimiento(articulo, dto, usuario = usuarios[0]) {
   const quantity = Number(dto.quantity);
   if (!["ENTRADA", "SALIDA", "AJUSTE"].includes(dto.type) || !(quantity >= 0)) {
     return { status: 400, body: { message: "Movimiento inválido" } };
@@ -378,19 +389,25 @@ function registrarMovimiento(articulo, dto) {
   if (articulo.quantity + delta < 0) {
     return { status: 400, body: { message: `Stock insuficiente: hay ${articulo.quantity} ${articulo.unit}` } };
   }
+  const antes = articulo.quantity;
   articulo.quantity += delta;
+  const esArea = !usuario.roles.some((x) => ["recepcion", "admin", "superuser"].includes(x.name));
   const movement = {
     id: siguienteMovimientoId++,
     itemId: articulo.id,
     type: dto.type,
     delta,
     balanceAfter: articulo.quantity,
+    balanceBefore: antes,
+    area: articulo.area,
+    reason: dto.reason ?? dto.note ?? null,
+    source: esArea ? "area" : "recepcion",
     unitCost: dto.unitCost ?? null,
     note: dto.note ?? null,
     orderId: dto.orderId ?? null,
     createdAt: new Date().toISOString(),
     item: { id: articulo.id, name: articulo.name, unit: articulo.unit, area: articulo.area },
-    createdBy: { id: 1, firstName: "Rita", lastName: "Ponce" },
+    createdBy: { id: usuario.id, firstName: usuario.firstName, lastName: usuario.lastName },
   };
   movimientosInventario.unshift(movement);
   return { status: 201, body: { movement, item: articuloJson(articulo) } };
@@ -643,11 +660,52 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-inventory") {
       inventario = inventarioInicial();
       movimientosInventario = [];
+      solicitudesReabasto = [];
       siguienteArticuloId = 4;
       return send({ ok: true });
     }
-    if (path === "/inventory/areas" && req.method === "GET") return send(["bordado", "impresiones"]);
-    if (path === "/inventory/movements" && req.method === "GET") return send(movimientosInventario);
+    const quien = usuarioDe(req);
+    const misAreas = areasDe(quien);
+    const esGestor = quien.roles.some((x) => GESTORES.includes(x.name));
+    if (path.startsWith("/inventory") && misAreas.length === 0 && !esGestor) return send({ message: "Forbidden" }, 403);
+    if (path === "/inventory/areas" && req.method === "GET") return send(misAreas);
+    if (path === "/inventory/movements" && req.method === "GET") {
+      if (!esGestor) return send({ message: "Forbidden" }, 403);
+      return send(movimientosInventario);
+    }
+    if (path === "/inventory/restock-requests/count" && req.method === "GET") {
+      const mias = solicitudesReabasto.filter((x) => misAreas.includes(x.area));
+      return send({ pending: mias.filter((x) => x.status === "PENDIENTE").length, open: mias.filter((x) => x.status !== "RESUELTO").length });
+    }
+    if (path === "/inventory/restock-requests" && req.method === "GET") {
+      const st = url.searchParams.get("status");
+      const abiertas = url.searchParams.get("open") === "true";
+      return send(solicitudesReabasto.filter((x) => misAreas.includes(x.area) && (!st || x.status === st) && (!abiertas || x.status !== "RESUELTO")));
+    }
+    if (path === "/inventory/restock-requests" && req.method === "POST") {
+      const dto = JSON.parse(body || "{}");
+      const art = dto.itemId ? inventario.find((a) => a.id === dto.itemId) : null;
+      if (dto.itemId && (!art || !misAreas.includes(art.area))) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
+      const nueva = {
+        id: siguienteSolicitudId++, area: art ? art.area : dto.area ?? misAreas[0], itemId: art?.id ?? null,
+        itemName: art ? art.name : dto.itemName, quantity: dto.quantity ?? null, unit: dto.unit ?? art?.unit ?? null,
+        comment: dto.comment ?? null, urgency: dto.urgency ?? "NORMAL", status: "PENDIENTE", statusNote: null,
+        resolvedAt: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        item: art ? { id: art.id, name: art.name, unit: art.unit, quantity: art.quantity, area: art.area } : null,
+        requestedBy: { id: quien.id, firstName: quien.firstName, lastName: quien.lastName }, handledBy: null,
+      };
+      solicitudesReabasto.unshift(nueva);
+      return send(nueva, 201);
+    }
+    const solicitud = path.match(/^\/inventory\/restock-requests\/(\d+)$/);
+    if (solicitud && req.method === "PATCH") {
+      if (!esGestor) return send({ message: "Forbidden" }, 403);
+      const x = solicitudesReabasto.find((y) => y.id === Number(solicitud[1]));
+      if (!x) return send({ message: "La solicitud no existe" }, 404);
+      const dto = JSON.parse(body || "{}");
+      Object.assign(x, { status: dto.status, statusNote: dto.note ?? null, handledBy: { id: quien.id, firstName: quien.firstName, lastName: quien.lastName }, updatedAt: new Date().toISOString() });
+      return send(x);
+    }
     const porCodigo = path.match(/^\/inventory\/items\/by-barcode\/([^/]+)(\/movements)?$/);
     if (porCodigo) {
       const code = decodeURIComponent(porCodigo[1]).trim();
@@ -655,10 +713,12 @@ createServer((req, res) => {
         return send({ message: `Código de barras inválido: ${code}` }, 400);
       }
       const articulo = inventario.find((a) => (a.barcode ?? codigoPorOmision(a.id)) === code);
-      if (!articulo) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
+      if (!articulo || !misAreas.includes(articulo.area)) return send({ message: `No hay ningún artículo con el código ${code}` }, 404);
       if (!porCodigo[2] && req.method === "GET") return send(articuloJson(articulo));
       if (porCodigo[2] && req.method === "POST") {
-        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        const dto = JSON.parse(body || "{}");
+        if (!esGestor && dto.type === "AJUSTE") return send({ message: "Las áreas sólo pueden registrar entradas o consumos" }, 403);
+        const r = registrarMovimiento(articulo, dto, quien);
         return send(r.body, r.status);
       }
     }
@@ -667,7 +727,11 @@ createServer((req, res) => {
       const id = inventarioDe[1] ? Number(inventarioDe[1]) : null;
       if (id === null && req.method === "GET") {
         const area = url.searchParams.get("area");
-        return send(inventario.filter((a) => !area || a.area === area).map(articuloJson));
+        if (area && !misAreas.includes(area)) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
+        return send(inventario.filter((a) => misAreas.includes(a.area) && (!area || a.area === area)).map(articuloJson));
+      }
+      if (!esGestor && (req.method !== "GET" || inventarioDe[2]) && !(inventarioDe[2] && req.method === "POST")) {
+        return send({ message: "Forbidden" }, 403);
       }
       if (id === null && req.method === "POST") {
         const { initialQuantity = 0, barcode, ...datos } = JSON.parse(body || "{}");
@@ -684,9 +748,12 @@ createServer((req, res) => {
       }
       const articulo = inventario.find((a) => a.id === id);
       if (!articulo) return send({ message: "Artículo no encontrado" }, 404);
+      if (!misAreas.includes(articulo.area)) return send({ message: "No tienes acceso al inventario de ese departamento" }, 403);
       if (inventarioDe[2] && req.method === "GET") return send(movimientosInventario.filter((m) => m.itemId === id));
       if (inventarioDe[2] && req.method === "POST") {
-        const r = registrarMovimiento(articulo, JSON.parse(body || "{}"));
+        const dto = JSON.parse(body || "{}");
+        if (!esGestor && dto.type === "AJUSTE") return send({ message: "Las áreas sólo pueden registrar entradas o consumos" }, 403);
+        const r = registrarMovimiento(articulo, dto, quien);
         return send(r.body, r.status);
       }
       if (req.method === "GET") return send(articuloJson(articulo));

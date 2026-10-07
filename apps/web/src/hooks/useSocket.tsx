@@ -244,7 +244,7 @@ export function useSocket() {
         queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
         queryClient.invalidateQueries({ queryKey: ["clientOrders"] });
       }
-      if (touches("InventoryItem")) queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
+      if (touches("InventoryItem", "RestockRequest")) queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
       if (touches("CalendarEvent")) queryClient.invalidateQueries({ queryKey: queryKeys.all("calendarEvents") });
       queryClient.invalidateQueries({ queryKey: DASHBOARD_KEY });
     };

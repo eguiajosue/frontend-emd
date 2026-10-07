@@ -16,6 +16,9 @@ export type NotificationType =
   | "area_task_completed"
   | "chat_message"
   | "inventory_low_stock"
+  | "inventory_restock_request"
+  | "inventory_restock_status"
+  | "inventory_area_movement"
   | (string & {});
 
 /**
@@ -45,6 +48,9 @@ const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
   area_task_completed: "produccion",
   order_ready: "produccion",
   inventory_low_stock: "inventario",
+  inventory_restock_request: "inventario",
+  inventory_restock_status: "inventario",
+  inventory_area_movement: "inventario",
 };
 
 /** Grupo al que pertenece un tipo de notificación (nunca falla). */
@@ -123,6 +129,21 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     className:
       "border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
   },
+  inventory_restock_request: {
+    label: "Reabasto",
+    className:
+      "border-transparent bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  },
+  inventory_restock_status: {
+    label: "Estado de reabasto",
+    className:
+      "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  },
+  inventory_area_movement: {
+    label: "Movimiento de inventario",
+    className:
+      "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+  },
   chat_message: {
     label: "Chat",
     className:
@@ -143,7 +164,7 @@ export const notificationHref = (notification: {
   orderId?: number | null;
 }): string | null => {
   if (notification.orderId) return `/dashboard/orders/${notification.orderId}`;
-  if (notification.type === "inventory_low_stock") return "/dashboard/inventario";
+  if (notification.type.startsWith("inventory_")) return "/dashboard/inventario";
   return null;
 };
 

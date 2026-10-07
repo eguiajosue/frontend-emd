@@ -59,6 +59,9 @@ export const QUOTES_URL = "/dashboard/cotizaciones";
 /** Roles que ejecutan trabajo (Diseño + áreas de producción). */
 const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
 
+/** Áreas de producción con acceso a SU inventario (Diseño no lleva insumos aquí). */
+const INVENTORY_AREA_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
+
 const ALL_ROLES = [
   "admin",
   "superuser",
@@ -100,6 +103,19 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         title: "Chat interno",
         url: "/dashboard/chat",
         icon: MessagesSquare,
+      },
+    ],
+  },
+  {
+    groupLabel: "Insumos",
+    items: [
+      {
+        // Sólo las existencias del área propia: ver, avisar reabasto, entradas y consumo.
+        title: "Inventario",
+        url: INVENTORY_URL,
+        icon: Warehouse,
+        roles: INVENTORY_AREA_ROLES,
+        strictRoles: true,
       },
     ],
   },
@@ -208,7 +224,8 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
-          // Existencias por departamento: sólo Recepción y administración.
+          // Existencias por departamento: Recepción y administración ven todo;
+          // las áreas de producción entran por el menú operativo (sólo la suya).
           title: "Inventario",
           url: INVENTORY_URL,
           icon: Warehouse,

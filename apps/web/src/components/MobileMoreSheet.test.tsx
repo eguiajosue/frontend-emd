@@ -89,9 +89,9 @@ describe("MobileMoreSheet", () => {
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
   });
 
-  it("para rol operativo (taller): los 4 tabs principales no se repiten aquí; Ayuda queda en el sheet y no hay Inventario", () => {
+  it("para rol operativo (taller): los 4 tabs principales no se repiten aquí; Ayuda queda en el sheet y Inventario aparece sólo para sus áreas", () => {
     // Menú operativo: Inicio, Tareas asignadas, Chat interno, Notificaciones,
-    // Ayuda. El inventario es sólo de Recepción y administración.
+    // Ayuda. El taller (área de producción) ve Inventario con sólo su área.
     mocks.roles = ["taller"];
     renderSheet();
 
@@ -99,9 +99,15 @@ describe("MobileMoreSheet", () => {
     expect(screen.queryByRole("link", { name: "Tareas asignadas" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Chat interno" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notificaciones" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inventario" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ayuda" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();
+  });
+
+  it("Diseño (sin inventario propio) no ve Inventario", () => {
+    mocks.roles = ["diseno"];
+    renderSheet();
+    expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
   });
 
   it("incluye Configuración, tema y Cerrar sesión", () => {

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { formatDateTime } from "@/lib/format";
 import {
+  MOVEMENT_SOURCE_LABEL,
   MOVEMENT_TYPE_META,
   formatDelta,
   formatQuantity,
@@ -57,12 +58,13 @@ export function InventoryMovementsList({ movements, showItem = false, unit }: In
               <p className="text-meta">
                 {formatDateTime(m.createdAt, SHORT_DATE, timeFormat)}
                 {who && ` · ${who}`}
+                {m.source && ` · ${MOVEMENT_SOURCE_LABEL[m.source] ?? m.source}`}
                 {m.unitCost != null && ` · $${m.unitCost.toFixed(2)} c/u`}
               </p>
-              {(m.note || m.order) && (
+              {(m.reason || m.note || m.order) && (
                 <p className="text-sm text-muted-foreground">
-                  {m.note}
-                  {m.note && m.order && " · "}
+                  {m.reason ?? m.note}
+                  {(m.reason ?? m.note) && m.order && " · "}
                   {m.order && (
                     <Link href={`/dashboard/orders/${m.order.id}`} className="underline-offset-2 hover:underline">
                       Pedido #{m.order.id}
@@ -81,7 +83,11 @@ export function InventoryMovementsList({ movements, showItem = false, unit }: In
               >
                 {formatDelta(m.delta)}
               </p>
-              <p className="text-meta">Saldo {formatQuantity(m.balanceAfter, itemUnit)}</p>
+              <p className="text-meta">
+                {m.balanceBefore != null
+                  ? `${formatQuantity(m.balanceBefore)} → ${formatQuantity(m.balanceAfter, itemUnit)}`
+                  : `Saldo ${formatQuantity(m.balanceAfter, itemUnit)}`}
+              </p>
             </div>
           </li>
         );
