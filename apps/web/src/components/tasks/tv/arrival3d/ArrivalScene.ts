@@ -2,69 +2,62 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import {
   alarmPulse,
-  arrival3DTimeline,
-  boxPose,
-  burstEnvelope,
+  bladeTravel,
   cameraDistanceForAspect,
   cameraDolly,
   cameraShake,
   CHOREO_3D,
+  cutFlash,
   fanLayout,
-  flapAngle,
+  ledLevel,
   ndcToScreen,
+  paperCurlOffset,
+  printerPose,
+  printTimeline,
   quadToScreenSheet,
-  ringProgress,
-  sheetMotion,
   sheetPixelWidth,
   sheetScreenTarget,
+  ticketMotion,
   worldWidthForPixels,
-  type Arrival3DTimeline,
-  type Choreo3D,
+  type PrintTimeline,
+  type PrinterChoreo,
   type ScreenSheet,
 } from "@/lib/arrival3d";
 import type { ArrivalPriority } from "@/lib/packageArrivals";
 import { isSoftwareWebGL } from "./runtime";
-import { BATCH_BOX, createCardboardBox, SINGLE_BOX, type CardboardBox } from "./cardboardBox";
-import {
-  createCardboardMaps,
-  createGlowSprite,
-  createRingSprite,
-  createShippingLabel,
-  createSidePrint,
-  headingFontFamily,
-  paintSheetFromDom,
-  SHEET_RING_PX,
-  type CardboardMaps,
-} from "./textures";
+import { createGlowSprite, createLogoTexture, headingFontFamily, paintTicketFromDom } from "./textures";
+import { createThermalPrinter, PRINTER } from "./thermalPrinter";
 
 /**
- * Escena 3D de la llegada de un paquete (three.js "a pelo": React Three Fiber
- * no anda con el React que trae Next 15). Un solo WebGLRenderer compartido,
- * creado con la primera llegada y reusado por la cola; se libera al salir
- * del Modo TV (`disposeSharedRenderer`).
+ * Escena 3D de la llegada de un pedido (three.js "a pelo": React Three Fiber
+ * no anda con el React que trae Next 15): una impresora térmica entra, imprime
+ * el ticket, lo corta y el ticket sube hasta mirar a la cámara. Un solo
+ * WebGLRenderer compartido, creado al precalentar y reusado por la cola; se
+ * libera al salir del Modo TV (`disposeSharedRenderer`).
  *
  * La pose de todo sale de `lib/arrival3d` en función del tiempo transcurrido:
  * si la pestaña se oculta (se pausa el loop) y vuelve, la escena salta al
  * momento correcto en vez de quedar atrasada respecto de los timers.
  */
 
-/** Capa de efectos (partículas, brillos, hojas): la sombra de contacto no la ve. */
-const FX_LAYER = 2;
 const FOV = 30;
-const BASE_DISTANCE = 9;
-const LOOK_AT = new THREE.Vector3(0, 1.3, 0);
-const CAMERA_HEIGHT = 5;
+const BASE_DISTANCE = 9.2;
+const LOOK_AT = new THREE.Vector3(0, 1.35, 0);
+const CAMERA_HEIGHT = 3.6;
 const MAX_DPR = 1.75;
-const PARTICLE_LIFE = 1.5;
+/** Ancho del papel (mundo) mientras sale por la ranura. */
+const FEED_WIDTH = PRINTER.slotWidth - 0.14;
+/** Subdivisiones a lo largo del papel (para curvarlo). */
+const PAPER_SEGMENTS = 24;
+const CHIP_LIFE = 1.3;
+/** Un plano de recorte que no recorta nada (el ticket ya cortado vuela libre). */
+const NO_CLIP = 1e6;
 
 interface Shared {
   renderer: THREE.WebGLRenderer;
   env: THREE.Texture;
-  maps: CardboardMaps;
-  sidePrint: THREE.Texture;
   glow: THREE.Texture;
-  ring: THREE.Texture;
-  font: string;
+  logo: THREE.Texture;
 }
 
 let shared: Shared | null = null;
@@ -79,6 +72,8 @@ function getShared(): Shared {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  // El papel se recorta en la boca de la ranura: lo que sale ya está impreso.
+  renderer.localClippingEnabled = true;
   const canvas = renderer.domElement;
   canvas.style.display = "block";
   canvas.style.width = "100%";
@@ -99,15 +94,7 @@ function getShared(): Shared {
     }
   });
 
-  shared = {
-    renderer,
-    env,
-    maps: createCardboardMaps(),
-    sidePrint: createSidePrint(),
-    glow: createGlowSprite(),
-    ring: createRingSprite(),
-    font: headingFontFamily(),
-  };
+  shared = { renderer, env, glow: createGlowSprite(), logo: createLogoTexture(headingFontFamily()) };
   return shared;
 }
 
@@ -117,20 +104,15 @@ let warming: Promise<void> | null = null;
 
 /**
  * Precalienta la escena con la tele abierta y en reposo: crea el renderer
- * compartido, hornea el entorno, pinta el cartón y compila los shaders de la
- * caja, las chispas y los brillos. En una GPU floja (o WebGL por software)
- * eso son segundos; así la primera caja cae enseguida en vez de esperar.
+ * compartido, hornea el entorno y compila los shaders de la impresora, el
+ * papel (con un ticket en blanco), los papelitos y los brillos. En una GPU
+ * floja (o WebGL por software) eso son segundos; así la primera impresora
+ * aparece enseguida en vez de esperar.
  */
 export function prewarmArrivalScene(): Promise<void> {
   if (warmPlayer || (shared && !warming)) return Promise.resolve();
   if (!warming) {
-    warming = createArrivalPlayer(document.createElement("div"), {
-      priority: "overdue",
-      batch: false,
-      labelTitle: "#0",
-      labelSubtitle: "",
-      sheets: [],
-    })
+    warming = createArrivalPlayer(document.createElement("div"), { priority: "overdue", batch: false, sheets: [], blankTicket: true })
       .then((p) => {
         warmPlayer = p;
       })
@@ -151,12 +133,8 @@ export function disposeSharedRenderer() {
   owner = null;
   s.renderer.setAnimationLoop(null);
   s.env.dispose();
-  s.maps.outer.dispose();
-  s.maps.inner.dispose();
-  s.maps.bump.dispose();
-  s.sidePrint.dispose();
   s.glow.dispose();
-  s.ring.dispose();
+  s.logo.dispose();
   s.renderer.domElement.remove();
   s.renderer.dispose();
   s.renderer.forceContextLoss();
@@ -165,43 +143,45 @@ export function disposeSharedRenderer() {
 export interface ArrivalSceneOptions {
   priority: ArrivalPriority;
   batch: boolean;
-  /** Texto grande de la etiqueta ("#9001" o "5 pedidos"). */
-  labelTitle: string;
-  /** Franja de la etiqueta ("Vencido", "Nuevos"…). */
-  labelSubtitle: string;
-  /** Hojas DOM (invisibles, ya en página) que se copian a 3D, en orden de abanico. */
-  sheets: { root: HTMLElement; color: string }[];
+  /** Tickets DOM (invisibles, ya en página) que se copian a 3D, en orden de impresión. */
+  sheets: { root: HTMLElement }[];
+  /** Precalentamiento: un ticket en blanco para compilar los shaders del papel. */
+  blankTicket?: boolean;
 }
 
 export interface ArrivalPlayer {
   /** Arranca el reloj de la escena (t = 0). */
   start(): void;
   /**
-   * Pase al DOM: dónde quedó cada hoja en pantalla (rectángulo interior, sin
-   * el aro) y las oculta en 3D. La caja sigue hundiéndose sola.
+   * Pase al DOM: dónde quedó cada ticket en pantalla y los oculta en 3D. La
+   * impresora sigue hundiéndose sola.
    */
   handoff(): ScreenSheet[];
-  /** Opacidad que debe tener el lienzo (se apaga con la caja al final). */
   stop(): void;
 }
 
-interface SheetRig {
+interface TicketRig {
   group: THREE.Group;
   front: THREE.Mesh;
   glow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-  /** Medio ancho / medio alto del rectángulo interior (sin aro), en unidades locales. */
-  innerHalf: THREE.Vector2;
-  start: THREE.Vector3;
+  frontMat: THREE.MeshBasicMaterial;
+  geo: THREE.PlaneGeometry;
+  base: Float32Array;
+  /** Alto / ancho del ticket (el ancho local es 1). */
+  aspect: number;
+  /** Recorte en la boca de la ranura (propio: cada ticket se suelta en su corte). */
+  clip: THREE.Plane;
   end: THREE.Vector3;
-  qStart: THREE.Quaternion;
   qEnd: THREE.Quaternion;
+  endScale: number;
+  lastCurl: number;
+  lastFed: number;
 }
 
-interface Particles {
+interface Chips {
   points: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial>;
   velocity: Float32Array;
   origin: Float32Array;
-  spawned: boolean;
 }
 
 /**
@@ -211,8 +191,9 @@ interface Particles {
 export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneOptions): Promise<ArrivalPlayer> {
   const s = getShared();
   const { renderer } = s;
-  const c: Choreo3D = CHOREO_3D[opts.priority];
-  const tl: Arrival3DTimeline = arrival3DTimeline(opts.priority, opts.batch);
+  const c: PrinterChoreo = CHOREO_3D[opts.priority];
+  const count = Math.max(1, opts.sheets.length);
+  const tl: PrintTimeline = printTimeline(opts.priority, opts.batch, count);
   const disposables: { dispose: () => void }[] = [];
   const own = <T extends { dispose: () => void }>(x: T): T => {
     disposables.push(x);
@@ -221,56 +202,40 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
 
   const scene = new THREE.Scene();
   scene.environment = s.env;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.6;
 
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 60);
-  camera.layers.enable(FX_LAYER);
 
   // --- Luces: llave cálida, relleno del cielo, contraluz del color de la prioridad.
-  scene.add(new THREE.HemisphereLight("#fff6ea", "#2a2522", 0.45));
-  const key = new THREE.DirectionalLight("#fff1df", 2.6);
+  scene.add(new THREE.HemisphereLight("#fff6ea", "#22252b", 0.5));
+  const key = new THREE.DirectionalLight("#fff1df", 2.4);
   key.position.set(-4, 7, 6);
   scene.add(key);
   const rim = new THREE.DirectionalLight(c.color, 1.6);
   rim.position.set(3.5, 4, -6);
   scene.add(rim);
-  const kick = new THREE.DirectionalLight("#dbe7ff", 0.6);
+  const kick = new THREE.DirectionalLight("#dbe7ff", 0.7);
   kick.position.set(5, 2, 3);
   scene.add(kick);
-  const burstLight = new THREE.PointLight(c.color, 0, 9, 1.6);
-  scene.add(burstLight);
+  // Luz del LED (tiñe el frente) y del corte (destello en la boca).
+  const ledLight = new THREE.PointLight(c.color, 0, 2.2, 2);
+  scene.add(ledLight);
+  const cutLight = new THREE.PointLight(c.color, 0, 4, 1.8);
+  scene.add(cutLight);
 
-  // --- Caja.
-  const dims = opts.batch ? BATCH_BOX : SINGLE_BOX;
-  const label = own(
-    createShippingLabel({
-      title: opts.labelTitle,
-      subtitle: opts.labelSubtitle,
-      color: c.color,
-      font: s.font,
-      stamp: opts.priority === "changes" ? "CAMBIOS" : undefined,
-    })
-  );
-  const box: CardboardBox = createCardboardBox({
-    dims,
-    maps: s.maps,
-    sidePrint: s.sidePrint,
-    label,
-    color: c.color,
-    emissive: c.emissive,
-  });
-  disposables.push(box);
-  scene.add(box.root);
+  // --- Impresora.
+  const printer = createThermalPrinter({ color: c.color, logo: s.logo });
+  disposables.push(printer);
+  scene.add(printer.root);
 
   // --- Sombra de contacto: dos manchas suaves en el piso (núcleo oscuro +
-  // penumbra) que se abren y aclaran cuando la caja está en el aire. Más
-  // barato que renderizar profundidad cada frame y no toca el alfa del lienzo
-  // (que es transparente sobre el tablero).
-  const shadowGeo = own(new THREE.PlaneGeometry(1, 1));
+  // penumbra) que se abren y aclaran cuando la impresora está en el aire. Más
+  // barato que renderizar profundidad cada frame y no toca el alfa del lienzo.
+  const planeGeo = own(new THREE.PlaneGeometry(1, 1));
   const shadowMat = (opacity: number) =>
     own(new THREE.MeshBasicMaterial({ color: "#000000", map: s.glow, transparent: true, opacity, depthWrite: false }));
-  const shadowCore = new THREE.Mesh(shadowGeo, shadowMat(0.75));
-  const shadowSoft = new THREE.Mesh(shadowGeo, shadowMat(0.4));
+  const shadowCore = new THREE.Mesh(planeGeo, shadowMat(0.8));
+  const shadowSoft = new THREE.Mesh(planeGeo, shadowMat(0.45));
   for (const m of [shadowSoft, shadowCore]) {
     m.rotation.x = -Math.PI / 2;
     m.position.y = 0.005;
@@ -278,11 +243,11 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     scene.add(m);
   }
 
-  // --- Destello en la boca de la caja + ondas en el piso.
-  const fxMat = (opacity: number, map: THREE.Texture) =>
+  // --- Brillos aditivos: halo del LED y destello del corte.
+  const fxMat = (opacity: number) =>
     own(
       new THREE.MeshBasicMaterial({
-        map,
+        map: s.glow,
         color: c.color,
         transparent: true,
         opacity,
@@ -291,78 +256,48 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
         toneMapped: false,
       })
     );
-  const planeGeo = own(new THREE.PlaneGeometry(1, 1));
-  const flash = new THREE.Mesh(planeGeo, fxMat(0, s.glow));
-  flash.layers.set(FX_LAYER);
-  scene.add(flash);
-  const rings = Array.from({ length: c.rings }, () => {
-    const m = new THREE.Mesh(planeGeo, fxMat(0, s.ring));
-    m.rotation.x = -Math.PI / 2;
-    m.position.y = 0.01;
-    m.layers.set(FX_LAYER);
-    scene.add(m);
-    return m;
-  });
+  const ledHalo = new THREE.Mesh(planeGeo, fxMat(0));
+  scene.add(ledHalo);
+  const flash = new THREE.Mesh(planeGeo, fxMat(0));
+  flash.position.set(0, 0.05, 0.1);
+  flash.scale.set(2.2, 0.5, 1);
+  printer.feedFrame.add(flash);
 
-  // --- Partículas: chispas que salen de la boca al abrir.
-  const particles = createParticles(c, isSoftwareWebGL() ? 0.5 : 1, dims.width, dims.depth, s.glow, own);
-  particles.points.layers.set(FX_LAYER);
-  scene.add(particles.points);
-
-  // --- Hojas (copiadas del DOM con la fuente de la app).
-  const painted = await Promise.all(opts.sheets.map((sh) => paintSheetFromDom(sh.root, sh.color)));
+  // --- Tickets (copiados del DOM con la fuente de la app).
+  const painted = await Promise.all(opts.sheets.map((sh) => paintTicketFromDom(sh.root)));
+  if (opts.blankTicket) {
+    const blank = document.createElement("canvas");
+    blank.width = blank.height = 4;
+    painted.push({ texture: new THREE.CanvasTexture(blank), width: 288, height: 360 });
+  }
   painted.forEach((p) => disposables.push(p.texture));
+  const tickets: TicketRig[] = painted.map((p) => createTicketRig(p.texture, p.height / p.width, s.glow, c.color, own));
+  tickets.forEach((t) => scene.add(t.group));
+
+  // --- Papelitos del corte (uno por ticket: cada corte suelta los suyos).
+  const density = isSoftwareWebGL() ? 0.6 : 1;
+  const chips: Chips[] = tickets.map((_, i) => createChips(Math.round(c.chips * density), c.chipSpeed, i, own));
+  chips.forEach((ch) => printer.feedFrame.add(ch.points));
 
   let width = 0;
   let height = 0;
   let distance = BASE_DISTANCE;
   const finalCamera = new THREE.Vector3();
-  const sheets: SheetRig[] = painted.map((p) => {
-    const group = new THREE.Group();
-    group.layers.set(FX_LAYER);
-    const frontMat = own(
-      new THREE.MeshBasicMaterial({ map: p.texture, transparent: true, toneMapped: false, side: THREE.FrontSide })
-    );
-    const backMat = own(new THREE.MeshStandardMaterial({ color: "#f3f0ea", roughness: 0.8, side: THREE.BackSide }));
-    const geo = own(new THREE.PlaneGeometry(1, p.height / p.width));
-    const front = new THREE.Mesh(geo, frontMat);
-    const back = new THREE.Mesh(geo, backMat);
-    front.layers.set(FX_LAYER);
-    back.layers.set(FX_LAYER);
-    const glow = new THREE.Mesh(planeGeo, fxMat(0, s.glow));
-    glow.position.z = -0.03;
-    glow.layers.set(FX_LAYER);
-    group.add(glow, back, front);
-    group.visible = false;
-    scene.add(group);
-    const innerW = (p.width - SHEET_RING_PX * 2) / p.width;
-    const innerH = ((p.height - SHEET_RING_PX * 2) / p.width) * 1;
-    return {
-      group,
-      front,
-      glow,
-      innerHalf: new THREE.Vector2(innerW / 2, innerH / 2),
-      start: new THREE.Vector3(),
-      end: new THREE.Vector3(),
-      qStart: new THREE.Quaternion(),
-      qEnd: new THREE.Quaternion(),
-    };
-  });
 
-  /** Tamaño, cámara y destino de cada hoja según el viewport actual. */
+  /** Tamaño, cámara y destino de cada ticket según el viewport actual. */
   const layout = () => {
     width = Math.max(1, host.clientWidth);
     height = Math.max(1, host.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_DPR));
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    distance = cameraDistanceForAspect(camera.aspect, BASE_DISTANCE, FOV, opts.batch ? 6.2 : 4.6);
+    distance = cameraDistanceForAspect(camera.aspect, BASE_DISTANCE, FOV, opts.batch ? 6.4 : 4.4);
     camera.updateProjectionMatrix();
     finalCamera.set(0, CAMERA_HEIGHT, distance);
 
-    // La hoja termina en un punto fijo de la PANTALLA (no del mundo): a
-    // cualquier tamaño/proporción queda entera, legible y arriba de la caja.
-    const n = sheets.length;
+    // El ticket termina en un punto fijo de la PANTALLA (no del mundo): a
+    // cualquier tamaño/proporción queda entero, legible y arriba de la impresora.
+    const n = tickets.length;
     const px = sheetPixelWidth(width, opts.batch, n);
     const fan = fanLayout(n);
     const target = sheetScreenTarget(opts.batch);
@@ -371,22 +306,19 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     finalCam.lookAt(LOOK_AT);
     finalCam.updateMatrixWorld(true);
     const dummy = new THREE.Object3D();
-    sheets.forEach((rig, i) => {
+    tickets.forEach((rig, i) => {
       const f = fan[i];
       const ndcX = (f.offset * px * 2) / width;
       const ndcY = 1 - 2 * target.y;
       const dir = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(finalCam).sub(finalCamera).normalize();
       const d = target.distance - f.depth;
       rig.end.copy(finalCamera).addScaledVector(dir, d);
-      const sheetW = worldWidthForPixels(px, d, FOV, height) / (rig.innerHalf.x * 2);
-      rig.group.scale.setScalar(sheetW);
-      rig.start.set(f.offset * 0.25, dims.height * 0.45, 0);
+      rig.endScale = worldWidthForPixels(px, d, FOV, height);
       dummy.position.copy(rig.end);
       dummy.lookAt(finalCamera);
       dummy.rotateZ(f.angle);
       rig.qEnd.copy(dummy.quaternion);
-      rig.qStart.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, f.angle * 2 + 0.3));
-      rig.glow.scale.set(1.5, (rig.innerHalf.y * 2) / (rig.innerHalf.x * 2) + 0.5, 1);
+      rig.glow.scale.set(1.45, rig.aspect + 0.45, 1);
     });
   };
   layout();
@@ -394,8 +326,13 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
   let startAt = 0;
   let running = false;
   let handedOff = false;
-  const tmp = new THREE.Vector3();
   const lookAt = new THREE.Vector3();
+  const slotPos = new THREE.Vector3();
+  const slotQuat = new THREE.Quaternion();
+  const feedDir = new THREE.Vector3();
+  const startPos = new THREE.Vector3();
+  const tmp = new THREE.Vector3();
+  const ledPos = new THREE.Vector3();
 
   const frame = () => {
     const ms = performance.now() - startAt;
@@ -404,75 +341,89 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     // Cámara: acercamiento lento + temblor al aterrizar.
     const dolly = cameraDolly(ms, c, tl);
     const shake = cameraShake(ms, c, tl);
-    camera.position.set(0, CAMERA_HEIGHT + shake + dolly * 0.25, distance + dolly);
+    camera.position.set(0, CAMERA_HEIGHT + shake + dolly * 0.2, distance + dolly);
     lookAt.copy(LOOK_AT).setY(LOOK_AT.y + shake * 0.5);
     camera.lookAt(lookAt);
 
-    // Caja.
-    const pose = boxPose(ms, c, tl);
-    box.root.position.set(pose.x, pose.y, 0);
-    box.root.rotation.set(0, pose.rotY, pose.rotZ);
-    box.body.scale.set(pose.sx, pose.sy, pose.sz);
-    box.flaps.forEach((f, i) => {
-      const a = flapAngle(ms, c, tl, i) * f.sign;
-      if (f.axis === "x") f.hinge.rotation.x = a;
-      else f.hinge.rotation.z = a;
-    });
-    const pulse = alarmPulse(ms, c);
-    box.tape.emissiveIntensity = c.emissive + pulse * 1.4;
-    rim.intensity = 1.6 + pulse * 1.8;
+    // Impresora.
+    const pose = printerPose(ms, c, tl);
+    printer.root.position.set(pose.x, pose.y, 0);
+    printer.root.rotation.set(0, pose.rotY, pose.rotZ);
+    printer.body.scale.set(pose.sx, pose.sy, pose.sz);
+    printer.root.updateMatrixWorld(true);
+    printer.feedFrame.getWorldPosition(slotPos);
+    printer.feedFrame.getWorldQuaternion(slotQuat);
+    feedDir.set(0, 1, 0).applyQuaternion(slotQuat);
     host.style.opacity = String(pose.opacity);
 
-    // Destello y luz de la apertura.
-    const burst = burstEnvelope(ms, tl) * c.burst;
-    burstLight.position.set(pose.x, dims.height + 0.4, 0.3);
-    burstLight.intensity = burst * 40;
-    flash.position.set(pose.x, dims.height + 0.15, 0);
-    flash.quaternion.copy(camera.quaternion);
-    flash.scale.setScalar(1.2 + burst * 4.5);
-    flash.material.opacity = Math.min(1, burst * 0.9);
+    // LED de estado (+ su halo y la luz que tiñe el frente).
+    const led = ledLevel(ms, c, tl);
+    const pulse = alarmPulse(ms, c);
+    printer.led.emissiveIntensity = 0.35 + led * 3.4;
+    printer.ledAnchor.getWorldPosition(ledPos);
+    ledHalo.position.copy(ledPos);
+    ledHalo.quaternion.copy(camera.quaternion);
+    ledHalo.scale.setScalar(0.32 + led * 0.28);
+    ledHalo.material.opacity = led * 0.85;
+    ledLight.position.copy(ledPos).add(tmp.set(0, 0, 0.25));
+    ledLight.intensity = led * 1.4;
+    rim.intensity = 1.6 + pulse * 1.8;
 
-    rings.forEach((ring, i) => {
-      const u = ringProgress(ms, c, tl, i);
-      ring.visible = u != null;
-      if (u == null) return;
-      ring.position.x = pose.x;
-      ring.scale.setScalar(dims.width * (0.9 + u * 2.6));
-      ring.material.opacity = (1 - u) ** 2 * 0.9;
+    // Guillotina, destello y papelitos de cada corte.
+    let travel = 0;
+    let flashLevel = 0;
+    tl.tickets.forEach((slot, i) => {
+      travel = Math.max(travel, bladeTravel(ms, slot));
+      flashLevel = Math.max(flashLevel, cutFlash(ms, slot));
+      if (chips[i]) updateChips(chips[i], (ms - slot.cut) / 1000);
     });
+    printer.blade.visible = travel > 0.001;
+    printer.blade.position.x = -PRINTER.slotWidth / 2 - 0.3 + travel * (PRINTER.slotWidth + 0.6);
+    flash.material.opacity = Math.min(1, flashLevel * c.flash * 0.9);
+    cutLight.position.copy(slotPos).addScaledVector(feedDir, 0.2);
+    cutLight.intensity = flashLevel * c.flash * 14;
 
-    updateParticles(particles, ms, tl, c, box.root.position.x, dims.height);
-
-    // Hojas.
-    sheets.forEach((rig, i) => {
-      const m = sheetMotion(ms, tl, i);
+    // Tickets.
+    tickets.forEach((rig, i) => {
+      const m = ticketMotion(ms, c, tl, i);
       rig.group.visible = m.visible && !handedOff;
       if (!rig.group.visible) return;
-      // Sube primero (sale de la caja) y recién después viene hacia la cámara.
-      const forward = Math.min(1, Math.max(0, (m.lift - 0.25) / 0.75));
-      tmp.set(
-        rig.start.x + (rig.end.x - rig.start.x) * m.lift,
-        // Arco: sube un poco más de la cuenta mientras sale y se asienta en su lugar.
-        rig.start.y + (rig.end.y - rig.start.y) * m.lift + 0.45 * Math.sin(Math.PI * Math.min(1, m.lift)),
-        rig.start.z + (rig.end.z - rig.start.z) * forward
-      );
-      // Flota apenas mientras se lee.
-      tmp.y += Math.sin(t * 2.2 + i) * 0.025 * m.turn;
-      rig.group.position.copy(tmp);
-      rig.group.quaternion.slerpQuaternions(rig.qStart, rig.qEnd, m.turn);
-      rig.group.rotateZ(m.twist);
-      rig.glow.material.opacity = m.turn * (0.45 + pulse * 0.4);
+      const h = rig.aspect * FEED_WIDTH;
+      // En la ranura: el borde de arriba asoma `fed` del alto (más el saltito del corte).
+      startPos.copy(slotPos).addScaledVector(feedDir, m.fed * h - h / 2 + m.pop * h);
+      if (!m.cut) {
+        rig.group.position.copy(startPos);
+        rig.group.quaternion.copy(slotQuat);
+        rig.group.scale.setScalar(FEED_WIDTH);
+        rig.clip.setFromNormalAndCoplanarPoint(feedDir, slotPos);
+      } else {
+        rig.clip.set(feedDir, NO_CLIP);
+        // Sube primero (se aleja de la ranura) y recién después viene hacia la cámara.
+        const k = Math.min(1, m.lift);
+        tmp.lerpVectors(startPos, rig.end, m.lift);
+        tmp.y += 0.35 * Math.sin(Math.PI * k);
+        tmp.z = startPos.z + (rig.end.z - startPos.z) * Math.max(0, Math.min(1, (m.lift - 0.2) / 0.8));
+        // Flota apenas mientras se lee.
+        tmp.y += Math.sin(t * 2.2 + i) * 0.02 * m.turn;
+        rig.group.position.copy(tmp);
+        rig.group.quaternion.slerpQuaternions(slotQuat, rig.qEnd, m.turn);
+        rig.group.rotateZ(m.twist);
+        rig.group.scale.setScalar(FEED_WIDTH + (rig.endScale - FEED_WIDTH) * Math.max(0, k));
+      }
+      bendPaper(rig, m.cut ? 1 : m.fed, m.curl);
+      rig.frontMat.color.setScalar(0.9 + 0.1 * m.turn);
+      rig.glow.material.opacity = m.turn * (0.42 + pulse * 0.4);
     });
 
-    // Sombra: más grande y clara cuanto más alta está la caja.
+    // Sombra: más grande y clara cuanto más alta está la impresora.
     const air = Math.max(0, pose.y);
     const spread = 1 + air * 0.22;
     const fade = 1 / (1 + air * 0.9);
     shadowCore.position.x = shadowSoft.position.x = pose.x;
     shadowCore.rotation.z = shadowSoft.rotation.z = pose.rotY;
-    shadowCore.scale.set(dims.width * 1.25 * spread * pose.sx, dims.depth * 1.3 * spread * pose.sz, 1);
-    shadowSoft.scale.set(dims.width * 2.1 * spread, dims.depth * 2.3 * spread, 1);
-    shadowCore.material.opacity = 0.8 * fade;
+    shadowCore.scale.set(PRINTER.width * 1.15 * spread * pose.sx, PRINTER.depth * 1.15 * spread * pose.sz, 1);
+    shadowSoft.scale.set(PRINTER.width * 1.9 * spread, PRINTER.depth * 2 * spread, 1);
+    shadowCore.material.opacity = 0.85 * fade;
     shadowSoft.material.opacity = 0.45 * fade;
 
     renderer.render(scene, camera);
@@ -485,9 +436,13 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
   };
 
   // Shaders compilados antes de arrancar: sin tirones en los primeros frames.
-  sheets.forEach((r) => (r.group.visible = true));
+  tickets.forEach((r) => (r.group.visible = true));
+  chips.forEach((ch) => (ch.points.visible = true));
+  printer.blade.visible = true;
   await renderer.compileAsync(scene, camera);
-  sheets.forEach((r) => (r.group.visible = false));
+  tickets.forEach((r) => (r.group.visible = false));
+  chips.forEach((ch) => (ch.points.visible = false));
+  printer.blade.visible = false;
   // Los programas ya quedaron tomados por esta escena: la de precalentamiento
   // puede soltarlos.
   if (warmPlayer && opts.sheets.length > 0) {
@@ -511,13 +466,14 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
     },
     handoff() {
       if (!running) return [];
-      // La pose de este instante (la cámara ya terminó el acercamiento).
+      // La pose de este instante (el ticket ya está plano y mirando a la cámara).
       frame();
       const rect = host.getBoundingClientRect();
       const viewport = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
-      const out = sheets.map((rig) => {
+      const out = tickets.map((rig) => {
         rig.front.updateMatrixWorld(true);
-        const { x, y } = rig.innerHalf;
+        const x = 0.5;
+        const y = rig.aspect / 2;
         const corners = [
           [-x, y],
           [x, y],
@@ -548,88 +504,147 @@ export async function createArrivalPlayer(host: HTMLElement, opts: ArrivalSceneO
   };
 }
 
-function createParticles(
-  c: Choreo3D,
-  density: number,
-  boxW: number,
-  boxD: number,
-  sprite: THREE.Texture,
+/**
+ * Un ticket: papel térmico (frente con la textura copiada del DOM, dorso
+ * blanco), subdividido a lo largo para curvarlo, con su propio plano de
+ * recorte en la ranura y un brillo del color de la prioridad detrás.
+ */
+function createTicketRig(
+  texture: THREE.Texture,
+  aspect: number,
+  glowMap: THREE.Texture,
+  color: string,
   own: <T extends { dispose: () => void }>(x: T) => T
-): Particles {
-  const n = Math.round(c.particles * density);
-  const positions = new Float32Array(n * 3);
-  const colors = new Float32Array(n * 3);
-  const velocity = new Float32Array(n * 3);
-  const origin = new Float32Array(n * 3);
-  const base = new THREE.Color(c.color);
-  const white = new THREE.Color("#ffffff");
-  const tmp = new THREE.Color();
-  // Determinista (mismo estallido en cada llegada de la misma prioridad).
-  let seed = 1337;
+): TicketRig {
+  const clip = new THREE.Plane(new THREE.Vector3(0, 1, 0), NO_CLIP);
+  const geo = own(new THREE.PlaneGeometry(1, aspect, 1, PAPER_SEGMENTS));
+  const base = Float32Array.from(geo.getAttribute("position").array as Float32Array);
+  const vertexCount = base.length / 3;
+  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(vertexCount * 3).fill(1), 3));
+  (geo.getAttribute("position") as THREE.BufferAttribute).setUsage(THREE.DynamicDrawUsage);
+  const frontMat = own(
+    new THREE.MeshBasicMaterial({ map: texture, vertexColors: true, toneMapped: false, side: THREE.FrontSide, clippingPlanes: [clip] })
+  );
+  const backMat = own(
+    new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.85, side: THREE.BackSide, clippingPlanes: [clip] })
+  );
+  const front = new THREE.Mesh(geo, frontMat);
+  const back = new THREE.Mesh(geo, backMat);
+  const glow = new THREE.Mesh(
+    own(new THREE.PlaneGeometry(1, 1)),
+    own(
+      new THREE.MeshBasicMaterial({
+        map: glowMap,
+        color,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    )
+  );
+  glow.position.z = -0.04;
+  const group = new THREE.Group();
+  group.add(glow, back, front);
+  group.visible = false;
+  return {
+    group,
+    front,
+    glow,
+    frontMat,
+    geo,
+    base,
+    aspect,
+    clip,
+    end: new THREE.Vector3(),
+    qEnd: new THREE.Quaternion(),
+    endScale: 1,
+    lastCurl: -1,
+    lastFed: -1,
+  };
+}
+
+/**
+ * Curva el papel hacia atrás según la distancia a la ranura (como el rollo del
+ * que sale) y lo sombrea apenas donde se curva. Plano cuando `curl` = 0.
+ */
+function bendPaper(rig: TicketRig, fed: number, curl: number) {
+  if (Math.abs(curl - rig.lastCurl) < 1e-4 && Math.abs(fed - rig.lastFed) < 1e-4) return;
+  rig.lastCurl = curl;
+  rig.lastFed = fed;
+  const pos = rig.geo.getAttribute("position") as THREE.BufferAttribute;
+  const col = rig.geo.getAttribute("color") as THREE.BufferAttribute;
+  const p = pos.array as Float32Array;
+  const cArr = col.array as Float32Array;
+  const emerged = fed * rig.aspect;
+  for (let k = 0; k < p.length; k += 3) {
+    const y = rig.base[k + 1];
+    const d = y - rig.aspect / 2 + emerged;
+    p[k + 2] = paperCurlOffset(d, curl);
+    const shade = 1 - Math.min(0.28, Math.max(0, d) * curl * 1.4);
+    cArr[k] = cArr[k + 1] = cArr[k + 2] = shade;
+  }
+  pos.needsUpdate = true;
+  col.needsUpdate = true;
+}
+
+/** Papelitos del corte, en el marco de la ranura (+Z = hacia la cámara). */
+function createChips(n: number, speed: number, seedOffset: number, own: <T extends { dispose: () => void }>(x: T) => T): Chips {
+  const count = Math.max(1, n);
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const velocity = new Float32Array(count * 3);
+  const origin = new Float32Array(count * 3);
+  // Determinista (el mismo corte en cada llegada de la misma prioridad).
+  let seed = 1337 + seedOffset * 7919;
   const rand = () => {
     seed = (seed * 16807) % 2147483647;
     return seed / 2147483647;
   };
-  for (let i = 0; i < n; i++) {
-    origin[i * 3] = (rand() - 0.5) * boxW * 0.8;
-    origin[i * 3 + 1] = 0;
-    origin[i * 3 + 2] = (rand() - 0.5) * boxD * 0.7;
-    const angle = rand() * Math.PI * 2;
-    const spread = 0.25 + rand() * 0.55;
-    const speed = c.particleSpeed * (0.55 + rand() * 0.6);
-    velocity[i * 3] = Math.cos(angle) * spread * speed;
-    velocity[i * 3 + 1] = speed * (0.75 + rand() * 0.5);
-    velocity[i * 3 + 2] = Math.sin(angle) * spread * speed * 0.8 + 0.6;
-    tmp.copy(base).lerp(white, rand() * 0.55);
-    colors.set([tmp.r, tmp.g, tmp.b], i * 3);
-    positions.set([0, -10, 0], i * 3);
+  for (let i = 0; i < count; i++) {
+    origin[i * 3] = (rand() - 0.5) * FEED_WIDTH;
+    origin[i * 3 + 1] = rand() * 0.04;
+    origin[i * 3 + 2] = 0.02;
+    velocity[i * 3] = (rand() - 0.5) * 0.9 * speed * 0.5;
+    velocity[i * 3 + 1] = (0.4 + rand() * 0.9) * speed * 0.5;
+    velocity[i * 3 + 2] = (0.5 + rand() * 1.1) * speed * 0.5;
+    const tone = 0.86 + rand() * 0.14;
+    colors.set([tone, tone, tone * 0.97], i * 3);
+    positions.set([0, -50, 0], i * 3);
   }
   const geo = own(new THREE.BufferGeometry());
   geo.setAttribute("position", new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   const mat = own(
-    new THREE.PointsMaterial({
-      size: 0.18,
-      map: sprite,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      toneMapped: false,
-      opacity: 0,
-    })
+    new THREE.PointsMaterial({ size: 0.05, vertexColors: true, transparent: true, depthWrite: false, opacity: 0 })
   );
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false;
-  return { points, velocity, origin, spawned: false };
+  points.visible = false;
+  return { points, velocity, origin };
 }
 
-function updateParticles(p: Particles, ms: number, tl: Arrival3DTimeline, c: Choreo3D, boxX: number, mouthY: number) {
-  const age = (ms - tl.burst) / 1000;
-  const mat = p.points.material;
-  if (age < 0 || age > PARTICLE_LIFE) {
-    mat.opacity = 0;
-    p.points.visible = false;
+function updateChips(ch: Chips, age: number) {
+  const mat = ch.points.material;
+  if (age < 0 || age > CHIP_LIFE) {
+    ch.points.visible = false;
     return;
   }
-  p.points.visible = true;
-  mat.opacity = Math.min(1, (1 - age / PARTICLE_LIFE) * 1.4);
-  mat.size = 0.18 * (1 - age / PARTICLE_LIFE * 0.6);
-  const pos = p.points.geometry.getAttribute("position") as THREE.BufferAttribute;
+  ch.points.visible = true;
+  mat.opacity = Math.min(1, (1 - age / CHIP_LIFE) * 2);
+  const pos = ch.points.geometry.getAttribute("position") as THREE.BufferAttribute;
   const arr = pos.array as Float32Array;
-  const g = -7.5;
-  // Arrastre del aire: las chispas frenan y caen.
-  const drag = Math.exp(-age * 1.1);
-  const n = arr.length / 3;
-  for (let i = 0; i < n; i++) {
-    const k = i * 3;
-    // Salida escalonada (no todas en el mismo frame).
-    const delay = (i % 7) * 0.012;
-    const a = Math.max(0, age - delay);
-    arr[k] = boxX + p.origin[k] + p.velocity[k] * a * drag;
-    arr[k + 1] = mouthY + p.velocity[k + 1] * a * drag + 0.5 * g * a * a;
-    arr[k + 2] = p.origin[k + 2] + p.velocity[k + 2] * a * drag;
+  const g = -6;
+  // Arrastre del aire: el papel es liviano, frena enseguida y cae revoloteando.
+  const drag = Math.exp(-age * 2.2);
+  const floor = -0.95;
+  for (let k = 0; k < arr.length; k += 3) {
+    const a = Math.max(0, age - ((k / 3) % 5) * 0.01);
+    const flutter = Math.sin(a * 14 + k) * 0.03 * a;
+    arr[k] = ch.origin[k] + ch.velocity[k] * a * drag + flutter;
+    arr[k + 1] = Math.max(floor, ch.origin[k + 1] + ch.velocity[k + 1] * a * drag + 0.5 * g * a * a * 0.35);
+    arr[k + 2] = ch.origin[k + 2] + ch.velocity[k + 2] * a * drag;
   }
   pos.needsUpdate = true;
-  void c;
 }
