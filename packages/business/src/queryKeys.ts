@@ -8,6 +8,7 @@
 
 export const ENDPOINTS = {
   orders: "orders",
+  branches: "branches",
   clients: "clients",
   companies: "companies",
   users: "users",

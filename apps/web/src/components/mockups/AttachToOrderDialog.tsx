@@ -9,6 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrders } from "@/hooks/useOrders";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useMyBranch } from "@/hooks/useBranches";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mockupErrorMessage, useCreateOrderMockup } from "@/hooks/useOrderMockups";
 import { getOrderClientName } from "@/lib/format";
 import { buildMockupPayload, type MockupStudioResult } from "@/lib/mockups/studio";
@@ -59,6 +62,10 @@ export function AttachToOrderDialog({
   const router = useRouter();
   const { data: orders = [], isPending, isError, refetch } = useOrders({ enabled: open });
   const createMockup = useCreateOrderMockup();
+  // Cuenta de sucursal: puede indicar (opcional) qué empleado armó el mockup.
+  const { isBranch } = usePermissions();
+  const { branch } = useMyBranch(open && isBranch);
+  const [employeeId, setEmployeeId] = useState<number | undefined>(undefined);
   const [query, setQuery] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,6 +75,7 @@ export function AttachToOrderDialog({
       setQuery("");
       setError(null);
       setSavingId(null);
+      setEmployeeId(undefined);
     }
   }, [open]);
 
@@ -78,7 +86,10 @@ export function AttachToOrderDialog({
     setSavingId(order.id);
     setError(null);
     try {
-      await createMockup.mutateAsync({ orderId: order.id, payload: buildMockupPayload(result) });
+      await createMockup.mutateAsync({
+        orderId: order.id,
+        payload: { ...buildMockupPayload(result), branchEmployeeId: isBranch ? employeeId : undefined },
+      });
       toast.success(`Mockup adjuntado al pedido #${order.id}`, {
         action: {
           label: "Ver pedido",
@@ -101,6 +112,23 @@ export function AttachToOrderDialog({
           <DialogTitle>Adjuntar a pedido</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {isBranch && branch && branch.employees.length > 0 && (
+            <Select
+              value={employeeId ? String(employeeId) : ""}
+              onValueChange={(v) => setEmployeeId(v ? Number(v) : undefined)}
+            >
+              <SelectTrigger aria-label="Empleado que armó el mockup" className="h-11 rounded-full">
+                <SelectValue placeholder="¿Quién lo armó? (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                {branch.employees.map((e) => (
+                  <SelectItem key={e.id} value={String(e.id)}>
+                    {e.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input

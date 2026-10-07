@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
 import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -79,6 +80,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
         <CardContent className="density-card space-y-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
+            <BranchBadge order={order} />
             <span className="text-xs font-medium tabular-nums text-muted-foreground">#{order.id}</span>
           </div>
 

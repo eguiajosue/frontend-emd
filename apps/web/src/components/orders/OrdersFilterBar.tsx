@@ -1,5 +1,6 @@
 "use client";
 
+import { useBranches } from "@/hooks/useBranches";
 import { useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ export interface OrdersFilters {
   assignedUserId?: number | null;
   /** Sólo pedidos creados por el usuario de la sesión (`order.userId`). Pensado para Recepción. */
   createdByMe: boolean;
+  /** Sucursal de origen: `null` = sólo pedidos de la matriz; `undefined` = sin filtro. */
+  branchId?: number | null;
   /**
    * Muestra también los pedidos archivados (cancelados). Un cancelado no es
    * trabajo: por defecto no aparece, pero sigue a mano con un toggle.
@@ -51,6 +54,7 @@ export const EMPTY_ORDERS_FILTERS: OrdersFilters = {
   area: undefined,
   assignedUserId: undefined,
   createdByMe: false,
+  branchId: undefined,
   showArchived: false,
 };
 
@@ -104,6 +108,8 @@ export function OrdersFilterBar({
   const isMobile = useIsMobile();
   const { isAdmin, roles } = usePermissions();
   const isManager = isAdmin || roles.includes("recepcion");
+  // Filtro "Sucursal": sólo si la empresa tiene sucursales (ej. Punto Madero).
+  const { data: branches } = useBranches(isManager);
   // "Mis pedidos" es sólo para quien puede REALIZAR (crear) pedidos como
   // Recepción — para un rol operativo no tiene sentido (no crea pedidos).
   const canFilterByCreatedByMe = roles.includes("recepcion");
@@ -125,6 +131,7 @@ export function OrdersFilterBar({
     !!filters.area ||
     filters.assignedUserId !== undefined ||
     filters.createdByMe ||
+    filters.branchId !== undefined ||
     filters.showArchived;
 
   const toggleStatus = (id: number) => {
@@ -193,6 +200,16 @@ export function OrdersFilterBar({
             ? userLabel(user)
             : `Usuario #${filters.assignedUserId}`,
       clear: () => onChange({ ...filters, assignedUserId: undefined }),
+    });
+  }
+  if (filters.branchId !== undefined) {
+    activeChips.push({
+      key: "branch",
+      label:
+        filters.branchId === null
+          ? "Matriz"
+          : (branches.find((b) => b.id === filters.branchId)?.name ?? `Sucursal #${filters.branchId}`),
+      clear: () => onChange({ ...filters, branchId: undefined }),
     });
   }
   if (filters.dateRange?.from) {
@@ -318,6 +335,34 @@ export function OrdersFilterBar({
               </div>
             </div>
           </div>
+
+          {isManager && branches.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className={FIELD_LABEL_CLASS}>Sucursal</Label>
+              <Select
+                value={filters.branchId === undefined ? "all" : filters.branchId === null ? "matriz" : String(filters.branchId)}
+                onValueChange={(value) =>
+                  onChange({
+                    ...filters,
+                    branchId: value === "all" ? undefined : value === "matriz" ? null : Number(value),
+                  })
+                }
+              >
+                <SelectTrigger aria-label="Sucursal">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  <SelectItem value="matriz">Matriz (sin sucursal)</SelectItem>
+                  {branches.map((b) => (
+                    <SelectItem key={b.id} value={String(b.id)}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className={FIELD_LABEL_CLASS}>Estatus</Label>

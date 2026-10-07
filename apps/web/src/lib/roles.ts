@@ -16,6 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
   bordado: "Bordado",
   laser: "Láser",
   impresiones: "Impresiones",
+  sucursal: "Sucursal",
 };
 
 /** Etiqueta legible de un rol; cae al valor crudo si es uno que no conocemos. */
@@ -31,4 +32,12 @@ export function formatRoleList(
 ): string {
   if (!roles || roles.length === 0) return empty;
   return roles.map(getRoleLabel).join(", ");
+}
+
+/**
+ * Cuenta de sucursal (ej. "Punto Madero"): sólo levanta pedidos, usa Mockups y
+ * ve SUS pedidos. Es "sólo sucursal" cuando ese es su único rol.
+ */
+export function isBranchOnly(roles: string[] | undefined | null): boolean {
+  return !!roles && roles.length > 0 && roles.every((r) => r === "sucursal");
 }

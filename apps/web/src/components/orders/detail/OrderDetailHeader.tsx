@@ -33,6 +33,7 @@ import { formatDate, formatDeliveryDate, getOrderClientName } from "@/lib/format
 import { formatElapsed, getDeadlineState, type DeadlineState } from "@/lib/orderDeadline";
 import type { OrderDetailPermissions } from "@/lib/orderDetail";
 import { cn } from "@/lib/utils";
+import { branchOriginLabel } from "@/lib/branch";
 import type { Order } from "@/types";
 
 /** Texto del semáforo de entrega: lo mismo que dice la tarjeta del muro. */
@@ -125,6 +126,11 @@ export function OrderDetailHeader({
               <CalendarClock className="h-3.5 w-3.5" aria-hidden />
               Entrega:{" "}
               <span className="text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
+            </span>
+          )}
+          {branchOriginLabel(order) && (
+            <span className={cn(pill, "border border-border/60 bg-card")} data-testid="branch-origin">
+              Creado por <span className="text-foreground">{branchOriginLabel(order)}</span>
             </span>
           )}
           <span className={cn(pill, "border border-border/60 bg-card")}>

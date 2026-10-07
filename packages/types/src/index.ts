@@ -47,6 +47,29 @@ export interface User extends BaseEntity {
   roles?: Role[];
   /** Cuenta de área/departamento compartida por todo un equipo (ej. "taller", "dtf"), no de una persona. */
   isSharedAccount?: boolean;
+  /** Sucursal de la cuenta (sólo rol "sucursal", ej. "Punto Madero"). */
+  branchId?: number | null;
+  branch?: BranchRef | null;
+}
+
+/** Sucursal u empleado de sucursal embebidos en un pedido (sólo `id` + `name`). */
+export interface BranchRef extends BaseEntity {
+  name: string;
+}
+
+/** Empleado de una sucursal: quien levanta los pedidos desde la cuenta compartida. */
+export interface BranchEmployee extends BaseEntity {
+  branchId?: number;
+  name: string;
+  /** Inactivo = ya no se puede elegir al crear pedidos (los viejos lo conservan). */
+  active: boolean;
+}
+
+/** Sucursal (extensión de la matriz) con sus empleados (GET /branches). */
+export interface Branch extends BaseEntity {
+  name: string;
+  active: boolean;
+  employees?: BranchEmployee[];
 }
 
 /** Versión resumida de `User` que devuelve el backend embebida en `order.assignedUser`. */
@@ -180,6 +203,12 @@ export interface OrderAreaTask {
 
 export interface Order extends BaseEntity {
   clientId?: number | null;
+  /** Sucursal desde la que se levantó (ej. "Punto Madero"); `null`/ausente = pedido de la matriz. */
+  branchId?: number | null;
+  branchEmployeeId?: number | null;
+  branch?: BranchRef | null;
+  /** Empleado de la sucursal que lo levantó. */
+  branchEmployee?: BranchRef | null;
   /** Quien CREÓ el pedido (la recepcionista del alta). No cambia nunca. */
   userId?: number;
   /**
@@ -323,6 +352,8 @@ export interface CreateOrderPayload {
   clientNameOverride?: string;
   userId: number;
   assignedUserId?: number;
+  /** Empleado de la sucursal que levanta el pedido (obligatorio desde la cuenta de sucursal). */
+  branchEmployeeId?: number;
   statusId: number;
   /**
    * Área destino (ver `AREA_OPTIONS` en `@/lib/areas`). Obligatoria cuando
@@ -900,6 +931,8 @@ export interface MyTask {
     designStartedAt: string | null;
     designStartedByName: string | null;
     client: { first_name: string; last_name?: string | null } | null;
+    /** Sucursal de origen ("Punto Madero"); null/ausente = pedido de la matriz. */
+    branch?: BranchRef | null;
     status: { id: number; name: string };
   };
 }

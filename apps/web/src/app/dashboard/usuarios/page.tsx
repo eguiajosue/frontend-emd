@@ -14,6 +14,8 @@ import type { Role, User } from "@/types";
 import { getUserColumns } from "./components/userColumns";
 import { ADMIN_ROLES as ADMIN_ROLE_NAMES } from "@/lib/roleTaskMapping";
 import { getRoleLabel } from "@/lib/roles";
+import { useBranches } from "@/hooks/useBranches";
+import { BranchesPanel } from "./components/BranchesPanel";
 
 // Debe coincidir exactamente con la política de contraseñas del backend
 // (POST/PATCH /users): mínimo 8 caracteres, al menos una mayúscula y un número.
@@ -37,7 +39,24 @@ const baseUserFields = z.object({
   isSharedAccount: z.boolean().optional(),
   username: z.string().optional().or(z.literal("")),
   roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
+  // Cuenta de sucursal (rol "Sucursal"): a qué sucursal pertenece.
+  branchId: z.number().nullable().optional(),
 });
+
+/** Nombre del rol de las cuentas de sucursal (ver Role.SUCURSAL del backend). */
+const BRANCH_ROLE_NAME = "sucursal";
+
+function requireBranchForBranchRole(branchRoleId: number | undefined) {
+  return (values: z.infer<typeof baseUserFields>, ctx: z.RefinementCtx) => {
+    if (branchRoleId !== undefined && values.roleIds.includes(branchRoleId) && !values.branchId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Elige la sucursal de la cuenta",
+        path: ["branchId"],
+      });
+    }
+  };
+}
 
 function requireUsernameWhenShared(
   values: z.infer<typeof baseUserFields>,
@@ -52,28 +71,34 @@ function requireUsernameWhenShared(
   }
 }
 
-const createSchema = baseUserFields
-  .extend({ password: passwordSchema })
-  .superRefine(requireUsernameWhenShared);
+const createSchemaFor = (branchRoleId: number | undefined) =>
+  baseUserFields
+    .extend({ password: passwordSchema })
+    .superRefine(requireUsernameWhenShared)
+    .superRefine(requireBranchForBranchRole(branchRoleId));
 
 // Al editar, la contraseña es opcional (solo se envía si se quiere cambiar),
 // pero si se ingresa algo debe cumplir la misma política que el backend.
-const editSchema = baseUserFields
-  .extend({
-    password: z
-      .string()
-      .optional()
-      .or(z.literal(""))
-      .refine((v) => !v || passwordSchema.safeParse(v).success, {
-        message: "Mínimo 8 caracteres, con una mayúscula y un número",
-      }),
-  })
-  .superRefine(requireUsernameWhenShared);
+const editSchemaFor = (branchRoleId: number | undefined) =>
+  baseUserFields
+    .extend({
+      password: z
+        .string()
+        .optional()
+        .or(z.literal(""))
+        .refine((v) => !v || passwordSchema.safeParse(v).success, {
+          message: "Mínimo 8 caracteres, con una mayúscula y un número",
+        }),
+    })
+    .superRefine(requireUsernameWhenShared)
+    .superRefine(requireBranchForBranchRole(branchRoleId));
 
-function initialTabFromUrl(): "usuarios" | "roles" {
+type UsersTab = "usuarios" | "roles" | "sucursales";
+
+function initialTabFromUrl(): UsersTab {
   if (typeof window === "undefined") return "usuarios";
   const tab = new URLSearchParams(window.location.search).get("tab");
-  return tab === "roles" ? "roles" : "usuarios";
+  return tab === "roles" || tab === "sucursales" ? tab : "usuarios";
 }
 
 /**
@@ -83,7 +108,9 @@ function initialTabFromUrl(): "usuarios" | "roles" {
 const UsuariosPage = () => {
   const { canManageUsers, isAdmin } = usePermissions();
   const { data: roles } = useEntityList<Role>("roles", { staleTime: CATALOG_STALE_TIME });
-  const [tab, setTab] = useState<"usuarios" | "roles">(initialTabFromUrl);
+  const [tab, setTab] = useState<UsersTab>(initialTabFromUrl);
+  const { data: branches } = useBranches();
+  const branchRoleId = roles.find((r) => r.name === BRANCH_ROLE_NAME)?.id;
 
   // Quien crea/edita usuarios sin ser admin/superuser no debe poder siquiera
   // ver las opciones de rol "admin"/"superuser" en la lista de checkboxes
@@ -135,10 +162,20 @@ const UsuariosPage = () => {
       type: "multiselect",
       options: selectableRoles.map((r) => ({ value: r.id, label: getRoleLabel(r.name) })),
     },
+    {
+      name: "branchId",
+      label: "Sucursal",
+      type: "select",
+      options: branches.filter((b) => b.active).map((b) => ({ value: b.id, label: b.name })),
+      showIf: (values: EntityValues) =>
+        branchRoleId !== undefined && (values.roleIds ?? []).includes(branchRoleId),
+      helpText:
+        "Cuenta compartida de la sucursal: sólo levanta pedidos, usa Mockups y ve sus pedidos.",
+    },
   ];
 
   const handleTabChange = (value: string) => {
-    const next = value === "roles" ? "roles" : "usuarios";
+    const next: UsersTab = value === "roles" || value === "sucursales" ? value : "usuarios";
     setTab(next);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
@@ -152,6 +189,7 @@ const UsuariosPage = () => {
         <TabsList>
           <TabsTrigger value="usuarios">Usuarios</TabsTrigger>
           <TabsTrigger value="roles">Roles</TabsTrigger>
+          <TabsTrigger value="sucursales">Sucursales</TabsTrigger>
         </TabsList>
 
         <TabsContent value="usuarios">
@@ -161,7 +199,7 @@ const UsuariosPage = () => {
             createLabel="Nuevo Usuario"
             canEdit={canManageUsers}
             fields={userFields}
-            schema={(editing) => (editing ? editSchema : createSchema)}
+            schema={(editing) => (editing ? editSchemaFor(branchRoleId) : createSchemaFor(branchRoleId))}
             columns={getUserColumns}
             emptyMessage="No hay otros usuarios registrados"
             emptyDescription="Invita al resto del equipo creando sus cuentas de usuario."
@@ -176,6 +214,7 @@ const UsuariosPage = () => {
                     lastName: editing.lastName ?? "",
                     password: "",
                     roleIds: editing.roles?.map((r) => r.id) ?? [],
+                    branchId: editing.branchId ?? undefined,
                   }
                 : { roleIds: [] }
             }
@@ -185,9 +224,19 @@ const UsuariosPage = () => {
               if (editing && !payload.password) {
                 delete payload.password;
               }
+              // Sin el rol "Sucursal" no hay sucursal: al editar se desvincula.
+              const isBranchAccount = branchRoleId !== undefined && (payload.roleIds ?? []).includes(branchRoleId);
+              if (!isBranchAccount || !payload.branchId) {
+                if (editing) payload.branchId = null;
+                else delete payload.branchId;
+              }
               return payload;
             }}
           />
+        </TabsContent>
+
+        <TabsContent value="sucursales">
+          <BranchesPanel />
         </TabsContent>
 
         <TabsContent value="roles">

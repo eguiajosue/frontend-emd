@@ -9,6 +9,8 @@
  * `chatMessage` e invalida estas mismas query keys.
  */
 
+import { useSession } from "next-auth/react";
+import { isBranchOnly } from "@/lib/roles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { request, unwrapList, type Paginated } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
@@ -34,10 +36,13 @@ export const chatQueryKeys = {
 /** `GET /chat/conversations`: canales de área + mensajes directos visibles. */
 export function useChatConversations() {
   const token = useAuthToken();
+  // La cuenta de sucursal no tiene Chat: no se le pide (daría 403).
+  const { data: session } = useSession();
+  const isBranch = isBranchOnly(session?.user?.roles);
 
   const query = useQuery<ChatConversation[]>({
     queryKey: chatQueryKeys.conversations(),
-    enabled: Boolean(token),
+    enabled: Boolean(token) && !isBranch,
     queryFn: () =>
       request<ChatConversation[]>(`${ENDPOINTS.chat}/conversations`, { token }),
     placeholderData: (previous) => previous,
