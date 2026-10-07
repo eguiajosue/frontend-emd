@@ -116,7 +116,7 @@ export const DEFAULT_COLORS: Record<Garment, GarmentColors> = {
   cap: { body: "#1f2937", mesh: "#ffffff", visor: "#1f2937" },
   hoodie: { body: "#b9bcc0" },
   "dress-shirt": { body: "#ffffff" },
-  termo: { body: "#1c1d21" },
+  termo: { body: "#2b2e34" },
   taza: { body: "#ffffff" },
 };
 

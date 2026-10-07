@@ -269,6 +269,7 @@ export class DesignDecal {
       mat.roughness = 0.85;
       mat.roughnessMap = null;
       mat.clearcoat = 0;
+      mat.envMapIntensity = 1;
     } else {
       this.laserTex?.dispose();
       this.laserTex = laserTexture(tex.image as HTMLImageElement, f.settings);
@@ -284,11 +285,15 @@ export class DesignDecal {
         mat.color.set("#6f747b");
         mat.metalness = 0.75;
         mat.roughness = 0.85;
+        mat.envMapIntensity = 1;
       } else {
         // Se quita la pintura: aparece el acero, claro, metálico y algo rugoso.
-        mat.color.set("#e3e6ea");
-        mat.metalness = 1;
-        mat.roughness = 0.42;
+        // Medio metálico: de frente un metal puro sólo refleja el entorno oscuro
+        // y se vería negro; la parte difusa lo mantiene claro como aluminio.
+        mat.color.set("#d9dde2");
+        mat.metalness = 0.55;
+        mat.roughness = 0.46;
+        mat.envMapIntensity = 1.8;
       }
     }
     mat.needsUpdate = true;

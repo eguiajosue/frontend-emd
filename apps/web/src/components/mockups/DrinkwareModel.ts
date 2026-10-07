@@ -228,7 +228,7 @@ export function createTazaModel(colors: GarmentColors): GarmentModel {
 
   // Cerámica esmaltada: base difusa con barniz brillante encima.
   const glaze = { roughness: 0.32, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06 };
-  const bodyMat = track(new THREE.MeshPhysicalMaterial({ ...glaze }));
+  const bodyMat = track(new THREE.MeshPhysicalMaterial({ ...glaze, envMapIntensity: 1.6 }));
   const { outer, inner } = tazaProfile();
   const body = new THREE.Mesh(track(lathe(outer)), bodyMat);
   body.name = "taza-body";
@@ -236,7 +236,7 @@ export function createTazaModel(colors: GarmentColors): GarmentModel {
   root.add(body);
 
   // Interior y labio: siempre blancos (como las tazas de sublimación de color).
-  const innerMat = track(new THREE.MeshPhysicalMaterial({ ...glaze, color: "#f7f7f5", side: THREE.DoubleSide }));
+  const innerMat = track(new THREE.MeshPhysicalMaterial({ ...glaze, envMapIntensity: 1.6, color: "#f7f7f5", side: THREE.DoubleSide }));
   const rim = new THREE.Mesh(track(lathe(inner)), innerMat);
   rim.name = "taza-inner";
   root.add(rim);
