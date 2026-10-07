@@ -124,3 +124,126 @@ export function playArrivalChime(priority: ArrivalPriority): boolean {
     return false;
   }
 }
+
+// --- Impresora de tickets ------------------------------------------------------
+
+/** Timbre del motor de avance por prioridad: vencido más agudo y fuerte (urgencia). */
+export function printerMotorParams(priority: ArrivalPriority): { motorHz: number; noiseHz: number; gain: number } {
+  switch (priority) {
+    case "overdue":
+      return { motorHz: 150, noiseHz: 2600, gain: 0.16 };
+    case "at_risk":
+      return { motorHz: 125, noiseHz: 2200, gain: 0.12 };
+    case "changes":
+      return { motorHz: 115, noiseHz: 2000, gain: 0.11 };
+    default:
+      return { motorHz: 100, noiseHz: 1800, gain: 0.09 };
+  }
+}
+
+/**
+ * Envolvente del motor a pasos: en cada paso suena el 60 % del tiempo (el
+ * papel avanza) y calla el resto, igual que `steppedFeed` de la animación.
+ * Devuelve [inicio, fin] (s, relativos) de cada pulso.
+ */
+export function motorSteps(durationS: number, steps: number): [number, number][] {
+  const n = Math.max(1, Math.round(steps));
+  const step = durationS / n;
+  return Array.from({ length: n }, (_, i) => [i * step, i * step + step * 0.6] as [number, number]);
+}
+
+let noise: AudioBuffer | null = null;
+function noiseBuffer(ac: AudioContext): AudioBuffer {
+  if (noise && noise.sampleRate === ac.sampleRate) return noise;
+  const buf = ac.createBuffer(1, Math.round(ac.sampleRate * 0.5), ac.sampleRate);
+  const data = buf.getChannelData(0);
+  let s = 12345;
+  for (let i = 0; i < data.length; i++) {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    data[i] = (s / 1073741824 - 1) * 0.8;
+  }
+  noise = buf;
+  return buf;
+}
+
+function canPlay(): AudioContext | null {
+  if (isTvSoundMuted() || !ctx || ctx.state !== "running") return null;
+  return ctx;
+}
+
+/** Zumbido del motor mientras sale el ticket (sincronizado con los pasos del papel). */
+export function playPrinterFeed(priority: ArrivalPriority, durationMs: number, steps: number): boolean {
+  const ac = canPlay();
+  if (!ac) return false;
+  try {
+    const p = printerMotorParams(priority);
+    const start = ac.currentTime + 0.01;
+    const dur = durationMs / 1000;
+    const env = ac.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    for (const [a, b] of motorSteps(dur, steps)) {
+      env.gain.setValueAtTime(0.0001, start + a);
+      env.gain.linearRampToValueAtTime(p.gain, start + a + 0.008);
+      env.gain.linearRampToValueAtTime(p.gain * 0.7, start + b - 0.01);
+      env.gain.linearRampToValueAtTime(0.0001, start + b);
+    }
+    env.connect(ac.destination);
+    const osc = ac.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(p.motorHz, start);
+    const lp = ac.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 900;
+    const oscGain = ac.createGain();
+    oscGain.gain.value = 0.35;
+    osc.connect(lp).connect(oscGain).connect(env);
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuffer(ac);
+    src.loop = true;
+    const bp = ac.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = p.noiseHz;
+    bp.Q.value = 1.2;
+    src.connect(bp).connect(env);
+    osc.start(start);
+    src.start(start);
+    osc.stop(start + dur + 0.05);
+    src.stop(start + dur + 0.05);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** "Clic" seco de la guillotina al cortar. */
+export function playCutterSnip(): boolean {
+  const ac = canPlay();
+  if (!ac) return false;
+  try {
+    const t = ac.currentTime + 0.005;
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuffer(ac);
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 3500;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.25, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    src.connect(hp).connect(g).connect(ac.destination);
+    const osc = ac.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(2400, t);
+    osc.frequency.exponentialRampToValueAtTime(700, t + 0.03);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.18, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    osc.connect(og).connect(ac.destination);
+    src.start(t);
+    src.stop(t + 0.06);
+    osc.start(t);
+    osc.stop(t + 0.05);
+    return true;
+  } catch {
+    return false;
+  }
+}

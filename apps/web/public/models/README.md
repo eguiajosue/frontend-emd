@@ -43,19 +43,12 @@ assets de terceros. Si más adelante se consigue un GLB con licencia (TODO R5),
 debe exponer las mallas `front`, `mesh` y `visor` y usar el mismo espacio local
 (+Z frente, +Y arriba, metros) para que los presets sigan sirviendo.
 
-## Caja de cartón del Modo TV de Tareas (llegada de paquetes 3D)
+## Impresora térmica del Modo TV de Tareas (llegada de pedidos 3D)
 
-No hay archivo: la caja se construye por código en
-`src/components/tasks/tv/arrival3d/cardboardBox.ts` (paredes con
-`RoundedBoxGeometry`, solapas con bisagra, cinta, etiqueta de envío) y sus
-texturas se pintan en `<canvas>` en `arrival3d/textures.ts` (kraft con
-fibras, motas y corrugado; marcas impresas; la hoja del pedido se copia del
-DOM). La iluminación usa `RoomEnvironment` de three.js (MIT, incluido en el
-paquete `three`). Sin assets de terceros ni descargas en runtime.
-
-Se intentó bajar una caja CC0 (Kenney.nl, Poly Pizza, Quaternius), pero la
-red del entorno de desarrollo bloquea esos sitios. Si más adelante se agrega
-un GLB (CC0, ≤ 500 KB, en esta carpeta, que queda fuera del precache del
-Service Worker), debe exponer las solapas como nodos separados con el pivote
-en la bisagra, base en y=0 y frente hacia +Z, y registrarse aquí con origen y
-licencia.
+No hay archivo: la impresora se construye por código en
+`src/components/tasks/tv/arrival3d/thermalPrinter.ts` (cuerpo y tapa con
+`RoundedBoxGeometry`, ranura con barra de corte dentada, guillotina, LED,
+botón de avance y logo pintado en `<canvas>`). El ticket se copia del DOM a
+una `CanvasTexture` (`arrival3d/textures.ts`). La iluminación usa
+`RoomEnvironment` de three.js (MIT, incluido en el paquete `three`). Sin
+assets de terceros ni descargas en runtime.

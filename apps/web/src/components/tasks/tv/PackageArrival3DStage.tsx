@@ -2,17 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { SheetContent, type ResolvedArrival } from "@/components/tasks/tv/PackageArrivalStage";
+import { TicketContent, type ResolvedArrival } from "@/components/tasks/tv/TicketContent";
 import type { ArrivalPlayer } from "@/components/tasks/tv/arrival3d/ArrivalScene";
 import { loadArrivalScene } from "@/components/tasks/tv/arrival3d/runtime";
-import { arrival3DTimeline, sheetFlight, type ScreenSheet } from "@/lib/arrival3d";
+import { CHOREO_3D, printTimeline, sheetFlight, type ScreenSheet } from "@/lib/arrival3d";
 import type { TimeFormatPreference } from "@/lib/format";
-import { MAX_FAN, PRIORITY_STYLE, type ArrivalPriority, type ArrivalStep } from "@/lib/packageArrivals";
+import { MAX_FAN, type ArrivalPriority, type ArrivalStep } from "@/lib/packageArrivals";
+import { playCutterSnip, playPrinterFeed } from "@/lib/tvSound";
 import { cn } from "@/lib/utils";
 
 /** Si la escena 3D no arranca en este tiempo, se usa la animación SVG. */
 const START_TIMEOUT_MS = 2500;
-/** Lo que espera a las fuentes de la app antes de copiar la hoja a 3D. */
+/** Lo que espera a las fuentes de la app antes de copiar el ticket a 3D. */
 const FONTS_WAIT_MS = 600;
 
 interface PackageArrival3DStageProps {
@@ -43,15 +44,15 @@ interface Flight {
 }
 
 /**
- * Llegada de un paquete en 3D real (three.js): la caja entra según la
- * prioridad, se abren las solapas, estalla la luz y sube la hoja hasta mirar
- * a la cámara. En ese momento la hoja pasa al DOM exactamente donde quedó en
- * pantalla y vuela a su tarjeta (el mismo FLIP de la versión 2D) mientras la
- * caja se hunde y el lienzo se apaga.
+ * Llegada de un pedido en 3D real (three.js): una impresora térmica entra
+ * según la prioridad, imprime el ticket línea por línea, la guillotina lo
+ * corta y el ticket sube hasta mirar a la cámara. En ese momento pasa al DOM
+ * exactamente donde quedó en pantalla y vuela a su tarjeta (el mismo FLIP de
+ * la versión 2D) mientras la impresora se hunde y el lienzo se apaga.
  *
- * Las hojas DOM se renderizan desde el principio fuera de pantalla: se copian
- * a la textura 3D (misma fuente, mismos colores) y son las que después
- * vuelan, así el pase no se nota.
+ * Los tickets DOM se renderizan desde el principio fuera de pantalla: se
+ * copian a la textura 3D (misma fuente, mismos colores) y son los que
+ * después vuelan, así el pase no se nota.
  */
 export function PackageArrival3DStage({
   step,
@@ -65,9 +66,8 @@ export function PackageArrival3DStage({
   onFallback,
 }: PackageArrival3DStageProps) {
   const batch = step.kind === "batch";
-  const timeline = useMemo(() => arrival3DTimeline(priority, batch), [priority, batch]);
-  const style = PRIORITY_STYLE[priority];
   const fan = resolved.slice(0, batch ? MAX_FAN : 1);
+  const timeline = useMemo(() => printTimeline(priority, batch, fan.length), [priority, batch, fan.length]);
   const extra = resolved.length - fan.length;
   const title = batch ? `${resolved.length} pedidos nuevos` : `Nuevo pedido #${resolved[0]?.orderId}`;
 
@@ -80,7 +80,7 @@ export function PackageArrival3DStage({
   const callbacks = useRef({ onLand, onDelivered, onDone, onFallback, findTarget });
   callbacks.current = { onLand, onDelivered, onDone, onFallback, findTarget };
 
-  // --- Arranque: carga diferida de three, copia de las hojas y t = 0.
+  // --- Arranque: carga diferida de three, copia de los tickets y t = 0.
   useEffect(() => {
     let cancelled = false;
     let started = false;
@@ -98,15 +98,9 @@ export function PackageArrival3DStage({
         const host = hostRef.current;
         if (cancelled || !host) return;
         const sheets = fan
-          .map((a, i) => ({ root: sheetRefs.current[i], color: PRIORITY_STYLE[a.priority].color }))
-          .filter((s): s is { root: HTMLDivElement; color: string } => Boolean(s.root));
-        const created = await mod.createArrivalPlayer(host, {
-          priority,
-          batch,
-          labelTitle: batch ? `${resolved.length} pedidos` : `#${resolved[0]?.orderId ?? ""}`,
-          labelSubtitle: batch ? "Nuevos pedidos" : style.label,
-          sheets,
-        });
+          .map((_, i) => ({ root: sheetRefs.current[i] }))
+          .filter((s): s is { root: HTMLDivElement } => Boolean(s.root));
+        const created = await mod.createArrivalPlayer(host, { priority, batch, sheets });
         if (cancelled) {
           created.stop();
           return;
@@ -140,7 +134,13 @@ export function PackageArrival3DStage({
   // --- Secuencia (los mismos tiempos que la versión 2D).
   useEffect(() => {
     if (!playing) return;
+    const steps = CHOREO_3D[priority].feedSteps;
     const timers = [
+      // Motor y guillotina, en sincronía con cada ticket.
+      ...timeline.tickets.flatMap((slot) => [
+        setTimeout(() => playPrinterFeed(priority, slot.feedEnd - slot.feedStart, batch ? Math.ceil(steps / 2) : steps), slot.feedStart),
+        setTimeout(() => playCutterSnip(), slot.cut),
+      ]),
       setTimeout(() => {
         setPhase("land");
         callbacks.current.onLand();
@@ -186,7 +186,7 @@ export function PackageArrival3DStage({
       data-arrival-mode="3d"
     >
       <span className="sr-only">{title}</span>
-      {/* Velo: oscurece el tablero mientras llega; se aclara cuando la hoja vuela. */}
+      {/* Velo: oscurece el tablero mientras llega; se aclara cuando el ticket vuela. */}
       <motion.div
         className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,rgba(15,23,42,0.55),rgba(2,6,23,0.82))]"
         initial={{ opacity: 0 }}
@@ -214,10 +214,9 @@ export function PackageArrival3DStage({
         </motion.span>
       )}
 
-      {/* Hojas DOM: fuera de pantalla hasta el pase; después vuelan a su tarjeta. */}
+      {/* Tickets DOM: fuera de pantalla hasta el pase; después vuelan a su tarjeta. */}
       {fan.map((arrival, i) => {
         const flight = flights?.find((f) => f.arrival.id === arrival.id);
-        const sheetStyle = PRIORITY_STYLE[arrival.priority];
         return (
           <motion.div
             key={arrival.id}
@@ -254,9 +253,9 @@ export function PackageArrival3DStage({
               ref={(el) => {
                 sheetRefs.current[i] = el;
               }}
-              className={cn("rounded-2xl bg-white text-slate-900 shadow-2xl ring-4", sheetStyle.ring)}
+              className="shadow-2xl"
             >
-              <SheetContent arrival={arrival} compact={batch} timeFormat={timeFormat} />
+              <TicketContent arrival={arrival} compact={batch} timeFormat={timeFormat} />
             </div>
           </motion.div>
         );
