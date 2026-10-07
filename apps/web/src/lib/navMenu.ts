@@ -17,8 +17,10 @@ import {
   House,
   Shirt,
   ReceiptText,
+  FilePlus2,
   type LucideIcon,
 } from "lucide-react";
+import { isBranchOnly } from "@/lib/roles";
 
 export interface NavItem {
   title: string;
@@ -52,6 +54,9 @@ export const INVENTORY_URL = "/dashboard/inventario";
 
 /** Creador de mockups 3D (playera / gorra) de Recepción. */
 export const MOCKUPS_URL = "/dashboard/mockups";
+
+/** Pedidos (para la sucursal, "Mis pedidos"). */
+export const ORDERS_URL = "/dashboard/orders";
 
 /** Cotizaciones de Recepción: por enviar / enviadas (docs/plans/cotizaciones.md). */
 export const QUOTES_URL = "/dashboard/cotizaciones";
@@ -132,6 +137,25 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         url: "/dashboard/ayuda",
         icon: HelpCircle,
       },
+    ],
+  },
+];
+
+/**
+ * Menú de la cuenta de sucursal (ej. "Punto Madero"): sólo levantar pedidos,
+ * ver los suyos y Mockups. Nada más (el backend también lo hace cumplir).
+ */
+export const BRANCH_MENU: NavGroup[] = [
+  {
+    groupLabel: "Sucursal",
+    items: [
+      {
+        title: "Nuevo pedido",
+        url: `${ORDERS_URL}?new=1`,
+        icon: FilePlus2,
+      },
+      { title: "Mis pedidos", url: ORDERS_URL, icon: Package },
+      { title: "Mockups", url: MOCKUPS_URL, icon: Shirt },
     ],
   },
 ];
@@ -351,9 +375,18 @@ export function findActiveNavUrl(urls: string[], pathname: string | null): strin
 
 /** Inicio de cada rol: admin al panel general; Recepción, Diseño y Producción a su tablero en vivo. */
 export function homePathForRoles(roles: string[]): string {
+  if (isBranchOnly(roles)) return ORDERS_URL;
   if (roles.includes("admin") || roles.includes("superuser")) return "/dashboard/admin";
   if (roles.includes("recepcion") || roles.some((r) => WORK_AREA_ROLES.includes(r))) return HOME_URL;
   return "/dashboard/orders";
+}
+
+/** Rutas a las que puede entrar la cuenta de sucursal (Pedidos, Mockups y Configuración personal). */
+export function isBranchAllowedPath(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return [ORDERS_URL, MOCKUPS_URL, "/dashboard/configuracion"].some(
+    (url) => pathname === url || pathname.startsWith(`${url}/`)
+  );
 }
 
 /** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */

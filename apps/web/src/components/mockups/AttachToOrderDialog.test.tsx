@@ -31,6 +31,8 @@ vi.mock("@/lib/mockups/presets", () => ({
 }));
 
 const push = vi.fn();
+vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ isBranch: false }) }));
+vi.mock("@/hooks/useBranches", () => ({ useMyBranch: () => ({ branch: undefined }) }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 const toastSuccess = vi.fn();

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { isAdminRole } from "@/lib/roleTaskMapping";
+import { isBranchOnly } from "@/lib/roles";
 
 /**
  * Permisos derivados de los roles de la sesión.
@@ -21,6 +22,8 @@ export function usePermissions() {
       canManageOperations: isAdmin || roles.includes("recepcion"),
       /** Alta/edición de usuarios y roles. */
       canManageUsers: isAdmin,
+      /** Cuenta de sucursal: sólo Nuevo pedido, Mis pedidos y Mockups. */
+      isBranch: isBranchOnly(roles),
       isSessionLoading: status === "loading",
       session,
     };

@@ -131,6 +131,14 @@ export const TvTaskCard = memo(function TvTaskCard({
           {task.kind === "production" && (
             <AreaSupplySummary supply={task.supply} className="text-base" />
           )}
+          {task.order.branch?.name && (
+            <span
+              data-testid="branch-badge"
+              className="inline-flex rounded-full border border-white/20 px-2.5 py-0.5 text-sm font-medium"
+            >
+              {task.order.branch.name}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

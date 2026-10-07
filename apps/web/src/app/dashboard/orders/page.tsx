@@ -174,7 +174,9 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
 const WORK_AREA_ROLE_SET = new Set(["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]);
 
 const OrdersPage = () => {
-  const { roles, canManageOperations, isSessionLoading, session } = usePermissions();
+  const { roles, canManageOperations, isBranch, isSessionLoading, session } = usePermissions();
+  // La sucursal también levanta pedidos (con el empleado obligatorio), pero no los gestiona.
+  const canCreateOrders = canManageOperations || isBranch;
   // Diseño y Producción no gestionan pedidos: su pantalla es "Tareas
   // asignadas". Un link viejo (notificación, marcador) los lleva ahí.
   const ordersRouter = useRouter();
@@ -234,7 +236,7 @@ const OrdersPage = () => {
   // Atajo "N": abre "+ Nueva Orden" (sólo si nadie tiene foco en un input/textarea
   // y el usuario puede crear pedidos).
   useEffect(() => {
-    if (!canManageOperations) return;
+    if (!canCreateOrders) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key !== "n" && e.key !== "N") return;
       if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
@@ -246,7 +248,7 @@ const OrdersPage = () => {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [canManageOperations]);
+  }, [canCreateOrders]);
 
   const writeUrl = useCallback((nextFilters: OrdersFilters, nextTone: DeadlineTone | null) => {
     try {
@@ -440,6 +442,9 @@ const OrdersPage = () => {
         } else if (order.assignedUserId !== filters.assignedUserId) {
           return false;
         }
+      }
+      if (filters.branchId !== undefined && (order.branchId ?? null) !== filters.branchId) {
+        return false;
       }
       if (filters.createdByMe && order.userId !== currentUserId) {
         return false;
@@ -659,11 +664,13 @@ const OrdersPage = () => {
 
   const screenCopy = useMemo(
     () =>
-      ordersScreenCopy(roles, {
-        canManageOperations,
-        pendingCount: canManageOperations ? undefined : pendingCount,
-      }),
-    [roles, canManageOperations, pendingCount]
+      isBranch
+        ? { title: "Mis pedidos", description: "Los pedidos que levantó tu sucursal." }
+        : ordersScreenCopy(roles, {
+            canManageOperations,
+            pendingCount: canManageOperations ? undefined : pendingCount,
+          }),
+    [roles, canManageOperations, pendingCount, isBranch]
   );
 
   const loading = isPending || isSessionLoading;
@@ -713,7 +720,7 @@ const OrdersPage = () => {
             </DropdownMenu>
           )}
 
-          {canManageOperations && (
+          {canCreateOrders && (
             <Button data-tour="new-order-button" onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
             </Button>
@@ -812,7 +819,7 @@ const OrdersPage = () => {
             title="Todavía no hay pedidos en el tablero"
             description="El primero está a un click de distancia."
             action={
-              canManageOperations
+              canCreateOrders
                 ? {
                     label: "Nuevo pedido",
                     icon: Plus,

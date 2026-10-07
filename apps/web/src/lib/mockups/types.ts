@@ -206,6 +206,8 @@ export interface OrderMockupSummary {
   garment: Garment;
   createdAt: string;
   createdBy?: { id: number; name: string } | null;
+  /** Empleado de la sucursal que lo armó (sólo mockups de sucursal). */
+  branchEmployee?: { id: number; name: string };
 }
 
 export interface OrderMockupDetail extends OrderMockupSummary {
@@ -219,6 +221,8 @@ export interface CreateOrderMockupPayload {
   garment: Garment;
   imageDataUrl: string;
   config: MockupConfig;
+  /** Empleado de la sucursal que lo armó (opcional; sólo cuenta de sucursal). */
+  branchEmployeeId?: number;
 }
 
 /**

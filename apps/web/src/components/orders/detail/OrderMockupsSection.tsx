@@ -28,7 +28,7 @@ import type { Order } from "@/types";
 function mockupMeta(mockup: OrderMockupSummary): string {
   const date = new Date(mockup.createdAt);
   const when = Number.isNaN(date.getTime()) ? "" : format(date, "d MMM, HH:mm", { locale: es });
-  return [when, mockup.createdBy?.name].filter(Boolean).join(" · ");
+  return [when, mockup.branchEmployee?.name ?? mockup.createdBy?.name].filter(Boolean).join(" · ");
 }
 
 /** Miniatura: la imagen (detalle) se pide sólo cuando la tarjeta se ve. */

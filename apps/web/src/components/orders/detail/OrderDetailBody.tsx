@@ -155,7 +155,8 @@ export function OrderDetailBody({
           es con lo que Producción trabaja. Sin diseño no se renderiza. */}
       <AuthorizationSheet order={order} />
       {sections}
-      <OrderNotesSection orderId={order.id} />
+      {/* La sucursal sólo lee: sin notas internas. */}
+      {!viewer.roles.every((r) => r === "sucursal") && <OrderNotesSection orderId={order.id} />}
       {permissions.canSeeHistory && <OrderActivitySection orderId={order.id} />}
     </div>
   );

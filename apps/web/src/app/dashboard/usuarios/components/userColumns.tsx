@@ -25,6 +25,11 @@ export const getUserColumns = ({
             Área
           </Badge>
         )}
+        {row.original.branch && (
+          <Badge variant="outline" className="px-2">
+            {row.original.branch.name}
+          </Badge>
+        )}
       </div>
     ),
   },

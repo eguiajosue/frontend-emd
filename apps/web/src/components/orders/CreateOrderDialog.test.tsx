@@ -72,8 +72,28 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   request: (...args: unknown[]) => requestMock(...args),
 }));
 
+let mockIsBranch = false;
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ session: { user: { id: "7", roles: ["recepcion"] } } }),
+  usePermissions: () => ({
+    isBranch: mockIsBranch,
+    session: { user: { id: "7", roles: [mockIsBranch ? "sucursal" : "recepcion"] } },
+  }),
+}));
+
+vi.mock("@/hooks/useBranches", () => ({
+  useMyBranch: (enabled: boolean) => ({
+    branch: enabled
+      ? {
+          id: 1,
+          name: "Punto Madero",
+          active: true,
+          employees: [
+            { id: 1, name: "Ana López" },
+            { id: 3, name: "Carla Díaz" },
+          ],
+        }
+      : undefined,
+  }),
 }));
 
 const toastSuccess = vi.fn();
@@ -127,6 +147,7 @@ beforeEach(() => {
   createMock.mockResolvedValue({ id: 123 });
   toastSuccess.mockReset();
   toastError.mockReset();
+  mockIsBranch = false;
   mockData = {};
   mockClientOrders = [];
   mockFrequentIds = null;
@@ -950,5 +971,42 @@ describe("CreateOrderDialog · mockups 3D", () => {
     await submit();
     expect(createMock).toHaveBeenCalledTimes(1);
     expect(requestMock.mock.calls.filter(([path]) => String(path).includes("mockups"))).toHaveLength(0);
+  });
+});
+
+describe("CreateOrderDialog: cuenta de sucursal (Punto Madero)", () => {
+  beforeEach(() => {
+    mockIsBranch = true;
+  });
+
+  it("pide elegir el empleado y no crea sin él", async () => {
+    renderDialog();
+    expect(screen.getByRole("heading", { name: "Sucursal Punto Madero" })).toBeInTheDocument();
+    await fillDirectOrder();
+    await submit();
+    expect(await screen.findAllByText("Elige quién levanta el pedido")).not.toHaveLength(0);
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("sólo ofrece los empleados activos que manda el backend y los envía en el payload", async () => {
+    renderDialog();
+    await userEvent.click(screen.getByRole("combobox", { name: /¿Quién levanta el pedido\?/ }));
+    expect(screen.getByRole("option", { name: "Ana López" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Carla Díaz" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Beto Ruiz" })).toBeNull();
+    await userEvent.click(screen.getByRole("option", { name: "Carla Díaz" }));
+
+    await fillDirectOrder();
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ branchEmployeeId: 3 }));
+  });
+
+  it("la matriz no ve el selector ni manda empleado", async () => {
+    mockIsBranch = false;
+    renderDialog();
+    expect(screen.queryByRole("combobox", { name: /¿Quién levanta el pedido\?/ })).toBeNull();
+    await fillDirectOrder();
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ branchEmployeeId: undefined }));
   });
 });

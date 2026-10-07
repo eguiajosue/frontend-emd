@@ -33,6 +33,8 @@ export interface AreaBoardTask {
     statusId: number;
     clientNameOverride: string | null;
     client: { first_name: string; last_name?: string | null } | null;
+    /** Sucursal de origen ("Punto Madero"); null/ausente = pedido de la matriz. */
+    branch?: { id: number; name: string } | null;
     /** Hoy no los manda el backend; se aprovechan si algún día llegan. */
     creationDate?: string;
     status?: { id: number; name: string };

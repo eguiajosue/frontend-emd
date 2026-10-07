@@ -5,7 +5,9 @@ import { MobileTabBar } from "@/components/MobileTabBar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
 import { AnimatePresence, motion } from "framer-motion";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { usePermissions } from "@/hooks/usePermissions";
+import { isBranchAllowedPath } from "@/lib/navMenu";
 import { useMotionPreset } from "@/lib/motion";
 import { CommandPalette } from "@/components/CommandPalette";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
@@ -24,6 +26,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // Keeps the real-time notifications socket alive across every dashboard page.
   const socketRef = useSocket();
   const pathname = usePathname();
+  const router = useRouter();
+  const { isBranch } = usePermissions();
   const { routeTransition } = useMotionPreset();
   const { count } = useUnreadNotificationsCount();
   const crumbs = useBreadcrumbs();
@@ -31,6 +35,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // Barra expandida (con títulos): preferencia del usuario. También la
   // controla Ctrl+B (atajo propio de `SidebarProvider`).
   const { expanded, setExpanded } = useNavPreferences();
+
+  // La cuenta de sucursal sólo entra a Pedidos, Mockups y su Configuración
+  // personal: cualquier otra ruta la devuelve a "Mis pedidos" (el backend
+  // igual responde 403 a lo demás).
+  useEffect(() => {
+    if (isBranch && !isBranchAllowedPath(pathname)) router.replace("/dashboard/orders");
+  }, [isBranch, pathname, router]);
 
   // Pestaña con la página y las no leídas, ej. "(3) Pedidos #12 · EMD HUB":
   // con varias pestañas abiertas antes todas decían sólo "EMD HUB".

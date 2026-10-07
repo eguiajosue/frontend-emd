@@ -71,6 +71,7 @@ import {
 } from "@/hooks/useOrderTemplates";
 import { useClientInsights } from "@/hooks/useClientInsights";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useMyBranch } from "@/hooks/useBranches";
 import { useMotionPreset } from "@/lib/motion";
 import {
   isAllowedUploadMime,
@@ -155,8 +156,18 @@ const orderSchema = z
     deliveryDate: z.string().optional().or(z.literal("")),
     assignedUserId: z.number().optional(),
     orderProducts: z.array(orderProductSchema).min(1, "Agrega al menos un producto"),
+    /** Cuenta de sucursal: el empleado que levanta el pedido es obligatorio. */
+    isBranch: z.boolean().optional(),
+    branchEmployeeId: z.number().optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.isBranch && !data.branchEmployeeId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["branchEmployeeId"],
+        message: "Elige quién levanta el pedido",
+      });
+    }
     if (!data.clientId && !data.clientNameOverride?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -186,11 +197,12 @@ const orderSchema = z
   });
 
 /** Orden de los campos en pantalla: a dónde va el foco ante el primer error. */
-const FIELD_ORDER = ["clientId", "area", "assignedUserId", "orderProducts", "description"] as const;
+const FIELD_ORDER = ["branchEmployeeId", "clientId", "area", "assignedUserId", "orderProducts", "description"] as const;
 type FieldKey = (typeof FIELD_ORDER)[number];
 
 /** Iguales a los labels visibles (se usan en el aviso del footer y en "Falta: …"). */
 const FIELD_LABELS: Record<FieldKey, string> = {
+  branchEmployeeId: "Empleado",
   clientId: "Cliente",
   area: "Áreas de producción",
   assignedUserId: "Asignar a",
@@ -404,7 +416,10 @@ export function CreateOrderDialog({
 }: CreateOrderDialogProps) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
-  const { session } = usePermissions();
+  const { session, isBranch } = usePermissions();
+  // Cuenta de sucursal: empleados activos de SU sucursal (obligatorio elegir uno).
+  const { branch: myBranch } = useMyBranch(open && isBranch);
+  const [branchEmployeeId, setBranchEmployeeId] = useState<number | undefined>(undefined);
   const { formButtonMotion, reduced } = useMotionPreset();
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
   const { data: productPresets } = useEntityList<OrderProductPreset>("orderProductPresets", {
@@ -488,7 +503,7 @@ export function CreateOrderDialog({
    * cuánta anticipación. Alimenta "Lo habitual", los chips "Suele pedir", la
    * cantidad habitual al agregar un producto y la fecha sugerida.
    */
-  const { insights } = useClientInsights(open && clientId ? clientId : null);
+  const { insights } = useClientInsights(open && clientId && !isBranch ? clientId : null);
   const learnedProducts = useMemo(
     () => (insights?.products ?? []).filter((p) => p.orders >= 2).slice(0, LEARNED_CHIPS_LIMIT),
     [insights]
@@ -516,6 +531,7 @@ export function CreateOrderDialog({
     setRequiresDesign(true);
     setAreas([]);
     setAssignedUserId(undefined);
+    setBranchEmployeeId(undefined);
     setDescription("");
     setDeliveryDate("");
     setDeliveryTime("");
@@ -799,13 +815,13 @@ export function CreateOrderDialog({
   // materiales; NUNCA la fecha ni el archivo del cliente. Siempre es una
   // acción explícita, visible y con "Quitar" para volver atrás.
   const { orders: previousOrders, isLoading: previousLoading } = useClientOrders(
-    open && clientId ? clientId : null,
+    open && clientId && !isBranch ? clientId : null,
     { limit: PREVIOUS_ORDERS_LIMIT }
   );
   const visiblePrevious = showAllPrevious
     ? previousOrders
     : previousOrders.slice(0, PREVIOUS_ORDERS_SHOWN);
-  const { templates } = useClientOrderTemplates(open && clientId ? clientId : null);
+  const { templates } = useClientOrderTemplates(open && clientId && !isBranch ? clientId : null);
   const templateMutations = useOrderTemplateMutations();
 
   const { data: repeatSource } = useOrder(repeatFromOrderId, {
@@ -1143,6 +1159,8 @@ export function CreateOrderDialog({
   /* ------------------------------ Validación ------------------------------ */
 
   const currentFormData = () => ({
+    isBranch,
+    branchEmployeeId,
     clientId,
     clientNameOverride,
     area: primaryArea,
@@ -1200,6 +1218,7 @@ export function CreateOrderDialog({
     requiresDesign,
     areas,
     assignedUserId,
+    branchEmployeeId,
     description,
     rows,
   ]);
@@ -1217,7 +1236,8 @@ export function CreateOrderDialog({
 
   const focusField = (field: FieldKey, rowErrorMap: Record<string, string> = rowErrors) => {
     let target: HTMLElement | null = null;
-    if (field === "clientId") target = document.getElementById("order-client");
+    if (field === "branchEmployeeId") target = document.getElementById("order-branch-employee");
+    else if (field === "clientId") target = document.getElementById("order-client");
     else if (field === "area")
       target = document.querySelector<HTMLElement>("#order-areas button");
     else if (field === "assignedUserId") target = document.getElementById("order-assignee");
@@ -1269,6 +1289,7 @@ export function CreateOrderDialog({
         productionArea: parsed.requiresDesign ? parsed.area : undefined,
         productionAreas: areas.length > 0 ? areas : undefined,
         userId: Number(session?.user?.id),
+        branchEmployeeId: isBranch ? parsed.branchEmployeeId : undefined,
         assignedUserId: parsed.assignedUserId,
         statusId: 1,
         description: parsed.description,
@@ -1307,7 +1328,7 @@ export function CreateOrderDialog({
         pendingMockups.forEach((m, index) =>
           uploadMockup(
             order.id,
-            buildMockupPayload(m.result),
+            { ...buildMockupPayload(m.result), branchEmployeeId: isBranch ? parsed.branchEmployeeId : undefined },
             pendingMockups.length > 1 ? `el mockup ${index + 1}` : "el mockup"
           )
         );
@@ -1471,7 +1492,46 @@ export function CreateOrderDialog({
               <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-6">
                 <div className="space-y-6">
                   {/* ───────────── Cliente ───────────── */}
-                  <Section id="order-section-client" title="Cliente" first>
+                  {isBranch && (
+                    <Section id="order-section-branch" title={myBranch ? `Sucursal ${myBranch.name}` : "Sucursal"} first>
+                      <div className="space-y-2">
+                        <label htmlFor="order-branch-employee" className="text-sm font-medium">
+                          ¿Quién levanta el pedido?
+                        </label>
+                        <Select
+                          value={branchEmployeeId ? String(branchEmployeeId) : ""}
+                          onValueChange={(v) => {
+                            setBranchEmployeeId(v ? Number(v) : undefined);
+                            markDirty();
+                          }}
+                        >
+                          <SelectTrigger
+                            id="order-branch-employee"
+                            aria-required
+                            aria-invalid={Boolean(errors.branchEmployeeId)}
+                            aria-describedby={describedBy("order-branch-employee", null, errors.branchEmployeeId)}
+                            className="h-11 w-full sm:h-9 sm:max-w-sm"
+                          >
+                            <SelectValue placeholder="Elige tu nombre…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(myBranch?.employees ?? []).map((e) => (
+                              <SelectItem key={e.id} value={String(e.id)}>
+                                {e.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {myBranch && myBranch.employees.length === 0 && (
+                          <p className="text-meta">
+                            La sucursal no tiene empleados activos. Pide a administración que los agregue.
+                          </p>
+                        )}
+                        <FieldMessages id="order-branch-employee" error={errors.branchEmployeeId} />
+                      </div>
+                    </Section>
+                  )}
+                  <Section id="order-section-client" title="Cliente" first={!isBranch}>
                     {hasClient ? (
                       <div className="space-y-2">
                         <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-3 py-2.5">
