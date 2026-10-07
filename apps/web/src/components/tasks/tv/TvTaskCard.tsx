@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Loader2, Play, RotateCcw, UserRound } from "lucide-react";
+import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { Button } from "@/components/ui/button";
 import { TONE_META } from "@/components/orders/OrderJobCard";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
@@ -127,6 +128,9 @@ export const TvTaskCard = memo(function TvTaskCard({
             {task.order.description || "Sin descripción"}
           </p>
           <p className="truncate text-lg text-muted-foreground">{clientName(task)}</p>
+          {task.kind === "production" && (
+            <AreaSupplySummary supply={task.supply} className="text-base" />
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

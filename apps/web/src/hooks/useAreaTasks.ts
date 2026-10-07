@@ -62,6 +62,8 @@ export function useAreaTasks(orderId: number | null) {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: areaTasksKey(orderId ?? 0) });
     queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+    // Terminar/regresar una tarea descuenta o devuelve insumos del inventario.
+    queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
   };
 
   const setStatus = useMutation({

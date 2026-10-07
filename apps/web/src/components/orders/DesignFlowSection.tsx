@@ -23,8 +23,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { OrderMaterialDialog } from "@/components/orders/OrderMaterialDialog";
-import { useOrderMaterials } from "@/hooks/useOrderMaterials";
+import { AreaSuppliesForm } from "@/components/orders/AreaSuppliesForm";
+import { draftsComplete, draftsToInput, type SupplyDrafts } from "@/lib/areaSupply";
 import {
   Accordion,
   AccordionContent,
@@ -73,14 +73,13 @@ import {
   Palette,
   Paperclip,
   Play,
-  Plus,
   RotateCcw,
   Upload,
   UserRound,
   X,
   ZoomIn,
 } from "lucide-react";
-import type { DesignRevisionFile, Order } from "@/types";
+import type { AreaSupplyInput, DesignRevisionFile, Order } from "@/types";
 import type { UploadFileInput } from "@/lib/fileInput";
 import { PreviewImage } from "@/components/ui/preview-image";
 import { ZoomableImage } from "@/components/ui/zoomable-image";
@@ -475,13 +474,13 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
           open={approveOpen}
           onClose={() => setApproveOpen(false)}
           isSubmitting={isApproving}
-          orderId={order.id}
           round={latestRevision.round}
           plannedAreas={plannedAreas}
-          onSubmit={async (productionAreas) => {
+          onSubmit={async (productionAreas, supplies) => {
             const ok = await approveRevision({
               revisionId: latestRevision.id,
               productionAreas,
+              supplies,
             });
             if (ok) setApproveOpen(false);
             return ok;
@@ -1363,83 +1362,58 @@ function FeedbackDialog({
 /* -------------------------------------------------------------------------- */
 
 /**
- * Autorizar tiene dos requisitos (al menos un material y saber a qué áreas
- * va). Antes ninguno se veía hasta apretar "Confirmar": el backend devolvía
- * el error en un toast y el diálogo quedaba abierto sin decir cómo seguir.
- * Ahora se muestran como checklist y se resuelven aquí mismo.
+ * Autorizar abre la "Hoja de materiales": saber a qué áreas va el pedido y,
+ * por cada área, el ORIGEN de los insumos (los trae el cliente o los ponemos
+ * nosotros). El pedido pasa a producción al guardar la hoja: autorización +
+ * hoja viajan en una sola petición (una transacción en el backend).
  */
 function ApproveDialog({
   open,
   onClose,
   onSubmit,
   isSubmitting,
-  orderId,
   round,
   plannedAreas,
 }: {
   open: boolean;
   onClose: () => void;
-  onSubmit: (productionAreas?: string[]) => Promise<boolean>;
+  onSubmit: (productionAreas: string[] | undefined, supplies: AreaSupplyInput[]) => Promise<boolean>;
   isSubmitting: boolean;
-  orderId: number;
   round: number;
   /** Áreas ya definidas en "Áreas de producción". Vacío = se eligen aquí. */
   plannedAreas: string[];
 }) {
   const { formButtonMotion } = useMotionPreset();
-  const { items: materials, isLoading: materialsLoading } = useOrderMaterials(open ? orderId : null);
   const [areas, setAreas] = useState<string[]>([]);
-  const [materialOpen, setMaterialOpen] = useState(false);
+  const [drafts, setDrafts] = useState<SupplyDrafts>({});
 
   const needsAreas = plannedAreas.length === 0;
-  const hasMaterials = materials.length > 0;
-  const hasAreas = !needsAreas || areas.length > 0;
-  const ready = hasMaterials && hasAreas;
+  const effectiveAreas = needsAreas ? areas : plannedAreas;
+  const hasAreas = effectiveAreas.length > 0;
+  const suppliesReady = hasAreas && draftsComplete(drafts, effectiveAreas);
+  const ready = hasAreas && suppliesReady;
 
   const handleSubmit = async () => {
     if (!ready) return;
-    const ok = await onSubmit(needsAreas ? areas : undefined);
-    if (ok) setAreas([]);
+    const ok = await onSubmit(needsAreas ? areas : undefined, draftsToInput(drafts, effectiveAreas));
+    if (ok) {
+      setAreas([]);
+      setDrafts({});
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !isSubmitting && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>El cliente autorizó la ronda {round}</DialogTitle>
           <DialogDescription>
-            El pedido sale de Diseño y pasa a producción con este montaje.
+            Hoja de materiales: indica de dónde sale el insumo de cada área. Al guardar, el pedido sale de Diseño y
+            pasa a producción.
           </DialogDescription>
         </DialogHeader>
 
         <ul className="space-y-3" aria-label="Requisitos para autorizar">
-          <li className="flex items-start gap-3">
-            <RequirementMark done={hasMaterials} loading={materialsLoading} />
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <p className="text-sm font-medium">Hoja de materiales</p>
-              {hasMaterials ? (
-                <p className="text-xs text-muted-foreground">
-                  {materials.length === 1 ? "1 material cargado" : `${materials.length} materiales cargados`}
-                </p>
-              ) : (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    Carga al menos un material: producción tiene que saber qué va a usar.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setMaterialOpen(true)}
-                    className="gap-1.5"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Cargar material
-                  </Button>
-                </>
-              )}
-            </div>
-          </li>
           <li className="flex items-start gap-3">
             <RequirementMark done={hasAreas} />
             <div className="min-w-0 flex-1 space-y-1.5">
@@ -1449,7 +1423,7 @@ function ApproveDialog({
               {needsAreas ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    ¿Quién lo produce? Si va a más de un área, elegilas todas.
+                    ¿Quién lo produce? Si va a más de un área, elígelas todas.
                   </p>
                   <ToggleGroup
                     type="multiple"
@@ -1470,10 +1444,19 @@ function ApproveDialog({
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Pasa a{" "}
-                  <span className="font-medium text-foreground">
-                    {plannedAreas.map(getAreaLabel).join(", ")}
-                  </span>
+                  <span className="font-medium text-foreground">{plannedAreas.map(getAreaLabel).join(", ")}</span>
                 </p>
+              )}
+            </div>
+          </li>
+          <li className="flex items-start gap-3">
+            <RequirementMark done={suppliesReady} />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-sm font-medium">Hoja de materiales</p>
+              {hasAreas ? (
+                <AreaSuppliesForm areas={effectiveAreas} value={drafts} onChange={setDrafts} />
+              ) : (
+                <p className="text-xs text-muted-foreground">Elige primero las áreas de producción.</p>
               )}
             </div>
           </li>
@@ -1490,8 +1473,6 @@ function ApproveDialog({
             </Button>
           </motion.div>
         </DialogFooter>
-
-        <OrderMaterialDialog open={materialOpen} onClose={() => setMaterialOpen(false)} orderId={orderId} />
       </DialogContent>
     </Dialog>
   );

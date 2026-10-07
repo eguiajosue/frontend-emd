@@ -26,6 +26,7 @@ import { apiUrl } from "@/lib/config";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
 import type {
+  AreaSupplyInput,
   DesignRevision,
   DesignRevisionFileContent,
   DesignRevisionFileInput,
@@ -147,10 +148,13 @@ export function useDesignRevisions(
     mutationFn: ({
       revisionId,
       productionAreas,
+      supplies,
     }: {
       revisionId: number;
       /** Vacío = usa las áreas ya planificadas del pedido. */
       productionAreas?: string[];
+      /** Hoja de materiales: origen de insumos por área (obligatoria). */
+      supplies: AreaSupplyInput[];
     }) =>
       request<DesignRevision>(
         `${designRevisionsPath(orderId as number)}/${revisionId}/approve`,
@@ -159,13 +163,16 @@ export function useDesignRevisions(
           token,
           body:
             productionAreas && productionAreas.length > 0
-              ? { productionAreas, productionArea: productionAreas[0] }
-              : {},
+              ? { productionAreas, productionArea: productionAreas[0], supplies }
+              : { supplies },
         }
       ),
-    onSuccess: () => {
+    onSuccess: (data: DesignRevision & { supplyWarnings?: string[] }) => {
       invalidate();
+      // Lo apartado cambia el disponible del inventario.
+      queryClient.invalidateQueries({ queryKey: queryKeys.all("inventory") });
       toast.success("Pedido autorizado: pasa a producción");
+      data?.supplyWarnings?.forEach((warning) => toast.warning(warning));
     },
     onError: (error) => toast.error(getDesignErrorMessage(error)),
     meta: { ownErrorToast: true },
@@ -195,7 +202,7 @@ export function useDesignRevisions(
         .catch(() => false),
     isSubmittingFeedback: feedbackMutation.isPending,
 
-    approveRevision: (args: { revisionId: number; productionAreas?: string[] }) =>
+    approveRevision: (args: { revisionId: number; productionAreas?: string[]; supplies: AreaSupplyInput[] }) =>
       approveMutation
         .mutateAsync(args)
         .then(() => true)

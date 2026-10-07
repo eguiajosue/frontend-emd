@@ -68,6 +68,81 @@ const tareasTvIniciales = () => [
 ];
 let tareasTv = tareasTvIniciales();
 
+/**
+ * Pedido #110 "esperando autorización" para el flujo autorizar → hoja de
+ * materiales → producción. NO está en `GET /orders` (para no mover los
+ * tableros de los otros flujos): se abre con `?openOrderId=110`. Imita al
+ * backend: autorizar + hoja en una sola petición; los insumos "nosotros"
+ * quedan apartados y se descuentan al terminar la tarea de bordado.
+ */
+const ORDEN_AUTORIZAR = 110;
+const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
+let autorizar = autorizarInicial();
+const pedidoAutorizar = () => ({
+  id: ORDEN_AUTORIZAR,
+  statusId: autorizar.aprobada ? 9 : 7,
+  status: autorizar.aprobada ? { id: 9, name: "autorizado" } : { id: 7, name: "esperando autorización" },
+  clientNameOverride: "Escuela Primaria Benito Juárez",
+  description: "40 playeras con escudo bordado",
+  creationDate: "2026-09-10T10:00:00.000Z",
+  deliveryDate: "2026-10-25T18:00:00.000Z",
+  deliveredAt: null,
+  area: autorizar.aprobada ? "bordado" : "diseno",
+  productionArea: "bordado",
+  requiresDesign: true,
+  areaTasks: [tareaAutorizar()],
+  orderProducts: [],
+  assignedUser: null,
+});
+const tareaAutorizar = () =>
+  autorizar.tarea ?? { id: 90, orderId: ORDEN_AUTORIZAR, area: "bordado", status: "pendiente", assignedUserId: 2, createdAt: "2026-09-10T10:00:00.000Z", assignedUser: usuarios[1], supply: null };
+const rondaAutorizar = () => [
+  ronda(20, ORDEN_AUTORIZAR, 1, [1005], autorizar.aprobada ? { approved: true, approvedAt: new Date().toISOString() } : {}),
+];
+/** Apartado por artículo: líneas "nosotros" sin descontar. */
+const apartado = (itemId) =>
+  autorizar.supply?.source === "nosotros"
+    ? autorizar.supply.lines.filter((l) => l.inventoryItemId === itemId && !l.discountedAt).reduce((t, l) => t + l.quantity, 0)
+    : 0;
+const hojaAutorizar = () => ({
+  areas: [
+    {
+      taskId: 90, area: "bordado", status: tareaAutorizar().status,
+      supply: autorizar.supply && {
+        ...autorizar.supply,
+        lines: autorizar.supply.lines.map((l) => {
+          const a = inventario.find((x) => x.id === l.inventoryItemId);
+          return { ...l, state: l.discountedAt ? "descontado" : "apartado", stock: a ? { quantity: a.quantity, reserved: apartado(a.id), available: a.quantity - apartado(a.id) } : null };
+        }),
+      },
+    },
+  ],
+  movements: autorizar.movimientos,
+});
+/** Terminar descuenta (SALIDA); regresar de terminado devuelve (ENTRADA). Sin negativos, como el backend. */
+function aplicarInsumos(anterior, nuevo) {
+  const lines = autorizar.supply?.source === "nosotros" ? autorizar.supply.lines.filter((l) => l.inventoryItemId) : [];
+  const terminando = nuevo === "terminado" && anterior !== "terminado";
+  const reabriendo = anterior === "terminado" && nuevo !== "terminado";
+  if (!terminando && !reabriendo) return null;
+  const afectadas = lines.filter((l) => (terminando ? !l.discountedAt : l.discountedAt));
+  for (const l of afectadas) {
+    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    if (terminando && l.quantity > a.quantity) return { message: `Stock insuficiente de ${a.name}: hay ${a.quantity} ${a.unit} y la hoja pide ${l.quantity}.` };
+  }
+  for (const l of afectadas) {
+    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    const delta = terminando ? -l.quantity : l.quantity;
+    a.quantity += delta;
+    l.discountedAt = terminando ? new Date().toISOString() : null;
+    autorizar.movimientos.unshift({
+      id: 900 + autorizar.movimientos.length, itemId: a.id, type: terminando ? "SALIDA" : "ENTRADA", delta, balanceAfter: a.quantity,
+      note: null, areaTaskId: 90, createdAt: new Date().toISOString(), item: { id: a.id, name: a.name, unit: a.unit }, createdBy: { id: 2, firstName: "Bordado" },
+    });
+  }
+  return null;
+}
+
 /** Usuario del token (el `sub` del JWT de mentira). */
 function usuarioDe(req) {
   try {
@@ -116,6 +191,15 @@ function misTareas(u) {
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
+      order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
+    });
+  }
+  const t90 = tareaAutorizar();
+  if (autorizar.aprobada && roles.includes("bordado") && t90.status !== "terminado" && (libre(t90) || mia(t90))) {
+    const o = pedidoAutorizar();
+    items.push({
+      key: "task-90", kind: "production", area: "bordado", taskId: 90, status: t90.status,
+      mine: mia(t90), assignee: libre(t90) ? null : t90.assignedUser, startedAt: null, supply: autorizar.supply,
       order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
     });
   }
@@ -351,6 +435,8 @@ const articuloJson = (a) => ({
   barcode: a.barcode ?? codigoPorOmision(a.id),
   material: null,
   supplier: null,
+  reserved: apartado(a.id),
+  available: a.quantity - apartado(a.id),
   stockStatus: estadoStock(a.quantity, a.minStock),
   totalValue: a.unitCost == null ? null : a.quantity * a.unitCost,
 });
@@ -447,7 +533,30 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-tareas") {
       tareas = tareasIniciales();
       tareasTv = tareasTvIniciales();
+      autorizar = autorizarInicial();
+      inventario = inventarioInicial();
+      movimientosInventario = [];
       return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/autorizacion") return send({ recibido: autorizar.recibido });
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-supplies` && req.method === "GET") return send(hojaAutorizar());
+    if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions` && req.method === "GET") return send(rondaAutorizar());
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-tasks` && req.method === "GET") return send([tareaAutorizar()].map(({ supply, ...t }) => t));
+    if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions/20/approve` && req.method === "PATCH") {
+      const dto = JSON.parse(body || "{}");
+      autorizar.recibido = dto;
+      const hoja = (dto.supplies ?? []).find((x) => x.area === "bordado");
+      if (!hoja) return send({ message: "Captura la hoja de materiales (origen de insumos) de: Bordado" }, 400);
+      autorizar.aprobada = true;
+      autorizar.supply = {
+        id: 1, source: hoja.source,
+        lines: hoja.lines.map((l, i) => {
+          const a = inventario.find((x) => x.id === l.inventoryItemId);
+          return { id: i + 1, inventoryItemId: l.inventoryItemId ?? null, description: l.description ?? a?.name ?? "", quantity: l.quantity, discountedAt: null, inventoryItem: a ? { id: a.id, name: a.name, unit: a.unit, area: a.area } : null };
+        }),
+      };
+      autorizar.tarea = { ...tareaAutorizar(), supply: autorizar.supply };
+      return send({ ...rondaAutorizar()[0], supplyWarnings: [] });
     }
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
@@ -711,6 +820,13 @@ createServer((req, res) => {
 
     // Avance de una tarea de área: es lo que el flujo 3 verifica.
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
+    if (avance && Number(avance[1]) === 90 && req.method === "PATCH") {
+      const { status } = JSON.parse(body || "{}");
+      const error = aplicarInsumos(tareaAutorizar().status, status);
+      if (error) return send(error, 400);
+      autorizar.tarea = { ...tareaAutorizar(), status, supply: autorizar.supply };
+      return send(autorizar.tarea);
+    }
     if (avance && req.method === "PATCH") {
       const id = Number(avance[1]);
       const { status } = JSON.parse(body || "{}");
@@ -748,6 +864,7 @@ createServer((req, res) => {
     const detalle = path.match(/^\/orders\/(\d+)$/);
     if (detalle && req.method === "GET") {
       const id = Number(detalle[1]);
+      if (id === ORDEN_AUTORIZAR) return send(pedidoAutorizar());
       const pedido = pedidos().find((p) => p.id === id);
       if (pedido) return send(pedido);
       const tv = tareasTv.find((t) => t.orderId === id);

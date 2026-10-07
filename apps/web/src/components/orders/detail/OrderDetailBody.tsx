@@ -3,6 +3,7 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
 import { AuthorizationSheet } from "@/components/orders/AuthorizationSheet";
+import { AreaSuppliesPanel } from "@/components/orders/AreaSuppliesPanel";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { CollapsibleSection, DetailSection } from "@/components/orders/detail/DetailSection";
 import { OrderDetailsSection } from "@/components/orders/detail/OrderDetailsSection";
@@ -117,6 +118,7 @@ export function OrderDetailBody({
   const areas = (
     <DetailSection key="areas" id={SECTION_IDS.areas} title="Producción">
       <AreaTasksSection order={order} embedded />
+      <AreaSuppliesPanel orderId={order.id} />
     </DetailSection>
   );
 

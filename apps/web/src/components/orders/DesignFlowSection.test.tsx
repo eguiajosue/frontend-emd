@@ -5,7 +5,7 @@ import { DesignFlowSection } from "./DesignFlowSection";
 import type { DesignRevision, Order } from "@/types";
 
 let revisions: DesignRevision[] = [];
-let materials: { id: number }[] = [];
+const approveRevision = vi.fn().mockResolvedValue(true);
 
 vi.mock("@/hooks/useDesignRevisions", () => ({
   useDesignRevisions: () => ({
@@ -16,18 +16,21 @@ vi.mock("@/hooks/useDesignRevisions", () => ({
     isSendingMontage: false,
     submitFeedback: vi.fn(),
     isSubmittingFeedback: false,
-    approveRevision: vi.fn(),
+    approveRevision: (...args: unknown[]) => approveRevision(...args),
     isApproving: false,
   }),
   useDesignRevisionFile: () => ({ data: undefined, isError: false, isLoading: false }),
   useDesignRevisionFileContent: () => ({ data: undefined, isError: false, isLoading: false }),
 }));
 
-vi.mock("@/hooks/useOrderMaterials", () => ({
-  useOrderMaterials: () => ({ items: materials, isLoading: false, isError: false }),
+vi.mock("@/hooks/useInventory", () => ({
+  useInventoryItems: () => ({
+    data: [
+      { id: 7, area: "taller", name: "Film DTF", sku: null, barcode: "EMD-000007", unit: "m", quantity: 10, available: 8 },
+    ],
+    isLoading: false,
+  }),
 }));
-
-vi.mock("@/components/orders/OrderMaterialDialog", () => ({ OrderMaterialDialog: () => null }));
 
 vi.mock("@/hooks/useAreaTasks", () => ({
   useAreaTasks: () => ({ tasks: [] }),
@@ -97,27 +100,59 @@ describe("DesignFlowSection - respuesta del cliente", () => {
     status: { id: 22, name: "esperando autorización" },
   } as Order;
 
-  it("sin materiales, 'Pasar a producción' queda bloqueado y ofrece cargarlos ahí mismo", async () => {
+  it("sin hoja de materiales, 'Pasar a producción' queda bloqueado", async () => {
     revisions = [revision(1, false)];
-    materials = [];
     render(<DesignFlowSection order={waiting} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Hoja de materiales");
-    expect(screen.getByRole("button", { name: /Cargar material/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Taller" }));
+    // Con el área elegida falta el origen del insumo.
     expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
   });
 
-  it("con materiales y un área elegida, se puede pasar a producción", async () => {
+  it("origen 'cliente' sin detalle alcanza y se manda en la autorización", async () => {
+    approveRevision.mockClear();
     revisions = [revision(1, false)];
-    materials = [{ id: 1 }];
     render(<DesignFlowSection order={waiting} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
-    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Taller" }));
-    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeEnabled();
+    await userEvent.click(screen.getByRole("radio", { name: "Taller: lo trae el cliente" }));
+    await userEvent.type(screen.getByLabelText("Taller: descripción del insumo del cliente"), "playeras negras");
+    await userEvent.type(screen.getByLabelText("Taller: cantidad del insumo del cliente"), "12");
+    await userEvent.click(screen.getByRole("button", { name: "Pasar a producción" }));
+
+    expect(approveRevision).toHaveBeenCalledWith({
+      revisionId: 1,
+      productionAreas: ["taller"],
+      supplies: [{ area: "taller", source: "cliente", lines: [{ description: "playeras negras", quantity: 12 }] }],
+    });
+  });
+
+  it("origen 'nosotros' exige elegir un artículo del inventario (o texto libre)", async () => {
+    approveRevision.mockClear();
+    revisions = [revision(1, false)];
+    render(<DesignFlowSection order={waiting} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
+    await userEvent.click(screen.getByRole("button", { name: "Taller" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Taller: lo ponemos nosotros" }));
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Taller: buscar insumo en inventario"), "film");
+    await userEvent.click(screen.getByRole("button", { name: /Film DTF/ }));
+    const qty = screen.getByLabelText("Taller: cantidad de Film DTF");
+    await userEvent.clear(qty);
+    await userEvent.type(qty, "2");
+    await userEvent.click(screen.getByRole("button", { name: "Pasar a producción" }));
+
+    expect(approveRevision).toHaveBeenCalledWith(
+      expect.objectContaining({
+        supplies: [{ area: "taller", source: "nosotros", lines: [{ inventoryItemId: 7, description: "Film DTF", quantity: 2 }] }],
+      })
+    );
   });
 
   it("con cambios pedidos, lo que pidió el cliente se lee primero", () => {

@@ -35,6 +35,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { AreaSuppliesPanel } from "@/components/orders/AreaSuppliesPanel";
 import { OrderMaterialsChecklistTable } from "@/components/orders/OrderMaterialsChecklistTable";
 import { useOrders, useReorderMaterialsPriority } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -321,7 +322,10 @@ function SortableOrderRow({
         </AccordionTrigger>
       </div>
       <AccordionContent className="border-t border-border/60">
-        <OrderMaterialsChecklistTable orderId={order.id} />
+        <div className="space-y-4 pt-3">
+          <AreaSuppliesPanel orderId={order.id} />
+          <OrderMaterialsChecklistTable orderId={order.id} />
+        </div>
       </AccordionContent>
     </AccordionItem>
   );

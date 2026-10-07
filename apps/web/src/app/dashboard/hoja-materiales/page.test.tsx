@@ -23,6 +23,10 @@ vi.mock("@/hooks/useOrderMaterials", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useAreaSupplies", () => ({
+  useAreaSupplies: () => ({ data: { areas: [], movements: [] }, isLoading: false }),
+}));
+
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ canManageOperations }),
 }));

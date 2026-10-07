@@ -161,6 +161,65 @@ export interface UploadedFileInput {
 /** Avance de un área dentro de un pedido. */
 export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
 
+/** Origen de los insumos de un área: los trae el cliente o los ponemos nosotros. */
+export type SupplySource = "cliente" | "nosotros";
+
+/** Línea de la hoja de materiales de un área. `inventoryItemId` sólo en origen "nosotros". */
+export interface AreaSupplyLine {
+  id: number;
+  inventoryItemId: number | null;
+  description: string;
+  /** El backend serializa Decimal: puede llegar como string. */
+  quantity: number | string;
+  /** Cuándo se descontó del stock; null = apartado. */
+  discountedAt: string | null;
+  inventoryItem?: { id: number; name: string; unit: string; area: string; barcode?: string | null } | null;
+}
+
+/** Hoja de materiales de UNA tarea de área (se captura al autorizar). */
+export interface AreaSupply {
+  id: number;
+  source: SupplySource;
+  lines: AreaSupplyLine[];
+}
+
+/** Entrada para `PATCH .../approve` y `PUT /orders/:id/area-supplies`. */
+export interface AreaSupplyInput {
+  area: string;
+  source: SupplySource;
+  lines: { inventoryItemId?: number; description?: string; quantity: number }[];
+}
+
+/** `GET /orders/:id/area-supplies`: hoja por área con estado de stock y movimientos. */
+export interface AreaSupplySheet {
+  areas: {
+    taskId: number;
+    area: string;
+    status: AreaTaskStatus;
+    supply:
+      | (Omit<AreaSupply, "lines"> & {
+          lines: (AreaSupplyLine & {
+            state?: "apartado" | "descontado";
+            stock: { quantity: number; reserved: number; available: number } | null;
+          })[];
+        })
+      | null;
+  }[];
+  movements: {
+    id: number;
+    itemId: number;
+    type: "ENTRADA" | "SALIDA" | "AJUSTE";
+    delta: number;
+    balanceAfter: number;
+    note?: string | null;
+    areaTaskId: number | null;
+    createdAt: string;
+    item: { id: number; name: string; unit: string };
+    createdBy?: { id: number; firstName?: string | null; lastName?: string | null } | null;
+  }[];
+  warnings?: string[];
+}
+
 /**
  * Trabajo que le toca a UN área dentro de un pedido. Varias áreas conviven en
  * el mismo pedido y avanzan en paralelo, sin esperarse entre sí.
@@ -176,6 +235,8 @@ export interface OrderAreaTask {
   startedAt?: string | null;
   completedAt?: string | null;
   assignedUser?: AssignedUser | null;
+  /** Origen de insumos del área; ausente/null en pedidos anteriores a la hoja. */
+  supply?: AreaSupply | null;
 }
 
 export interface Order extends BaseEntity {
@@ -769,6 +830,10 @@ export interface InventoryItem extends BaseEntity {
   brand?: string | null;
   location?: string | null;
   quantity: number;
+  /** Apartado por hojas de materiales de pedidos (aún sin descontar). */
+  reserved?: number;
+  /** quantity − reserved. */
+  available?: number;
   minStock?: number | null;
   unitCost?: number | null;
   notes?: string | null;
@@ -890,6 +955,8 @@ export interface MyTask {
   mine: boolean;
   assignee: { id: number; firstName?: string | null; lastName?: string | null; username: string } | null;
   startedAt: string | null;
+  /** Origen de insumos del área (sólo tareas de producción). */
+  supply?: AreaSupply | null;
   order: {
     id: number;
     description: string;
