@@ -89,6 +89,8 @@ export interface CrudColumnsArgs<T> {
   onEdit: (entity: T) => void;
   onDelete: (id: number) => void;
   canEdit: boolean;
+  /** `false` oculta "Eliminar" (ej. clientes de sucursal). Ausente = se puede. */
+  canDelete?: boolean;
 }
 
 export interface CrudPageProps<T extends BaseEntity> {
@@ -96,6 +98,8 @@ export interface CrudPageProps<T extends BaseEntity> {
   title: string;
   createLabel: string;
   canEdit: boolean;
+  /** Si se puede eliminar (default `true`); sólo tiene efecto con `canEdit`. */
+  canDelete?: boolean;
   /** Campos del formulario; función para poder variar según si es alta o edición. */
   fields: FieldConfig[] | ((editing: T | null) => FieldConfig[]);
   /** Schema de validación; función para poder relajar reglas al editar. */
@@ -129,6 +133,7 @@ export function CrudPage<T extends BaseEntity>({
   title,
   createLabel,
   canEdit,
+  canDelete = true,
   fields,
   schema,
   columns,
@@ -227,6 +232,7 @@ export function CrudPage<T extends BaseEntity>({
     onEdit: handleEdit,
     onDelete: setDeleteId,
     canEdit,
+    canDelete,
   });
 
   const showToolbarFilters =

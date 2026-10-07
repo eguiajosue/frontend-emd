@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GripVertical, Loader2, Plus, X } from "lucide-react";
 import {
   DndContext,
@@ -20,6 +20,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getErrorMessage } from "@/lib/api";
+import { normalizeProductKey } from "@/lib/createOrderForm";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { OrderProductPreset } from "@/types";
+
+/** Largo permitido del nombre de un producto nuevo. */
+export const PRESET_NAME_MIN = 1;
+export const PRESET_NAME_MAX = 80;
+
+/** Nombre limpio para guardar: sin espacios de más. */
+export function cleanPresetName(raw: string): string {
+  return raw.replace(/\s+/g, " ").trim();
+}
+
+/** Error de validación del nombre de un producto nuevo, o `null` si es válido. */
+export function validatePresetName(raw: string): string | null {
+  const name = cleanPresetName(raw);
+  if (name.length < PRESET_NAME_MIN) return "Escribe el nombre del producto.";
+  if (name.length > PRESET_NAME_MAX) return `Máximo ${PRESET_NAME_MAX} caracteres.`;
+  return null;
+}
 
 /** Cuántos frecuentes se muestran cuando el usuario no eligió los suyos. */
 export const DEFAULT_FREQUENTS_LIMIT = 10;
@@ -55,6 +75,11 @@ interface CustomizeFrequentsDialogProps {
   current: OrderProductPreset[];
   /** `null` vuelve al orden por defecto. */
   onSave: (ids: number[] | null) => Promise<unknown>;
+  /**
+   * Crea un producto nuevo en el catálogo (`POST /order-product-presets`,
+   * idempotente) y devuelve el preset. Sin esto no se ofrece "Producto nuevo".
+   */
+  onCreatePreset?: (name: string) => Promise<OrderProductPreset>;
 }
 
 /**
@@ -67,14 +92,24 @@ export function CustomizeFrequentsDialog({
   presets,
   current,
   onSave,
+  onCreatePreset,
 }: CustomizeFrequentsDialogProps) {
   const [ids, setIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newError, setNewError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  // Productos creados desde este diálogo: el catálogo (`presets`) tarda un
+  // refetch en traerlos y no deben desaparecer de la lista mientras tanto.
+  const [created, setCreated] = useState<OrderProductPreset[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setIds(current.map((p) => p.id));
     setSaving(false);
+    setNewName("");
+    setNewError(null);
+    setCreated([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -83,9 +118,48 @@ export function CustomizeFrequentsDialog({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const byId = new Map(presets.map((p) => [p.id, p]));
+  const catalog = useMemo(() => {
+    const known = new Set(presets.map((p) => p.id));
+    return [...presets, ...created.filter((p) => !known.has(p.id))];
+  }, [presets, created]);
+  const byId = new Map(catalog.map((p) => [p.id, p]));
   const chosen = ids.map((id) => byId.get(id)).filter((p): p is OrderProductPreset => !!p);
-  const available = presets.filter((p) => !ids.includes(p.id));
+  const available = catalog.filter((p) => !ids.includes(p.id));
+
+  const addNew = async () => {
+    if (!onCreatePreset || creating) return;
+    const invalid = validatePresetName(newName);
+    if (invalid) {
+      setNewError(invalid);
+      return;
+    }
+    const name = cleanPresetName(newName);
+    // Sin duplicados: ignora mayúsculas, acentos y espacios de más. Si ya está
+    // en el catálogo sólo se agrega a MIS frecuentes.
+    const existing = catalog.find((p) => normalizeProductKey(p.name) === normalizeProductKey(name));
+    if (existing) {
+      if (ids.includes(existing.id)) {
+        setNewError(`«${existing.name}» ya está en tus frecuentes.`);
+        return;
+      }
+      setIds((prev) => [...prev, existing.id]);
+      setNewName("");
+      setNewError(null);
+      return;
+    }
+    setCreating(true);
+    setNewError(null);
+    try {
+      const preset = await onCreatePreset(name);
+      setCreated((prev) => [...prev, preset]);
+      setIds((prev) => (prev.includes(preset.id) ? prev : [...prev, preset.id]));
+      setNewName("");
+    } catch (error) {
+      setNewError(getErrorMessage(error, "No se pudo crear el producto."));
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
@@ -129,9 +203,48 @@ export function CustomizeFrequentsDialog({
             </DndContext>
           )}
 
+          {onCreatePreset && (
+            <div className="space-y-1.5">
+              <label htmlFor="frequent-new-product" className="text-label">
+                Producto nuevo
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  id="frequent-new-product"
+                  value={newName}
+                  placeholder="Ej. Playera polo"
+                  autoComplete="off"
+                  aria-invalid={newError ? true : undefined}
+                  aria-describedby={newError ? "frequent-new-product-error" : undefined}
+                  disabled={creating}
+                  onChange={(e) => {
+                    setNewName(e.target.value);
+                    setNewError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    // Sin esto el Enter burbujea (por el portal) al formulario del pedido.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void addNew();
+                  }}
+                />
+                <Button type="button" variant="outline" disabled={creating} onClick={() => void addNew()}>
+                  {creating ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+                  Agregar
+                </Button>
+              </div>
+              {newError && (
+                <p id="frequent-new-product-error" role="alert" className="text-sm text-destructive">
+                  {newError}
+                </p>
+              )}
+            </div>
+          )}
+
           {available.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-label">Agregar</p>
+              <p className="text-label">Agregar del catálogo</p>
               <div className="flex flex-wrap gap-2">
                 {available.map((preset) => (
                   <Button

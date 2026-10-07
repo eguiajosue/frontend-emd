@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BRANCH_HISTORY_URL,
   BRANCH_MENU,
+  INVENTORY_URL,
+  TAB_PRIORITY_URLS,
   buildBreadcrumbs,
   buildMenuItems,
   isBranchAllowedPath,
@@ -160,9 +163,29 @@ describe("buildBreadcrumbs", () => {
 });
 
 describe("cuenta de sucursal (Punto Madero)", () => {
-  it("su menú sólo tiene Nuevo pedido, Mis pedidos y Mockups", () => {
+  it("su menú tiene Mis pedidos, Historial, Clientes y Mockups (sin 'Nuevo pedido' ni Inventario)", () => {
     const titles = BRANCH_MENU.flatMap((g) => g.items.map((i) => i.title));
-    expect(titles).toEqual(["Nuevo pedido", "Mis pedidos", "Mockups"]);
+    expect(titles).toEqual(["Mis pedidos", "Historial", "Clientes", "Mockups"]);
+    expect(titles).not.toContain("Nuevo pedido");
+    expect(titles).not.toContain("Inventario");
+  });
+
+  it("ningún ítem de su menú abre el alta (?new=1) ni apunta a Inventario", () => {
+    const urls = BRANCH_MENU.flatMap((g) => g.items.map((i) => i.url));
+    expect(urls.some((u) => u.includes("new=1"))).toBe(false);
+    expect(urls).not.toContain(INVENTORY_URL);
+    expect(urls).toContain(BRANCH_HISTORY_URL);
+  });
+
+  it("su Historial es una ruta propia, distinta del historial global de la matriz", () => {
+    expect(BRANCH_HISTORY_URL).not.toBe("/dashboard/historial");
+    expect(isBranchAllowedPath("/dashboard/historial")).toBe(false);
+  });
+
+  it("los tabs de la barra móvil cubren todo su menú (nada queda sólo detrás de 'Más' sin ser alcanzable)", () => {
+    const urls = BRANCH_MENU.flatMap((g) => g.items.map((i) => i.url));
+    const ranked = TAB_PRIORITY_URLS.filter((u) => urls.includes(u));
+    expect(ranked).toHaveLength(urls.length);
   });
 
   it("el menú completo no la deja ver nada de gestión (cada ítem exige otros roles)", () => {
@@ -176,11 +199,26 @@ describe("cuenta de sucursal (Punto Madero)", () => {
     expect(visible).not.toContain("Inventario");
   });
 
-  it("sólo puede entrar a Pedidos, Mockups y Configuración", () => {
-    for (const ok of ["/dashboard/orders", "/dashboard/orders/12", "/dashboard/mockups", "/dashboard/configuracion"]) {
+  it("sólo puede entrar a Pedidos, su Historial, Clientes, Mockups y Configuración", () => {
+    for (const ok of [
+      "/dashboard/orders",
+      "/dashboard/orders/12",
+      "/dashboard/mi-historial",
+      "/dashboard/clientes",
+      "/dashboard/mockups",
+      "/dashboard/configuracion",
+    ]) {
       expect(isBranchAllowedPath(ok)).toBe(true);
     }
-    for (const no of ["/dashboard/usuarios", "/dashboard/clientes", "/dashboard/admin", "/dashboard/chat", "/dashboard/orders-x"]) {
+    for (const no of [
+      "/dashboard/usuarios",
+      "/dashboard/inventario",
+      "/dashboard/inventario/3",
+      "/dashboard/admin",
+      "/dashboard/chat",
+      "/dashboard/orders-x",
+      "/dashboard/clientes-x",
+    ]) {
       expect(isBranchAllowedPath(no)).toBe(false);
     }
   });

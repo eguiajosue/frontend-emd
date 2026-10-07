@@ -14,6 +14,7 @@ vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({ canManageOperations, isBranch }),
 }));
 
+let hiddenNavUrls: string[] = [];
 let extraNavItems: { title: string; group: string; url: string; icon: typeof Package; unreadCount: number }[] = [];
 vi.mock("@/hooks/useVisibleNavItems", () => ({
   useVisibleNavItems: () => [
@@ -27,7 +28,7 @@ vi.mock("@/hooks/useVisibleNavItems", () => ({
       unreadCount: 0,
     },
     { title: "Clientes", group: "Compras y clientes", url: "/dashboard/clientes", icon: Building2, unreadCount: 0 },
-  ],
+  ].filter((item) => !hiddenNavUrls.includes(item.url)),
 }));
 
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light", setTheme: vi.fn() }) }));
@@ -47,10 +48,11 @@ beforeEach(() => {
   canManageOperations = true;
   isBranch = false;
   extraNavItems = [];
+  hiddenNavUrls = [];
 });
 
 describe("CommandPalette", () => {
-  it("sucursal: ve 'Nuevo pedido' (como el atajo N) pero no el Modo TV ni 'Nuevo cliente'", () => {
+  it("sucursal: ve 'Nuevo pedido' (como el atajo N) y 'Nuevo cliente' (los suyos), pero no el Modo TV", () => {
     canManageOperations = false;
     isBranch = true;
     render(<CommandPalette />);
@@ -58,7 +60,26 @@ describe("CommandPalette", () => {
 
     expect(screen.getByRole("option", { name: /Nuevo pedido/ })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /Modo TV/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Nuevo cliente/ })).toBeInTheDocument();
+  });
+
+  it("sin acceso a Clientes en el menú (ej. otro rol operativo) no ofrece 'Nuevo cliente'", () => {
+    canManageOperations = false;
+    isBranch = true;
+    hiddenNavUrls = ["/dashboard/clientes"];
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+
     expect(screen.queryByRole("option", { name: /Nuevo cliente/ })).not.toBeInTheDocument();
+  });
+
+  it("sucursal: la paleta no lista Inventario (sólo lo que trae su menú)", () => {
+    canManageOperations = false;
+    isBranch = true;
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+
+    expect(screen.queryByRole("option", { name: /Inventario/ })).not.toBeInTheDocument();
   });
 
   it("se abre desde el botón de buscar (evento global) y lista las pantallas del menú del rol", () => {

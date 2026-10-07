@@ -62,6 +62,7 @@ import { mockupErrorMessage, orderMockupsKey, postOrderMockup } from "@/hooks/us
 import { downloadFromUrl } from "@/lib/download";
 import { buildMockupPayload, mockupFilename, type MockupStudioResult } from "@/lib/mockups/studio";
 import { GARMENT_LABELS, type CreateOrderMockupPayload } from "@/lib/mockups/types";
+import { useCreateProductPreset } from "@/hooks/useProductPresets";
 import { CustomizeFrequentsDialog, resolveFrequents } from "@/components/orders/CustomizeFrequentsDialog";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { CATALOG_STALE_TIME, useAuthToken, useEntityList, useEntityMutations } from "@/hooks/useEntity";
@@ -434,6 +435,7 @@ export function CreateOrderDialog({
   });
   const { data: users, isPending: usersPending } = useEntityList<User>("users", { enabled: open });
   const { preferences, updatePreferences } = useUserPreferences();
+  const { createPreset } = useCreateProductPreset();
   const [frequentsOpen, setFrequentsOpen] = useState(false);
   const myFrequents = useMemo(
     () => resolveFrequents(productPresets, preferences?.frequentProductIds),
@@ -2017,47 +2019,47 @@ export function CreateOrderDialog({
                         </div>
                       )}
 
-                      {productPresets.length > 0 && (
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-label">Frecuentes</p>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 px-2 text-xs text-muted-foreground"
-                              onClick={() => setFrequentsOpen(true)}
-                            >
-                              Personalizar
-                            </Button>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {myFrequents
-                              .filter((preset) => !learnedKeys.has(normalizeProductKey(preset.name)))
-                              .map((preset) => {
-                              const row = rows.find((r) => sameName(r.customName, preset.name));
-                              return (
-                                <Button
-                                  key={preset.id}
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => addProduct(preset.name)}
-                                  aria-label={`Agregar ${preset.name}${row?.quantity ? `, ${row.quantity} en el pedido` : ""}`}
-                                  className={cn(CHIP_CLASS, row && "border-foreground/40")}
-                                >
-                                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                                  {preset.name}
-                                  {row?.quantity ? (
-                                    <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums text-foreground">
-                                      {row.quantity}
-                                    </span>
-                                  ) : null}
-                                </Button>
-                              );
-                            })}
-                          </div>
+                      {/* Siempre visible: con el catálogo vacío "Personalizar" es la
+                          forma de crear el primer producto frecuente. */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-label">Frecuentes</p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs text-muted-foreground"
+                            onClick={() => setFrequentsOpen(true)}
+                          >
+                            Personalizar
+                          </Button>
                         </div>
-                      )}
+                        <div className="flex flex-wrap gap-2">
+                          {myFrequents
+                            .filter((preset) => !learnedKeys.has(normalizeProductKey(preset.name)))
+                            .map((preset) => {
+                            const row = rows.find((r) => sameName(r.customName, preset.name));
+                            return (
+                              <Button
+                                key={preset.id}
+                                type="button"
+                                variant="outline"
+                                onClick={() => addProduct(preset.name)}
+                                aria-label={`Agregar ${preset.name}${row?.quantity ? `, ${row.quantity} en el pedido` : ""}`}
+                                className={cn(CHIP_CLASS, row && "border-foreground/40")}
+                              >
+                                <Plus className="h-3.5 w-3.5" aria-hidden />
+                                {preset.name}
+                                {row?.quantity ? (
+                                  <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums text-foreground">
+                                    {row.quantity}
+                                  </span>
+                                ) : null}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
                       {rows.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
@@ -2762,6 +2764,7 @@ export function CreateOrderDialog({
         presets={productPresets}
         current={myFrequents}
         onSave={(ids) => updatePreferences({ frequentProductIds: ids })}
+        onCreatePreset={createPreset}
       />
       <SaveOrderTemplateDialog
         open={saveTemplateOpen}
