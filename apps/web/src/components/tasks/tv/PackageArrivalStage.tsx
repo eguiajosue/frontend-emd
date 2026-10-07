@@ -115,7 +115,12 @@ export function PackageArrivalStage({
           : { y: 0, x: 0, rotate: 0, opacity: 1, scale: 1, transition: dropTransition };
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center" role="status" aria-live="polite">
+    <div
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center"
+      role="status"
+      aria-live="polite"
+      data-arrival-mode="2d"
+    >
       <span className="sr-only">{title}</span>
       {/* Velo: oscurece el tablero mientras llega y se aclara cuando la hoja vuela. */}
       <motion.div
@@ -358,7 +363,8 @@ function FlyingSheet({ arrival, index, offset, batch, out, flying, reduced, puls
   );
 }
 
-function SheetContent({ arrival, compact, timeFormat }: { arrival: ResolvedArrival; compact: boolean; timeFormat: TimeFormatPreference }) {
+/** Contenido de la hoja de un pedido (también lo copia a 3D `PackageArrival3DStage`). */
+export function SheetContent({ arrival, compact, timeFormat }: { arrival: ResolvedArrival; compact: boolean; timeFormat: TimeFormatPreference }) {
   const style = PRIORITY_STYLE[arrival.priority];
   const AreaIcon = arrival.area ? getAreaIcon(arrival.area) : null;
   return (
@@ -370,10 +376,11 @@ function SheetContent({ arrival, compact, timeFormat }: { arrival: ResolvedArriv
             #{arrival.orderId}
           </span>
           <span
-            className="rounded-full px-2.5 py-1 text-xs font-semibold text-white"
+            className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold text-white"
             style={{ backgroundColor: style.color }}
           >
-            {style.label}
+            {/* En la hoja chica del lote, "Cambios solicitados" no entra. */}
+            {compact && arrival.priority === "changes" ? "Cambios" : style.label}
           </span>
         </div>
         <p className={cn("truncate font-semibold", compact ? "text-base" : "text-xl")}>

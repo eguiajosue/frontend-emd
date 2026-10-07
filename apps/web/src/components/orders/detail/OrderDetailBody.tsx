@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, type ReactNode } from "react";
 import { DesignFlowSection } from "@/components/orders/DesignFlowSection";
+import { AuthorizationSheet } from "@/components/orders/AuthorizationSheet";
 import { AreaTasksSection } from "@/components/orders/AreaTasksSection";
 import { CollapsibleSection, DetailSection } from "@/components/orders/detail/DetailSection";
 import { OrderDetailsSection } from "@/components/orders/detail/OrderDetailsSection";
@@ -148,6 +149,9 @@ export function OrderDetailBody({
         viewer={viewer}
         onGoToSection={goToSection}
       />
+      {/* La hoja de autorización (montaje autorizado) va arriba para todos:
+          es con lo que Producción trabaja. Sin diseño no se renderiza. */}
+      <AuthorizationSheet order={order} />
       {sections}
       <OrderNotesSection orderId={order.id} />
       {permissions.canSeeHistory && <OrderActivitySection orderId={order.id} />}

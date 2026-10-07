@@ -8,8 +8,11 @@ import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TONE_META } from "@/components/orders/OrderJobCard";
+import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TvTaskCard } from "@/components/tasks/tv/TvTaskCard";
 import { PackageArrivalStage, type ResolvedArrival } from "@/components/tasks/tv/PackageArrivalStage";
+import { PackageArrival3DStage } from "@/components/tasks/tv/PackageArrival3DStage";
+import { canUseWebGL, disposeArrival3D, prewarmArrival3D } from "@/components/tasks/tv/arrival3d/runtime";
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
 import { useOrderArrivals } from "@/hooks/useOrderArrivals";
@@ -49,6 +52,8 @@ const TV_REFRESH_MS = 30_000;
 const ALL_AREAS = "all";
 /** Cuánto se espera a que el pedido de un aviso aparezca en el tablero antes de animarlo igual. */
 const ARRIVAL_WAIT_MS = 1500;
+/** Cuánto puede esperar la primera llegada a que la escena 3D termine de precalentarse. */
+const WARM_WAIT_MS = 6000;
 /** Cuánto brilla una tarjeta recién llegada. */
 const HIGHLIGHT_MS = 3000;
 const KPI_TONES: DeadlineTone[] = ["overdue", "at_risk", "on_time", "no_date"];
@@ -95,7 +100,6 @@ interface CurrentStep {
 
 interface TasksTvModeProps {
   onClose: () => void;
-  onOpenOrder: (orderId: number) => void;
   /** Muestra los botones para simular llegadas (sólo si `TV_DEMO_ENABLED`). */
   demo?: boolean;
 }
@@ -106,7 +110,7 @@ interface TasksTvModeProps {
  * grandes para tomar, empezar y terminar con el dedo, y cada trabajo nuevo
  * entra como un paquete que cae y se abre.
  */
-export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeProps) {
+export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   const { roles, session } = usePermissions();
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const { tasks: myTasks, isLoading, isError, refetch } = useMyTasks();
@@ -184,6 +188,57 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
     if (!next) unlockAudio();
   };
 
+  // --- Animación: 3D real (three.js) si hay WebGL; si no, o con
+  // prefers-reduced-motion, o si la escena falla, la versión SVG.
+  const [webgl, setWebgl] = useState(false);
+  const [force2d, setForce2d] = useState(false);
+  // "warming" mientras se precalienta la escena; "ready" cuando la primera
+  // caja ya no tiene que esperar a compilar shaders.
+  const [warm3d, setWarm3d] = useState<"off" | "warming" | "ready">("off");
+  const warmStart = useRef(0);
+  useEffect(() => {
+    // Con movimiento reducido la llegada es 2D: ni se sondea WebGL. Crear el
+    // primer contexto puede trabar el hilo principal varios segundos (sin
+    // GPU, WebGL por software), así que tampoco va en el mismo tick que abre
+    // la tele: primero se pinta.
+    if (reduced) return;
+    let alive = true;
+    let warmTimer: ReturnType<typeof setTimeout> | undefined;
+    const probeTimer = setTimeout(() => {
+      if (!alive) return;
+      const ok = canUseWebGL();
+      setWebgl(ok);
+      if (!ok) return;
+      setWarm3d("warming");
+      warmStart.current = Date.now();
+      // Con la tele ya pintada: three se baja y compila sin trabar la apertura.
+      warmTimer = setTimeout(() => {
+        prewarmArrival3D()
+          .then(() => alive && setWarm3d("ready"))
+          .catch((err) => {
+            console.error("[modo TV] no se pudo preparar la escena 3D; se usa la 2D", err);
+            if (alive) setForce2d(true);
+          });
+      }, 300);
+    }, 150);
+    return () => {
+      alive = false;
+      clearTimeout(probeTimer);
+      clearTimeout(warmTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // El renderer compartido vive mientras la tele esté abierta.
+  useEffect(() => () => disposeArrival3D(), []);
+  const use3d = webgl && !reduced && !force2d;
+  // Llegada que tardó en arrancar en 3D: ésa sigue en 2D (la próxima reintenta).
+  const [timedOutStep, setTimedOutStep] = useState<string | null>(null);
+
+  // --- Detalle de un pedido encima de la tele (como en la vista normal). La
+  // cola de llegadas espera mientras está abierto.
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const closeDetail = useCallback(() => setDetailId(null), []);
+
   // --- Llegadas: cola → un paso a la vez (o la caja grande).
   const [queue, setQueue] = useState<PackageArrival[]>([]);
   const [current, setCurrent] = useState<CurrentStep | null>(null);
@@ -194,7 +249,12 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
   useOrderArrivals(pushArrival);
 
   useEffect(() => {
-    if (current || queue.length === 0) return;
+    if (current || queue.length === 0 || detailId != null) return;
+    // La primera caja espera (un rato) a que la escena 3D esté precalentada.
+    if (use3d && warm3d === "warming" && Date.now() - warmStart.current < WARM_WAIT_MS) {
+      const t = setTimeout(() => setWaitTick((n) => n + 1), 250);
+      return () => clearTimeout(t);
+    }
     const head = queue[0];
     const known = findArrivalTask(boardRef.current, head.orderId, head.area);
     // El aviso del socket llega antes que el refetch: se espera un poco a la
@@ -208,7 +268,7 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
     const resolved = step.arrivals.map((a) => resolveArrival(a, boardRef.current, Date.now()));
     setCurrent({ step, resolved, priority: topPriority(resolved.map((r) => r.priority)), delivered: false });
     setQueue(rest);
-  }, [current, queue, waitTick]);
+  }, [current, queue, waitTick, detailId, use3d, warm3d]);
 
   // Tarjetas que esperan su paquete: invisibles (pero en su lugar) hasta que la hoja llega.
   const hiddenKeys = useMemo(() => {
@@ -344,11 +404,11 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
 
   const handleOpen = useCallback(
     (orderId: number) => {
+      // Los pedidos de la demo no existen en el backend.
       if (orderId > 9000 && demoTasks.some((t) => t.order.id === orderId)) return;
-      onClose();
-      onOpenOrder(orderId);
+      setDetailId(orderId);
     },
-    [demoTasks, onClose, onOpenOrder]
+    [demoTasks]
   );
 
   const live = [...board.pendiente, ...board.en_proceso];
@@ -372,6 +432,7 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
         fullscreen
         className="dark overflow-hidden"
         data-accent={accent}
+        data-arrival-3d={use3d ? warm3d : "off"}
         aria-describedby={undefined}
         onOpenAutoFocus={(e) => {
           e.preventDefault();
@@ -543,20 +604,41 @@ export function TasksTvMode({ onClose, onOpenOrder, demo = false }: TasksTvModeP
           )}
         </div>
 
-        {current && (
-          <PackageArrivalStage
-            key={current.step.arrivals[0].id}
-            step={current.step}
-            resolved={current.resolved}
-            priority={current.priority}
-            reduced={reduced}
-            timeFormat={timeFormat}
-            findTarget={findTarget}
-            onLand={handleLand}
-            onDelivered={handleDelivered}
-            onDone={handleDone}
-          />
-        )}
+        {current &&
+          (use3d && timedOutStep !== current.step.arrivals[0].id ? (
+            <PackageArrival3DStage
+              key={`3d-${current.step.arrivals[0].id}`}
+              step={current.step}
+              resolved={current.resolved}
+              priority={current.priority}
+              timeFormat={timeFormat}
+              findTarget={findTarget}
+              onLand={handleLand}
+              onDelivered={handleDelivered}
+              onDone={handleDone}
+              onFallback={(reason) =>
+                reason === "error" ? setForce2d(true) : setTimedOutStep(current.step.arrivals[0].id)
+              }
+            />
+          ) : (
+            <PackageArrivalStage
+              key={`2d-${current.step.arrivals[0].id}`}
+              step={current.step}
+              resolved={current.resolved}
+              priority={current.priority}
+              reduced={reduced}
+              timeFormat={timeFormat}
+              findTarget={findTarget}
+              onLand={handleLand}
+              onDelivered={handleDelivered}
+              onDone={handleDone}
+            />
+          ))}
+
+        {/* Dentro del contenido de la tele (rama anidada de Radix): Esc cierra
+            sólo el detalle y el foco vuelve a la tarjeta. Se monta después en
+            el <body>, así que queda encima de la pantalla completa. */}
+        <OrderDetailDialog orderId={detailId} onClose={closeDetail} />
       </DialogContent>
     </Dialog>
   );

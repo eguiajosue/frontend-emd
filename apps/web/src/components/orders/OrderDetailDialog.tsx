@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,6 +33,15 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
   // Cada pedido abre en modo lectura.
   useEffect(() => setEditing(false), [orderId]);
 
+  // A quién devolverle el foco al cerrar. Se abre sin <DialogTrigger> (lo
+  // controla `orderId`), así que Radix no lo sabe: se anota lo que tenía el
+  // foco en el render que lo abre, antes de que el diálogo lo mueva adentro.
+  const opener = useRef<{ el: HTMLElement | null } | null>(null);
+  if (open && opener.current === null && typeof document !== "undefined") {
+    const active = document.activeElement;
+    opener.current = { el: active instanceof HTMLElement && active !== document.body ? active : null };
+  }
+
   // 403/404 no son un problema de conexión: reintentar no lo arregla.
   const forbidden =
     isError && error instanceof ApiError && (error.status === 403 || error.status === 404);
@@ -41,7 +50,24 @@ export function OrderDetailDialog({ orderId, onClose }: OrderDetailDialogProps) 
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       {/* Lienzo gris con bloques blancos, como la página: `!bg-background` gana
           a la elevación oscura del diálogo. En móvil es pantalla completa. */}
-      <DialogContent className="!bg-background p-0 sm:max-h-[90vh] sm:max-w-2xl sm:overflow-y-auto sm:border-border/60 sm:p-0 lg:max-w-3xl">
+      <DialogContent
+        className="!bg-background p-0 sm:max-h-[90vh] sm:max-w-2xl sm:overflow-y-auto sm:border-border/60 sm:p-0 lg:max-w-3xl"
+        // El foco entra al diálogo y no al primer botón: si cae en "Más
+        // acciones", su tooltip se abre y el primer Esc sólo cierra el tooltip.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement | null)?.focus({ preventScroll: true });
+        }}
+        // Radix lo llama cuando el diálogo ya se fue: el foco vuelve a quien lo abrió.
+        onCloseAutoFocus={(e) => {
+          const el = opener.current?.el;
+          opener.current = null;
+          if (el?.isConnected) {
+            e.preventDefault();
+            el.focus({ preventScroll: true });
+          }
+        }}
+      >
         <AnimatePresence mode="wait">
           {isError ? (
             <motion.div

@@ -79,12 +79,16 @@ const DialogContent = React.forwardRef<
   }
 >(({ className, children, fullscreen = false, ...props }, ref) => {
   if (fullscreen) {
+    // z-50 como cualquier diálogo: lo que se abre ENCIMA de la pantalla
+    // completa (el detalle de un pedido desde el Modo TV, sus selects y
+    // tooltips) se monta después en el <body> y queda arriba por orden de
+    // documento. Con un z mayor, todo eso quedaba tapado.
     return (
       <DialogPortal>
         <DialogPrimitive.Content
           ref={ref}
           className={cn(
-            "fixed inset-0 z-[60] h-dvh w-screen overflow-y-auto bg-background text-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "fixed inset-0 z-50 h-dvh w-screen overflow-y-auto bg-background text-foreground outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             className
           )}
           {...props}
