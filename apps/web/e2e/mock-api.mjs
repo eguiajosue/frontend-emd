@@ -34,6 +34,8 @@ const usuarios = [
   { id: 1, username: "recepcion1", firstName: "Rita", lastName: "Ponce", isSharedAccount: false, roles: [{ id: 1, name: "recepcion" }] },
   { id: 2, username: "bordado", firstName: "Bordado", lastName: "", isSharedAccount: true, roles: [{ id: 2, name: "bordado" }] },
   { id: 3, username: "jeguia1", firstName: "José", lastName: "Eguía", isSharedAccount: false, roles: [{ id: 3, name: "diseno" }, { id: 2, name: "bordado" }] },
+  // Diseñador (sólo rol diseno): usa Mockups pero no es de Recepción.
+  { id: 11, username: "diseno1", firstName: "Diana", lastName: "Soto", isSharedAccount: false, roles: [{ id: 3, name: "diseno" }] },
   { id: 10, username: "admin1", firstName: "Ada", lastName: "Mora", isSharedAccount: false, roles: [{ id: 30, name: "admin" }] },
   // Cuenta compartida de la sucursal "Punto Madero" (rol sucursal + branchId).
   { id: 9, username: "puntomadero", firstName: "Punto Madero", lastName: "", isSharedAccount: true, roles: [{ id: 20, name: "sucursal" }], branchId: 1, branch: { id: 1, name: "Punto Madero" } },

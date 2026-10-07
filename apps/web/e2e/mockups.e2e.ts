@@ -184,6 +184,21 @@ test("2 · un rol de producción (bordado) no ve Mockups en el menú", async ({ 
   await expect(page.getByRole("link", { name: "Mockups", exact: true })).toHaveCount(0);
 });
 
+test("2b · Diseño sí ve Mockups: lo abre desde el menú y puede adjuntar a pedido", async ({ page }) => {
+  await login(page, "diseno1");
+
+  const nav = page.getByRole("complementary", { name: "Navegación principal" });
+  await expect(nav.getByRole("link", { name: "Tareas asignadas" })).toBeVisible({ timeout: 30_000 });
+  await expect(nav.getByRole("link", { name: "Mockups", exact: true })).toBeVisible();
+  await nav.getByRole("link", { name: "Mockups", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard\/mockups/, { timeout: 30_000 });
+
+  // Estudio disponible (no el "Sin acceso") y con el botón de adjuntar.
+  await expect(page.getByText("Sin acceso a Mockups")).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Vista 3D de la prenda con los diseños" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("button", { name: "Adjuntar a pedido" })).toBeVisible();
+});
+
 test("3 · Mis colores, plantilla guardada y aplicada, y bandera de México como diseño", async ({ page, request }) => {
   test.setTimeout(180_000);
   await login(page);

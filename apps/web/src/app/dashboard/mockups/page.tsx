@@ -12,11 +12,11 @@ import type { MockupStudioResult } from "@/lib/mockups/studio";
 /**
  * Creador de mockups 3D (docs/plans/mockups-3d.md): Recepción arma una
  * playera o gorra con el color y los diseños del cliente, y la descarga o la
- * adjunta a un pedido. Sólo Recepción, administración y la cuenta de sucursal (Punto Madero); el backend también lo hace cumplir al adjuntar.
+ * adjunta a un pedido. Sólo Recepción, administración, Diseño y la cuenta de sucursal (Punto Madero); el backend también lo hace cumplir al adjuntar.
  */
 export default function MockupsPage() {
-  const { canManageOperations, isBranch, isSessionLoading, roles } = usePermissions();
-  const noAccess = !isSessionLoading && roles.length > 0 && !canManageOperations && !isBranch;
+  const { canUseMockups, isSessionLoading, roles } = usePermissions();
+  const noAccess = !isSessionLoading && roles.length > 0 && !canUseMockups;
   const [pending, setPending] = useState<MockupStudioResult | null>(null);
 
   if (noAccess) {
@@ -24,7 +24,7 @@ export default function MockupsPage() {
       <EmptyState
         icon={Shirt}
         title="Sin acceso a Mockups"
-        description="Los mockups los arman Recepción, administración y las sucursales."
+        description="Los mockups los arman Recepción, administración, Diseño y las sucursales."
       />
     );
   }

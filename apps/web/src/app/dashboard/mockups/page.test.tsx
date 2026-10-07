@@ -8,6 +8,7 @@ vi.mock("@/hooks/usePermissions", () => ({
     roles,
     isSessionLoading: false,
     canManageOperations: roles.includes("admin") || roles.includes("recepcion"),
+    canUseMockups: roles.some((r) => ["admin", "recepcion", "diseno"].includes(r)),
   }),
 }));
 
@@ -45,8 +46,15 @@ describe("Página Mockups", () => {
     expect(screen.getByRole("dialog")).toHaveTextContent("con resultado");
   });
 
-  it("Diseño y Producción no tienen acceso", () => {
+  it("Diseño también arma mockups y los adjunta a pedido", () => {
     roles = ["diseno"];
+    render(<MockupsPage />);
+    expect(screen.queryByText("Sin acceso a Mockups")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adjuntar a pedido" })).toBeInTheDocument();
+  });
+
+  it("Producción no tiene acceso", () => {
+    roles = ["bordado"];
     render(<MockupsPage />);
     expect(screen.getByText("Sin acceso a Mockups")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Adjuntar a pedido" })).not.toBeInTheDocument();

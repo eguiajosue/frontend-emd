@@ -96,15 +96,23 @@ describe("Mockups", () => {
     expect(mockups.title).toBe("Mockups");
   });
 
-  it("lo ven Recepción y administración; Diseño y Producción no", () => {
+  it("lo ven Recepción, administración y Diseño; Producción no", () => {
     expect(isNavItemVisible(mockups, ["recepcion"], false)).toBe(true);
     expect(isNavItemVisible(mockups, ["admin"], false)).toBe(true);
     expect(isNavItemVisible(mockups, ["superuser"], false)).toBe(true);
-    for (const role of ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]) {
+    expect(isNavItemVisible(mockups, ["diseno"], false)).toBe(true);
+    for (const role of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
       expect(isNavItemVisible(mockups, [role], false)).toBe(false);
     }
-    // El menú operativo (Diseño/Producción) tampoco lo trae.
-    expect(OPERATIONAL_MENU.flatMap((g) => g.items.map((i) => i.url))).not.toContain("/dashboard/mockups");
+  });
+
+  it("en el menú operativo sólo lo ve Diseño (no el resto de Producción)", () => {
+    const operativo = OPERATIONAL_MENU.flatMap((g) => g.items).find((i) => i.url === "/dashboard/mockups")!;
+    expect(operativo.title).toBe("Mockups");
+    expect(isNavItemVisible(operativo, ["diseno"], true)).toBe(true);
+    for (const role of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
+      expect(isNavItemVisible(operativo, [role], true)).toBe(false);
+    }
   });
 
   it("migas: Operación › Mockups", () => {
