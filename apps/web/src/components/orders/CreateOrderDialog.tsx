@@ -1,5 +1,7 @@
 "use client";
 
+import { OrderProductSizesField } from "@/components/orders/OrderProductSizesField";
+import { sizeBreakdownTotal, type SizeBreakdown } from "@/lib/garmentSizes";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
@@ -135,6 +137,8 @@ import type {
 const orderProductSchema = z.object({
   customName: z.string().min(1, "Falta el nombre del producto"),
   quantity: z.number().min(1, "La cantidad debe ser al menos 1"),
+  /** Desglose de tallas; la forma fina la valida el backend. */
+  sizes: z.record(z.string(), z.record(z.string(), z.number().int().min(0))).optional(),
 });
 
 /**
@@ -220,6 +224,8 @@ interface OrderProductRow {
   key: string;
   customName: string;
   quantity?: number;
+  /** Desglose de tallas (prendas). Si tiene piezas, `quantity` es su total. */
+  sizes?: SizeBreakdown | null;
 }
 
 /** Estado del formulario antes de aplicar una base, para "Quitar base". */
@@ -714,7 +720,9 @@ export function CreateOrderDialog({
     const existing = rows.find((r) => sameName(r.customName, name));
     markDirty();
     if (existing) {
-      const quantity = Math.min((existing.quantity ?? 0) + 1, MAX_QUANTITY);
+      // Con tallas, la cantidad es su total: se suma en la grilla, no aquí.
+      const sized = sizeBreakdownTotal(existing.sizes) > 0;
+      const quantity = sized ? existing.quantity ?? 0 : Math.min((existing.quantity ?? 0) + 1, MAX_QUANTITY);
       setRows((prev) => prev.map((r) => (r.key === existing.key ? { ...r, quantity } : r)));
       clearRowError(existing.key);
       announceMerge(existing.customName, quantity, existing.key);
@@ -754,15 +762,27 @@ export function CreateOrderDialog({
     }
     const quantity = Math.min((duplicate.quantity ?? 0) + (current.quantity ?? 1), MAX_QUANTITY);
     setRows((prev) =>
-      prev.filter((r) => r.key !== key).map((r) => (r.key === duplicate.key ? { ...r, quantity } : r))
+      prev
+        .filter((r) => r.key !== key)
+        // Al fusionar dos líneas el desglose deja de cuadrar: se descarta.
+        .map((r) => (r.key === duplicate.key ? { ...r, quantity, sizes: null } : r))
     );
     announceMerge(duplicate.customName, quantity, duplicate.key);
     focusById(`order-qty-${duplicate.key}`);
   };
 
+  const setRowSizes = (key: string, sizes: SizeBreakdown | null, total: number) => {
+    setRows((prev) =>
+      prev.map((r) => (r.key === key ? { ...r, sizes, quantity: total > 0 ? total : r.quantity } : r))
+    );
+  };
+
   const setQuantity = (key: string, quantity: number | undefined) => {
     const clamped = quantity === undefined ? undefined : Math.min(Math.max(quantity, 1), MAX_QUANTITY);
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, quantity: clamped } : r)));
+    // Con tallas cargadas la cantidad es su total: no se edita a mano.
+    setRows((prev) =>
+      prev.map((r) => (r.key === key && !(sizeBreakdownTotal(r.sizes) > 0) ? { ...r, quantity: clamped } : r))
+    );
     clearRowError(key);
     markDirty();
   };
@@ -1150,7 +1170,11 @@ export function CreateOrderDialog({
     description,
     deliveryDate,
     assignedUserId,
-    orderProducts: completeRows.map((r) => ({ customName: r.customName, quantity: r.quantity! })),
+    orderProducts: completeRows.map((r) => ({
+      customName: r.customName,
+      quantity: r.quantity!,
+      ...(r.sizes && sizeBreakdownTotal(r.sizes) > 0 ? { sizes: r.sizes } : {}),
+    })),
   });
 
   /**
@@ -2031,6 +2055,8 @@ export function CreateOrderDialog({
                                     aria-invalid={rowError === "Falta la cantidad"}
                                     className="h-11 w-16 border-0 bg-transparent px-1 text-center tabular-nums shadow-none focus-visible:ring-0 sm:h-9"
                                     value={qty ?? ""}
+                                    readOnly={sizeBreakdownTotal(row.sizes) > 0}
+                                    title={sizeBreakdownTotal(row.sizes) > 0 ? "Se calcula con las tallas" : undefined}
                                     onChange={(e) => {
                                       const digits = e.target.value.replace(/\D/g, "");
                                       setQuantity(row.key, digits ? Number(digits) : undefined);
@@ -2069,6 +2095,12 @@ export function CreateOrderDialog({
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
+                                <OrderProductSizesField
+                                  rowKey={row.key}
+                                  productName={row.customName}
+                                  sizes={row.sizes}
+                                  onChange={(sizes, total) => setRowSizes(row.key, sizes, total)}
+                                />
                                 {rowError && (
                                   <p className={cn("col-span-full flex items-center gap-1", ERROR_TEXT)}>
                                     <AlertCircle className="h-3 w-3 shrink-0" aria-hidden />

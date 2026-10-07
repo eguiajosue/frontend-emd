@@ -62,7 +62,20 @@ export interface OrderProduct {
   /** Nombre del producto: escrito a mano o elegido de `OrderProductPreset`. */
   customName: string;
   quantity: number;
+  /**
+   * Desglose de tallas de prendas (corte → talla → piezas), ej.
+   * `{ general: { S: 5, M: 2 }, mujer: { S: 3 } }`. null/ausente = sin tallas
+   * (pedidos viejos o productos que no son prenda). Si existe, suma `quantity`.
+   */
+  sizes?: SizeBreakdown | null;
 }
+
+/** Talla de prenda (ver GARMENT_SIZES en apps/web/src/lib/garmentSizes.ts). */
+export type GarmentSize = "XS" | "S" | "M" | "L" | "XL" | "2XL" | "3XL";
+/** Corte: general (unisex), mujer (dama) o youth (juvenil). */
+export type GarmentFit = "general" | "mujer" | "youth";
+/** Desglose de tallas: corte → talla → piezas (enteros > 0). */
+export type SizeBreakdown = Partial<Record<GarmentFit, Partial<Record<GarmentSize, number>>>>;
 
 /** Preset de nombre de producto frecuente (GET /order-product-presets). */
 export interface OrderProductPreset extends BaseEntity {
@@ -356,6 +369,8 @@ export interface UpdateOrderPayload {
   productionArea?: string | null;
   /** Recursos que manda el cliente (logo, referencias) para que Diseño trabaje. */
   clientResourceFile?: UploadedFileInput;
+  /** Reemplaza TODAS las líneas del pedido (el backend borra y recrea). Se usa al editar tallas. */
+  orderProducts?: Array<{ customName: string; quantity: number; sizes?: SizeBreakdown | null }>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -901,6 +916,8 @@ export interface MyTask {
     designStartedByName: string | null;
     client: { first_name: string; last_name?: string | null } | null;
     status: { id: number; name: string };
+    /** Líneas del pedido con su desglose de tallas (backends viejos no lo mandan). */
+    orderProducts?: OrderProduct[];
   };
 }
 

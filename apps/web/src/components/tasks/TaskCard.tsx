@@ -1,5 +1,6 @@
 "use client";
 
+import { OrderSizesList } from "@/components/sizes/OrderSizesList";
 import { memo } from "react";
 import { ArrowRight, CalendarDays, CheckCircle2, Loader2, Play, RotateCcw, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -121,6 +122,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           <p className="truncate text-sm text-muted-foreground">
             <span className="tabular-nums">#{task.order.id}</span> · {clientName(task)}
           </p>
+          <OrderSizesList products={task.order.orderProducts} />
         </div>
 
         {/* Sin fecha no hay píldora: el pie ya lo dice ("Sin fecha de entrega"). */}

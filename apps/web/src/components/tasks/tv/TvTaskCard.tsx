@@ -1,5 +1,6 @@
 "use client";
 
+import { OrderSizesList } from "@/components/sizes/OrderSizesList";
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Loader2, Play, RotateCcw, UserRound } from "lucide-react";
@@ -127,6 +128,7 @@ export const TvTaskCard = memo(function TvTaskCard({
             {task.order.description || "Sin descripción"}
           </p>
           <p className="truncate text-lg text-muted-foreground">{clientName(task)}</p>
+          <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
