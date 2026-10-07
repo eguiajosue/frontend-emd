@@ -24,6 +24,11 @@ import type { GarmentModel } from "./garmentModel";
 import { loadShirtModel } from "./ShirtModel";
 import { ContactShadows, createStudioEnvironment, StudioLightRig } from "./studioLighting";
 import { createTruckerCapModel } from "./TruckerCapModel";
+import { createTazaModel, createTermoModel } from "./DrinkwareModel";
+import { PRINT_FINISH, type DecalFinish } from "./DesignDecal";
+import { isLaserEngraved } from "@/lib/mockups/garments";
+import { laserSettings } from "@/lib/mockups/laserEngrave";
+import { isRawSteel } from "@/lib/mockups/types";
 
 /**
  * Escena del creador de mockups en Three.js "vanilla".
@@ -355,7 +360,11 @@ export class MockupScene {
         ? loadShirtModel(config.colors)
         : garment === "cap"
           ? Promise.resolve(createTruckerCapModel(config.colors))
-          : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
+          : garment === "termo"
+            ? Promise.resolve(createTermoModel(config.colors))
+            : garment === "taza"
+              ? Promise.resolve(createTazaModel(config.colors))
+              : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
     this.garmentPromise = load.then(
       (model) => {
         if (this.disposed || token !== this.loadToken) {
@@ -363,6 +372,7 @@ export class MockupScene {
           return;
         }
         this.mountGarment(garment, model);
+        this.syncLayers();
         this.loadingGarment = null;
         this.callbacks().onStatus?.("ready");
       },
@@ -408,7 +418,7 @@ export class MockupScene {
     this.controls.target.copy(center);
     this.controls.minDistance = base * 0.45;
     this.controls.maxDistance = base * 1.6;
-    this.controls.minPolarAngle = garment === "cap" ? Math.PI * 0.1 : Math.PI * 0.26;
+    this.controls.minPolarAngle = garment === "cap" || garment === "taza" ? Math.PI * 0.1 : Math.PI * 0.26;
     this.controls.maxPolarAngle = garment === "cap" ? Math.PI * 0.6 : Math.PI * 0.62;
 
     this.shadows.configure(center, box.min.y - 0.002, model.shadow);
@@ -452,9 +462,19 @@ export class MockupScene {
   // Capas / decals
   // -------------------------------------------------------------------------
 
+  /** Acabado de los diseños: sólo el termo ya montado se graba con láser. */
+  private finishFor(layer: MockupConfig["layers"][number]): DecalFinish {
+    const config = this.config;
+    if (!config || !this.current || this.current.garment !== config.garment || !isLaserEngraved(config.garment)) {
+      return PRINT_FINISH;
+    }
+    return { kind: "laser", settings: laserSettings(layer.engrave), onSteel: isRawSteel(config.colors.body) };
+  }
+
   private syncLayers() {
     const layers = this.config?.layers ?? [];
     const seen = new Set<string>();
+    let engraved = 0;
     layers.forEach((layer, index) => {
       seen.add(layer.id);
       let decal = this.decals.get(layer.id);
@@ -465,6 +485,8 @@ export class MockupScene {
       } else {
         decal.setLayer(layer);
       }
+      decal.setFinish(this.finishFor(layer));
+      if (decal.finishKind === "laser") engraved++;
       decal.mesh.renderOrder = 10 + index;
       if (decal.dirty && layer.id === this.selectedId) this.selectionDirty = true;
     });
@@ -475,6 +497,9 @@ export class MockupScene {
       this.decals.delete(id);
       if (id === this.selectedId) this.selectionDirty = true;
     }
+    // Para pruebas y depuración: cuántos diseños se dibujan como grabado.
+    this.container.dataset.garment = this.current?.garment ?? "";
+    this.container.dataset.engravedLayers = String(engraved);
   }
 
   private toWorld(p: Vec3, n: Vec3) {
@@ -483,6 +508,17 @@ export class MockupScene {
     const normal = new THREE.Vector3(...n).transformDirection(root.matrixWorld);
     if (normal.lengthSq() < 1e-8) normal.set(0, 0, 1);
     return { position, normal: normal.normalize() };
+  }
+
+  /** Proyector plano de las prendas, o la geometría propia del modelo (termo/taza). */
+  private decalGeometry(position: THREE.Vector3, normal: THREE.Vector3, rotation: number, size: THREE.Vector3) {
+    const model = this.current!.model;
+    if (model.decalGeometry) {
+      // Los modelos trabajan en su espacio local (la raíz no tiene transformación).
+      const root = model.root;
+      return model.decalGeometry(root.worldToLocal(position.clone()), normal, rotation, size);
+    }
+    return buildDecalGeometry(this.current!.soup, position, normal, rotation, size);
   }
 
   private rebuildDirtyDecals(): boolean {
@@ -495,7 +531,7 @@ export class MockupScene {
       changed = true;
       const { placement } = decal.layer;
       const { position, normal } = this.toWorld(placement.position, placement.normal);
-      const geo = buildDecalGeometry(this.current.soup, position, normal, placement.rotation, decal.size(depthFor(placement.scale)));
+      const geo = this.decalGeometry(position, normal, placement.rotation, decal.size(depthFor(placement.scale)));
       decal.mesh.geometry.dispose();
       decal.mesh.geometry = geo ?? new THREE.BufferGeometry();
       if (decal.layer.id === this.selectedId) this.selectionDirty = true;
@@ -515,7 +551,7 @@ export class MockupScene {
         const margin = Math.max(placement.scale * 0.06, 0.006);
         size.x += margin * 2;
         size.y += margin * 2;
-        const geo = buildDecalGeometry(this.current.soup, position, normal, placement.rotation, size);
+        const geo = this.decalGeometry(position, normal, placement.rotation, size);
         if (geo) {
           this.selection.geometry = geo;
           this.selection.visible = true;

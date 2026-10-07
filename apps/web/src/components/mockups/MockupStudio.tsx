@@ -17,13 +17,15 @@ import { BookImage, Download, ImagePlus, LayoutTemplate, Loader2, Paperclip, Rot
 import MockupCanvasLazy from "@/components/mockups/MockupCanvasLazy";
 import { MockupColorField, type MyColorsControls } from "@/components/mockups/MockupColorField";
 import { MockupLayerList } from "@/components/mockups/MockupLayerList";
+import { GarmentIcon } from "@/components/mockups/GarmentIcon";
+import { LaserEngravePanel, TermoFinishPicker } from "@/components/mockups/LaserEngravePanel";
 import { MockupLibraryDialog } from "@/components/mockups/MockupLibrary";
 import { MockupTemplatesDialog, SaveTemplateDialog } from "@/components/mockups/MockupTemplates";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMockupColors } from "@/hooks/useMockupColors";
 import { downloadFromUrl } from "@/lib/download";
-import { enabledGarments, isGarmentEnabled } from "@/lib/mockups/garments";
+import { enabledGarments, isGarmentEnabled, isLaserEngraved } from "@/lib/mockups/garments";
 import { DESIGN_ACCEPT, importDesignFile, isDesignFile, type ImportedDesign } from "@/lib/mockups/importDesign";
 import { PLACEMENT_PRESETS, applyPreset, defaultPlacement } from "@/lib/mockups/presets";
 import {
@@ -47,6 +49,8 @@ import {
   type MockupConfig,
   type MockupView,
   type PlacementPreset,
+  DEFAULT_COLORS,
+  isRawSteel,
 } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
 
@@ -581,10 +585,13 @@ export function MockupStudio({
                   key={g}
                   value={g}
                   aria-label={label}
-                  className="flex h-auto flex-col items-start gap-0 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
+                  className="flex h-auto items-center justify-start gap-2.5 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
                 >
-                  <span className="text-sm font-semibold">{label}</span>
-                  <span className="text-meta">{GARMENT_MODELS[g]}</span>
+                  <GarmentIcon garment={g} className="shrink-0 text-muted-foreground" />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-semibold">{label}</span>
+                    <span className="text-meta">{GARMENT_MODELS[g]}</span>
+                  </span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -592,6 +599,13 @@ export function MockupStudio({
 
           <StudioSection title="Color">
             <div className="space-y-4">
+              {garment === "termo" && (
+                <TermoFinishPicker
+                  body={config.colors.body}
+                  paintColor={DEFAULT_COLORS.termo.body}
+                  onChange={(hex) => setColor("body", hex)}
+                />
+              )}
               {COLOR_FIELDS[garment].map(({ part, label }) => (
                 <MockupColorField
                   key={`${garment}-${part}`}
@@ -637,6 +651,18 @@ export function MockupStudio({
               onUpload={openFilePicker}
             />
           </StudioSection>
+
+          {selected && isLaserEngraved(garment) && (
+            <StudioSection
+              title="Grabado láser"
+              aside={<span className="text-meta">{isRawSteel(config.colors.body) ? "Sobre acero" : "Sobre pintura"}</span>}
+            >
+              <LaserEngravePanel
+                layer={selected}
+                onChange={(engrave) => updateLayer(selected.id, (l) => ({ ...l, engrave }))}
+              />
+            </StudioSection>
+          )}
 
           {selected && (
             <StudioSection title="Ajustar diseño" aside={<span className="truncate text-meta">{selected.name}</span>}>

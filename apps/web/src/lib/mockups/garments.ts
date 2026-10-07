@@ -29,12 +29,12 @@ import {
  * `src/common/mockup-validation.ts` (`ORDER_MOCKUP_GARMENTS`): al habilitar una
  * prenda se amplían las dos en el mismo release.
  */
-export const ENABLED_GARMENTS = ["tshirt", "cap"] as const satisfies readonly Garment[];
+export const ENABLED_GARMENTS = ["tshirt", "cap", "termo", "taza"] as const satisfies readonly Garment[];
 
 export type EnabledGarment = (typeof ENABLED_GARMENTS)[number];
 
 /** Todas las prendas que conoce el contrato, en el orden en que se muestran. */
-export const ALL_GARMENTS = ["tshirt", "cap", "hoodie", "dress-shirt"] as const satisfies readonly Garment[];
+export const ALL_GARMENTS = ["tshirt", "cap", "hoodie", "dress-shirt", "termo", "taza"] as const satisfies readonly Garment[];
 
 export type ColorPart = keyof GarmentColors;
 
@@ -48,6 +48,8 @@ export interface GarmentOptionSpec {
   patterns?: FabricPatternKind[];
   /** Color de botones editable. */
   buttonColor?: boolean;
+  /** Acabado de los diseños: grabado láser (termo) o impresión a color. */
+  decoration?: "laser" | "print";
 }
 
 export type GarmentModelSource =
@@ -122,7 +124,32 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
     },
     presets: PLACEMENT_PRESETS["dress-shirt"],
   },
+  termo: {
+    id: "termo",
+    label: GARMENT_LABELS.termo,
+    referenceModel: "Tumbler 30 oz · grabado láser",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color del termo" }],
+    defaultColors: DEFAULT_COLORS.termo,
+    options: { decoration: "laser" },
+    presets: PLACEMENT_PRESETS.termo,
+  },
+  taza: {
+    id: "taza",
+    label: GARMENT_LABELS.taza,
+    referenceModel: "Cerámica 11 oz · sublimación",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color de la taza" }],
+    defaultColors: DEFAULT_COLORS.taza,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.taza,
+  },
 };
+
+/** ¿Los diseños de esta prenda se graban con láser (máscara B/N) en vez de imprimirse? */
+export function isLaserEngraved(id: Garment): boolean {
+  return GARMENTS[id]?.options.decoration === "laser";
+}
 
 export function isGarment(value: unknown): value is Garment {
   return typeof value === "string" && (ALL_GARMENTS as readonly string[]).includes(value);

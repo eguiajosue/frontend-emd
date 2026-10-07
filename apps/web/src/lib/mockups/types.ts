@@ -1,4 +1,6 @@
 import type { SizeBreakdown } from "@/lib/garmentSizes";
+import type { LaserEngraveSettings } from "./laserEngrave";
+
 /**
  * Contrato compartido del creador de mockups 3D (ver docs/plans/mockups-3d.md).
  *
@@ -11,9 +13,10 @@ import type { SizeBreakdown } from "@/lib/garmentSizes";
  * Prendas del estudio. "hoodie" y "dress-shirt" ya existen en el contrato
  * (plantillas, registro de prendas, generador de patrones) pero todavía no
  * tienen modelo 3D: la UI sólo ofrece las de `ENABLED_GARMENTS`
- * (`lib/mockups/garments.ts`).
+ * (`lib/mockups/garments.ts`). "termo" y "taza" no son prendas sino
+ * productos promocionales, pero viven en el mismo registro y contrato.
  */
-export type Garment = "tshirt" | "cap" | "hoodie" | "dress-shirt";
+export type Garment = "tshirt" | "cap" | "hoodie" | "dress-shirt" | "termo" | "taza";
 
 export type Vec3 = [number, number, number];
 
@@ -38,6 +41,13 @@ export interface DesignLayer {
   /** Ancho / alto de la imagen. */
   aspect: number;
   placement: DesignPlacement;
+  /**
+   * Termo: ajustes del grabado láser (umbral, invertir, difuminado). El
+   * `dataUrl` siempre es el original; la máscara se calcula al dibujar
+   * (`lib/mockups/laserEngrave.ts`). Sin este campo se usan los valores por
+   * defecto, así que las configs viejas siguen siendo válidas.
+   */
+  engrave?: LaserEngraveSettings;
 }
 
 /** Colores de la prenda. La gorra trucker pinta frente, malla y visera aparte. */
@@ -109,13 +119,27 @@ export const DEFAULT_COLORS: Record<Garment, GarmentColors> = {
   cap: { body: "#1f2937", mesh: "#ffffff", visor: "#1f2937" },
   hoodie: { body: "#b9bcc0" },
   "dress-shirt": { body: "#ffffff" },
+  termo: { body: "#2b2e34" },
+  taza: { body: "#ffffff" },
 };
+
+/**
+ * Termo sin pintura (acero inoxidable natural). Es un color más del cuerpo
+ * para el contrato, pero el 3D lo dibuja metálico y el grabado sale oscuro.
+ */
+export const RAW_STEEL_HEX = "#c3c7cc";
+
+export function isRawSteel(value: string | undefined): boolean {
+  return (value ?? "").trim().toLowerCase() === RAW_STEEL_HEX;
+}
 
 export const GARMENT_LABELS: Record<Garment, string> = {
   tshirt: "Playera",
   cap: "Gorra",
   hoodie: "Sudadera",
   "dress-shirt": "Camisa de vestir",
+  termo: "Termo",
+  taza: "Taza",
 };
 
 /** Resultado de exportar: lámina PNG lista para descargar o adjuntar. */

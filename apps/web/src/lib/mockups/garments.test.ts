@@ -10,15 +10,18 @@ import {
   garmentLabel,
   isGarment,
   isGarmentEnabled,
+  isLaserEngraved,
 } from "./garments";
 import { PLACEMENT_PRESETS, defaultPlacement, findPreset } from "./presets";
 import { buildMockupPayload, initialMockupConfig, mockupFilename, switchGarment } from "./studio";
-import { DEFAULT_COLORS, GARMENT_LABELS, type MockupConfig } from "./types";
+import { DEFAULT_COLORS, GARMENT_LABELS, RAW_STEEL_HEX, isRawSteel, type MockupConfig } from "./types";
 
 describe("registro de prendas", () => {
-  it("sólo playera y gorra están habilitadas; sudadera y camisa siguen ocultas", () => {
-    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap"]);
-    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra"]);
+  it("playera, gorra, termo y taza están habilitadas; sudadera y camisa siguen ocultas", () => {
+    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap", "termo", "taza"]);
+    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra", "Termo", "Taza"]);
+    expect(isGarmentEnabled("termo")).toBe(true);
+    expect(isGarmentEnabled("taza")).toBe(true);
     expect(isGarmentEnabled("hoodie")).toBe(false);
     expect(isGarmentEnabled("dress-shirt")).toBe(false);
     expect(isGarmentEnabled("cap")).toBe(true);
@@ -52,6 +55,37 @@ describe("registro de prendas", () => {
     expect(a).toMatchObject({ sleeve: "long", pattern: { kind: "plain" }, buttonColor: "#f5f5f4" });
     a.pattern!.colors.push("#000000");
     expect(defaultGarmentOptions("dress-shirt")!.pattern!.colors).toEqual(["#ffffff"]);
+  });
+});
+
+describe("termo y taza", () => {
+  it("son procedurales, con sus presets y acabado propio (láser / impresión)", () => {
+    expect(GARMENTS.termo.model).toEqual({ kind: "procedural" });
+    expect(GARMENTS.taza.model).toEqual({ kind: "procedural" });
+    expect(isLaserEngraved("termo")).toBe(true);
+    expect(isLaserEngraved("taza")).toBe(false);
+    expect(isLaserEngraved("tshirt")).toBe(false);
+    expect(PLACEMENT_PRESETS.termo.map((p) => p.label)).toEqual(["Frente", "Reverso"]);
+    expect(PLACEMENT_PRESETS.taza.map((p) => p.label)).toEqual(["Frente", "Reverso", "Alrededor"]);
+  });
+
+  it("acero natural se reconoce sin importar mayúsculas", () => {
+    expect(isRawSteel(RAW_STEEL_HEX.toUpperCase())).toBe(true);
+    expect(isRawSteel(DEFAULT_COLORS.termo.body)).toBe(false);
+    expect(isRawSteel(undefined)).toBe(false);
+  });
+
+  it("se adjuntan al pedido y dan nombre de archivo", () => {
+    const config = initialMockupConfig("termo");
+    expect(config.options).toBeUndefined();
+    const payload = buildMockupPayload({ image: { dataUrl: "data:image/png;base64,AA", width: 1, height: 1 }, config });
+    expect(payload.garment).toBe("termo");
+    expect(mockupFilename("taza", new Date(2026, 9, 5))).toBe("mockup-taza-2026-10-05.png");
+  });
+
+  it("una config vieja de playera sigue igual (sin `engrave`)", () => {
+    const old: MockupConfig = { garment: "tshirt", colors: { body: "#ffffff" }, layers: [] };
+    expect(switchGarment(old, "tshirt")).toBe(old);
   });
 });
 

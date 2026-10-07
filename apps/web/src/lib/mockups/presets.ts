@@ -87,6 +87,45 @@ export const PLACEMENT_PRESETS: Record<Garment, PlacementPreset[]> = {
   // de la playera.
   hoodie: [],
   "dress-shirt": [],
+  // Termo y taza: cilindros (`components/mockups/drinkwareShape.ts`). Los
+  // diseños se envuelven sobre la superficie, así que `scale` es el ancho
+  // medido sobre el arco.
+  termo: [
+    {
+      id: "frente",
+      label: "Frente",
+      placement: { position: [0, -0.005, 0.04073], normal: [0, -0.04229, 0.99911], scale: 0.06 },
+      view: "front",
+    },
+    {
+      id: "reverso",
+      label: "Reverso",
+      placement: { position: [0, -0.005, -0.04073], normal: [0, -0.04229, -0.99911], scale: 0.06 },
+      view: "back",
+    },
+  ],
+  taza: [
+    {
+      id: "frente",
+      label: "Frente",
+      placement: { position: [0, 0.001, 0.0416], normal: [0, 0, 1], scale: 0.06 },
+      view: "front",
+    },
+    {
+      id: "reverso",
+      label: "Reverso",
+      placement: { position: [0, 0.001, -0.0416], normal: [0, 0, -1], scale: 0.06 },
+      view: "back",
+    },
+    {
+      // Sublimación de vuelta completa: centrada enfrente del asa (que sale
+      // por +X) y dejando libre la zona del asa.
+      id: "alrededor",
+      label: "Alrededor",
+      placement: { position: [-0.0416, 0.001, 0], normal: [-1, 0, 0], scale: 0.19 },
+      view: "right",
+    },
+  ],
 };
 
 /** Convierte un preset en `DesignPlacement` (copias: nunca comparte arreglos). */
