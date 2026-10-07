@@ -73,6 +73,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ordersScreenCopy } from "@/lib/orderScreen";
+import { matchesOrigin, ORIGIN_URL_PARAM, parseOrigin } from "@/lib/orderOrigin";
 import { TASKS_URL } from "@/lib/navMenu";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
@@ -95,7 +96,9 @@ function filtersFromUrl(): OrdersFilters {
   const assignedUserId = params.get("assignedUserId");
   const createdByMe = params.get("createdByMe");
   const archived = params.get("archivados");
+  const origin = parseOrigin(params.get(ORIGIN_URL_PARAM));
   return {
+    origin,
     clientId: clientId ? Number(clientId) : undefined,
     statusIds: statusIds ? statusIds.split(",").map(Number).filter((n) => !Number.isNaN(n)) : [],
     dateRange:
@@ -125,6 +128,7 @@ function filtersToUrlParams(filters: OrdersFilters, tone: DeadlineTone | null = 
   }
   if (filters.createdByMe) params.set("createdByMe", "1");
   if (filters.showArchived) params.set("archivados", "1");
+  if (filters.origin) params.set(ORIGIN_URL_PARAM, filters.origin);
   return params;
 }
 
@@ -187,7 +191,11 @@ const OrdersPage = () => {
   }, [redirectToTasks, ordersRouter]);
   const currentUserId = session?.user?.id ? Number(session.user.id) : undefined;
   const { timeFormat } = useTimeFormat();
-  const { data: orders, isPending, isError, refetch } = useOrders();
+  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
+  // El filtro "Origen" es sólo de matriz y lo aplica el backend (`GET /orders?branchId|origin=`).
+  const { data: orders, isPending, isError, refetch } = useOrders({
+    origin: isBranch ? undefined : filters.origin,
+  });
   const { data: clients } = useEntityList<Client>("clients");
   const { data: users } = useEntityList<User>("users");
   // Precargado aquí (igual que clients/users) para que los chips "Frecuentes"
@@ -213,7 +221,6 @@ const OrdersPage = () => {
   const [repeatFromId, setRepeatFromId] = useState<number | null>(null);
   // "Nuevo pedido" desde las plantillas de un cliente (pantalla Clientes).
   const [templateId, setTemplateId] = useState<number | null>(null);
-  const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
@@ -443,7 +450,8 @@ const OrdersPage = () => {
           return false;
         }
       }
-      if (filters.branchId !== undefined && (order.branchId ?? null) !== filters.branchId) {
+      // El backend ya filtra por origen; esto sólo cubre una respuesta sin filtrar.
+      if (!matchesOrigin(order, filters.origin)) {
         return false;
       }
       if (filters.createdByMe && order.userId !== currentUserId) {

@@ -144,6 +144,23 @@ export async function paintTicketFromDom(
         );
         continue;
       }
+      // Logo de la sucursal: un <img> (data URL, sin riesgo de canvas "tainted").
+      if (el instanceof HTMLImageElement) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          icons.push(
+            (el.complete ? Promise.resolve() : el.decode()).catch(() => undefined).then(() => {
+              if (el.naturalWidth <= 0) return;
+              // `object-contain` + `object-left` del <img>: se ajusta al cuadro sin deformarse, pegado a la izquierda.
+              const fit = Math.min(r.width / el.naturalWidth, r.height / el.naturalHeight);
+              const w = el.naturalWidth * fit;
+              const h = el.naturalHeight * fit;
+              texts.push(() => ctx.drawImage(el, r.left + ox, r.top + oy + (r.height - h) / 2, w, h));
+            })
+          );
+        }
+        continue;
+      }
       if (el === root || !(el instanceof HTMLElement)) continue;
       const s = getComputedStyle(el);
       if (s.backgroundColor && s.backgroundColor !== "rgba(0, 0, 0, 0)" && s.backgroundColor !== "transparent") {

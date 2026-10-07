@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import { BranchLogo } from "@/components/orders/BranchLogo";
 import { getAreaLabel } from "@/lib/areas";
 import { barcodeBars, CHOREO_3D } from "@/lib/arrival3d";
 import { formatDeliveryDate, formatTimeOfDay, type TimeFormatPreference } from "@/lib/format";
 import { PRIORITY_STYLE, type ArrivalPriority } from "@/lib/packageArrivals";
+import { useBranchLogos } from "@/hooks/useBranchLogos";
 import { cn } from "@/lib/utils";
 
 /** Lo que muestra el ticket de un pedido (ya cruzado con el tablero). */
@@ -17,6 +19,8 @@ export interface ResolvedArrival {
   priority: ArrivalPriority;
   /** Cuándo llegó el aviso (la hora impresa al pie del ticket). */
   receivedAt?: number;
+  /** Sucursal que levantó el pedido; null/ausente = matriz. */
+  branch?: { id: number; name: string } | null;
 }
 
 const DASHES = 26;
@@ -61,6 +65,10 @@ export function TicketContent({
   const choreo = CHOREO_3D[arrival.priority];
   const bars = useMemo(() => barcodeBars(arrival.orderId, compact ? 150 : 220), [arrival.orderId, compact]);
   const at = new Date(arrival.receivedAt ?? Date.now());
+  // El ticket es papel claro (aunque la tele sea oscura): el logo NEGRO de la sucursal;
+  // si no tiene logo, su nombre en una fila más.
+  const { getLogos } = useBranchLogos();
+  const branchLogo = arrival.branch ? getLogos(arrival.branch.id)?.logoOnLight : null;
   const stamp = `${String(at.getDate()).padStart(2, "0")}/${String(at.getMonth() + 1).padStart(2, "0")}/${at.getFullYear()} ${formatTimeOfDay(at, timeFormat)}`;
   return (
     <div className={cn("bg-[#fbfaf6] font-mono text-slate-900", compact ? "px-3 py-2.5" : "px-4 py-3.5")}>
@@ -73,6 +81,12 @@ export function TicketContent({
       >
         {choreo.header}
       </p>
+      {arrival.branch && branchLogo && (
+        <div className="flex justify-center pt-1.5">
+          {/* Eager: el ticket se copia a la textura 3D al montarse y el logo ya tiene que estar. */}
+          <BranchLogo branchId={arrival.branch.id} name={arrival.branch.name} surface="light" size={compact ? "sm" : "lg"} loading="eager" />
+        </div>
+      )}
       <Dashes compact={compact} />
       <div className="flex items-center justify-between gap-2 py-1">
         <span className={cn("font-bold tabular-nums", compact ? "text-2xl" : "text-4xl")}>#{arrival.orderId}</span>
@@ -86,6 +100,7 @@ export function TicketContent({
       </div>
       <div className="space-y-0.5">
         <Row label="CLIENTE" value={arrival.clientName || "Sin nombre"} compact={compact} />
+        {arrival.branch && !branchLogo && <Row label="SUCURSAL" value={arrival.branch.name} compact={compact} />}
         {arrival.area && <Row label="ÁREA" value={getAreaLabel(arrival.area)} compact={compact} />}
         <Row
           label="ENTREGA"

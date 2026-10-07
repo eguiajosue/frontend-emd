@@ -34,6 +34,7 @@ import { formatElapsed, getDeadlineState, type DeadlineState } from "@/lib/order
 import type { OrderDetailPermissions } from "@/lib/orderDetail";
 import { cn } from "@/lib/utils";
 import { branchOriginLabel } from "@/lib/branch";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import type { Order } from "@/types";
 
 /** Texto del semáforo de entrega: lo mismo que dice la tarjeta del muro. */
@@ -99,10 +100,14 @@ export function OrderDetailHeader({
   return (
     <div className="flex items-start gap-3">
       <div className="min-w-0 flex-1 space-y-3 text-left">
-        <Title className="font-heading text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-[1.75rem]">
-          <span className="tabular-nums text-muted-foreground">#{order.id}</span>{" "}
-          {getOrderClientName(order)}
-        </Title>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Title className="font-heading text-2xl font-semibold leading-tight tracking-tight text-balance sm:text-[1.75rem]">
+            <span className="tabular-nums text-muted-foreground">#{order.id}</span>{" "}
+            {getOrderClientName(order)}
+          </Title>
+          {/* Logo de la sucursal que levantó el pedido (nada si es de la matriz). */}
+          <BranchBadge order={order} size="xl" loading="eager" />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn(pill, "font-semibold tabular-nums", tone.pill)}>
             <tone.icon className="h-3.5 w-3.5" aria-hidden />

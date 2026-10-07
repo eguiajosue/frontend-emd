@@ -4,6 +4,7 @@ import { OrderSizesList } from "@/components/sizes/OrderSizesList";
 import { memo } from "react";
 import { ArrowRight, CalendarDays, CheckCircle2, Loader2, Play, RotateCcw, Timer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { Button } from "@/components/ui/button";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
@@ -120,9 +121,12 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           >
             {task.order.description || "Sin descripción"}
           </h3>
-          <p className="truncate text-sm text-muted-foreground">
-            <span className="tabular-nums">#{task.order.id}</span> · {clientName(task)}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+              <span className="tabular-nums">#{task.order.id}</span> · {clientName(task)}
+            </p>
+            <BranchBadge order={task.order} size="sm" />
+          </div>
           <OrderSizesList products={task.order.orderProducts} />
         </div>
 

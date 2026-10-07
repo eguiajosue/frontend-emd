@@ -11,11 +11,13 @@ export function BranchBadge({
   className,
   surface,
   size,
+  loading,
 }: {
   order: Pick<Order, "branch">;
   className?: string;
   surface?: BranchLogoSurface;
   size?: BranchLogoSize;
+  loading?: "lazy" | "eager";
 }) {
   return (
     <BranchLogo
@@ -23,6 +25,7 @@ export function BranchBadge({
       name={order.branch?.name}
       surface={surface}
       size={size}
+      loading={loading}
       className={className}
     />
   );

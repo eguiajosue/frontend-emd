@@ -16,6 +16,7 @@ import { canUseWebGL, disposeArrival3D, prewarmArrival3D } from "@/components/ta
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
 import { useOrderArrivals } from "@/hooks/useOrderArrivals";
+import { useBranchLogos } from "@/hooks/useBranchLogos";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
@@ -89,6 +90,7 @@ function resolveArrival(arrival: PackageArrival, board: TvBoard, now: number): R
     deliveryDate,
     priority: arrivalPriority({ deliveryDate, changes: arrival.changes || (task ? isReturnedDesign(task) : false) }, now),
     receivedAt: arrival.receivedAt,
+    branch: task?.order.branch ?? null,
   };
 }
 
@@ -314,6 +316,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
 
   // --- Demo: tareas y avisos de mentira para ver/probar la animación.
   const demoSeq = useRef(9000);
+  const demoBranch = useBranchLogos().logos[0];
   const simulate = useCallback(
     (kind: DemoKind) => {
       const make = (k: Exclude<DemoKind, "batch">): { task: TvTask; arrival: PackageArrival } => {
@@ -348,6 +351,8 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             designStartedByName: null,
             client: null,
             status: { id: 1, name: "pendiente" },
+            // Los pares simulan un pedido de sucursal: se ve el logo en el ticket y la tarjeta.
+            branch: demoBranch && orderId % 2 === 0 ? { id: demoBranch.branchId, name: demoBranch.name } : null,
           },
         };
         const arrival = demoArrival(
@@ -368,7 +373,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
       setDemoTasks((prev) => [...prev, ...made.map((m) => m.task)]);
       setQueue((q) => made.reduce((acc, m) => enqueueArrival(acc, m.arrival), q));
     },
-    [activeArea, areas, roles]
+    [activeArea, areas, roles, demoBranch]
   );
 
   useEffect(() => {

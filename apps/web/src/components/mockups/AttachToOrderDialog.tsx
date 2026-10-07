@@ -14,6 +14,7 @@ import { useMyBranch } from "@/hooks/useBranches";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mockupErrorMessage, useCreateOrderMockup } from "@/hooks/useOrderMockups";
 import { getOrderClientName } from "@/lib/format";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { buildMockupPayload, type MockupStudioResult } from "@/lib/mockups/studio";
 import { isFinishedStatus } from "@/lib/orderStatus";
 import { cn } from "@/lib/utils";
@@ -194,6 +195,7 @@ export function AttachToOrderDialog({
                           </span>
                         )}
                       </span>
+                      <BranchBadge order={order} size="sm" />
                       {saving && <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-label="Adjuntando" />}
                     </button>
                   </li>

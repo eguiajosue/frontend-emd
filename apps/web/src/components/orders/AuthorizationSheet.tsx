@@ -34,6 +34,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ZoomableImage } from "@/components/ui/zoomable-image";
 import { DownloadFileButton } from "@/components/ui/download-file-button";
 import { DetailSection } from "@/components/orders/detail/DetailSection";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import {
   useDesignRevisionFileContent,
   useDesignRevisionLegacyMontage,
@@ -138,7 +139,7 @@ export function AuthorizationSheet({
   order,
   className,
 }: {
-  order: Pick<Order, "id" | "requiresDesign">;
+  order: Pick<Order, "id" | "requiresDesign" | "branch">;
   className?: string;
 }) {
   const { timeFormat } = useTimeFormat();
@@ -273,17 +274,21 @@ export function AuthorizationSheet({
       title="Hoja de autorización"
       className={className}
       action={
-        copy ? (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
-              copy.pillClass
-            )}
-          >
-            <copy.icon className="h-3.5 w-3.5" aria-hidden />
-            {copy.pill}
-          </span>
-        ) : undefined
+        <div className="flex items-center gap-3">
+          {/* Origen del pedido: la hoja la trabaja Producción y debe saber de qué sucursal viene. */}
+          <BranchBadge order={order} size="lg" />
+          {copy && (
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                copy.pillClass
+              )}
+            >
+              <copy.icon className="h-3.5 w-3.5" aria-hidden />
+              {copy.pill}
+            </span>
+          )}
+        </div>
       }
     >
       {body}
