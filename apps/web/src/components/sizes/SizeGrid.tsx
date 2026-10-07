@@ -36,7 +36,7 @@ interface SizeGridProps {
  * recorre normal. Las casillas vacías valen 0.
  */
 export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGridProps) {
-  const [extraFits, setExtraFits] = useState<GarmentFit[]>([]);
+  const [extraFits, setExtraFits] = useState<GarmentFit[]>(["general"]);
   const fromValue = activeFits(value);
   const shown = GARMENT_FITS.filter(
     (f) => fromValue.includes(f) || extraFits.includes(f) || (f === "general" && !fromValue.length && !extraFits.length)

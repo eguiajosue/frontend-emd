@@ -11,6 +11,7 @@
  * una lista vacía, que es lo que la app espera de un catálogo sin datos.
  *
  * Rutas sólo para los tests (no existen en el backend real):
+ * - `GET  /__e2e/orders`: los POST /orders recibidos (alta de pedido con tallas).
  * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
  * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
  * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
@@ -216,7 +217,7 @@ const pedidos = () => [
     productionArea: "bordado",
     requiresDesign: true,
     areaTasks: tareas,
-    orderProducts: [{ customName: "Polo", quantity: 24 }],
+    orderProducts: [{ customName: "Polo", quantity: 24, sizes: { general: { M: 10, L: 14 } } }],
     assignedUser: null,
   },
   {
@@ -396,6 +397,9 @@ function registrarMovimiento(articulo, dto) {
   return { status: 201, body: { movement, item: articuloJson(articulo) } };
 }
 
+/** POST /orders recibidos (alta de pedido). */
+const pedidosCreados = [];
+
 const rutas = {
   "GET /orders": () => pedidos(),
   "GET /status": () => estados,
@@ -452,6 +456,12 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
+    if (req.method === "GET" && path === "/__e2e/orders") return send(pedidosCreados);
+    if (req.method === "POST" && path === "/orders") {
+      const payload = JSON.parse(body || "{}");
+      pedidosCreados.push(payload);
+      return send({ id: 777, ...payload }, 201);
+    }
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
     if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);
