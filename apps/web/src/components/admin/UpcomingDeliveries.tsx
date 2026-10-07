@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getStatusDotClasses } from "@/lib/statusColors";
 import { getOrderClientName, formatDeliveryDate } from "@/lib/format";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { staggerContainerVariants } from "@/lib/motion";
 import { useMotionPreset } from "@/lib/motion";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -78,6 +79,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                     <p className="min-w-0 flex-1 truncate text-sm font-medium">
                       <span className="tabular-nums">#{order.id}</span> · {getOrderClientName(order)}
                     </p>
+                    <BranchBadge order={order} size="sm" />
                     <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                   </div>
                   <p className="truncate pl-[1.125rem] text-xs text-muted-foreground">{order.description}</p>

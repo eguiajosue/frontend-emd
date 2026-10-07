@@ -37,6 +37,15 @@ vi.mock("@/hooks/useEntity", () => ({
   CATALOG_STALE_TIME: 5 * 60_000,
 }));
 
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({
+    getLogos: (id: number) => (id === 1 ? { logoOnLight: "data:image/png;base64,NEGRO", logoOnDark: "data:image/png;base64,BLANCO" } : undefined),
+    logos: [],
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 function buildOrder(id: number, statusId: number, overrides: Partial<Order> = {}): Order {
   return {
     id,
@@ -128,5 +137,18 @@ describe("HojaMaterialesPage", () => {
     render(<HojaMaterialesPage />);
 
     expect(screen.queryByLabelText(/Arrastrar para cambiar la prioridad/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("HojaMaterialesPage · logo de la sucursal", () => {
+  it("el pedido de sucursal lleva su logo en la fila; el de matriz no", () => {
+    orders = [
+      buildOrder(1, 1, { clientNameOverride: "Escuela Madero", branchId: 1, branch: { id: 1, name: "Punto Madero" } } as Partial<Order>),
+      buildOrder(2, 1, { clientNameOverride: "Cliente Matriz" }),
+    ];
+    render(<HojaMaterialesPage />);
+    const logos = screen.getAllByTestId("branch-logo");
+    expect(logos).toHaveLength(1);
+    expect(logos[0].closest("h3")).toHaveTextContent("Pedido #1");
   });
 });

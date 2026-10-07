@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BranchBadge } from "./BranchBadge";
+
+// Sin logos cargados: el badge cae al nombre en texto.
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({ getLogos: () => undefined, logos: [], isLoading: false, isError: false }),
+}));
 
 describe("BranchBadge", () => {
   it("muestra «Punto Madero» en los pedidos de la sucursal", () => {

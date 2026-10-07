@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/popover";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getOrderClientName } from "@/lib/format";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
@@ -176,7 +177,8 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                             className="h-auto w-full flex-col items-stretch gap-1 whitespace-normal rounded-xl bg-muted/50 p-3 text-left font-normal"
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="font-medium">#{order.id} · {getOrderClientName(order)}</span>
+                              <span className="min-w-0 flex-1 truncate font-medium">#{order.id} · {getOrderClientName(order)}</span>
+                              <BranchBadge order={order} size="sm" />
                               <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
                             </div>
                             <p className="line-clamp-1 text-xs text-muted-foreground">

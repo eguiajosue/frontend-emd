@@ -26,6 +26,14 @@ vi.mock("@/hooks/useEntity", () => ({
   CATALOG_STALE_TIME: 0,
   useEntityList: () => ({ data: [{ id: 1, name: "pendiente" }, { id: 5, name: "entregado" }] }),
 }));
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({
+    getLogos: () => ({ logoOnLight: "data:image/png;base64,NEGRO", logoOnDark: "data:image/png;base64,BLANCO" }),
+    logos: [],
+    isLoading: false,
+    isError: false,
+  }),
+}));
 vi.mock("@/components/orders/OrderDetailDialog", () => ({
   OrderDetailDialog: ({ orderId }: { orderId: number | null }) =>
     orderId ? <div role="dialog">Detalle del pedido {orderId}</div> : null,
@@ -107,5 +115,20 @@ describe("Historial de la sucursal", () => {
     render(<BranchHistoryPage />);
     expect(screen.getByRole("button", { name: /Anterior/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /Siguiente/ })).toBeEnabled();
+  });
+});
+
+describe("Historial de la sucursal · logo", () => {
+  it("cada fila lleva el logo de la sucursal junto al cliente (con el nombre como alt)", () => {
+    history.state = {
+      ...history.state,
+      orders: [order(7, { branch: { id: 1, name: "Punto Madero" } as Order["branch"] }), order(6)],
+      total: 2,
+    };
+    render(<BranchHistoryPage />);
+    const logos = screen.getAllByTestId("branch-logo");
+    expect(logos).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Ver pedido #7 de Escuela 7" })).toContainElement(logos[0]);
+    expect(logos[0].querySelector("img")).toHaveAttribute("alt", "Punto Madero");
   });
 });

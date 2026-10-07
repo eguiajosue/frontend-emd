@@ -60,7 +60,7 @@ export async function downloadMaterialsSheetPdf(
 
   // Pedido de una sucursal: su logo (el de fondo claro: el papel es blanco)
   // arriba a la derecha. Sin logo cargado, queda sólo la línea "Sucursal".
-  if (options.branchLogoOnLight) {
+  if (order.branch?.name && options.branchLogoOnLight) {
     try {
       embedLogo(doc, options.branchLogoOnLight);
     } catch {

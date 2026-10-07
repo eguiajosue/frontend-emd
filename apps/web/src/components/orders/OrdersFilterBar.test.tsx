@@ -86,3 +86,39 @@ describe("OrdersFilterBar - Archivados", () => {
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ORDERS_FILTERS, showArchived: true });
   });
 });
+
+describe("OrdersFilterBar - Origen", () => {
+  it("roles de matriz ven el filtro Origen a la vista y lo cambian", async () => {
+    mockPermissions(["recepcion"]);
+    const onChange = vi.fn();
+    render(<OrdersFilterBar clients={clients} users={users} filters={EMPTY_ORDERS_FILTERS} onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole("combobox", { name: "Origen" }));
+    await userEvent.click(screen.getByRole("option", { name: "Todas las sucursales" }));
+    expect(onChange).toHaveBeenCalledWith({ ...EMPTY_ORDERS_FILTERS, origin: "sucursal" });
+  });
+
+  it("la cuenta de sucursal no ve el filtro", () => {
+    vi.mocked(usePermissions).mockReturnValue({
+      roles: ["sucursal"],
+      isAdmin: false,
+      isBranch: true,
+      canManageOperations: false,
+      isSessionLoading: false,
+      session: null,
+    } as unknown as ReturnType<typeof usePermissions>);
+    render(<OrdersFilterBar clients={clients} users={users} filters={EMPTY_ORDERS_FILTERS} onChange={() => {}} />);
+    expect(screen.queryByRole("combobox", { name: "Origen" })).not.toBeInTheDocument();
+  });
+
+  it("con un origen activo cuenta como filtro y 'Limpiar' lo quita", async () => {
+    mockPermissions(["recepcion"]);
+    const onChange = vi.fn();
+    render(
+      <OrdersFilterBar clients={clients} users={users} filters={{ ...EMPTY_ORDERS_FILTERS, origin: "matriz" }} onChange={onChange} />
+    );
+    expect(screen.getByRole("combobox", { name: "Origen" })).toHaveTextContent("Matriz");
+    await userEvent.click(screen.getByRole("button", { name: "Limpiar" }));
+    expect(onChange).toHaveBeenCalledWith(EMPTY_ORDERS_FILTERS);
+  });
+});

@@ -30,6 +30,15 @@ vi.mock("@/lib/mockups/presets", () => ({
   applyPreset: (l: unknown) => l,
 }));
 
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({
+    getLogos: (id: number) => (id === 1 ? { logoOnLight: "data:image/png;base64,NEGRO", logoOnDark: "data:image/png;base64,BLANCO" } : undefined),
+    logos: [],
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 const push = vi.fn();
 vi.mock("@/hooks/usePermissions", () => ({ usePermissions: () => ({ isBranch: false }) }));
 vi.mock("@/hooks/useBranches", () => ({ useMyBranch: () => ({ branch: undefined }) }));
@@ -112,5 +121,21 @@ describe("AttachToOrderDialog", () => {
     render(<AttachToOrderDialog open onOpenChange={vi.fn()} result={RESULT} />);
     await userEvent.type(screen.getByRole("textbox", { name: "Buscar pedido" }), "zzz");
     expect(screen.getByText("Ningún pedido coincide con la búsqueda.")).toBeInTheDocument();
+  });
+});
+
+describe("AttachToOrderDialog · logo de la sucursal", () => {
+  it("los pedidos de sucursal se reconocen por su logo en la lista", () => {
+    mockOrdersState = {
+      data: [
+        { ...ORDERS[0], branchId: 1, branch: { id: 1, name: "Punto Madero" } },
+        ORDERS[1],
+      ] as Order[],
+      isPending: false,
+    };
+    render(<AttachToOrderDialog open onOpenChange={vi.fn()} result={RESULT} />);
+    const list = screen.getByRole("list", { name: "Pedidos" });
+    expect(within(list).getAllByTestId("branch-logo")).toHaveLength(1);
+    expect(within(list).getByRole("button", { name: /#101/ })).toContainElement(within(list).getByTestId("branch-logo"));
   });
 });

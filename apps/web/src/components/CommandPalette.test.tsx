@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Package, ClipboardList, Building2, ListTodo } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "./CommandPalette";
@@ -37,8 +37,18 @@ vi.mock("@/hooks/useEntity", () => ({
   useEntityList: () => ({ data: [{ id: 7, first_name: "Ana", last_name: "Ríos", phone: "555" }] }),
 }));
 
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({
+    getLogos: (id: number) => (id === 1 ? { logoOnLight: "data:image/png;base64,NEGRO", logoOnDark: "data:image/png;base64,BLANCO" } : undefined),
+    logos: [],
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 const orders = [
   { id: 42, description: "Letrero luminoso", clientNameOverride: "Cruz" } as Order,
+  { id: 43, description: "Lonas", clientNameOverride: "Madero", branchId: 1, branch: { id: 1, name: "Punto Madero" } } as Order,
 ];
 vi.mock("@/hooks/useOrders", () => ({ useOrders: () => ({ data: orders }) }));
 
@@ -175,5 +185,16 @@ describe("CommandPalette fase 3", () => {
     render(<CommandPalette />);
     act(() => openCommandPalette());
     expect(screen.queryByRole("option", { name: /Modo TV de tareas/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("CommandPalette · logo de la sucursal", () => {
+  it("el resultado de búsqueda de un pedido de sucursal lleva su logo", async () => {
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+    await userEvent.type(screen.getByPlaceholderText(/Buscar pantalla/), "o");
+    const sucursal = await screen.findByRole("option", { name: /#43/ });
+    expect(within(sucursal).getByTestId("branch-logo")).toBeInTheDocument();
+    expect(within(screen.getByRole("option", { name: /#42/ })).queryByTestId("branch-logo")).not.toBeInTheDocument();
   });
 });
