@@ -107,6 +107,14 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         url: TASKS_URL,
         icon: ListChecks,
       },
+      {
+        // Diseño arma los mockups de lo que diseña (los demás roles de producción no).
+        title: "Mockups",
+        url: MOCKUPS_URL,
+        icon: Shirt,
+        roles: ["diseno"],
+        strictRoles: true,
+      },
     ],
   },
   {
@@ -194,11 +202,11 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "superuser", "recepcion"],
         },
         {
-          // Mockups 3D para mostrarle al cliente: mismo acceso que Inventario.
+          // Mockups 3D para mostrarle al cliente: Recepción, administración y Diseño.
           title: "Mockups",
           url: MOCKUPS_URL,
           icon: Shirt,
-          roles: ["admin", "recepcion", "superuser"],
+          roles: ["admin", "recepcion", "superuser", "diseno"],
         },
         {
           // Cotizaciones por enviar y enviadas: Recepción y administración.

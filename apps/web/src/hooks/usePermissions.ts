@@ -20,6 +20,8 @@ export function usePermissions() {
       isAdmin,
       /** Alta/edición de pedidos, clientes y empresas. */
       canManageOperations: isAdmin || roles.includes("recepcion"),
+      /** Mockups 3D: Recepción, administración, Diseño y la cuenta de sucursal. */
+      canUseMockups: isAdmin || roles.includes("recepcion") || roles.includes("diseno") || isBranchOnly(roles),
       /** Alta/edición de usuarios y roles. */
       canManageUsers: isAdmin,
       /** Cuenta de sucursal: sólo Nuevo pedido, Mis pedidos y Mockups. */
