@@ -364,6 +364,14 @@ export function homePathForRoles(roles: string[]): string {
   return "/dashboard/orders";
 }
 
+/** Rutas a las que puede entrar la cuenta de sucursal (Pedidos, Mockups y Configuración personal). */
+export function isBranchAllowedPath(pathname: string | null): boolean {
+  if (!pathname) return true;
+  return [ORDERS_URL, MOCKUPS_URL, "/dashboard/configuracion"].some(
+    (url) => pathname === url || pathname.startsWith(`${url}/`)
+  );
+}
+
 /** Pantallas fuera del menú que igual necesitan nombre en breadcrumb/pestaña. */
 const EXTRA_ROUTE_TITLES: Record<string, string> = {
   "/dashboard/configuracion": "Configuración",

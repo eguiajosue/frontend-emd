@@ -6,6 +6,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import type { Client, User } from "@/types";
 
 vi.mock("@/hooks/usePermissions");
+vi.mock("@/hooks/useBranches", () => ({ useBranches: () => ({ data: [] }) }));
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
 
 const clients: Client[] = [];

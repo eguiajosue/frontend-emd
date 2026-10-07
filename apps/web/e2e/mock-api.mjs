@@ -30,7 +30,32 @@ const usuarios = [
   { id: 1, username: "recepcion1", firstName: "Rita", lastName: "Ponce", isSharedAccount: false, roles: [{ id: 1, name: "recepcion" }] },
   { id: 2, username: "bordado", firstName: "Bordado", lastName: "", isSharedAccount: true, roles: [{ id: 2, name: "bordado" }] },
   { id: 3, username: "jeguia1", firstName: "José", lastName: "Eguía", isSharedAccount: false, roles: [{ id: 3, name: "diseno" }, { id: 2, name: "bordado" }] },
+  { id: 10, username: "admin1", firstName: "Ada", lastName: "Mora", isSharedAccount: false, roles: [{ id: 30, name: "admin" }] },
+  // Cuenta compartida de la sucursal "Punto Madero" (rol sucursal + branchId).
+  { id: 9, username: "puntomadero", firstName: "Punto Madero", lastName: "", isSharedAccount: true, roles: [{ id: 20, name: "sucursal" }], branchId: 1, branch: { id: 1, name: "Punto Madero" } },
 ];
+
+const roles = [
+  { id: 1, name: "recepcion" }, { id: 2, name: "bordado" }, { id: 3, name: "diseno" },
+  { id: 20, name: "sucursal" }, { id: 30, name: "admin" },
+];
+
+/** Sucursales y empleados (en memoria; `/__e2e/reset-branches` los restaura). */
+const sucursalesIniciales = () => [
+  {
+    id: 1, name: "Punto Madero", active: true,
+    employees: [
+      { id: 1, branchId: 1, name: "Ana López", active: true },
+      { id: 2, branchId: 1, name: "Beto Ruiz", active: false },
+      { id: 3, branchId: 1, name: "Carla Díaz", active: true },
+    ],
+  },
+];
+let sucursales = sucursalesIniciales();
+let siguienteEmpleadoId = 10;
+/** Cuerpos de los POST /orders hechos desde la sucursal (los lee el test). */
+let pedidosSucursalCreados = [];
+let siguientePedidoSucursalId = 200;
 
 const estados = [
   { id: 1, name: "pendiente" },
@@ -69,6 +94,8 @@ const tareasTvIniciales = () => [
 let tareasTv = tareasTvIniciales();
 
 /** Usuario del token (el `sub` del JWT de mentira). */
+const esSucursal = (u) => u.roles.some((r) => r.name === "sucursal");
+
 function usuarioDe(req) {
   try {
     const payload = (req.headers.authorization ?? "").split(".")[1];
@@ -234,6 +261,26 @@ const pedidos = () => [
     orderProducts: [],
     assignedUser: usuarios[2],
   },
+  {
+    id: 110,
+    statusId: 6,
+    status: { id: 6, name: "en diseño" },
+    clientNameOverride: "Escuela Madero",
+    description: "Sudaderas con escudo (Punto Madero)",
+    creationDate: "2026-09-04T09:00:00.000Z",
+    deliveryDate: "2026-09-28T18:00:00.000Z",
+    deliveredAt: null,
+    area: "diseno",
+    requiresDesign: true,
+    areaTasks: [],
+    orderProducts: [{ customName: "Sudadera", quantity: 12 }],
+    assignedUser: usuarios[2],
+    branchId: 1,
+    branch: { id: 1, name: "Punto Madero" },
+    branchEmployeeId: 1,
+    branchEmployee: { id: 1, name: "Ana López" },
+  },
+  ...pedidosSucursalCreados,
 ];
 
 /**
@@ -742,6 +789,86 @@ createServer((req, res) => {
       const fileId = rondas[3] === "montage" ? r?.montageFiles[0]?.id : Number(rondas[4]);
       const archivo = r?.montageFiles.some((f) => f.id === fileId) ? archivosDiseno[fileId] : null;
       return archivo ? send(archivo) : send({ message: "Archivo de la ronda no encontrado" }, 404);
+    }
+
+    // ── Sucursales ──────────────────────────────────────────────────────────
+    const quien = usuarioDe(req);
+    if (req.method === "POST" && path === "/__e2e/reset-branches") {
+      sucursales = sucursalesIniciales();
+      pedidosSucursalCreados = [];
+      return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/branch-orders") return send(pedidosSucursalCreados);
+    if (req.method === "GET" && path === "/roles") return send(roles);
+    if (req.method === "GET" && path === "/branches/me") {
+      const b = sucursales.find((x) => x.id === quien.branchId);
+      if (!esSucursal(quien) || !b) return send({ message: "Sin permisos para acceder a esta sección" }, 403);
+      return send({ id: b.id, name: b.name, active: b.active, employees: b.employees.filter((e) => e.active).map(({ id, name }) => ({ id, name })) });
+    }
+    if (path.startsWith("/branches") && esSucursal(quien)) {
+      return send({ message: "Sin permisos para acceder a esta sección" }, 403);
+    }
+    if (req.method === "GET" && path === "/branches") return send(sucursales);
+    if (req.method === "POST" && path === "/branches") {
+      const { name } = JSON.parse(body || "{}");
+      const nueva = { id: sucursales.length + 1, name, active: true, employees: [] };
+      sucursales.push(nueva);
+      return send(nueva, 201);
+    }
+    const sucursalRuta = path.match(/^\/branches\/(\d+)(?:\/employees(?:\/(\d+))?)?$/);
+    if (sucursalRuta) {
+      const b = sucursales.find((x) => x.id === Number(sucursalRuta[1]));
+      if (!b) return send({ message: "Sucursal no encontrada" }, 404);
+      const datos = JSON.parse(body || "{}");
+      if (path.endsWith("/employees") && req.method === "POST") {
+        if (b.employees.some((e) => e.name === datos.name)) return send({ message: "Ya hay un empleado con ese nombre en la sucursal" }, 409);
+        const nuevo = { id: siguienteEmpleadoId++, branchId: b.id, name: datos.name, active: true };
+        b.employees.push(nuevo);
+        return send(nuevo, 201);
+      }
+      if (sucursalRuta[2] && req.method === "PATCH") {
+        const e = b.employees.find((x) => x.id === Number(sucursalRuta[2]));
+        if (!e) return send({ message: "Empleado no encontrado" }, 404);
+        Object.assign(e, datos);
+        return send(e);
+      }
+      if (!path.includes("/employees") && req.method === "PATCH") {
+        Object.assign(b, datos);
+        return send(b);
+      }
+    }
+
+    // Pedidos: la sucursal sólo ve (y levanta) los suyos; el empleado es obligatorio.
+    if (path === "/orders" && req.method === "GET" && esSucursal(quien)) {
+      return send(pedidos().filter((p) => p.branchId === quien.branchId));
+    }
+    if (path === "/orders" && req.method === "POST") {
+      const dto = JSON.parse(body || "{}");
+      if (esSucursal(quien)) {
+        if (!dto.branchEmployeeId) return send({ message: "Elige qué empleado de la sucursal levanta el pedido" }, 400);
+        const b = sucursales.find((x) => x.id === quien.branchId);
+        const e = b?.employees.find((x) => x.id === dto.branchEmployeeId);
+        if (!e) return send({ message: "El empleado no pertenece a la sucursal" }, 400);
+        if (!e.active) return send({ message: "El empleado está inactivo" }, 400);
+        const creado = {
+          id: siguientePedidoSucursalId++, statusId: 6, status: { id: 6, name: "en diseño" },
+          clientNameOverride: dto.clientNameOverride ?? "Cliente", description: dto.description,
+          creationDate: new Date().toISOString(), deliveryDate: dto.deliveryDate ?? null, deliveredAt: null,
+          area: "diseno", requiresDesign: true, areaTasks: [], orderProducts: dto.orderProducts ?? [],
+          assignedUser: usuarios[2], branchId: b.id, branch: { id: b.id, name: b.name },
+          branchEmployeeId: e.id, branchEmployee: { id: e.id, name: e.name },
+        };
+        pedidosSucursalCreados.push(creado);
+        return send(creado, 201);
+      }
+      return send({ id: 999, ...dto }, 201);
+    }
+    {
+      const ped = path.match(/^\/orders\/(\d+)(?:\/|$)/);
+      if (ped && esSucursal(quien) && req.method === "GET") {
+        const propio = pedidos().find((p) => p.id === Number(ped[1]) && p.branchId === quien.branchId);
+        if (!propio) return send({ message: "Sin acceso a este pedido" }, 403);
+      }
     }
 
     // Detalle de un pedido (también los del Modo TV, que no están en GET /orders).
