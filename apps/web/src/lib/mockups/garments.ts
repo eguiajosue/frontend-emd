@@ -1,4 +1,5 @@
 import { PLACEMENT_PRESETS } from "./presets";
+import { garmentCategory, type GarmentCategory } from "./vehicles";
 import {
   DEFAULT_COLORS,
   GARMENT_LABELS,
@@ -17,6 +18,10 @@ import {
  * vestir ya están aquí, pero ocultas: sus modelos 3D los descarga el usuario
  * (CC0/CC-BY) y hasta entonces `ENABLED_GARMENTS` sólo deja playera y gorra.
  *
+ * Rotulaciones: carro, minivan, pickup, tráiler y bicicleta (vinil sobre
+ * vehículos) viven en el mismo registro, con `category: "rotulaciones"`; sus
+ * modelos son 100 % procedurales (`components/mockups/*Model.ts`).
+ *
  * Para habilitar una prenda nueva: poner su GLB en `public/models/`, llenar
  * `model`, sus presets en `presets.ts`, cargarla en `mockupScene.ts`
  * (`loadGarment`) y agregarla a `ENABLED_GARMENTS`.
@@ -29,12 +34,34 @@ import {
  * `src/common/mockup-validation.ts` (`ORDER_MOCKUP_GARMENTS`): al habilitar una
  * prenda se amplían las dos en el mismo release.
  */
-export const ENABLED_GARMENTS = ["tshirt", "cap", "termo", "taza"] as const satisfies readonly Garment[];
+export const ENABLED_GARMENTS = [
+  "tshirt",
+  "cap",
+  "termo",
+  "taza",
+  "car",
+  "minivan",
+  "pickup",
+  "trailer",
+  "bicycle",
+] as const satisfies readonly Garment[];
 
 export type EnabledGarment = (typeof ENABLED_GARMENTS)[number];
 
 /** Todas las prendas que conoce el contrato, en el orden en que se muestran. */
-export const ALL_GARMENTS = ["tshirt", "cap", "hoodie", "dress-shirt", "termo", "taza"] as const satisfies readonly Garment[];
+export const ALL_GARMENTS = [
+  "tshirt",
+  "cap",
+  "hoodie",
+  "dress-shirt",
+  "termo",
+  "taza",
+  "car",
+  "minivan",
+  "pickup",
+  "trailer",
+  "bicycle",
+] as const satisfies readonly Garment[];
 
 export type ColorPart = keyof GarmentColors;
 
@@ -50,6 +77,8 @@ export interface GarmentOptionSpec {
   buttonColor?: boolean;
   /** Acabado de los diseños: grabado láser (termo) o impresión a color. */
   decoration?: "laser" | "print";
+  /** Tráiler: se puede rotular completo, sólo la cabina o sólo la caja. */
+  vehicleParts?: boolean;
 }
 
 export type GarmentModelSource =
@@ -61,6 +90,8 @@ export type GarmentModelSource =
 export interface GarmentDefinition {
   id: Garment;
   label: string;
+  /** Categoría del selector: Prendas o Rotulaciones. */
+  category: GarmentCategory;
   /** Modelo comercial de referencia (texto de apoyo en el selector). */
   referenceModel: string;
   /** null = todavía no hay modelo 3D (la prenda no se puede mostrar). */
@@ -77,6 +108,7 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   tshirt: {
     id: "tshirt",
     label: GARMENT_LABELS.tshirt,
+    category: "prendas",
     referenceModel: "Gildan 5000",
     model: { kind: "glb", url: "/models/tshirt.glb" },
     colorParts: [{ part: "body", label: "Color de la prenda" }],
@@ -87,6 +119,7 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   cap: {
     id: "cap",
     label: GARMENT_LABELS.cap,
+    category: "prendas",
     referenceModel: "Richardson 112",
     model: { kind: "procedural" },
     colorParts: [
@@ -101,6 +134,7 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   hoodie: {
     id: "hoodie",
     label: GARMENT_LABELS.hoodie,
+    category: "prendas",
     referenceModel: "Gildan 18500",
     model: null,
     colorParts: [{ part: "body", label: "Color de la prenda" }],
@@ -112,6 +146,7 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   "dress-shirt": {
     id: "dress-shirt",
     label: GARMENT_LABELS["dress-shirt"],
+    category: "prendas",
     referenceModel: "Camisa Oxford",
     model: null,
     colorParts: [{ part: "body", label: "Color de la tela" }],
@@ -127,6 +162,7 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   termo: {
     id: "termo",
     label: GARMENT_LABELS.termo,
+    category: "prendas",
     referenceModel: "Tumbler 30 oz · grabado láser",
     model: { kind: "procedural" },
     colorParts: [{ part: "body", label: "Color del termo" }],
@@ -137,12 +173,71 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
   taza: {
     id: "taza",
     label: GARMENT_LABELS.taza,
+    category: "prendas",
     referenceModel: "Cerámica 11 oz · sublimación",
     model: { kind: "procedural" },
     colorParts: [{ part: "body", label: "Color de la taza" }],
     defaultColors: DEFAULT_COLORS.taza,
     options: { decoration: "print" },
     presets: PLACEMENT_PRESETS.taza,
+  },
+  car: {
+    id: "car",
+    label: GARMENT_LABELS.car,
+    category: "rotulaciones",
+    referenceModel: "Sedán compacto",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color del carro" }],
+    defaultColors: DEFAULT_COLORS.car,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.car,
+  },
+  minivan: {
+    id: "minivan",
+    label: GARMENT_LABELS.minivan,
+    category: "rotulaciones",
+    referenceModel: "Minivan con puerta corrediza",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color de la minivan" }],
+    defaultColors: DEFAULT_COLORS.minivan,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.minivan,
+  },
+  pickup: {
+    id: "pickup",
+    label: GARMENT_LABELS.pickup,
+    category: "rotulaciones",
+    referenceModel: "Pickup doble cabina",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color de la pickup" }],
+    defaultColors: DEFAULT_COLORS.pickup,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.pickup,
+  },
+  trailer: {
+    id: "trailer",
+    label: GARMENT_LABELS.trailer,
+    category: "rotulaciones",
+    referenceModel: "Tractocamión con caja seca",
+    model: { kind: "procedural" },
+    colorParts: [
+      { part: "body", label: "Color de la cabina" },
+      { part: "mesh", label: "Color de la caja" },
+    ],
+    defaultColors: DEFAULT_COLORS.trailer,
+    options: { decoration: "print", vehicleParts: true },
+    presets: PLACEMENT_PRESETS.trailer,
+  },
+  bicycle: {
+    id: "bicycle",
+    label: GARMENT_LABELS.bicycle,
+    category: "rotulaciones",
+    referenceModel: "Bicicleta urbana con canastilla",
+    model: { kind: "procedural" },
+    colorParts: [{ part: "body", label: "Color del cuadro" }],
+    defaultColors: DEFAULT_COLORS.bicycle,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.bicycle,
   },
 };
 
@@ -177,10 +272,17 @@ export function getGarment(id: Garment): GarmentDefinition {
   return GARMENTS[id];
 }
 
-/** Prendas que muestra el selector. */
+/** Prendas que muestra el selector (de todas las categorías). */
 export function enabledGarments(): GarmentDefinition[] {
   return ENABLED_GARMENTS.map((id) => GARMENTS[id]);
 }
+
+/** Prendas habilitadas de una categoría (Prendas o Rotulaciones). */
+export function enabledGarmentsIn(category: GarmentCategory): GarmentDefinition[] {
+  return enabledGarments().filter((g) => g.category === category);
+}
+
+export { garmentCategory };
 
 /** Nombre para mostrar de cualquier valor de prenda (incluso uno desconocido). */
 export function garmentLabel(value: string): string {

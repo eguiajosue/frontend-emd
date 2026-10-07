@@ -16,10 +16,11 @@ import { buildDecalGeometry, createSelectionTexture, DesignDecal, TriangleSoup }
 import {
   composeSheet,
   selectSheetViews,
-  SINGLE_VIEW_SIZE,
+  sheetPlanFor,
   THUMBNAIL_SIZE,
   VIEW_AZIMUTH,
   type ComposeOptions,
+  type RenderView,
   type SheetView,
 } from "./exportMockup";
 import type { GarmentModel } from "./garmentModel";
@@ -27,6 +28,8 @@ import { loadShirtModel } from "./ShirtModel";
 import { ContactShadows, createStudioEnvironment, StudioLightRig } from "./studioLighting";
 import { createTruckerCapModel } from "./TruckerCapModel";
 import { createTazaModel, createTermoModel } from "./DrinkwareModel";
+import { createVehicleModel } from "./vehicleModels";
+import { isVehicle, vehiclePartOf } from "@/lib/mockups/vehicles";
 import { PRINT_FINISH, type DecalFinish } from "./DesignDecal";
 import { isLaserEngraved } from "@/lib/mockups/garments";
 import { laserSettings } from "@/lib/mockups/laserEngrave";
@@ -53,6 +56,8 @@ export interface MockupSceneCallbacks {
 
 interface GarmentState {
   garment: Garment;
+  /** Tráiler: parte montada (cualquier otro modelo: undefined). */
+  part: string | undefined;
   model: GarmentModel;
   soup: TriangleSoup;
   center: THREE.Vector3;
@@ -60,6 +65,17 @@ interface GarmentState {
   /** Medio alto y medio ancho (el mayor entre X y Z) para encuadrar. */
   halfHeight: number;
   halfWidth: number;
+  /** Medias medidas en X / Y / Z desde el foco (vehículos: encuadre por vista). */
+  extent: { x: number; y: number; z: number };
+}
+
+/** Llave del modelo montado: cambia al cambiar de prenda o de parte del tráiler. */
+function modelKey(config: Pick<MockupConfig, "garment" | "vehiclePart">): string {
+  return config.garment === "trailer" ? `trailer:${vehiclePartOf(config)}` : config.garment;
+}
+
+function currentKeyOf(current: { garment: Garment; part?: string } | null): string | null {
+  return current ? modelKey({ garment: current.garment, vehiclePart: current.part as MockupConfig["vehiclePart"] }) : null;
 }
 
 interface DragState {
@@ -97,7 +113,7 @@ export class MockupScene {
   private userOrbiting = false;
   private camAnim: { theta: number; phi: number; radius: number } | null = null;
   private current: GarmentState | null = null;
-  private loadingGarment: Garment | null = null;
+  private loadingGarment: string | null = null;
   private garmentPromise: Promise<void> = Promise.resolve();
   private loadToken = 0;
   private decals = new Map<string, DesignDecal>();
@@ -191,10 +207,11 @@ export class MockupScene {
   setConfig(config: MockupConfig) {
     const prev = this.config;
     this.config = config;
-    const garmentChanged = !prev || prev.garment !== config.garment;
-    if (garmentChanged && this.loadingGarment !== config.garment) {
+    const key = modelKey(config);
+    const garmentChanged = !prev || modelKey(prev) !== key;
+    if (garmentChanged && this.loadingGarment !== key) {
       this.loadGarment(config);
-    } else if (this.current && this.current.garment === config.garment) {
+    } else if (this.current && currentKeyOf(this.current) === key) {
       this.current.model.setColors(config.colors);
     }
     this.syncLayers();
@@ -240,10 +257,10 @@ export class MockupScene {
   }
 
   async exportSheet(sizes?: SizeBreakdown | null, only: DownloadViewKey = "all"): Promise<MockupExport> {
-    const single = only !== "all";
+    const config = this.config;
     return this.exportComposite(
-      (layers) => selectSheetViews(layers, only),
-      single ? { sizes, width: SINGLE_VIEW_SIZE, height: SINGLE_VIEW_SIZE } : { sizes },
+      (layers) => selectSheetViews(layers, only, config?.garment),
+      (views) => sheetPlanFor(config?.garment ?? "tshirt", views, only, config ? vehiclePartOf(config) : undefined, sizes),
     );
   }
 
@@ -261,7 +278,9 @@ export class MockupScene {
     ];
     let last: MockupExport | null = null;
     for (const { size, quality } of attempts) {
-      last = await this.exportComposite(() => [{ view: "front", label: "Frente" }], {
+      // Vehículos: tres cuartos (se ve el frente y el costado); prendas: de frente.
+      const view: RenderView = this.config && isVehicle(this.config.garment) ? "angle" : "front";
+      last = await this.exportComposite(() => [{ view, label: "Frente" }], () => ({
         width: size,
         height: size,
         padding: Math.round(size * 0.04),
@@ -270,7 +289,7 @@ export class MockupScene {
         supersample: 1.5,
         mimeType: "image/jpeg",
         quality,
-      });
+      }));
       if (dataUrlBytes(last.dataUrl) <= MAX_TEMPLATE_THUMBNAIL_BYTES) return last;
     }
     return last!;
@@ -278,18 +297,19 @@ export class MockupScene {
 
   private async exportComposite(
     viewsFor: (layers: MockupConfig["layers"]) => SheetView[],
-    options: ComposeOptions,
+    optionsFor: (views: SheetView[]) => ComposeOptions,
   ): Promise<MockupExport> {
     await this.whenReady();
     // Si la prenda elegida no cargó (p. ej. falló el GLB), en pantalla sigue la
     // anterior: exportar guardaría la imagen de una prenda con la config de otra.
     // El mensaje empieza con "El 3D" para que el estudio lo muestre tal cual.
-    if (this.disposed || !this.current || !this.config || this.current.garment !== this.config.garment) {
+    if (this.disposed || !this.current || !this.config || currentKeyOf(this.current) !== modelKey(this.config)) {
       throw new Error("El 3D no terminó de cargar la prenda. Espera un momento o recarga la página.");
     }
     this.rebuildDirtyDecals();
 
     const views = viewsFor(this.config.layers);
+    const options = optionsFor(views);
     const prev = {
       pixelRatio: this.renderer.getPixelRatio(),
       position: this.camera.position.clone(),
@@ -357,7 +377,8 @@ export class MockupScene {
   private loadGarment(config: MockupConfig) {
     const token = ++this.loadToken;
     const garment = config.garment;
-    this.loadingGarment = garment;
+    const key = modelKey(config);
+    this.loadingGarment = key;
     this.callbacks().onStatus?.("loading");
     // Sólo playera y gorra tienen modelo (ver lib/mockups/garments.ts): una
     // prenda sin modelo termina en "error" en vez de dibujar otra.
@@ -370,14 +391,16 @@ export class MockupScene {
             ? Promise.resolve(createTermoModel(config.colors))
             : garment === "taza"
               ? Promise.resolve(createTazaModel(config.colors))
-              : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
+              : isVehicle(garment)
+                ? Promise.resolve(createVehicleModel(garment, config.colors, vehiclePartOf(config)))
+                : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
     this.garmentPromise = load.then(
       (model) => {
         if (this.disposed || token !== this.loadToken) {
           model.dispose();
           return;
         }
-        this.mountGarment(garment, model);
+        this.mountGarment(garment, model, garment === "trailer" ? vehiclePartOf(config) : undefined);
         this.syncLayers();
         this.loadingGarment = null;
         this.callbacks().onStatus?.("ready");
@@ -391,7 +414,7 @@ export class MockupScene {
     );
   }
 
-  private mountGarment(garment: Garment, model: GarmentModel) {
+  private mountGarment(garment: Garment, model: GarmentModel, part?: string) {
     if (this.current) {
       this.garmentGroup.remove(this.current.model.root);
       this.current.model.dispose();
@@ -405,10 +428,16 @@ export class MockupScene {
     const center = model.focus?.clone() ?? box.getCenter(new THREE.Vector3());
     this.current = {
       garment,
+      part,
       model,
       soup: new TriangleSoup(model.decalTargets),
       center,
       radius: sphere.radius,
+      extent: {
+        x: Math.max(Math.abs(box.max.x - center.x), Math.abs(box.min.x - center.x)),
+        y: Math.max(box.max.y - center.y, center.y - box.min.y),
+        z: Math.max(Math.abs(box.max.z - center.z), Math.abs(box.min.z - center.z)),
+      },
       halfHeight: Math.max(box.max.y - center.y, center.y - box.min.y),
       // Extensión desde el foco (no desde el centro de la caja) para encuadrar.
       halfWidth: Math.max(
@@ -420,12 +449,13 @@ export class MockupScene {
     };
 
     // Límites de órbita por prenda: la gorra se luce más desde arriba.
-    const base = this.fitDistance(this.width / this.height);
+    const base = this.baseDistance(this.width / this.height);
     this.controls.target.copy(center);
     this.controls.minDistance = base * 0.45;
     this.controls.maxDistance = base * 1.6;
-    this.controls.minPolarAngle = garment === "cap" || garment === "taza" ? Math.PI * 0.1 : Math.PI * 0.26;
-    this.controls.maxPolarAngle = garment === "cap" ? Math.PI * 0.6 : Math.PI * 0.62;
+    // Vehículos: se pueden ver desde arriba (techo / cofre) y casi a ras del piso.
+    this.controls.minPolarAngle = isVehicle(garment) ? 0.03 : garment === "cap" || garment === "taza" ? Math.PI * 0.1 : Math.PI * 0.26;
+    this.controls.maxPolarAngle = isVehicle(garment) ? Math.PI * 0.53 : garment === "cap" ? Math.PI * 0.6 : Math.PI * 0.62;
 
     this.shadows.configure(center, box.min.y - 0.002, model.shadow);
     this.lights.fit(center, sphere.radius);
@@ -439,17 +469,39 @@ export class MockupScene {
    * Distancia para que la prenda llene el cuadro en cualquier vista: se usa el
    * mayor ancho (X o Z) para que el zoom no salte al girar.
    */
-  private fitDistance(aspect: number, margin = 1.18) {
+  private fitDistance(aspect: number, margin = 1.18, view: RenderView = this.view) {
     if (!this.current) return 2;
-    const { halfHeight, halfWidth } = this.current;
     const vTan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
     const hTan = vTan * aspect;
+    if (isVehicle(this.current.garment)) {
+      // Vehículos: cada vista se encuadra con las medidas que de verdad se ven
+      // (el frente es angosto, el costado largo, el techo ocupa el largo).
+      const { x, y, z } = this.current.extent;
+      const dims =
+        view === "front" || view === "back"
+          ? { h: x, v: y, depth: z }
+          : view === "top"
+            ? { h: x, v: z, depth: y }
+            : view === "angle"
+              ? { h: Math.hypot(x, z) * 0.95, v: y, depth: Math.hypot(x, z) * 0.35 }
+              : { h: z, v: y, depth: x };
+      return (Math.max(dims.v / vTan, dims.h / hTan) + dims.depth * 0.45) * margin;
+    }
+    const { halfHeight, halfWidth } = this.current;
     return (Math.max(halfHeight / vTan, halfWidth / hTan) + halfWidth * 0.5) * margin;
   }
 
-  private viewSpherical(view: MockupView, aspect = this.width / this.height, margin?: number) {
+  /** Distancia más lejana entre todas las vistas (límites del zoom). */
+  private baseDistance(aspect: number) {
+    if (!this.current || !isVehicle(this.current.garment)) return this.fitDistance(aspect);
+    return Math.max(...(["front", "left", "top"] as const).map((v) => this.fitDistance(aspect, 1.18, v)));
+  }
+
+  private viewSpherical(view: RenderView, aspect = this.width / this.height, margin?: number) {
     const elevation = this.current?.model.viewElevation ?? 0.08;
-    const radius = this.fitDistance(aspect, margin);
+    const radius = this.fitDistance(aspect, margin, view);
+    if (view === "top") return { theta: Math.PI, phi: 0.045, radius };
+    if (view === "angle") return { theta: 0.62, phi: Math.PI / 2 - Math.max(elevation, 0.1) - 0.12, radius };
     return { theta: VIEW_AZIMUTH[view], phi: Math.PI / 2 - elevation, radius };
   }
 
@@ -471,7 +523,7 @@ export class MockupScene {
   /** Acabado de los diseños: sólo el termo ya montado se graba con láser. */
   private finishFor(layer: MockupConfig["layers"][number]): DecalFinish {
     const config = this.config;
-    if (!config || !this.current || this.current.garment !== config.garment || !isLaserEngraved(config.garment)) {
+    if (!config || !this.current || currentKeyOf(this.current) !== modelKey(config) || !isLaserEngraved(config.garment)) {
       return PRINT_FINISH;
     }
     return { kind: "laser", settings: laserSettings(layer.engrave), onSteel: isRawSteel(config.colors.body) };
@@ -747,7 +799,7 @@ export class MockupScene {
     const w = Math.max(1, Math.floor(this.container.clientWidth));
     const h = Math.max(1, Math.floor(this.container.clientHeight));
     if (w === this.width && h === this.height) return;
-    const oldBase = this.current ? this.fitDistance(this.width / this.height) : 0;
+    const oldBase = this.current ? this.baseDistance(this.width / this.height) : 0;
     this.width = w;
     this.height = h;
     this.renderer.setSize(w, h, false);
@@ -755,7 +807,7 @@ export class MockupScene {
     this.camera.updateProjectionMatrix();
     if (this.current) {
       // Conserva el zoom relativo del usuario al cambiar el tamaño.
-      const newBase = this.fitDistance(w / h);
+      const newBase = this.baseDistance(w / h);
       this.controls.minDistance = newBase * 0.45;
       this.controls.maxDistance = newBase * 1.6;
       const offset = this.camera.position.clone().sub(this.controls.target);

@@ -28,15 +28,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DOWNLOAD_VIEW_OPTIONS } from "@/components/mockups/exportMockup";
+import { VEHICLE_VIEW_LABELS, downloadViewOptions } from "@/components/mockups/exportMockup";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useMockupColors } from "@/hooks/useMockupColors";
 import { downloadFromUrl } from "@/lib/download";
-import { enabledGarments, isGarmentEnabled, isLaserEngraved } from "@/lib/mockups/garments";
+import { enabledGarmentsIn, isGarmentEnabled, isLaserEngraved } from "@/lib/mockups/garments";
+import { GARMENT_CATEGORIES, VEHICLE_PARTS, VEHICLE_PART_LABELS, garmentCategory, hasVehicleParts, isVehicle, vehiclePartOf, type GarmentCategory } from "@/lib/mockups/vehicles";
 import { DESIGN_ACCEPT, importDesignFile, isDesignFile, type ImportedDesign } from "@/lib/mockups/importDesign";
-import { PLACEMENT_PRESETS, applyPreset, defaultPlacement } from "@/lib/mockups/presets";
+import { applyPreset, defaultPlacement, presetsFor } from "@/lib/mockups/presets";
 import {
-  COLOR_FIELDS,
+  colorFieldsFor,
   GARMENT_MODELS,
   MOCKUP_TOO_LARGE_MESSAGE,
   buildMockupPayload,
@@ -46,6 +47,7 @@ import {
   initialMockupConfig,
   mockupFilename,
   switchGarment,
+  switchVehiclePart,
   type ColorPart,
   type MockupStudioResult,
 } from "@/lib/mockups/studio";
@@ -58,6 +60,7 @@ import {
   type DownloadViewKey,
   type MockupView,
   type PlacementPreset,
+  type VehiclePart,
   DEFAULT_COLORS,
   isRawSteel,
 } from "@/lib/mockups/types";
@@ -84,6 +87,17 @@ const VIEW_BUTTONS: { label: string; views: MockupView[] }[] = [
   { label: "Espalda", views: ["back"] },
   { label: "Lado", views: ["left", "right"] },
 ];
+
+/** Vistas de los vehículos: texto corto en el botón, nombre completo para lectores de pantalla. */
+const VEHICLE_VIEW_BUTTONS: { label: string; full: string; views: MockupView[] }[] = (
+  [
+    ["Frente", "front"],
+    ["Atrás", "back"],
+    ["Izquierdo", "left"],
+    ["Derecho", "right"],
+    ["Arriba", "top"],
+  ] as const
+).map(([label, view]) => ({ label, full: VEHICLE_VIEW_LABELS[view], views: [view] }));
 
 /** Tamaño del diseño como % del tamaño inicial de la prenda. */
 const SIZE_MIN = 20;
@@ -202,11 +216,18 @@ export function MockupStudio({
   // El 3D no usa las tallas: sin esto, tipear en la grilla re-aplicaría la
   // config a la escena en cada tecla.
   const canvasConfig = useMemo<MockupConfig>(
-    () => ({ garment: config.garment, colors: config.colors, layers: config.layers, options: config.options }),
-    [config.garment, config.colors, config.layers, config.options]
+    () => ({
+      garment: config.garment,
+      colors: config.colors,
+      layers: config.layers,
+      options: config.options,
+      ...(config.vehiclePart ? { vehiclePart: config.vehiclePart } : {}),
+    }),
+    [config.garment, config.colors, config.layers, config.options, config.vehiclePart]
   );
   const selected = config.layers.find((l) => l.id === selectedId) ?? null;
-  const baseScale = defaultPlacement(garment).scale || 1;
+  const part = vehiclePartOf(config);
+  const baseScale = defaultPlacement(garment, part).scale || 1;
 
   useEffect(() => {
     onSelectionChange?.(selectedId);
@@ -218,13 +239,13 @@ export function MockupStudio({
   const addDesigns = useCallback((designs: ImportedDesign[]) => {
     if (designs.length === 0) return;
     const garmentNow = configRef.current.garment;
-    const added: DesignLayer[] = designs.map((d) => createLayer(d, garmentNow));
+    const added: DesignLayer[] = designs.map((d) => createLayer(d, garmentNow, undefined, vehiclePartOf(configRef.current)));
     setConfig((prev) => ({
       ...prev,
       // La prenda pudo cambiar mientras se leía el archivo.
       layers: [
         ...prev.layers,
-        ...added.map((l) => (prev.garment === garmentNow ? l : { ...l, placement: defaultPlacement(prev.garment) })),
+        ...added.map((l) => (prev.garment === garmentNow ? l : { ...l, placement: defaultPlacement(prev.garment, vehiclePartOf(prev)) })),
       ],
     }));
     setSelectedId(added[added.length - 1].id);
@@ -317,6 +338,18 @@ export function MockupStudio({
     canvasRef.current?.setView(next);
   };
 
+  const changeCategory = (next: string) => {
+    if (!next || next === garmentCategory(garment)) return;
+    const first = enabledGarmentsIn(next as GarmentCategory)[0];
+    if (first) changeGarment(first.id);
+  };
+
+  const changePart = (next: string) => {
+    if (!next) return;
+    setConfig((prev) => switchVehiclePart(prev, next as VehiclePart));
+    goToView("front");
+  };
+
   const changeGarment = (next: string) => {
     // Sólo las prendas habilitadas (sudadera y camisa siguen ocultas).
     if (!isGarmentEnabled(next)) return;
@@ -373,7 +406,7 @@ export function MockupStudio({
     setBusy("download");
     try {
       const { image } = await exportImage(only);
-      await downloadFromUrl(image.dataUrl, mockupFilename(garment, new Date(), only));
+      await downloadFromUrl(image.dataUrl, mockupFilename(garment, new Date(), only, part));
     } catch (error) {
       toast.error(
         error instanceof Error && error.message.startsWith("El 3D")
@@ -412,7 +445,9 @@ export function MockupStudio({
 
   /* ------------------------------ Render ------------------------------- */
 
-  const presets = PLACEMENT_PRESETS[garment] ?? [];
+  const presets = presetsFor(garment, part);
+  const vehicle = isVehicle(garment);
+  const category = garmentCategory(garment);
   const sizePct = selected ? Math.round((selected.placement.scale / baseScale) * 100) : 100;
   const rotationDeg = selected ? Math.round(selected.placement.rotation * RAD_TO_DEG) : 0;
 
@@ -479,13 +514,14 @@ export function MockupStudio({
         <div
           role="group"
           aria-label="Vista"
-          className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border/60 bg-card/90 p-1 shadow-soft backdrop-blur"
+          className="absolute left-1/2 top-3 z-10 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-full border border-border/60 bg-card/90 p-1 shadow-soft backdrop-blur"
         >
-          {VIEW_BUTTONS.map((b) => {
+          {(vehicle ? VEHICLE_VIEW_BUTTONS : VIEW_BUTTONS.map((b) => ({ ...b, full: b.label }))).map((b) => {
             const active = !freeView && b.views.includes(view);
             return (
               <button
                 key={b.label}
+                aria-label={b.full}
                 type="button"
                 aria-pressed={active}
                 onClick={() =>
@@ -493,7 +529,7 @@ export function MockupStudio({
                   goToView(b.views.length > 1 && view === b.views[0] && !freeView ? b.views[1] : b.views[0])
                 }
                 className={cn(
-                  "h-8 rounded-full px-3.5 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                  "h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:px-3.5",
                   active ? "bg-ink text-ink-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
@@ -581,29 +617,72 @@ export function MockupStudio({
             </Button>
           </div>
 
-          <StudioSection title="Prenda">
-            <ToggleGroup
-              type="single"
-              value={garment}
-              onValueChange={changeGarment}
-              aria-label="Prenda"
-              className="grid grid-cols-2 gap-2"
-            >
-              {enabledGarments().map(({ id: g, label }) => (
-                <ToggleGroupItem
-                  key={g}
-                  value={g}
-                  aria-label={label}
-                  className="flex h-auto items-center justify-start gap-2.5 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
-                >
-                  <GarmentIcon garment={g} className="shrink-0 text-muted-foreground" />
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-sm font-semibold">{label}</span>
-                    <span className="text-meta">{GARMENT_MODELS[g]}</span>
-                  </span>
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+          <StudioSection title={category === "prendas" ? "Prenda" : "Vehículo"}>
+            <div className="space-y-3">
+              <ToggleGroup
+                type="single"
+                value={category}
+                onValueChange={changeCategory}
+                aria-label="Categoría"
+                className="grid grid-cols-2 gap-1 rounded-xl bg-muted/60 p-1"
+              >
+                {GARMENT_CATEGORIES.map(({ id, label }) => (
+                  <ToggleGroupItem
+                    key={id}
+                    value={id}
+                    aria-label={label}
+                    className="h-9 gap-2 rounded-lg text-sm font-semibold data-[state=on]:bg-card data-[state=on]:shadow-soft"
+                  >
+                    <GarmentIcon garment={id === "prendas" ? "tshirt" : "car"} className="h-4 w-4" />
+                    {label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              <ToggleGroup
+                type="single"
+                value={garment}
+                onValueChange={changeGarment}
+                aria-label={category === "prendas" ? "Prenda" : "Vehículo"}
+                className="grid grid-cols-2 gap-2"
+              >
+                {enabledGarmentsIn(category).map(({ id: g, label }) => (
+                  <ToggleGroupItem
+                    key={g}
+                    value={g}
+                    aria-label={label}
+                    className="flex h-auto items-center justify-start gap-2.5 rounded-xl border border-border/70 px-3 py-2.5 text-left data-[state=on]:border-ink data-[state=on]:bg-muted/70"
+                  >
+                    <GarmentIcon garment={g} className="shrink-0 text-muted-foreground" />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-sm font-semibold">{label}</span>
+                      <span className="text-meta">{GARMENT_MODELS[g]}</span>
+                    </span>
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              {hasVehicleParts(garment) && (
+                <div className="space-y-1.5">
+                  <p className="text-label">Qué se rotula</p>
+                  <ToggleGroup
+                    type="single"
+                    value={part ?? "full"}
+                    onValueChange={changePart}
+                    aria-label="Parte del tráiler"
+                    className="grid grid-cols-3 gap-1 rounded-xl bg-muted/60 p-1"
+                  >
+                    {VEHICLE_PARTS.map((p) => (
+                      <ToggleGroupItem
+                        key={p}
+                        value={p}
+                        className="h-8 rounded-lg px-2 text-[0.8125rem] font-medium data-[state=on]:bg-card data-[state=on]:shadow-soft"
+                      >
+                        {VEHICLE_PART_LABELS[p]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                </div>
+              )}
+            </div>
           </StudioSection>
 
           <StudioSection title="Color">
@@ -615,12 +694,12 @@ export function MockupStudio({
                   onChange={(hex) => setColor("body", hex)}
                 />
               )}
-              {COLOR_FIELDS[garment].map(({ part, label }) => (
+              {colorFieldsFor(garment, part).map(({ part: colorPart, label }) => (
                 <MockupColorField
-                  key={`${garment}-${part}`}
+                  key={`${garment}-${colorPart}`}
                   label={label}
-                  value={config.colors[part] ?? "#ffffff"}
-                  onChange={(value) => setColor(part, value)}
+                  value={config.colors[colorPart] ?? "#ffffff"}
+                  onChange={(value) => setColor(colorPart, value)}
                   myColors={myColorsControls}
                 />
               ))}
@@ -733,7 +812,7 @@ export function MockupStudio({
                   </div>
                 )}
                 <p className="text-meta">
-                  Arrastra el diseño sobre la prenda para moverlo. Supr lo quita y Esc lo deselecciona.
+                  Arrastra el diseño sobre {vehicle ? "el vehículo" : "la prenda"} para moverlo. Supr lo quita y Esc lo deselecciona.
                 </p>
               </div>
             </StudioSection>
@@ -767,7 +846,7 @@ export function MockupStudio({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
-                {DOWNLOAD_VIEW_OPTIONS.map((option) => (
+                {downloadViewOptions(garment).map((option) => (
                   <DropdownMenuItem
                     key={option.key}
                     className="flex-col items-start gap-0"

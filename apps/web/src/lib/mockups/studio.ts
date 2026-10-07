@@ -6,6 +6,7 @@ import {
   type ColorPart,
 } from "@/lib/mockups/garments";
 import { defaultPlacement } from "@/lib/mockups/presets";
+import { hasVehicleParts, isVehicle, vehiclePartOf, zInPart } from "@/lib/mockups/vehicles";
 import {
   DEFAULT_COLORS,
   GARMENT_LABELS,
@@ -16,6 +17,7 @@ import {
   type Garment,
   type MockupConfig,
   type MockupExport,
+  type VehiclePart,
 } from "@/lib/mockups/types";
 import type { ImportedDesign } from "@/lib/mockups/importDesign";
 
@@ -52,9 +54,22 @@ export const COLOR_FIELDS = Object.fromEntries(
   ALL_GARMENTS.map((g) => [g, GARMENTS[g].colorParts])
 ) as Record<Garment, { part: ColorPart; label: string }[]>;
 
+/** Campos de color que se muestran: el tráiler sólo pide el de la parte que se ve. */
+export function colorFieldsFor(garment: Garment, part?: VehiclePart): { part: ColorPart; label: string }[] {
+  const fields = COLOR_FIELDS[garment];
+  if (garment !== "trailer" || !part || part === "full") return fields;
+  return fields.filter((f) => (part === "cab" ? f.part === "body" : f.part === "mesh"));
+}
+
 export function initialMockupConfig(garment: Garment = "tshirt"): MockupConfig {
   const options = defaultGarmentOptions(garment);
-  return { garment, colors: { ...DEFAULT_COLORS[garment] }, layers: [], ...(options ? { options } : {}) };
+  return {
+    garment,
+    colors: { ...DEFAULT_COLORS[garment] },
+    layers: [],
+    ...(hasVehicleParts(garment) ? { vehiclePart: "full" as const } : {}),
+    ...(options ? { options } : {}),
+  };
 }
 
 let layerSeq = 0;
@@ -63,13 +78,13 @@ export function newLayerId(): string {
   return `layer-${Date.now().toString(36)}-${layerSeq}`;
 }
 
-export function createLayer(design: ImportedDesign, garment: Garment, id = newLayerId()): DesignLayer {
+export function createLayer(design: ImportedDesign, garment: Garment, id = newLayerId(), part?: VehiclePart): DesignLayer {
   return {
     id,
     name: design.name,
     dataUrl: design.dataUrl,
     aspect: design.aspect,
-    placement: defaultPlacement(garment),
+    placement: defaultPlacement(garment, part),
   };
 }
 
@@ -85,20 +100,37 @@ export function switchGarment(config: MockupConfig, garment: Garment): MockupCon
   return {
     garment,
     colors: { ...DEFAULT_COLORS[garment] },
-    layers: config.layers.map((layer) => ({ ...layer, placement: defaultPlacement(garment) })),
+    layers: config.layers.map((layer) => ({ ...layer, placement: defaultPlacement(garment, hasVehicleParts(garment) ? "full" : undefined) })),
     // Las tallas son del pedido, no de la prenda: sobreviven al cambio (si la
     // prenda nueva no las usa, sólo se ocultan y no se guardan).
     ...(config.sizes !== undefined ? { sizes: config.sizes } : {}),
+    ...(hasVehicleParts(garment) ? { vehiclePart: "full" as const } : {}),
     ...(options ? { options } : {}),
   };
 }
 
-/** Productos que no son prenda: no llevan tabla de tallas. */
+/**
+ * Cambia la parte del tráiler que se rotula (completo / cabina / caja). Los
+ * diseños que quedan sobre una parte que ya no se ve vuelven a la posición
+ * inicial de la parte nueva; los que siguen a la vista no se mueven.
+ */
+export function switchVehiclePart(config: MockupConfig, part: VehiclePart): MockupConfig {
+  if (!hasVehicleParts(config.garment) || vehiclePartOf(config) === part) return config;
+  return {
+    ...config,
+    vehiclePart: part,
+    layers: config.layers.map((layer) =>
+      zInPart(layer.placement.position[2], part) ? layer : { ...layer, placement: defaultPlacement(config.garment, part) }
+    ),
+  };
+}
+
+/** Productos que no son prenda (termo, taza y vehículos): no llevan tabla de tallas. */
 const GARMENTS_WITHOUT_SIZES: readonly Garment[] = ["termo", "taza"];
 
 /** ¿Esta prenda se pide por tallas? (el panel y la tabla impresa sólo salen si sí). */
 export function garmentHasSizes(garment: Garment): boolean {
-  return !GARMENTS_WITHOUT_SIZES.includes(garment);
+  return !GARMENTS_WITHOUT_SIZES.includes(garment) && !isVehicle(garment);
 }
 
 export function isHexColor(value: string): boolean {
@@ -121,9 +153,19 @@ const VIEW_FILENAME_SUFFIX: Record<DownloadViewKey, string> = {
   front: "-frente",
   back: "-espalda",
   side: "-lado",
+  left: "-lado-izquierdo",
+  right: "-lado-derecho",
+  top: "-arriba",
 };
 
-export function mockupFilename(garment: Garment, date = new Date(), only: DownloadViewKey = "all"): string {
+/** Sufijo del archivo según la vista; en vehículos "back" es "atrás", no "espalda". */
+function viewSuffix(garment: Garment, only: DownloadViewKey): string {
+  return isVehicle(garment) && only === "back" ? "-atras" : VIEW_FILENAME_SUFFIX[only];
+}
+
+const PART_FILENAME_SUFFIX: Record<VehiclePart, string> = { full: "", cab: "-cabina", box: "-caja" };
+
+export function mockupFilename(garment: Garment, date = new Date(), only: DownloadViewKey = "all", part?: VehiclePart): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
   const slug = GARMENT_LABELS[garment]
@@ -131,7 +173,8 @@ export function mockupFilename(garment: Garment, date = new Date(), only: Downlo
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-");
-  return `mockup-${slug}-${day}${VIEW_FILENAME_SUFFIX[only]}.png`;
+  const partSuffix = garment === "trailer" && part ? PART_FILENAME_SUFFIX[part] : "";
+  return `mockup-${slug}${partSuffix}-${day}${viewSuffix(garment, only)}.png`;
 }
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {
@@ -139,6 +182,9 @@ export function buildMockupPayload(result: MockupStudioResult): CreateOrderMocku
   // Tallas "escondidas" de una prenda anterior no se guardan en un termo o taza.
   const config = { ...result.config };
   if (!garmentHasSizes(config.garment)) delete config.sizes;
+  // La parte sólo la lleva el tráiler (el backend rechaza `vehiclePart` en los demás).
+  if (config.garment === "trailer") config.vehiclePart = vehiclePartOf(config);
+  else delete config.vehiclePart;
   return {
     garment: result.config.garment,
     imageDataUrl: result.image.dataUrl,
