@@ -73,7 +73,26 @@ export interface Branch extends BaseEntity {
   name: string;
   active: boolean;
   employees?: BranchEmployee[];
+  /** Hay logo para fondos claros (negro) cargado. Los data URLs vienen de `GET /branches/logos`. */
+  hasLogoOnLight?: boolean;
+  /** Hay logo para fondos oscuros (blanco) cargado. */
+  hasLogoOnDark?: boolean;
+  logoUpdatedAt?: string | null;
 }
+
+/** Logos de una sucursal activa (`GET /branches/logos`): data URLs o `null` si no hay. */
+export interface BranchLogos {
+  branchId: number;
+  name: string;
+  /** Logo NEGRO, para fondos claros. */
+  logoOnLight: string | null;
+  /** Logo BLANCO, para fondos oscuros. */
+  logoOnDark: string | null;
+  updatedAt: string | null;
+}
+
+/** Variante del logo en los endpoints `PUT/DELETE /branches/:id/logo/:variant`. */
+export type BranchLogoVariant = "onLight" | "onDark";
 
 /** Versión resumida de `User` que devuelve el backend embebida en `order.assignedUser`. */
 export interface AssignedUser extends BaseEntity {

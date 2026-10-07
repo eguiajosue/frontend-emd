@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useBranchMutations, useBranches } from "@/hooks/useBranches";
+import { useBranchLogos } from "@/hooks/useBranchLogos";
+import { BranchLogoUploader } from "./BranchLogoUploader";
 import { getErrorMessage } from "@/lib/api";
 import type { Branch, BranchEmployee } from "@/types";
 
@@ -110,6 +112,8 @@ function EmployeeRow({ branch, employee }: { branch: Branch; employee: BranchEmp
 
 function BranchCard({ branch }: { branch: Branch }) {
   const { createEmployee, updateBranch } = useBranchMutations();
+  const { getLogos } = useBranchLogos();
+  const logos = getLogos(branch.id);
   const [newName, setNewName] = useState("");
 
   const add = async () => {
@@ -143,6 +147,29 @@ function BranchCard({ branch }: { branch: Branch }) {
             aria-label={`${branch.active ? "Desactivar" : "Activar"} la sucursal ${branch.name}`}
           />
         </label>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-label">Logo</p>
+        <p className="text-meta">
+          Identifica en pantalla, hojas y Modo TV los pedidos que levanta esta sucursal. Sin logo se muestra el nombre.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <BranchLogoUploader
+            branchId={branch.id}
+            branchName={branch.name}
+            variant="onLight"
+            current={logos?.logoOnLight ?? null}
+            hasLogo={branch.hasLogoOnLight}
+          />
+          <BranchLogoUploader
+            branchId={branch.id}
+            branchName={branch.name}
+            variant="onDark"
+            current={logos?.logoOnDark ?? null}
+            hasLogo={branch.hasLogoOnDark}
+          />
+        </div>
       </div>
 
       <div>

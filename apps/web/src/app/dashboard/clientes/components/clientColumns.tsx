@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { RowActions } from "@/components/crud/RowActions";
 import type { CrudColumnsArgs } from "@/components/crud/CrudPage";
-import { BranchBadge } from "@/components/orders/BranchBadge";
+import { BranchNameBadge } from "@/components/orders/BranchLogo";
 import type { Client } from "@/types";
 
 export interface ClientColumnsOptions {
@@ -28,7 +28,8 @@ export const getClientColumns = (
         {
           id: "branch",
           header: "Sucursal",
-          cell: ({ row }) => <BranchBadge order={row.original} />,
+          cell: ({ row }) =>
+            row.original.branch?.name ? <BranchNameBadge name={row.original.branch.name} /> : null,
         } as ColumnDef<Client>,
       ]
     : []),
