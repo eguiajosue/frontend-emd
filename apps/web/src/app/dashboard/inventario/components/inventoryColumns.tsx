@@ -7,6 +7,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  PackagePlus,
   Printer,
   Scale,
   Trash2,
@@ -36,8 +37,11 @@ import type { InventoryItem, InventoryMovementType } from "@/types";
 export interface InventoryColumnsArgs {
   /** Muestra la columna Departamento (vista "Todos"). */
   showArea: boolean;
-  /** Admin/superuser/recepción: crear, editar, borrar y mover stock. Las áreas sólo consultan. */
+  /** Admin/superuser/recepción: crear, editar, borrar y mover stock. */
   canManage: boolean;
+  /** Usuario de un área: sólo entrada, consumo y avisar reabasto de SUS artículos. */
+  areaMode?: boolean;
+  onRestock?: (item: InventoryItem) => void;
   onMove: (item: InventoryItem, type: InventoryMovementType) => void;
   onHistory: (item: InventoryItem) => void;
   onEdit: (item: InventoryItem) => void;
@@ -77,6 +81,8 @@ function StockBar({ item }: { item: InventoryItem }) {
 export function getInventoryColumns({
   showArea,
   canManage,
+  areaMode = false,
+  onRestock,
   onMove,
   onHistory,
   onEdit,
@@ -203,6 +209,46 @@ export function getInventoryColumns({
       header: "Acciones",
       cell: ({ row }) => {
         const item = row.original;
+        if (areaMode) {
+          return (
+            <div className="flex items-center justify-end gap-1">
+              <SimpleTooltip label="Registrar entrada">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={ROW_ACTION}
+                  aria-label={`Registrar entrada de ${item.name}`}
+                  onClick={() => onMove(item, "ENTRADA")}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </SimpleTooltip>
+              <SimpleTooltip label="Registrar consumo">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={ROW_ACTION}
+                  aria-label={`Registrar consumo de ${item.name}`}
+                  onClick={() => onMove(item, "SALIDA")}
+                  disabled={item.quantity <= 0}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </SimpleTooltip>
+              <SimpleTooltip label="Avisar reabasto">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={ROW_ACTION}
+                  aria-label={`Avisar reabasto de ${item.name}`}
+                  onClick={() => onRestock?.(item)}
+                >
+                  <PackagePlus className="h-4 w-4" />
+                </Button>
+              </SimpleTooltip>
+            </div>
+          );
+        }
         if (!canManage) {
           return (
             <div className="flex items-center justify-end gap-1">
@@ -290,5 +336,5 @@ export function getInventoryColumns({
     }
   );
 
-  return columns;
+  return areaMode ? columns.filter((c) => c.id !== "select" && c.id !== "value") : columns;
 }

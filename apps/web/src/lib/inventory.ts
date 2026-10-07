@@ -1,6 +1,8 @@
 import { Briefcase, type LucideIcon } from "lucide-react";
 import { AREA_ICONS, AREA_OPTIONS } from "@/lib/areas";
 import type {
+  RestockRequestStatus,
+  RestockRequestUrgency,
   InventoryArea,
   InventoryItem,
   InventoryMovementType,
@@ -133,3 +135,41 @@ export function sortByUrgency(items: InventoryItem[]): InventoryItem[] {
       a.name.localeCompare(b.name, "es")
   );
 }
+
+/** Estados de una solicitud de reabasto, en el orden del flujo. */
+export const RESTOCK_STATUS_META: Record<RestockRequestStatus, { label: string; className: string }> = {
+  PENDIENTE: {
+    label: "Pendiente",
+    className:
+      "border-transparent bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  },
+  EN_CAMINO: {
+    label: "En camino",
+    className: "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  },
+  COMPRADO: {
+    label: "Comprado",
+    className:
+      "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+  },
+  RESUELTO: {
+    label: "Resuelto",
+    className:
+      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+  },
+};
+
+export const RESTOCK_STATUSES = Object.keys(RESTOCK_STATUS_META) as RestockRequestStatus[];
+
+export const RESTOCK_URGENCY_LABEL: Record<RestockRequestUrgency, string> = {
+  NORMAL: "Normal",
+  URGENTE: "Urgente",
+};
+
+/** Origen de un movimiento en la bitácora. */
+export const MOVEMENT_SOURCE_LABEL: Record<string, string> = {
+  recepcion: "Recepción",
+  area: "Área",
+  scan: "Escáner",
+  inicial: "Stock inicial",
+};

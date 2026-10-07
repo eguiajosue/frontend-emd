@@ -38,6 +38,8 @@ const QUANTITY_HINT: Record<InventoryMovementType, string> = {
 
 interface InventoryMovementDialogProps {
   item: InventoryItem | null;
+  /** Usuario de un área: sólo "Entrada" y "Consumo" (sin ajuste ni costo/pedido). */
+  areaMode?: boolean;
   /** Tipo con el que abre (el botón que se tocó). */
   initialType?: InventoryMovementType;
   onClose: () => void;
@@ -48,7 +50,7 @@ interface InventoryMovementDialogProps {
  * físico. Muestra el saldo resultante antes de guardar y no deja registrar
  * una salida mayor a lo que hay (el backend también lo valida).
  */
-export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose }: InventoryMovementDialogProps) {
+export function InventoryMovementDialog({ item, areaMode = false, initialType = "SALIDA", onClose }: InventoryMovementDialogProps) {
   const { registerMovement } = useInventoryMutations();
   const [type, setType] = useState<InventoryMovementType>(initialType);
   const [quantity, setQuantity] = useState("");
@@ -72,6 +74,13 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
   const qty = quantity.trim() === "" ? NaN : Number(quantity);
   const projected = projectedBalance(item.quantity, type, qty);
   const submitting = registerMovement.isPending;
+  const types = areaMode ? TYPES.filter((t) => t !== "AJUSTE") : TYPES;
+  const typeLabel = (t: InventoryMovementType) => (areaMode && t === "SALIDA" ? "Consumo" : MOVEMENT_TYPE_META[t].label);
+  const verb = areaMode
+    ? type === "SALIDA"
+      ? "Registrar consumo"
+      : "Registrar entrada"
+    : MOVEMENT_TYPE_META[type].verb;
 
   const handleSubmit = async () => {
     if (projected === null) {
@@ -99,11 +108,12 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
           type,
           quantity: qty,
           note: note.trim() || undefined,
-          orderId: type === "SALIDA" ? parsedOrder : undefined,
-          unitCost: type === "ENTRADA" ? parsedCost : undefined,
+          reason: note.trim() || undefined,
+          orderId: type === "SALIDA" && !areaMode ? parsedOrder : undefined,
+          unitCost: type === "ENTRADA" && !areaMode ? parsedCost : undefined,
         },
       });
-      toast.success(`${MOVEMENT_TYPE_META[type].label} registrada`);
+      toast.success(`${areaMode ? typeLabel(type) : MOVEMENT_TYPE_META[type].label} registrada`);
       onClose();
     } catch (err) {
       toast.error(getErrorMessage(err, "No se pudo registrar el movimiento."));
@@ -114,7 +124,7 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
     <Dialog open onOpenChange={(next) => !next && !submitting && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{MOVEMENT_TYPE_META[type].verb}</DialogTitle>
+          <DialogTitle>{verb}</DialogTitle>
           <DialogDescription>
             {item.name} · hay {formatQuantity(item.quantity, item.unit)}
           </DialogDescription>
@@ -129,16 +139,16 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
               setType(v as InventoryMovementType);
               setError(undefined);
             }}
-            className="grid grid-cols-3 rounded-full bg-muted p-1"
+            className={cn("grid rounded-full bg-muted p-1", areaMode ? "grid-cols-2" : "grid-cols-3")}
             aria-label="Tipo de movimiento"
           >
-            {TYPES.map((t) => (
+            {types.map((t) => (
               <ToggleGroupItem
                 key={t}
                 value={t}
                 className="rounded-full text-sm data-[state=on]:bg-card data-[state=on]:shadow-soft"
               >
-                {MOVEMENT_TYPE_META[t].label}
+                {typeLabel(t)}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
@@ -161,7 +171,7 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
             />
           </FormField>
 
-          {type === "ENTRADA" && (
+          {type === "ENTRADA" && !areaMode && (
             <FormField
               label="Costo unitario (MXN)"
               htmlFor="mov-cost"
@@ -180,7 +190,7 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
             </FormField>
           )}
 
-          {type === "SALIDA" && (
+          {type === "SALIDA" && !areaMode && (
             <FormField label="Pedido" htmlFor="mov-order" hint="Opcional. Imputa el consumo a un pedido.">
               <Input
                 id="mov-order"
@@ -192,13 +202,21 @@ export function InventoryMovementDialog({ item, initialType = "SALIDA", onClose 
             </FormField>
           )}
 
-          <FormField label="Nota" htmlFor="mov-note">
+          <FormField label={areaMode ? "Motivo" : "Nota"} htmlFor="mov-note">
             <Textarea
               id="mov-note"
               rows={2}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={type === "AJUSTE" ? "Ej. conteo mensual" : undefined}
+              placeholder={
+                areaMode
+                  ? type === "ENTRADA"
+                    ? "Ej. lo trajo el proveedor directo al área"
+                    : "Ej. consumo del día"
+                  : type === "AJUSTE"
+                    ? "Ej. conteo mensual"
+                    : undefined
+              }
             />
           </FormField>
 
