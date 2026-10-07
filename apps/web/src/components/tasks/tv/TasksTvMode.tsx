@@ -351,8 +351,8 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             designStartedByName: null,
             client: null,
             status: { id: 1, name: "pendiente" },
-            // Los pares simulan un pedido de sucursal: se ve el logo en el ticket y la tarjeta.
-            branch: demoBranch && orderId % 2 === 0 ? { id: demoBranch.branchId, name: demoBranch.name } : null,
+            // Los impares simulan un pedido de sucursal: se ve el logo en el ticket y la tarjeta.
+            branch: demoBranch && orderId % 2 === 1 ? { id: demoBranch.branchId, name: demoBranch.name } : null,
           },
         };
         const arrival = demoArrival(

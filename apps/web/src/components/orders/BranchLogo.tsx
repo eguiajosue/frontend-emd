@@ -1,5 +1,9 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element, jsx-a11y/alt-text --
+   Los logos son data URLs que sube el admin: `next/image` no los optimiza, y el `alt`
+   (nombre de la sucursal) viaja en `common`. */
+
 import type { ReactNode } from "react";
 import { Store } from "lucide-react";
 import { useBranchLogos } from "@/hooks/useBranchLogos";
