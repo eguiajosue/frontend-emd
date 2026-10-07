@@ -74,6 +74,10 @@ function modelKey(config: Pick<MockupConfig, "garment" | "vehiclePart">): string
   return config.garment === "trailer" ? `trailer:${vehiclePartOf(config)}` : config.garment;
 }
 
+function currentKeyOf(current: { garment: Garment; part?: string } | null): string | null {
+  return current ? modelKey({ garment: current.garment, vehiclePart: current.part as MockupConfig["vehiclePart"] }) : null;
+}
+
 interface DragState {
   layerId: string;
   pointerId: number;
@@ -207,7 +211,7 @@ export class MockupScene {
     const garmentChanged = !prev || modelKey(prev) !== key;
     if (garmentChanged && this.loadingGarment !== key) {
       this.loadGarment(config);
-    } else if (this.current && this.currentKey() === key) {
+    } else if (this.current && currentKeyOf(this.current) === key) {
       this.current.model.setColors(config.colors);
     }
     this.syncLayers();
@@ -291,10 +295,6 @@ export class MockupScene {
     return last!;
   }
 
-  private currentKey(): string | null {
-    return this.current ? modelKey({ garment: this.current.garment, vehiclePart: this.current.part as MockupConfig["vehiclePart"] }) : null;
-  }
-
   private async exportComposite(
     viewsFor: (layers: MockupConfig["layers"]) => SheetView[],
     optionsFor: (views: SheetView[]) => ComposeOptions,
@@ -303,7 +303,7 @@ export class MockupScene {
     // Si la prenda elegida no cargó (p. ej. falló el GLB), en pantalla sigue la
     // anterior: exportar guardaría la imagen de una prenda con la config de otra.
     // El mensaje empieza con "El 3D" para que el estudio lo muestre tal cual.
-    if (this.disposed || !this.current || !this.config || this.currentKey() !== modelKey(this.config)) {
+    if (this.disposed || !this.current || !this.config || currentKeyOf(this.current) !== modelKey(this.config)) {
       throw new Error("El 3D no terminó de cargar la prenda. Espera un momento o recarga la página.");
     }
     this.rebuildDirtyDecals();
@@ -523,7 +523,7 @@ export class MockupScene {
   /** Acabado de los diseños: sólo el termo ya montado se graba con láser. */
   private finishFor(layer: MockupConfig["layers"][number]): DecalFinish {
     const config = this.config;
-    if (!config || !this.current || this.currentKey() !== modelKey(config) || !isLaserEngraved(config.garment)) {
+    if (!config || !this.current || currentKeyOf(this.current) !== modelKey(config) || !isLaserEngraved(config.garment)) {
       return PRINT_FINISH;
     }
     return { kind: "laser", settings: laserSettings(layer.engrave), onSteel: isRawSteel(config.colors.body) };

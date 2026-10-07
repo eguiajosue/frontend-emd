@@ -18,8 +18,8 @@ import { DEFAULT_COLORS, GARMENT_LABELS, RAW_STEEL_HEX, isRawSteel, type MockupC
 
 describe("registro de prendas", () => {
   it("playera, gorra, termo y taza están habilitadas; sudadera y camisa siguen ocultas", () => {
-    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap", "termo", "taza"]);
-    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra", "Termo", "Taza"]);
+    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap", "termo", "taza", "car", "minivan", "pickup", "trailer", "bicycle"]);
+    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra", "Termo", "Taza", "Carro", "Minivan", "Pickup", "Tráiler", "Bicicleta"]);
     expect(isGarmentEnabled("termo")).toBe(true);
     expect(isGarmentEnabled("taza")).toBe(true);
     expect(isGarmentEnabled("hoodie")).toBe(false);

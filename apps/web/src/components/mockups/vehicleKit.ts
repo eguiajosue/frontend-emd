@@ -266,8 +266,11 @@ export function cutWheelArches(material: THREE.Material, arches: WheelArch[]) {
  * detrás de cada rueda, para que el hueco tenga profundidad y borde.
  */
 export function addWheelWells(parent: THREE.Object3D, d: Disposer, mats: VehicleMaterials, arches: WheelArch[], outer: number) {
-  const plate = d.track(new THREE.CircleGeometry(1, 48));
   for (const a of arches) {
+    // La placa de fondo no baja del piso (y = 0): se recorta el círculo.
+    const plate = d.track(new THREE.CircleGeometry(1, 48));
+    const pp = plate.getAttribute("position") as THREE.BufferAttribute;
+    for (let i = 0; i < pp.count; i++) pp.setY(i, Math.max(pp.getY(i), (0.02 - a.y) / a.r));
     const span = Math.max(0.05, outer - a.floor);
     const liner = d.track(new THREE.CylinderGeometry(a.r, a.r, span, 40, 1, true, 0, Math.PI));
     // Cylinder: eje Y; girado, el eje es X y el arco (θ ∈ [0, π]) queda hacia arriba.
@@ -832,7 +835,8 @@ export function addWheels(
     const ry = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
     q.copy(ry).multiply(rx);
     m.compose(new THREE.Vector3(p.x, p.y ?? spec.radius, p.z), q, s);
-    tires.setMatrixAt(i, m);
+    // La llanta es de revolución: sin giro (así su caja no se infla bajo el piso).
+    tires.setMatrixAt(i, new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y ?? spec.radius, p.z), ry, s));
     rims.setMatrixAt(i, m);
     brakes.setMatrixAt(i, m);
   });
