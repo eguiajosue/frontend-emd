@@ -20,6 +20,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useMotionPreset } from "@/lib/motion";
 import { getOrderClientName } from "@/lib/format";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { openShortcutsHelp } from "@/lib/shortcuts";
 import { pushRecent, readRecents, type PaletteRecent } from "@/lib/paletteRecents";
 import type { Client } from "@/types";
@@ -369,7 +370,8 @@ export function CommandPalette() {
                           }
                         >
                           <Package className="mr-2 h-4 w-4" />
-                          <span className="truncate">{label}</span>
+                          <span className="min-w-0 flex-1 truncate">{label}</span>
+                          <BranchBadge order={order} size="sm" className="ml-2" />
                         </CommandItem>
                       );
                     })}

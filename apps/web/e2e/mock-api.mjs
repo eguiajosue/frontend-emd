@@ -24,9 +24,14 @@
  * - `POST /__e2e/seed-branch-orders {count}`: `count` pedidos extra de Punto Madero (alternan pendiente/entregado).
  * - `GET  /__e2e/clients` · `GET /__e2e/presets` · `GET /__e2e/forbidden-calls`: lo guardado / lo que la sucursal intentó pedir.
  * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
+ * - `POST /__e2e/seed-logo-fixtures`: 2ª sucursal "Plaza Norte" y pedidos extra para probar logos y el filtro Origen
+ *   (#111 de Punto Madero con hoja autorizada y tarea de Bordado en la tele, #112 de Plaza Norte).
+ * - `POST /__e2e/seed-logos {branchId}`: carga los PNG reales de `e2e/fixtures` como logos de esa sucursal.
+ * - `POST /__e2e/reset-logos`: quita logos, la 2ª sucursal y los pedidos extra. `GET /__e2e/logos`: lo guardado.
  */
 import { createServer } from "node:http";
 import { deflateSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 4010);
 
@@ -58,6 +63,76 @@ const sucursalesIniciales = () => [
   },
 ];
 let sucursales = sucursalesIniciales();
+
+/**
+ * Logos de sucursal (`PUT/DELETE /branches/:id/logo/:variant`), en memoria:
+ * { [branchId]: { onLight, onDark, updatedAt } } con data URLs. Mismas reglas
+ * que el backend: PNG/JPEG/WebP (no SVG), máx. 400 KB y 2000×2000 px.
+ */
+let logosSucursal = {};
+const LOGO_MAX_BYTES = 400 * 1024;
+const LOGO_MAX_DIM = 2000;
+const conLogoFlags = (b) => {
+  const l = logosSucursal[b.id] ?? {};
+  return { ...b, hasLogoOnLight: Boolean(l.onLight), hasLogoOnDark: Boolean(l.onDark), logoUpdatedAt: l.updatedAt ?? null };
+};
+
+/** Ancho y alto de un PNG / JPEG / WebP a partir de sus bytes (null si no se puede leer). */
+function dimensionesImagen(buf, mime) {
+  try {
+    if (mime === "image/png") return buf.length >= 24 ? { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) } : null;
+    if (mime === "image/jpeg") {
+      let i = 2;
+      while (i + 9 < buf.length) {
+        if (buf[i] !== 0xff) { i++; continue; }
+        const marker = buf[i + 1];
+        if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+          return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+        }
+        i += 2 + buf.readUInt16BE(i + 2);
+      }
+      return null;
+    }
+    if (mime === "image/webp") {
+      const tipo = buf.toString("ascii", 12, 16);
+      if (tipo === "VP8X") return { w: 1 + buf.readUIntLE(24, 3), h: 1 + buf.readUIntLE(27, 3) };
+      if (tipo === "VP8 ") return { w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff };
+      if (tipo === "VP8L") { const b = buf.readUInt32LE(21); return { w: 1 + (b & 0x3fff), h: 1 + ((b >> 14) & 0x3fff) }; }
+    }
+  } catch { /* cae al null */ }
+  return null;
+}
+
+/** Valida el body de `PUT /branches/:id/logo/:variant`; devuelve el mensaje de error o null. */
+function errorDeLogo(dto) {
+  const m = /^data:(image\/[a-z+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(dto?.imageDataUrl ?? "");
+  if (!m) return "imageDataUrl debe ser un data URL de imagen en base64";
+  const mime = m[1];
+  if (!["image/png", "image/jpeg", "image/webp"].includes(mime)) return "El logo debe ser PNG, JPEG o WebP (no se admite SVG)";
+  const bytes = Buffer.from(m[2], "base64");
+  if (bytes.length > LOGO_MAX_BYTES) return "El logo pesa más de 400 KB";
+  const dim = dimensionesImagen(bytes, mime);
+  if (!dim) return "El archivo no es una imagen válida";
+  if (dim.w > LOGO_MAX_DIM || dim.h > LOGO_MAX_DIM) return "El logo mide más de 2000×2000 px";
+  return null;
+}
+
+/** Datos extra de los tests de logos (`/__e2e/seed-logo-fixtures`). */
+let extrasLogos = false;
+const pedidosExtraLogos = () => !extrasLogos ? [] : [
+  {
+    id: 111, statusId: 9, status: { id: 9, name: "autorizado" }, clientNameOverride: "Escuela Madero",
+    description: "Mandiles con logo de la sucursal", creationDate: "2026-09-06T09:00:00.000Z", deliveryDate: "2026-09-30T18:00:00.000Z",
+    deliveredAt: null, area: "bordado", productionArea: "bordado", requiresDesign: true, areaTasks: [], orderProducts: [], assignedUser: null,
+    branchId: 1, branch: { id: 1, name: "Punto Madero" }, branchEmployeeId: 1, branchEmployee: { id: 1, name: "Ana López" },
+  },
+  {
+    id: 112, statusId: 1, status: { id: 1, name: "pendiente" }, clientNameOverride: "Panadería Norte",
+    description: "Gorras para el equipo de Plaza Norte", creationDate: "2026-09-07T09:00:00.000Z", deliveryDate: "2026-10-02T18:00:00.000Z",
+    deliveredAt: null, area: "taller", requiresDesign: false, areaTasks: [], orderProducts: [], assignedUser: null,
+    branchId: 2, branch: { id: 2, name: "Plaza Norte" }, branchEmployeeId: null, branchEmployee: null,
+  },
+];
 let siguienteEmpleadoId = 10;
 /** Cuerpos de los POST /orders hechos desde la sucursal (los lee el test). */
 let pedidosSucursalCreados = [];
@@ -257,7 +332,7 @@ function misTareas(u) {
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
-      order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status },
+      order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status, branch: o.branch ?? null },
     });
   }
   const t90 = tareaAutorizar();
@@ -350,6 +425,7 @@ const rondasDiseno = {
   ],
   103: [ronda(13, 103, 1, [1004], { approved: true, approvedAt: "2026-09-05T16:30:00.000Z" })],
   105: [ronda(15, 105, 1, [1005])],
+  111: [ronda(31, 111, 1, [1002], { approved: true, approvedAt: "2026-09-08T16:30:00.000Z" })],
 };
 
 const pedidos = () => [
@@ -404,6 +480,7 @@ const pedidos = () => [
     branchEmployee: { id: 1, name: "Ana López" },
   },
   ...pedidosSucursalCreados,
+  ...pedidosExtraLogos(),
 ];
 
 /**
@@ -588,6 +665,9 @@ function registrarMovimiento(articulo, dto, usuario = usuarios[0]) {
   return { status: 201, body: { movement, item: articuloJson(articulo) } };
 }
 
+/** Query strings de cada GET /orders de matriz (los tests comprueban qué filtros se mandaron al backend). */
+const llamadasOrders = [];
+
 /** POST /orders recibidos (alta de pedido). */
 const pedidosCreados = [];
 
@@ -667,6 +747,36 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-preferences") {
       preferencias = { ...PREFERENCIAS_INICIALES };
       return send(preferencias);
+    }
+    if (req.method === "POST" && path === "/__e2e/seed-logo-fixtures") {
+      extrasLogos = true;
+      if (!sucursales.some((b) => b.id === 2)) sucursales.push({ id: 2, name: "Plaza Norte", active: true, employees: [] });
+      if (!tareasTv.some((t) => t.orderId === 111)) {
+        tareasTv.push({
+          id: 6, orderId: 111, area: "bordado", status: "pendiente", assignedUserId: null, createdAt: enHoras(-3), startedAt: null,
+          completedAt: null, assignedUser: null,
+          order: { ...pedidoTv(111, "Escuela Madero", "Mandiles con logo de la sucursal", enHoras(40)), branch: { id: 1, name: "Punto Madero" } },
+        });
+      }
+      return send({ ok: true });
+    }
+    if (req.method === "POST" && path === "/__e2e/seed-logos") {
+      const { branchId = 1 } = JSON.parse(body || "{}");
+      const png = (f) => `data:image/png;base64,${readFileSync(new URL(`./fixtures/${f}`, import.meta.url)).toString("base64")}`;
+      logosSucursal[branchId] = { onLight: png("talamas-negro.png"), onDark: png("talamas-blanco.png"), updatedAt: new Date().toISOString() };
+      return send({ ok: true });
+    }
+    if (req.method === "POST" && path === "/__e2e/reset-logos") {
+      logosSucursal = {};
+      extrasLogos = false;
+      sucursales = sucursales.filter((b) => b.id !== 2);
+      tareasTv = tareasTv.filter((t) => t.orderId !== 111);
+      return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/orders-queries") return send(llamadasOrders);
+    if (req.method === "POST" && path === "/__e2e/reset-orders-queries") { llamadasOrders.length = 0; return send({ ok: true }); }
+    if (req.method === "GET" && path === "/__e2e/logos") {
+      return send(Object.fromEntries(Object.entries(logosSucursal).map(([id, l]) => [id, { onLight: Boolean(l.onLight), onDark: Boolean(l.onDark) }])));
     }
     if (req.method === "POST" && path === "/__e2e/reset-tareas") {
       tareas = tareasIniciales();
@@ -1078,6 +1188,9 @@ createServer((req, res) => {
     if (req.method === "POST" && path === "/__e2e/reset-branches") {
       hojasPedidasPorSucursal = 0;
       sucursales = sucursalesIniciales();
+      logosSucursal = {};
+      extrasLogos = false;
+      tareasTv = tareasTv.filter((t) => t.orderId !== 111);
       pedidosSucursalCreados = [];
       siguientePedidoSucursalId = 200;
       clientes = clientesIniciales();
@@ -1174,12 +1287,40 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/branches/me") {
       const b = sucursales.find((x) => x.id === quien.branchId);
       if (!esSucursal(quien) || !b) return send({ message: "Sin permisos para acceder a esta sección" }, 403);
-      return send({ id: b.id, name: b.name, active: b.active, employees: b.employees.filter((e) => e.active).map(({ id, name }) => ({ id, name })) });
+      return send({ ...conLogoFlags({ id: b.id, name: b.name, active: b.active }), employees: b.employees.filter((e) => e.active).map(({ id, name }) => ({ id, name })) });
+    }
+    // Logos de las sucursales ACTIVAS: cualquier usuario autenticado (data URLs).
+    if (req.method === "GET" && path === "/branches/logos") {
+      return send(
+        sucursales.filter((b) => b.active).map((b) => {
+          const l = logosSucursal[b.id] ?? {};
+          return { branchId: b.id, name: b.name, logoOnLight: l.onLight ?? null, logoOnDark: l.onDark ?? null, updatedAt: l.updatedAt ?? null };
+        })
+      );
     }
     if (path.startsWith("/branches") && esSucursal(quien)) {
       return send({ message: "Sin permisos para acceder a esta sección" }, 403);
     }
-    if (req.method === "GET" && path === "/branches") return send(sucursales);
+    if (req.method === "GET" && path === "/branches") return send(sucursales.map(conLogoFlags));
+    // Subir / quitar el logo: sólo admin (o superuser).
+    const logoRuta = path.match(/^\/branches\/(\d+)\/logo\/([^/]+)$/);
+    if (logoRuta && (req.method === "PUT" || req.method === "DELETE")) {
+      if (!quien.roles.some((r) => ["admin", "superuser"].includes(r.name))) return send({ message: "Sin permisos para acceder a esta sección" }, 403);
+      const b = sucursales.find((x) => x.id === Number(logoRuta[1]));
+      if (!b) return send({ message: "Sucursal no encontrada" }, 404);
+      const variante = { onLight: "onLight", onDark: "onDark" }[logoRuta[2]];
+      if (!variante) return send({ message: "La variante debe ser onLight u onDark" }, 400);
+      if (req.method === "DELETE") {
+        const l = logosSucursal[b.id];
+        if (l) { delete l[variante]; l.updatedAt = new Date().toISOString(); }
+        return res.writeHead(204).end();
+      }
+      const error = errorDeLogo(JSON.parse(body || "{}"));
+      if (error) return send({ message: error }, 400);
+      const updatedAt = new Date().toISOString();
+      logosSucursal[b.id] = { ...(logosSucursal[b.id] ?? {}), [variante]: JSON.parse(body).imageDataUrl, updatedAt };
+      return send({ branchId: b.id, variant: variante, updatedAt });
+    }
     if (req.method === "POST" && path === "/branches") {
       const { name } = JSON.parse(body || "{}");
       const nueva = { id: sucursales.length + 1, name, active: true, employees: [] };
@@ -1229,6 +1370,25 @@ createServer((req, res) => {
       return send({
         data: filtrados.slice((page - 1) * limit, page * limit),
         meta: { total: filtrados.length, page, limit, totalPages: Math.max(1, Math.ceil(filtrados.length / limit)) },
+      });
+    }
+    // Roles de matriz: ven TODOS los pedidos; `branchId` / `origin` filtran el origen.
+    if ((path === "/orders" || path === "/orders/history") && req.method === "GET" && !esSucursal(quien)) {
+      const branchId = Number(url.searchParams.get("branchId")) || null;
+      const origin = url.searchParams.get("origin");
+      const lista = pedidos().filter((p) => {
+        if (branchId) return p.branchId === branchId;
+        if (origin === "matriz") return !p.branchId;
+        if (origin === "sucursal") return Boolean(p.branchId);
+        return true;
+      });
+      llamadasOrders.push(url.search);
+      if (path === "/orders") return send(lista);
+      const limit = Number(url.searchParams.get("limit")) || 20;
+      const page = Number(url.searchParams.get("page")) || 1;
+      return send({
+        data: lista.slice((page - 1) * limit, page * limit),
+        meta: { total: lista.length, page, limit, totalPages: Math.max(1, Math.ceil(lista.length / limit)) },
       });
     }
     if (path === "/orders" && req.method === "POST") {

@@ -17,6 +17,7 @@ import type {
   OrderNote,
 } from "@/types";
 import { orderStatusUpdatedMessage } from "@/lib/copy";
+import { originParams, type OrderOrigin } from "@/lib/orderOrigin";
 import {
   AREA_TASK_STATUS_BY_ORDER_STATUS,
   areaTasksToMove,
@@ -26,8 +27,14 @@ import {
 
 /** Hooks específicos del dominio "pedidos", construidos sobre la capa genérica. */
 
-export function useOrders(options?: { enabled?: boolean }) {
-  return useEntityList<Order>("orders", { enabled: options?.enabled });
+/**
+ * Pedidos visibles para el usuario. `origin` (sólo roles de matriz) es el
+ * filtro "Origen": el backend lo aplica con `branchId` / `origin`, así que el
+ * array ya llega filtrado. Sin origen la clave de caché es la de siempre.
+ */
+export function useOrders(options?: { enabled?: boolean; origin?: OrderOrigin }) {
+  const params = options?.origin ? originParams(options.origin) : undefined;
+  return useEntityList<Order>("orders", { enabled: options?.enabled, params });
 }
 
 export function useOrder(
@@ -49,6 +56,9 @@ export function useOrderHistories(options?: { enabled?: boolean }) {
  */
 /** Filtros del historial; las fechas son instantes ISO (inicio/fin de día local). */
 export interface OrderHistoryFilters {
+  /** Filtro "Origen" (sólo roles de matriz): `branchId` o `origin`. */
+  branchId?: number;
+  origin?: string;
   clientId?: number;
   area?: string;
   deliveryFrom?: string;

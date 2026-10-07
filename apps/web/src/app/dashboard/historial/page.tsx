@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/states";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { BranchBadge } from "@/components/orders/BranchBadge";
+import { OriginFilter } from "@/components/orders/OriginFilter";
+import { matchesOrigin, ORIGIN_URL_PARAM, originParams, parseOrigin, type OrderOrigin } from "@/lib/orderOrigin";
 import { useOrderHistoryList, downloadOrdersExport, type OrderHistoryFilters } from "@/hooks/useOrders";
 import { useAuthToken, useEntityList } from "@/hooks/useEntity";
 import { Input } from "@/components/ui/input";
@@ -44,17 +47,20 @@ const ALL = "all";
 
 /** Filtros tal como los edita la pantalla (fechas "yyyy-MM-dd" del input). */
 interface HistoryFilterState {
+  /** Origen (sólo matriz): Matriz / sucursales / una sucursal. En la URL: `?origen=`. */
+  origin?: OrderOrigin;
   clientId?: number;
   area?: string;
   from: string;
   to: string;
 }
 
-const EMPTY_FILTERS: HistoryFilterState = { clientId: undefined, area: undefined, from: "", to: "" };
+const EMPTY_FILTERS: HistoryFilterState = { origin: undefined, clientId: undefined, area: undefined, from: "", to: "" };
 
 /** Pasa las fechas del input a instantes: desde el inicio del día hasta su final, en hora local. */
 function toHistoryQuery(f: HistoryFilterState): OrderHistoryFilters {
   return {
+    ...originParams(f.origin),
     clientId: f.clientId,
     area: f.area,
     deliveryFrom: f.from ? new Date(`${f.from}T00:00:00`).toISOString() : undefined,
@@ -151,7 +157,10 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
       >
         <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-medium">{client}</span>
+          <span className="flex items-center gap-2">
+            <span className="min-w-0 truncate text-sm font-medium">{client}</span>
+            <BranchBadge order={order} size="md" />
+          </span>
           <span className="block truncate text-xs text-muted-foreground">{order.description}</span>
         </span>
         <span className="col-start-2 flex sm:col-start-auto sm:justify-end lg:order-last">
@@ -222,16 +231,34 @@ const HistorialPage = () => {
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [filters, setFilters] = useState<HistoryFilterState>(EMPTY_FILTERS);
   const query = useMemo(() => toHistoryQuery(filters), [filters]);
-  const { orders, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
+  const { orders: fetched, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
     page,
     PAGE_SIZE,
     query
   );
+  // El backend filtra por origen; esto sólo cubre una respuesta sin filtrar.
+  const orders = useMemo(() => fetched.filter((o) => matchesOrigin(o, filters.origin)), [fetched, filters.origin]);
   const { data: clients } = useEntityList<Client>("clients");
-  const hasFilters = Boolean(filters.clientId || filters.area || filters.from || filters.to);
+  const hasFilters = Boolean(filters.clientId || filters.area || filters.from || filters.to || filters.origin);
+
+  // El origen se recuerda en la URL (`?origen=`), como los filtros de Pedidos.
+  useEffect(() => {
+    const origin = parseOrigin(new URLSearchParams(window.location.search).get(ORIGIN_URL_PARAM));
+    if (origin) setFilters((prev) => ({ ...prev, origin }));
+  }, []);
   const updateFilters = (patch: Partial<HistoryFilterState>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
     setPage(1);
+    if ("origin" in patch) {
+      try {
+        const url = new URL(window.location.href);
+        if (patch.origin) url.searchParams.set(ORIGIN_URL_PARAM, patch.origin);
+        else url.searchParams.delete(ORIGIN_URL_PARAM);
+        window.history.replaceState(null, "", url.toString());
+      } catch {
+        // Sin acceso a la URL el filtro sigue funcionando en memoria.
+      }
+    }
   };
   const { canManageOperations } = usePermissions();
   const token = useAuthToken();
@@ -265,6 +292,7 @@ const HistorialPage = () => {
 
       <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filtros del historial">
         <ClientFilter clients={clients} value={filters.clientId} onChange={(clientId) => updateFilters({ clientId })} />
+        <OriginFilter value={filters.origin} onChange={(origin) => updateFilters({ origin })} />
         <Select
           value={filters.area ?? ALL}
           onValueChange={(v) => updateFilters({ area: v === ALL ? undefined : v })}

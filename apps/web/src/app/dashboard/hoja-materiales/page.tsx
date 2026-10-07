@@ -36,6 +36,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { AreaSuppliesPanel } from "@/components/orders/AreaSuppliesPanel";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { OrderSizesList } from "@/components/sizes/OrderSizesList";
 import { OrderMaterialsChecklistTable } from "@/components/orders/OrderMaterialsChecklistTable";
 import { useOrders, useReorderMaterialsPriority } from "@/hooks/useOrders";
@@ -345,6 +346,7 @@ function OrderRowSummary({
       <span className="min-w-0">
         <span className="font-semibold">Pedido #{order.id}</span>
         <span className="text-muted-foreground"> · {getOrderClientName(order)}</span>
+        <BranchBadge order={order} className="ml-2 align-middle" />
       </span>
       <span className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium">

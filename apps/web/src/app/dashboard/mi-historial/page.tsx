@@ -12,6 +12,7 @@ import { ErrorState } from "@/components/feedback/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { useBranchOrderHistory } from "@/hooks/useBranchOrderHistory";
 import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { formatDate, getOrderClientName } from "@/lib/format";
@@ -53,7 +54,10 @@ function BranchHistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number
         )}
       >
         <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
-        <span className="min-w-0 truncate text-sm font-medium">{client}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-sm font-medium">{client}</span>
+          <BranchBadge order={order} size="md" />
+        </span>
         <span className="col-start-2 min-w-0 truncate text-sm text-muted-foreground sm:col-span-2 lg:col-span-1 lg:col-start-auto">
           {order.description || "—"}
         </span>

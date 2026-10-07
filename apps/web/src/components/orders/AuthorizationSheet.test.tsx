@@ -45,6 +45,15 @@ vi.mock("@/hooks/useDesignRevisions", () => ({
   },
 }));
 
+vi.mock("@/hooks/useBranchLogos", () => ({
+  useBranchLogos: () => ({
+    getLogos: (id: number) => (id === 1 ? { logoOnLight: "data:image/png;base64,NEGRO", logoOnDark: "data:image/png;base64,BLANCO" } : undefined),
+    logos: [],
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 function revision(round: number, extra: Partial<DesignRevision> = {}): DesignRevision {
   return {
     id: round * 10,
@@ -227,5 +236,31 @@ describe("AuthorizationSheet", () => {
     render(<AuthorizationSheet order={order} />);
     expect(screen.getByText("No se pudo cargar la hoja de autorización.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+  });
+});
+
+describe("AuthorizationSheet · logo de la sucursal", () => {
+  it("el encabezado de la hoja lleva el logo del pedido de sucursal (y nada en uno de matriz)", () => {
+    revisions = [revision(1, { approved: true })];
+    const { unmount } = render(
+      <AuthorizationSheet order={{ id: 16, requiresDesign: true, branch: { id: 1, name: "Punto Madero" } }} />
+    );
+    const logo = screen.getByTestId("branch-logo");
+    expect(logo).toHaveAttribute("data-surface", "auto");
+    // Las dos versiones: la negra (tema claro y papel impreso) y la blanca (tema oscuro).
+    expect(within(logo).getAllByAltText("Punto Madero").map((i) => i.getAttribute("src"))).toEqual([
+      "data:image/png;base64,NEGRO",
+      "data:image/png;base64,BLANCO",
+    ]);
+    unmount();
+
+    render(<AuthorizationSheet order={{ id: 17, requiresDesign: true, branch: null }} />);
+    expect(screen.queryByTestId("branch-logo")).not.toBeInTheDocument();
+  });
+
+  it("también cuando todavía no hay hoja", () => {
+    revisions = [];
+    render(<AuthorizationSheet order={{ id: 16, requiresDesign: true, branch: { id: 1, name: "Punto Madero" } }} />);
+    expect(screen.getByTestId("branch-logo")).toBeInTheDocument();
   });
 });

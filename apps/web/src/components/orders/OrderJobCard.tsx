@@ -234,9 +234,13 @@ export const OrderJobCard = memo(function OrderJobCard({
         </div>
 
         <div className="min-w-0">
-          <p className={cn("truncate font-heading font-semibold leading-snug", wall ? "text-xl" : "text-base")}>
-            {clientName}
-          </p>
+          {/* El logo de la sucursal va junto al cliente: de un vistazo se ve de dónde viene. */}
+          <div className="flex items-center gap-2">
+            <p className={cn("min-w-0 flex-1 truncate font-heading font-semibold leading-snug", wall ? "text-xl" : "text-base")}>
+              {clientName}
+            </p>
+            <BranchBadge order={order} size={wall ? "lg" : "md"} />
+          </div>
           <p className={cn("mt-0.5 truncate text-muted-foreground", wall ? "text-sm" : "text-[0.8125rem]")} title={order.description}>
             <span className="tabular-nums text-foreground/70">#{order.id}</span>
             {order.description ? ` · ${order.description}` : ""}
@@ -322,7 +326,6 @@ export const OrderJobCard = memo(function OrderJobCard({
 
       <footer className="pointer-events-none relative flex items-center gap-2 border-t border-border/60 px-5 py-3">
         <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-        <BranchBadge order={order} />
         {!wall && (
           <div className="pointer-events-auto relative z-10 ml-auto flex min-w-0 items-center">
             <OrderQuickStatusChip order={order} />

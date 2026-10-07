@@ -4,6 +4,7 @@ import { OrderSizesList } from "@/components/sizes/OrderSizesList";
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Loader2, Play, RotateCcw, UserRound } from "lucide-react";
+import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { Button } from "@/components/ui/button";
 import { TONE_META } from "@/components/orders/OrderJobCard";
@@ -102,7 +103,7 @@ export const TvTaskCard = memo(function TvTaskCard({
           glow && cn("ring-4", glow.ring)
         )}
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           {/* Toda la tarjeta abre el detalle (el ::after la cubre entera), menos
               el botón de acción, que queda por encima. Es un <button> de
               verdad: se llega con Tab y se abre con Enter/Espacio. */}
@@ -118,7 +119,9 @@ export const TvTaskCard = memo(function TvTaskCard({
           >
             #{task.order.id}
           </button>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-base text-foreground/85">
+          {/* Tele con fondo oscuro: el logo BLANCO de la sucursal (o su nombre en texto). */}
+          <BranchBadge order={task.order} surface="dark" size="lg" className="min-w-0 self-center" />
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-base text-foreground/85">
             {AreaIcon && <AreaIcon className="h-4 w-4" aria-hidden />}
             {getAreaLabel(task.area)}
           </span>
@@ -131,14 +134,6 @@ export const TvTaskCard = memo(function TvTaskCard({
           <p className="truncate text-lg text-muted-foreground">{clientName(task)}</p>
           {task.kind === "production" && (
             <AreaSupplySummary supply={task.supply} className="text-base" />
-          )}
-          {task.order.branch?.name && (
-            <span
-              data-testid="branch-badge"
-              className="inline-flex rounded-full border border-white/20 px-2.5 py-0.5 text-sm font-medium"
-            >
-              {task.order.branch.name}
-            </span>
           )}
           <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" summaryClassName="text-base" />
         </div>
