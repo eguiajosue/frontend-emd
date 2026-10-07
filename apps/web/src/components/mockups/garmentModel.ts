@@ -17,6 +17,17 @@ export interface GarmentModel {
   update: (delta: number) => boolean;
   /** Profundidad de proyección del decal según su ancho (evita atravesar la prenda). */
   decalDepth: (scale: number) => number;
+  /**
+   * Geometría propia para los diseños (termo/taza: envueltos sobre el
+   * cilindro). Sin ella se usa el proyector plano (`buildDecalGeometry`).
+   * `size` = [ancho, alto, profundidad], en el espacio de la prenda.
+   */
+  decalGeometry?: (
+    position: THREE.Vector3,
+    normal: THREE.Vector3,
+    rotation: number,
+    size: THREE.Vector3,
+  ) => THREE.BufferGeometry | null;
   /** Punto al que mira la cámara (por defecto, el centro de la caja de la prenda). */
   focus?: THREE.Vector3;
   /** Elevación de la cámara (radianes sobre el horizonte) para las vistas fijas. */

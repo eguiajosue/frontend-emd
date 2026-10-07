@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { DecalGeometry } from "three/examples/jsm/geometries/DecalGeometry.js";
 import type { DesignLayer, DesignPlacement } from "@/lib/mockups/types";
+import { laserMask, maskToRgba, type LaserEngraveSettings } from "@/lib/mockups/laserEngrave";
+import { acquireBrushedTexture, releaseBrushedTexture } from "./DrinkwareModel";
 
 /**
  * Decals de diseño: proyectan la imagen del cliente sobre la superficie de la
@@ -166,21 +168,60 @@ export function samePlacement(a: DesignPlacement, b: DesignPlacement): boolean {
 
 const textureLoader = new THREE.TextureLoader();
 
+/**
+ * Cómo se ve el diseño sobre el producto:
+ * - `print`: impresión/sublimación a todo color (prendas, taza).
+ * - `laser`: grabado láser del termo. La imagen se reduce a una máscara B/N
+ *   y sólo esa máscara se dibuja como metal: acero claro y cepillado sobre
+ *   la pintura, o un esmerilado más oscuro sobre el acero natural.
+ */
+export type DecalFinish =
+  | { kind: "print" }
+  | { kind: "laser"; settings: LaserEngraveSettings; onSteel: boolean };
+
+export const PRINT_FINISH: DecalFinish = { kind: "print" };
+
+const finishKey = (f: DecalFinish) =>
+  f.kind === "print" ? "print" : `laser:${f.settings.threshold}:${+f.settings.invert}:${+f.settings.dither}:${+f.onSteel}`;
+
+/** Máscara de grabado como textura (blanco con alfa = zonas grabadas). */
+function laserTexture(image: CanvasImageSource & { width: number; height: number }, settings: LaserEngraveSettings) {
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, image.width);
+  canvas.height = Math.max(1, image.height);
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const src = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const mask = laserMask(src, settings);
+  maskToRgba(mask, src.data);
+  ctx.putImageData(src, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 /** Un diseño sobre la prenda: textura + malla del decal. */
 export class DesignDecal {
-  readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshPhysicalMaterial>;
   layer: DesignLayer;
   dirty = true;
   /** Se resuelve cuando la textura está lista (o falló: no bloquea la exportación). */
   ready: Promise<void> = Promise.resolve();
   private textureUrl = "";
   private disposed = false;
+  /** Textura original (a color); el grabado se calcula a partir de ella. */
+  private printTexture: THREE.Texture | null = null;
+  private laserTex: THREE.Texture | null = null;
+  private finish: DecalFinish = PRINT_FINISH;
+  private appliedKey = "";
+  private brushed: THREE.Texture | null = null;
 
   constructor(layer: DesignLayer, private readonly anisotropy: number, private readonly onChange: () => void) {
     this.layer = layer;
     this.mesh = new THREE.Mesh(
       new THREE.BufferGeometry(),
-      new THREE.MeshStandardMaterial({
+      new THREE.MeshPhysicalMaterial({
         transparent: true,
         depthWrite: false,
         polygonOffset: true,
@@ -203,6 +244,57 @@ export class DesignDecal {
     if (layer.dataUrl !== this.textureUrl) this.loadTexture(layer.dataUrl);
   }
 
+  /** Cambia entre impresión y grabado láser (reversible: el original no se toca). */
+  setFinish(finish: DecalFinish) {
+    this.finish = finish;
+    this.applyFinish();
+  }
+
+  get finishKind(): DecalFinish["kind"] {
+    return this.finish.kind;
+  }
+
+  private applyFinish() {
+    const tex = this.printTexture;
+    if (!tex || this.disposed) return;
+    const key = finishKey(this.finish);
+    if (key === this.appliedKey) return;
+    this.appliedKey = key;
+    const mat = this.mesh.material;
+    const f = this.finish;
+    if (f.kind === "print") {
+      mat.map = tex;
+      mat.color.set("#ffffff");
+      mat.metalness = 0;
+      mat.roughness = 0.85;
+      mat.roughnessMap = null;
+      mat.clearcoat = 0;
+    } else {
+      this.laserTex?.dispose();
+      this.laserTex = laserTexture(tex.image as HTMLImageElement, f.settings);
+      if (this.laserTex) {
+        this.laserTex.anisotropy = this.anisotropy;
+      }
+      if (!this.brushed) this.brushed = acquireBrushedTexture();
+      mat.map = this.laserTex ?? tex;
+      mat.roughnessMap = this.brushed;
+      mat.clearcoat = 0;
+      if (f.onSteel) {
+        // Sobre acero natural el láser "quema" el pulido: esmerilado, más oscuro.
+        mat.color.set("#6f747b");
+        mat.metalness = 0.75;
+        mat.roughness = 0.85;
+      } else {
+        // Se quita la pintura: aparece el acero, claro, metálico y algo rugoso.
+        mat.color.set("#e3e6ea");
+        mat.metalness = 1;
+        mat.roughness = 0.42;
+      }
+    }
+    mat.needsUpdate = true;
+    this.onChange();
+  }
+
   private loadTexture(url: string) {
     this.textureUrl = url;
     this.ready = textureLoader
@@ -216,8 +308,10 @@ export class DesignDecal {
         tex.anisotropy = this.anisotropy;
         tex.generateMipmaps = true;
         tex.minFilter = THREE.LinearMipmapLinearFilter;
-        this.mesh.material.map?.dispose();
-        this.mesh.material.map = tex;
+        this.printTexture?.dispose();
+        this.printTexture = tex;
+        this.appliedKey = "";
+        this.applyFinish();
         this.mesh.material.visible = true;
         this.mesh.material.needsUpdate = true;
         this.onChange();
@@ -237,7 +331,9 @@ export class DesignDecal {
   dispose() {
     this.disposed = true;
     this.mesh.geometry.dispose();
-    this.mesh.material.map?.dispose();
+    this.printTexture?.dispose();
+    this.laserTex?.dispose();
+    if (this.brushed) releaseBrushedTexture();
     this.mesh.material.dispose();
   }
 }
