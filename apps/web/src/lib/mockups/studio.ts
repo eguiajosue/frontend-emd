@@ -85,8 +85,19 @@ export function switchGarment(config: MockupConfig, garment: Garment): MockupCon
     garment,
     colors: { ...DEFAULT_COLORS[garment] },
     layers: config.layers.map((layer) => ({ ...layer, placement: defaultPlacement(garment) })),
+    // Las tallas son del pedido, no de la prenda: sobreviven al cambio (si la
+    // prenda nueva no las usa, sólo se ocultan y no se guardan).
+    ...(config.sizes !== undefined ? { sizes: config.sizes } : {}),
     ...(options ? { options } : {}),
   };
+}
+
+/** Productos que no son prenda: no llevan tabla de tallas. */
+const GARMENTS_WITHOUT_SIZES: readonly Garment[] = ["termo", "taza"];
+
+/** ¿Esta prenda se pide por tallas? (el panel y la tabla impresa sólo salen si sí). */
+export function garmentHasSizes(garment: Garment): boolean {
+  return !GARMENTS_WITHOUT_SIZES.includes(garment);
 }
 
 export function isHexColor(value: string): boolean {
@@ -117,10 +128,13 @@ export function mockupFilename(garment: Garment, date = new Date()): string {
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {
   assertGarmentEnabled(result.config.garment);
+  // Tallas "escondidas" de una prenda anterior no se guardan en un termo o taza.
+  const config = { ...result.config };
+  if (!garmentHasSizes(config.garment)) delete config.sizes;
   return {
     garment: result.config.garment,
     imageDataUrl: result.image.dataUrl,
-    config: result.config,
+    config,
   };
 }
 

@@ -102,6 +102,8 @@ let tareasTv = tareasTvIniciales();
  * quedan apartados y se descuentan al terminar la tarea de bordado.
  */
 const ORDEN_AUTORIZAR = 110;
+/** Veces que una cuenta de sucursal pidió la hoja de materiales (debe ser 0). */
+let hojasPedidasPorSucursal = 0;
 const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
 let autorizar = autorizarInicial();
 const pedidoAutorizar = () => ({
@@ -130,34 +132,45 @@ const apartado = (itemId) =>
   autorizar.supply?.source === "nosotros"
     ? autorizar.supply.lines.filter((l) => l.inventoryItemId === itemId && !l.discountedAt).reduce((t, l) => t + l.quantity, 0)
     : 0;
-const hojaAutorizar = () => ({
-  areas: [
-    {
-      taskId: 90, area: "bordado", status: tareaAutorizar().status,
-      supply: autorizar.supply && {
-        ...autorizar.supply,
-        lines: autorizar.supply.lines.map((l) => {
-          const a = inventario.find((x) => x.id === l.inventoryItemId);
-          return { ...l, state: l.discountedAt ? "descontado" : "apartado", stock: a ? { quantity: a.quantity, reserved: apartado(a.id), available: a.quantity - apartado(a.id) } : null };
-        }),
+const hojaAutorizar = () => {
+  const terminada = tareaAutorizar().status === "terminado";
+  const lines = autorizar.supply?.lines.map((l) => {
+    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    const pendingDiscount = Boolean(terminada && a && !l.discountedAt && autorizar.supply.source === "nosotros");
+    return {
+      ...l, state: l.discountedAt ? "descontado" : "apartado",
+      pendingDiscount, shortfall: pendingDiscount ? Math.max(0, l.quantity - a.quantity) : 0,
+      stock: a ? { quantity: a.quantity, reserved: apartado(a.id), available: a.quantity - apartado(a.id) } : null,
+    };
+  });
+  return {
+    areas: [
+      {
+        taskId: 90, area: "bordado", status: tareaAutorizar().status,
+        supply: autorizar.supply && { ...autorizar.supply, lines },
+        pendingDiscount: Boolean(lines?.some((l) => l.pendingDiscount)),
       },
-    },
-  ],
-  movements: autorizar.movimientos,
-});
-/** Terminar descuenta (SALIDA); regresar de terminado devuelve (ENTRADA). Sin negativos, como el backend. */
+    ],
+    movements: autorizar.movimientos,
+  };
+};
+/**
+ * Terminar descuenta (SALIDA); regresar de terminado devuelve (ENTRADA). Como
+ * el backend, terminar NUNCA falla por falta de stock: la línea que no alcanza
+ * queda apartada ("descuento pendiente") y se reintenta con `descontarPendientes`.
+ */
 function aplicarInsumos(anterior, nuevo) {
-  const lines = autorizar.supply?.source === "nosotros" ? autorizar.supply.lines.filter((l) => l.inventoryItemId) : [];
   const terminando = nuevo === "terminado" && anterior !== "terminado";
   const reabriendo = anterior === "terminado" && nuevo !== "terminado";
-  if (!terminando && !reabriendo) return null;
-  const afectadas = lines.filter((l) => (terminando ? !l.discountedAt : l.discountedAt));
-  for (const l of afectadas) {
+  if (!terminando && !reabriendo) return;
+  descontarLineas(terminando ? "terminando" : "reabriendo");
+}
+function descontarLineas(modo) {
+  const lines = autorizar.supply?.source === "nosotros" ? autorizar.supply.lines.filter((l) => l.inventoryItemId) : [];
+  const terminando = modo !== "reabriendo";
+  for (const l of lines.filter((x) => (terminando ? !x.discountedAt : x.discountedAt))) {
     const a = inventario.find((x) => x.id === l.inventoryItemId);
-    if (terminando && l.quantity > a.quantity) return { message: `Stock insuficiente de ${a.name}: hay ${a.quantity} ${a.unit} y la hoja pide ${l.quantity}.` };
-  }
-  for (const l of afectadas) {
-    const a = inventario.find((x) => x.id === l.inventoryItemId);
+    if (terminando && l.quantity > a.quantity) continue; // sin existencia: se queda pendiente
     const delta = terminando ? -l.quantity : l.quantity;
     a.quantity += delta;
     l.discountedAt = terminando ? new Date().toISOString() : null;
@@ -166,7 +179,6 @@ function aplicarInsumos(anterior, nuevo) {
       note: null, areaTaskId: 90, createdAt: new Date().toISOString(), item: { id: a.id, name: a.name, unit: a.unit }, createdBy: { id: 2, firstName: "Bordado" },
     });
   }
-  return null;
 }
 
 /** Usuario del token (el `sub` del JWT de mentira). */
@@ -560,6 +572,27 @@ const rutas = {
   // Tour de bienvenida ya visto: si no, su capa (fixed, z-110) tapa la
   // pantalla y se come los clicks de los tests.
   "GET /users/me/preferences": () => preferencias,
+  // Tableros de "Inicio". Sin esto el mock contestaba `[]`, la pantalla de
+  // Inicio tronaba al llegar los datos (`totals` indefinido) y esa caída le
+  // ganaba al primer clic del menú: la URL se quedaba en /dashboard/inicio.
+  "GET /dashboard/reception": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z",
+    totals: { active: 0, inDesign: 0, waitingClient: 0, inProduction: 0, ready: 0, noDate: 0 },
+    deadlines: { overdue: 0, atRisk: 0, onTime: 0, noDate: 0 },
+    today: { created: 0, delivered: 0, tasksCompleted: 0, designsApproved: 0 },
+    areas: [], attention: [], attentionTotal: 0, throughput: [], clientsDue: [],
+    alerts: { lowStock: 0, outOfStock: 0, lowStockItems: [], purchasesDue: 0 },
+  }),
+  "GET /dashboard/design": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z",
+    counters: { changesRequested: 0, notStarted: 0, inProgress: 0, waitingClient: 0, overdue: 0, atRisk: 0, approvedToday: 0, approvedWeek: 0 },
+    items: [], waitingClient: [], team: [], rounds: { avgToApproval: null, approvedLast30: 0, manyRounds: 0 },
+  }),
+  "GET /dashboard/production": () => ({
+    generatedAt: "2026-10-07T12:00:00.000Z", dayStart: "2026-10-07T00:00:00.000Z", areas: [],
+    counters: { overdue: 0, atRisk: 0, notStarted: 0, inProgress: 0, doneToday: 0, upcoming: 0 },
+    items: [], upcoming: [], team: [], events: [],
+  }),
 };
 
 /** JWT sin firmar de verdad: sólo necesita un `exp` futuro que `jose` pueda leer. */
@@ -593,6 +626,14 @@ createServer((req, res) => {
       return send(preferencias);
     }
 
+    // La hoja de materiales no es de la sucursal: 403 (y se cuenta, para que el
+    // test compruebe que la pantalla ni siquiera la pide).
+    if (req.method === "GET" && /^\/orders\/\d+\/area-supplies$/.test(path) && esSucursal(usuarioDe(req))) {
+      hojasPedidasPorSucursal++;
+      return send({ message: "Forbidden" }, 403);
+    }
+    if (req.method === "GET" && path === "/__e2e/area-supplies-sucursal") return send({ pedidas: hojasPedidasPorSucursal });
+
     // Ganchos sólo para los tests.
     if (req.method === "POST" && path === "/__e2e/reset-preferences") {
       preferencias = { ...PREFERENCIAS_INICIALES };
@@ -608,6 +649,18 @@ createServer((req, res) => {
     }
     if (req.method === "GET" && path === "/__e2e/autorizacion") return send({ recibido: autorizar.recibido });
     if (path === `/orders/${ORDEN_AUTORIZAR}/area-supplies` && req.method === "GET") return send(hojaAutorizar());
+    // Reintenta el descuento de lo pendiente (sólo Recepción/admin).
+    if (path === `/orders/${ORDEN_AUTORIZAR}/area-supplies/bordado/discount-pending` && req.method === "POST") {
+      if (!usuarioDe(req).roles.some((r) => GESTORES.includes(r.name))) return send({ message: "Forbidden" }, 403);
+      descontarLineas("terminando");
+      return send(hojaAutorizar());
+    }
+    // Entrada de stock sin pasar por la pantalla de inventario (prepara el reintento).
+    if (req.method === "POST" && path === "/__e2e/reponer-stock") {
+      const { itemId, quantity } = JSON.parse(body || "{}");
+      inventario.find((a) => a.id === itemId).quantity += quantity;
+      return send({ ok: true });
+    }
     if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions` && req.method === "GET") return send(rondaAutorizar());
     if (path === `/orders/${ORDEN_AUTORIZAR}/area-tasks` && req.method === "GET") return send([tareaAutorizar()].map(({ supply, ...t }) => t));
     if (path === `/orders/${ORDEN_AUTORIZAR}/design-revisions/20/approve` && req.method === "PATCH") {
@@ -941,8 +994,7 @@ createServer((req, res) => {
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
     if (avance && Number(avance[1]) === 90 && req.method === "PATCH") {
       const { status } = JSON.parse(body || "{}");
-      const error = aplicarInsumos(tareaAutorizar().status, status);
-      if (error) return send(error, 400);
+      aplicarInsumos(tareaAutorizar().status, status);
       autorizar.tarea = { ...tareaAutorizar(), status, supply: autorizar.supply };
       return send(autorizar.tarea);
     }
@@ -982,6 +1034,7 @@ createServer((req, res) => {
     // ── Sucursales ──────────────────────────────────────────────────────────
     // (`quien` ya está declarado arriba, en el bloque de Inventario.)
     if (req.method === "POST" && path === "/__e2e/reset-branches") {
+      hojasPedidasPorSucursal = 0;
       sucursales = sucursalesIniciales();
       pedidosSucursalCreados = [];
       return send({ ok: true });

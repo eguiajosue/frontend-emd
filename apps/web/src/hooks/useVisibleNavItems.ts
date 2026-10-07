@@ -64,8 +64,12 @@ export function useVisibleNavItems(): VisibleNavItem[] {
  * que se aplican las preferencias de la barra (`lib/navPreferences.ts`).
  */
 export function useVisibleNavGroups(): NavGroup[] {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const userRoles = session?.user?.roles || [];
+  // Mientras la sesión carga no se sabe el rol: sin ítems en vez de pintar el
+  // menú completo y cambiarlo (la cuenta de sucursal veía parpadear opciones
+  // que no puede abrir, y un clic podía perderse al re-renderizar la lista).
+  if (status === "loading") return [];
   const branchOnly = isBranchOnly(userRoles);
   const operationalOnly = branchOnly || isOperationalOnly(userRoles);
   return (branchOnly ? BRANCH_MENU : operationalOnly ? OPERATIONAL_MENU : buildMenuItems())

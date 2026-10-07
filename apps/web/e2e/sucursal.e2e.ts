@@ -35,6 +35,19 @@ test("la sucursal sólo ve Nuevo pedido, Mis pedidos y Mockups, y sólo sus pedi
   await expect(page).toHaveURL(/\/dashboard\/orders/);
 });
 
+test("el detalle de un pedido como sucursal no pide la hoja de materiales (sin 403 ni aviso de error)", async ({ page, request }) => {
+  await login(page, "puntomadero");
+  await page.goto("/dashboard/orders?openOrderId=110");
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Producción" })).toBeVisible();
+  // El panel de insumos no existe para la sucursal, y el backend nunca recibió la petición.
+  await expect(dialog.getByRole("region", { name: "Origen de insumos por área" })).toHaveCount(0);
+  await page.waitForTimeout(1_000);
+  expect((await (await request.get(`${MOCK_API}/__e2e/area-supplies-sucursal`)).json()).pedidas).toBe(0);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0);
+});
+
 test("al crear un pedido hay que elegir al empleado, y queda guardado", async ({ page, request }) => {
   await login(page, "puntomadero");
   await page.goto("/dashboard/orders?new=1");

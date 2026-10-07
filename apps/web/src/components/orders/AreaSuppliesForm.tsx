@@ -102,8 +102,29 @@ function AreaSection({ area, draft, onChange }: { area: string; draft: SupplyDra
                 aria-label={`${label}: cantidad del insumo del cliente`}
                 className="w-20"
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeLine(line.key)}
+                aria-label={`${label}: quitar insumo del cliente`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           ))}
+          {draft.lines.length === 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => onChange({ ...draft, lines: [{ key: newKey(), description: "", quantity: "" }] })}
+            >
+              <Plus className="h-4 w-4" />
+              Agregar detalle
+            </Button>
+          )}
           <p className="text-xs text-muted-foreground">Opcional. No descuenta inventario.</p>
         </div>
       )}

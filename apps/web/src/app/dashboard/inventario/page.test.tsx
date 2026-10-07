@@ -134,9 +134,12 @@ describe("InventarioPage", () => {
 
   it("un área de producción ve sólo lo suyo con acciones simples (sin gestión, valor ni exportar)", () => {
     roles = ["bordado"];
+    // `items` conserva también el inventario de Impresiones: el mock sólo filtra
+    // por el departamento que la página PIDE, así que si la página no se acota
+    // a su único departamento, "Tinta cyan" aparecería.
     areas = ["bordado"];
-    items = items.filter((i) => i.area === "bordado");
     render(<InventarioPage />);
+    expect(requestedAreas.at(-1)).toBe("bordado");
     const table = screen.getAllByRole("table")[0];
     expect(within(table).getByText("Hilo rojo")).toBeInTheDocument();
     expect(within(table).queryByText("Tinta cyan")).not.toBeInTheDocument();
@@ -155,7 +158,6 @@ describe("InventarioPage", () => {
   it("el área avisa reabasto de un artículo y el aviso se envía", async () => {
     roles = ["bordado"];
     areas = ["bordado"];
-    items = items.filter((i) => i.area === "bordado");
     render(<InventarioPage />);
     await userEvent.click(screen.getAllByRole("button", { name: /Avisar reabasto de Hilo rojo/ })[0]);
     await userEvent.type(screen.getByLabelText("Comentario"), "ya no queda");

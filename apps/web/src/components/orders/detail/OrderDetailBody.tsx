@@ -14,6 +14,7 @@ import {
 } from "@/components/orders/detail/OrderProgressPanel";
 import { OrderActivitySection, OrderNotesSection } from "@/components/orders/detail/OrderActivitySections";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { isBranchOnly } from "@/lib/roles";
 import { usePermissions } from "@/hooks/usePermissions";
 import { buildOrderHandoff } from "@/lib/orderHandoff";
 import {
@@ -74,6 +75,7 @@ export function OrderDetailBody({
   const handoff = buildOrderHandoff(order, tasks);
   const stage = handoff.current.key;
 
+  const isBranchViewer = isBranchOnly(viewer.roles);
   const isManager = permissions.canEdit;
   const isDesigner = !isManager && viewer.roles.includes("diseno");
 
@@ -118,7 +120,8 @@ export function OrderDetailBody({
   const areas = (
     <DetailSection key="areas" id={SECTION_IDS.areas} title="Producción">
       <AreaTasksSection order={order} embedded />
-      <AreaSuppliesPanel orderId={order.id} />
+      {/* La hoja de materiales no es para la sucursal (el backend responde 403). */}
+      {!isBranchViewer && <AreaSuppliesPanel orderId={order.id} />}
     </DetailSection>
   );
 
@@ -156,7 +159,7 @@ export function OrderDetailBody({
       <AuthorizationSheet order={order} />
       {sections}
       {/* La sucursal sólo lee: sin notas internas. */}
-      {!viewer.roles.every((r) => r === "sucursal") && <OrderNotesSection orderId={order.id} />}
+      {!isBranchViewer && <OrderNotesSection orderId={order.id} />}
       {permissions.canSeeHistory && <OrderActivitySection orderId={order.id} />}
     </div>
   );

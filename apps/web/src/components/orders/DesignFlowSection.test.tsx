@@ -112,7 +112,41 @@ describe("DesignFlowSection - respuesta del cliente", () => {
     expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
   });
 
-  it("origen 'cliente' sin detalle alcanza y se manda en la autorización", async () => {
+  it("origen 'cliente' sin detalle alcanza: la línea en blanco se descarta y se manda lines: []", async () => {
+    approveRevision.mockClear();
+    revisions = [revision(1, false)];
+    render(<DesignFlowSection order={waiting} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
+    await userEvent.click(screen.getByRole("button", { name: "Taller" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Taller: lo trae el cliente" }));
+    // La línea sembrada queda vacía a propósito.
+    expect(screen.getByLabelText("Taller: descripción del insumo del cliente")).toHaveValue("");
+    await userEvent.click(screen.getByRole("button", { name: "Pasar a producción" }));
+
+    expect(approveRevision).toHaveBeenCalledWith({
+      revisionId: 1,
+      productionAreas: ["taller"],
+      supplies: [{ area: "taller", source: "cliente", lines: [] }],
+    });
+  });
+
+  it("origen 'cliente' a medias (sólo descripción) sigue bloqueando; quitar la línea lo libera", async () => {
+    approveRevision.mockClear();
+    revisions = [revision(1, false)];
+    render(<DesignFlowSection order={waiting} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Autorizó" }));
+    await userEvent.click(screen.getByRole("button", { name: "Taller" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Taller: lo trae el cliente" }));
+    await userEvent.type(screen.getByLabelText("Taller: descripción del insumo del cliente"), "playeras");
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Taller: quitar insumo del cliente" }));
+    expect(screen.getByRole("button", { name: "Pasar a producción" })).toBeEnabled();
+  });
+
+  it("origen 'cliente' con detalle completo se manda en la autorización", async () => {
     approveRevision.mockClear();
     revisions = [revision(1, false)];
     render(<DesignFlowSection order={waiting} />);

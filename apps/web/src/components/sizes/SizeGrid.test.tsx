@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { useState } from "react";
 import { SizeGrid } from "./SizeGrid";
 import { SizeSummary } from "./SizeSummary";
+import { OrderSizesList } from "./OrderSizesList";
 import type { SizeBreakdown } from "@/lib/garmentSizes";
 
 function Harness({ onChange }: { onChange?: (v: SizeBreakdown) => void }) {
@@ -48,6 +49,20 @@ describe("SizeGrid", () => {
     expect((input as HTMLInputElement).value).toBe("1");
     fireEvent.change(input, { target: { value: "a" } });
     expect((input as HTMLInputElement).value).toBe("");
+  });
+});
+
+describe("OrderSizesList", () => {
+  it("pasa summaryClassName al resumen (Modo TV: text-base en vez de text-xs)", () => {
+    render(
+      <OrderSizesList
+        products={[{ customName: "Playera", quantity: 10, sizes: { general: { S: 5, M: 5 } } }]}
+        summaryClassName="text-base"
+      />
+    );
+    const summary = screen.getByTestId("size-summary");
+    expect(summary).toHaveClass("text-base");
+    expect(summary).not.toHaveClass("text-xs");
   });
 });
 

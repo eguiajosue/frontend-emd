@@ -633,9 +633,12 @@ const OrdersPage = () => {
   // Qué tableros ve este usuario. Un diseñador que además trabaja otra área ve
   // los dos; quien tiene una sola área ve sólo el suyo. Recepción/admin ven
   // ambos porque siguen todo el circuito.
-  const worksInDesign = canManageOperations || roles.includes("diseno");
+  // La sucursal sigue sus pedidos de punta a punta: ve ambos tableros, de sólo
+  // lectura (no mueve nada: `canMoveOrder` no le deja ningún destino).
+  const worksInDesign = canManageOperations || isBranch || roles.includes("diseno");
   const worksInProduction =
     canManageOperations ||
+    isBranch ||
     roles.some((r) => PRODUCTION_ROLES.includes(r));
   // Si un pedido en diseño llegó igual (ej. rol mixto mal configurado), el
   // tablero se muestra antes que esconder trabajo. El de producción, en cambio,

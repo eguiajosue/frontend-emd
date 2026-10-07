@@ -274,6 +274,12 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
                     setProductSizes((prev) => prev.map((sz, j) => (j === i ? parseSizeBreakdown(next) : sz)))
                   }
                 />
+                {sizeBreakdownTotal(productSizes[i]) > 0 && sizeBreakdownTotal(productSizes[i]) !== op.quantity && (
+                  <p className="mt-1.5 text-meta" data-testid={`order-edit-sizes-hint-${i}`}>
+                    La cantidad de esta línea pasará de {op.quantity} a {sizeBreakdownTotal(productSizes[i])}: se toma
+                    el total de las tallas.
+                  </p>
+                )}
               </div>
             ) : null
           )}

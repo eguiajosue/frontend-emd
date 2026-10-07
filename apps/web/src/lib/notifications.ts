@@ -16,6 +16,7 @@ export type NotificationType =
   | "area_task_completed"
   | "chat_message"
   | "inventory_low_stock"
+  | "inventory_pending_discount"
   | "inventory_restock_request"
   | "inventory_restock_status"
   | "inventory_area_movement"
@@ -48,6 +49,7 @@ const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
   area_task_completed: "produccion",
   order_ready: "produccion",
   inventory_low_stock: "inventario",
+  inventory_pending_discount: "inventario",
   inventory_restock_request: "inventario",
   inventory_restock_status: "inventario",
   inventory_area_movement: "inventario",
@@ -128,6 +130,12 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     label: "Stock bajo",
     className:
       "border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+  },
+  // Terminó la tarea pero faltó existencia para descontar un insumo de la hoja de materiales.
+  inventory_pending_discount: {
+    label: "Descuento pendiente",
+    className:
+      "border-transparent bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
   },
   inventory_restock_request: {
     label: "Reabasto",

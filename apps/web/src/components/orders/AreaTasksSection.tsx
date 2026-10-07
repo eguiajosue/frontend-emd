@@ -202,8 +202,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
           ? `${getAreaLabel(task.area)} terminó su parte`
           : `${getAreaLabel(task.area)} en proceso`
       );
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+    } catch {
+      // El aviso con el mensaje del backend sale en `onError` de `setStatus`.
     }
   };
 

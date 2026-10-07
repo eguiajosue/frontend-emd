@@ -19,6 +19,7 @@ import {
   mockupFilename,
   normalizeHexColor,
   switchGarment,
+  garmentHasSizes,
 } from "./studio";
 import { DEFAULT_COLORS, MAX_MOCKUP_BYTES } from "./types";
 
@@ -46,6 +47,25 @@ describe("studio helpers", () => {
       true
     );
     expect(switchGarment(next, "cap")).toBe(next);
+  });
+
+  it("cambiar de prenda conserva las tallas; termo y taza no las usan ni las guardan", () => {
+    const sizes = { general: { M: 3, L: 2 } };
+    const config = { ...initialMockupConfig("tshirt"), sizes };
+    const cap = switchGarment(config, "cap");
+    expect(cap.sizes).toEqual(sizes);
+    expect(switchGarment(initialMockupConfig("tshirt"), "cap")).not.toHaveProperty("sizes");
+
+    expect(garmentHasSizes("tshirt")).toBe(true);
+    expect(garmentHasSizes("termo")).toBe(false);
+    expect(garmentHasSizes("taza")).toBe(false);
+
+    const taza = switchGarment(config, "taza");
+    expect(taza.sizes).toEqual(sizes);
+    const payload = buildMockupPayload({ image: { dataUrl: "data:image/png;base64,B", width: 1, height: 1 }, config: taza });
+    expect(payload.config).not.toHaveProperty("sizes");
+    // Y al volver a una prenda, las tallas siguen ahí.
+    expect(switchGarment(taza, "tshirt").sizes).toEqual(sizes);
   });
 
   it("normaliza colores hex escritos a mano", () => {

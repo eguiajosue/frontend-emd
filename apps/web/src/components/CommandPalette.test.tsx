@@ -9,8 +9,9 @@ const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 let canManageOperations = true;
+let isBranch = false;
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ canManageOperations }),
+  usePermissions: () => ({ canManageOperations, isBranch }),
 }));
 
 let extraNavItems: { title: string; group: string; url: string; icon: typeof Package; unreadCount: number }[] = [];
@@ -44,10 +45,22 @@ beforeEach(() => {
   localStorage.clear();
   push.mockReset();
   canManageOperations = true;
+  isBranch = false;
   extraNavItems = [];
 });
 
 describe("CommandPalette", () => {
+  it("sucursal: ve 'Nuevo pedido' (como el atajo N) pero no el Modo TV ni 'Nuevo cliente'", () => {
+    canManageOperations = false;
+    isBranch = true;
+    render(<CommandPalette />);
+    act(() => openCommandPalette());
+
+    expect(screen.getByRole("option", { name: /Nuevo pedido/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Modo TV/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Nuevo cliente/ })).not.toBeInTheDocument();
+  });
+
   it("se abre desde el botón de buscar (evento global) y lista las pantallas del menú del rol", () => {
     render(<CommandPalette />);
     act(() => openCommandPalette());

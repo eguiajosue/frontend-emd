@@ -140,7 +140,7 @@ export const TvTaskCard = memo(function TvTaskCard({
               {task.order.branch.name}
             </span>
           )}
-          <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" />
+          <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" summaryClassName="text-base" />
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

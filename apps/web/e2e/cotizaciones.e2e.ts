@@ -19,8 +19,15 @@ test("pegar de WhatsApp, cambiar a Aceptada y copiar para WhatsApp", async ({ pa
   await expect(page).toHaveURL(/\/dashboard\/inicio/, { timeout: 30_000 });
 
   // Se llega desde el menú (Operación › Cotizaciones).
-  await page.getByRole("link", { name: "Cotizaciones" }).first().click();
-  await expect(page).toHaveURL(/\/dashboard\/cotizaciones/);
+  // El riel se pinta cuando la sesión ya dijo el rol (antes no hay menú). Si el
+  // clic cae mientras la página termina de hidratarse puede perderse (la URL se
+  // queda en Inicio), así que se reintenta hasta que la navegación ocurra.
+  const rail = page.getByRole("navigation", { name: "Secciones" });
+  await expect(rail.getByRole("link", { name: "Cotizaciones" })).toBeVisible({ timeout: 30_000 });
+  await expect(async () => {
+    await rail.getByRole("link", { name: "Cotizaciones" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/cotizaciones/, { timeout: 5_000 });
+  }).toPass({ timeout: 45_000 });
   await expect(page.getByRole("heading", { level: 1, name: "Cotizaciones" })).toBeVisible();
   // El estado vacío sale cuando respondió GET /quotes (ya hidratada la página).
   await expect(page.getByText("Todavía no hay cotizaciones")).toBeVisible();

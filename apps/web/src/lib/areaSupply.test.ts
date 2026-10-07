@@ -50,6 +50,17 @@ describe("borradores de la hoja", () => {
     ).toBe(false);
   });
 
+  it("cliente: la línea sembrada en blanco se ignora; a medias sigue inválida", () => {
+    const blank = { key: "a", description: "", quantity: "" };
+    expect(draftsComplete({ dtf: { source: "cliente", lines: [blank] } }, ["dtf"])).toBe(true);
+    expect(draftsToInput({ dtf: { source: "cliente", lines: [blank] } }, ["dtf"])).toEqual([
+      { area: "dtf", source: "cliente", lines: [] },
+    ]);
+    expect(draftsComplete({ dtf: { source: "cliente", lines: [{ ...blank, description: "x" }] } }, ["dtf"])).toBe(false);
+    expect(draftsComplete({ dtf: { source: "cliente", lines: [{ ...blank, quantity: "3" }] } }, ["dtf"])).toBe(false);
+    expect(draftsComplete({ dtf: { source: "nosotros", lines: [blank] } }, ["dtf"])).toBe(false);
+  });
+
   it("convierte a la entrada del API (coma decimal incluida)", () => {
     const input = draftsToInput(
       { dtf: { source: "nosotros", lines: [{ key: "a", inventoryItemId: 3, description: "Film", quantity: "1,5" }] } },

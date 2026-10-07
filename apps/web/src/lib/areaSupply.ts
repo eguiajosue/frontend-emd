@@ -1,3 +1,4 @@
+import { MAX_QUANTITY } from "@/lib/inventory";
 import type { AreaSupply } from "@/types";
 
 /** Cantidad legible: sin ceros de más (el backend manda Decimal como string). */
@@ -50,23 +51,32 @@ export function emptyDrafts(areas: string[]): SupplyDrafts {
 
 const lineQuantity = (line: SupplyDraftLine) => Number(line.quantity.replace(",", "."));
 
+/** Línea en blanco (sin artículo, descripción ni cantidad): se descarta al validar y enviar. */
+export function isBlankLine(line: SupplyDraftLine): boolean {
+  return line.inventoryItemId === undefined && line.description.trim() === "" && line.quantity.trim() === "";
+}
+
+const nonBlank = (lines: SupplyDraftLine[]) => lines.filter((line) => !isBlankLine(line));
+
 /** Una línea válida tiene cantidad > 0 y (artículo de inventario o descripción). */
 function lineValid(line: SupplyDraftLine): boolean {
   const q = lineQuantity(line);
-  return Number.isFinite(q) && q > 0 && (line.inventoryItemId !== undefined || line.description.trim() !== "");
+  return Number.isFinite(q) && q > 0 && q <= MAX_QUANTITY && (line.inventoryItemId !== undefined || line.description.trim() !== "");
 }
 
 /**
  * ¿Se puede guardar? Cada área necesita origen; "nosotros" pide al menos un
  * insumo; "cliente" admite una sola línea opcional de descripción + cantidad
- * (si se escribe algo tiene que ser válida).
+ * (si se escribe algo tiene que ser válida; la línea sembrada en blanco se
+ * ignora, y una a medias —sólo descripción o sólo cantidad— sigue siendo inválida).
  */
 export function draftsComplete(drafts: SupplyDrafts, areas: string[]): boolean {
   return areas.every((area) => {
     const d = drafts[area];
     if (!d?.source) return false;
-    if (d.source === "nosotros") return d.lines.length > 0 && d.lines.every(lineValid);
-    return d.lines.every(lineValid);
+    const lines = nonBlank(d.lines);
+    if (d.source === "nosotros") return lines.length > 0 && lines.every(lineValid);
+    return lines.every(lineValid);
   });
 }
 
@@ -76,7 +86,7 @@ export function draftsToInput(drafts: SupplyDrafts, areas: string[]) {
     return {
       area,
       source: d.source as AreaSupply["source"],
-      lines: d.lines.map((line) => ({
+      lines: nonBlank(d.lines).map((line) => ({
         ...(line.inventoryItemId !== undefined && { inventoryItemId: line.inventoryItemId }),
         ...(line.description.trim() && { description: line.description.trim() }),
         quantity: lineQuantity(line),

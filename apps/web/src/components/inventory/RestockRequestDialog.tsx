@@ -18,7 +18,7 @@ import { FormField } from "@/components/ui/form-field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useRestockMutations } from "@/hooks/useInventory";
 import { getErrorMessage } from "@/lib/api";
-import { RESTOCK_URGENCY_LABEL, inventoryAreaLabel } from "@/lib/inventory";
+import { MAX_QUANTITY, RESTOCK_URGENCY_LABEL, inventoryAreaLabel } from "@/lib/inventory";
 import type { InventoryArea, InventoryItem, RestockRequestUrgency } from "@/types";
 
 interface RestockRequestDialogProps {
@@ -68,8 +68,8 @@ export function RestockRequestDialog({ open, item, areas, onClose }: RestockRequ
       return;
     }
     const qty = quantity.trim() === "" ? undefined : Number(quantity);
-    if (qty !== undefined && (!Number.isFinite(qty) || qty <= 0)) {
-      setError("La cantidad no es válida");
+    if (qty !== undefined && (!Number.isFinite(qty) || qty <= 0 || qty > MAX_QUANTITY)) {
+      setError(qty !== undefined && qty > MAX_QUANTITY ? `La cantidad máxima es ${MAX_QUANTITY.toLocaleString("es-MX")}` : "La cantidad no es válida");
       return;
     }
     try {
@@ -158,6 +158,7 @@ export function RestockRequestDialog({ open, item, areas, onClose }: RestockRequ
               id="rs-qty"
               type="number"
               min={0}
+              max={MAX_QUANTITY}
               step="any"
               inputMode="decimal"
               value={quantity}

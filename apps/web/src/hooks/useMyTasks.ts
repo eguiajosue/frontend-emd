@@ -6,6 +6,7 @@ import { request, getErrorMessage } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
+import { invalidateSupplyData, showSupplyWarnings } from "@/hooks/useAreaSupplies";
 import { getAreaLabel } from "@/lib/areas";
 import type { AreaTaskStatus, MyTask, OrderAreaTask } from "@/types";
 
@@ -45,8 +46,11 @@ export function useAdvanceMyTask() {
         { status },
         token
       ),
-    onSuccess: (_data, { task, status }) => {
+    onSuccess: (data, { task, status }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.all("orders") });
+      // Terminar una tarea descuenta del inventario lo apartado en su hoja.
+      invalidateSupplyData(queryClient);
+      showSupplyWarnings(data);
       const area = getAreaLabel(task.area);
       toast.success(
         status === "terminado"

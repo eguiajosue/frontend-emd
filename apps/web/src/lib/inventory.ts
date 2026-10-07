@@ -85,6 +85,9 @@ export function formatDelta(value: number): string {
   return "0";
 }
 
+/** Tope del backend por cantidad (movimiento, línea de insumo, aviso de reabasto): arriba de esto responde 400. */
+export const MAX_QUANTITY = 999999;
+
 /**
  * Stock que resulta de aplicar un movimiento, para la vista previa del
  * diálogo. `null` si la cantidad no es válida o la salida excede el stock.
@@ -94,7 +97,7 @@ export function projectedBalance(
   type: InventoryMovementType,
   quantity: number
 ): number | null {
-  if (!Number.isFinite(quantity) || quantity < 0) return null;
+  if (!Number.isFinite(quantity) || quantity < 0 || quantity > MAX_QUANTITY) return null;
   if (type === "AJUSTE") return quantity;
   if (quantity === 0) return null;
   if (type === "ENTRADA") return current + quantity;
@@ -172,4 +175,5 @@ export const MOVEMENT_SOURCE_LABEL: Record<string, string> = {
   area: "Área",
   scan: "Escáner",
   inicial: "Stock inicial",
+  orden: "Hoja de materiales",
 };

@@ -10,9 +10,12 @@ import { cn } from "@/lib/utils";
 export function OrderSizesList({
   products,
   className,
+  summaryClassName,
 }: {
   products?: Array<{ customName?: string | null; quantity: number; sizes?: unknown }> | null;
   className?: string;
+  /** Clases del resumen de tallas de cada línea (ej. `text-base` en el Modo TV, donde `text-xs` no se lee). */
+  summaryClassName?: string;
 }) {
   const sized = (products ?? []).filter((p) => parseSizeBreakdown(p.sizes));
   if (!sized.length) return null;
@@ -21,7 +24,7 @@ export function OrderSizesList({
       {sized.map((p, i) => (
         <li key={i} className="text-xs">
           <span className="font-semibold">{p.customName}</span>
-          <SizeSummary sizes={p.sizes} className="inline [&]:ml-1" />
+          <SizeSummary sizes={p.sizes} className={cn("inline [&]:ml-1", summaryClassName)} />
         </li>
       ))}
     </ul>

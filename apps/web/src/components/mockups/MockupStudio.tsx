@@ -33,6 +33,7 @@ import {
   GARMENT_MODELS,
   MOCKUP_TOO_LARGE_MESSAGE,
   buildMockupPayload,
+  garmentHasSizes,
   createLayer,
   exceedsMockupLimit,
   initialMockupConfig,
@@ -356,7 +357,7 @@ export function MockupStudio({
   const exportImage = async (): Promise<MockupStudioResult> => {
     const handle = canvasRef.current;
     if (!handle) throw new Error("El 3D no está disponible en este navegador.");
-    const image = await handle.exportSheet(config.sizes);
+    const image = await handle.exportSheet(garmentHasSizes(config.garment) ? config.sizes : null);
     return { image, config };
   };
 
@@ -618,10 +619,12 @@ export function MockupStudio({
             </div>
           </StudioSection>
 
-          <MockupSizesPanel
-            sizes={config.sizes}
-            onChange={(sizes) => setConfig((prev) => ({ ...prev, sizes }))}
-          />
+          {garmentHasSizes(config.garment) && (
+            <MockupSizesPanel
+              sizes={config.sizes}
+              onChange={(sizes) => setConfig((prev) => ({ ...prev, sizes }))}
+            />
+          )}
 
           <StudioSection
             title="Diseños"

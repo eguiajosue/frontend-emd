@@ -18,7 +18,7 @@ import { FormField } from "@/components/ui/form-field";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useInventoryMutations } from "@/hooks/useInventory";
 import { getErrorMessage } from "@/lib/api";
-import { MOVEMENT_TYPE_META, formatQuantity, projectedBalance } from "@/lib/inventory";
+import { MAX_QUANTITY, MOVEMENT_TYPE_META, formatQuantity, projectedBalance } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
 import type { InventoryItem, InventoryMovementType } from "@/types";
 
@@ -85,9 +85,11 @@ export function InventoryMovementDialog({ item, areaMode = false, initialType = 
   const handleSubmit = async () => {
     if (projected === null) {
       setError(
-        type === "SALIDA" && qty > item.quantity
-          ? `No alcanza: hay ${formatQuantity(item.quantity, item.unit)}`
-          : "Ingresa una cantidad válida"
+        qty > MAX_QUANTITY
+          ? `La cantidad máxima es ${MAX_QUANTITY.toLocaleString("es-MX")}`
+          : type === "SALIDA" && qty > item.quantity
+            ? `No alcanza: hay ${formatQuantity(item.quantity, item.unit)}`
+            : "Ingresa una cantidad válida"
       );
       return;
     }
@@ -158,6 +160,7 @@ export function InventoryMovementDialog({ item, areaMode = false, initialType = 
               id="mov-qty"
               type="number"
               min={0}
+              max={MAX_QUANTITY}
               step="any"
               inputMode="decimal"
               autoFocus

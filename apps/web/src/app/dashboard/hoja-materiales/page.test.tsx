@@ -25,6 +25,7 @@ vi.mock("@/hooks/useOrderMaterials", () => ({
 
 vi.mock("@/hooks/useAreaSupplies", () => ({
   useAreaSupplies: () => ({ data: { areas: [], movements: [] }, isLoading: false }),
+  useDiscountPendingSupplies: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
 }));
 
 vi.mock("@/hooks/usePermissions", () => ({

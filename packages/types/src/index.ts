@@ -236,10 +236,19 @@ export interface AreaSupplySheet {
       | (Omit<AreaSupply, "lines"> & {
           lines: (AreaSupplyLine & {
             state?: "apartado" | "descontado";
+            /**
+             * La tarea ya terminó pero esta línea no se descontó por falta de
+             * existencia (sigue apartada). Backends viejos no lo mandan.
+             */
+            pendingDiscount?: boolean;
+            /** Cuánto falta de existencia para descontarla (0 = ya alcanza, sólo falta reintentar). */
+            shortfall?: number;
             stock: { quantity: number; reserved: number; available: number } | null;
           })[];
         })
       | null;
+    /** Alguna línea del área quedó con el descuento pendiente. */
+    pendingDiscount?: boolean;
   }[];
   movements: {
     id: number;
@@ -748,7 +757,8 @@ export interface CalendarTask extends BaseEntity {
   completedAt?: string | null;
   /** Pedido relacionado, opcional (ej. "confirmar medidas" de un pedido puntual). */
   orderId?: number | null;
-  order?: { id: number; description: string } | null;
+  /** Las áreas sólo reciben el `id` (sin descripción del pedido). */
+  order?: { id: number; description?: string } | null;
   createdById: number;
   createdAt: string;
   createdBy?: AssignedUser | null;
@@ -919,7 +929,8 @@ export type UpdateInventoryItemPayload = Partial<Omit<CreateInventoryItemPayload
 /** ENTRADA suma, SALIDA resta, AJUSTE fija el stock al conteo físico. */
 export type InventoryMovementType = "ENTRADA" | "SALIDA" | "AJUSTE";
 
-export type InventoryMovementSource = "recepcion" | "area" | "scan" | "inicial";
+/** `orden`: descuento/devolución por la hoja de materiales de un pedido. */
+export type InventoryMovementSource = "recepcion" | "area" | "scan" | "inicial" | "orden";
 
 /** Filtros de la bitácora global (`GET /inventory/movements`). */
 export interface InventoryMovementsFilter {
@@ -952,7 +963,8 @@ export interface InventoryMovement extends BaseEntity {
   orderId?: number | null;
   createdAt: string;
   item?: { id: number; name: string; unit: string; area: InventoryArea } | null;
-  order?: { id: number; description: string } | null;
+  /** Las áreas sólo reciben el `id` (sin descripción del pedido). */
+  order?: { id: number; description?: string } | null;
   createdBy?: { id: number; firstName: string; lastName?: string | null } | null;
 }
 
