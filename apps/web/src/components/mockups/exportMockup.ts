@@ -1,4 +1,4 @@
-import type { DesignLayer, MockupExport, MockupView } from "@/lib/mockups/types";
+import type { DesignLayer, DownloadViewKey, MockupExport, MockupView } from "@/lib/mockups/types";
 import { parseSizeBreakdown, piecesLabel, sizeTableRows, type SizeBreakdown } from "@/lib/garmentSizes";
 
 /**
@@ -89,6 +89,25 @@ export function sheetViewsFor(layers: Pick<DesignLayer, "placement">[]): SheetVi
     { view: pickSideView(layers), label: "Lado" },
   ];
 }
+
+/** Qué descargar: la lámina con las tres vistas o una sola. */
+export const DOWNLOAD_VIEW_OPTIONS: { key: DownloadViewKey; label: string; description: string }[] = [
+  { key: "all", label: "Todas las vistas", description: "Lámina con Frente, Espalda y Lado" },
+  { key: "front", label: "Solo Frente", description: "Una imagen de la vista frontal" },
+  { key: "back", label: "Solo Espalda", description: "Una imagen de la vista trasera" },
+  { key: "side", label: "Solo Lado", description: "Una imagen de la vista lateral" },
+];
+
+/** Vistas a incluir según lo elegido (la lámina completa o una sola). */
+export function selectSheetViews(layers: Pick<DesignLayer, "placement">[], only: DownloadViewKey = "all"): SheetView[] {
+  const all = sheetViewsFor(layers);
+  if (only === "all") return all;
+  const wanted = only === "side" ? all[2] : all.find((v) => v.view === only);
+  return wanted ? [wanted] : all;
+}
+
+/** Medidas de una lámina con una sola vista: cuadrada, para que la prenda no quede diminuta. */
+export const SINGLE_VIEW_SIZE = 900;
 
 /** Dibuja una vista de `width × height` px y devuelve algo que `drawImage` acepte. */
 export type RenderPanel = (view: MockupView, width: number, height: number) => CanvasImageSource;

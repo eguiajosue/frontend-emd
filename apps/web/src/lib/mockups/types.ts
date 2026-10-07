@@ -150,13 +150,20 @@ export interface MockupExport {
   height: number;
 }
 
+/** Qué descargar: la lámina con las tres vistas o una sola. */
+export type DownloadViewKey = "all" | "front" | "back" | "side";
+
 /**
  * API imperativa que expone el lienzo 3D al estudio (vía ref).
  * `exportSheet` renderiza las vistas Frente / Espalda / Lado en una lámina.
  */
 export interface MockupCanvasHandle {
-  /** `sizes`: desglose de tallas a imprimir como tabla al pie (opcional). */
-  exportSheet: (sizes?: SizeBreakdown | null) => Promise<MockupExport>;
+  /**
+   * `sizes`: desglose de tallas a imprimir como tabla al pie (opcional).
+   * `only`: "all" (por defecto) = lámina con las tres vistas; "front" | "back" |
+   * "side" = una sola vista.
+   */
+  exportSheet: (sizes?: SizeBreakdown | null, only?: DownloadViewKey) => Promise<MockupExport>;
   /**
    * Miniatura chica (≈ 400 × 400, sólo la vista de frente, JPEG) para las
    * plantillas: pesa muy poco (≤ MAX_TEMPLATE_THUMBNAIL_BYTES, 96 KB).
