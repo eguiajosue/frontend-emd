@@ -52,7 +52,7 @@ beforeEach(() => {
 describe("dashboard layout - cuenta de sucursal", () => {
   it("en una ruta prohibida redirige a Mis pedidos y NO monta la página (sin consultas)", () => {
     mocks.isBranch = true;
-    mocks.pathname = "/dashboard/clientes";
+    mocks.pathname = "/dashboard/usuarios";
     render(
       <Layout>
         <Page />
@@ -63,6 +63,39 @@ describe("dashboard layout - cuenta de sucursal", () => {
     expect(mocks.pageMounted).not.toHaveBeenCalled();
     expect(screen.queryByText("contenido de la página")).not.toBeInTheDocument();
     expect(screen.getByTestId("branch-redirecting")).toBeInTheDocument();
+  });
+
+  it("Inventario (y su detalle) también la devuelve a Mis pedidos sin montar la página", () => {
+    for (const path of ["/dashboard/inventario", "/dashboard/inventario/3"]) {
+      mocks.replace.mockReset();
+      mocks.pageMounted.mockReset();
+      mocks.isBranch = true;
+      mocks.pathname = path;
+      const { unmount } = render(
+        <Layout>
+          <Page />
+        </Layout>
+      );
+      expect(mocks.replace).toHaveBeenCalledWith("/dashboard/orders");
+      expect(mocks.pageMounted).not.toHaveBeenCalled();
+      unmount();
+    }
+  });
+
+  it("su Historial y sus Clientes sí se montan", () => {
+    for (const path of ["/dashboard/mi-historial", "/dashboard/clientes"]) {
+      mocks.replace.mockReset();
+      mocks.isBranch = true;
+      mocks.pathname = path;
+      const { unmount } = render(
+        <Layout>
+          <Page />
+        </Layout>
+      );
+      expect(mocks.replace).not.toHaveBeenCalled();
+      expect(screen.getByText("contenido de la página")).toBeInTheDocument();
+      unmount();
+    }
   });
 
   it("en una ruta permitida muestra la página y no redirige", () => {

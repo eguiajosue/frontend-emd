@@ -20,12 +20,13 @@ describe("useVisibleNavGroups", () => {
     expect(result.current).toEqual([]);
   });
 
-  it("sucursal: sólo su menú, sin pasar nunca por el completo", () => {
+  it("sucursal: sólo su menú (sin 'Nuevo pedido' ni Inventario), sin pasar nunca por el completo", () => {
     session.value = withRoles(["sucursal"]);
     const { result } = renderHook(() => useVisibleNavGroups());
     expect(result.current.flatMap((g) => g.items.map((i) => i.title))).toEqual([
-      "Nuevo pedido",
       "Mis pedidos",
+      "Historial",
+      "Clientes",
       "Mockups",
     ]);
   });

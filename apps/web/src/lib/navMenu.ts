@@ -17,7 +17,6 @@ import {
   House,
   Shirt,
   ReceiptText,
-  FilePlus2,
   type LucideIcon,
 } from "lucide-react";
 import { isBranchOnly } from "@/lib/roles";
@@ -57,6 +56,15 @@ export const MOCKUPS_URL = "/dashboard/mockups";
 
 /** Pedidos (para la sucursal, "Mis pedidos"). */
 export const ORDERS_URL = "/dashboard/orders";
+
+/** Clientes (para la sucursal, SÓLO los suyos: el backend ya los filtra). */
+export const CLIENTS_URL = "/dashboard/clientes";
+
+/**
+ * Historial propio de la sucursal (todos sus pedidos, activos y terminados).
+ * Ruta distinta de `/dashboard/historial`, que es el historial global de la matriz.
+ */
+export const BRANCH_HISTORY_URL = "/dashboard/mi-historial";
 
 /** Cotizaciones de Recepción: por enviar / enviadas (docs/plans/cotizaciones.md). */
 export const QUOTES_URL = "/dashboard/cotizaciones";
@@ -142,19 +150,18 @@ export const OPERATIONAL_MENU: NavGroup[] = [
 ];
 
 /**
- * Menú de la cuenta de sucursal (ej. "Punto Madero"): sólo levantar pedidos,
- * ver los suyos y Mockups. Nada más (el backend también lo hace cumplir).
+ * Menú de la cuenta de sucursal (ej. "Punto Madero"): sus pedidos, su
+ * historial, sus clientes y Mockups. Nada más (el backend también lo hace
+ * cumplir). "Nuevo pedido" NO es una entrada del menú: se crea desde el botón
+ * de "Mis pedidos" (o con el atajo N / la paleta ⌘K).
  */
 export const BRANCH_MENU: NavGroup[] = [
   {
     groupLabel: "Sucursal",
     items: [
-      {
-        title: "Nuevo pedido",
-        url: `${ORDERS_URL}?new=1`,
-        icon: FilePlus2,
-      },
       { title: "Mis pedidos", url: ORDERS_URL, icon: Package },
+      { title: "Historial", url: BRANCH_HISTORY_URL, icon: History },
+      { title: "Clientes", url: CLIENTS_URL, icon: Building2 },
       { title: "Mockups", url: MOCKUPS_URL, icon: Shirt },
     ],
   },
@@ -319,6 +326,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/admin",
   HOME_URL,
   "/dashboard/orders",
+  BRANCH_HISTORY_URL,
   TASKS_URL,
   "/dashboard/chat",
   "/dashboard/notificaciones",
@@ -381,10 +389,18 @@ export function homePathForRoles(roles: string[]): string {
   return "/dashboard/orders";
 }
 
-/** Rutas a las que puede entrar la cuenta de sucursal (Pedidos, Mockups y Configuración personal). */
+/** Rutas a las que puede entrar la cuenta de sucursal (sin Inventario ni nada de gestión). */
+export const BRANCH_ALLOWED_PATHS = [
+  ORDERS_URL,
+  BRANCH_HISTORY_URL,
+  CLIENTS_URL,
+  MOCKUPS_URL,
+  "/dashboard/configuracion",
+];
+
 export function isBranchAllowedPath(pathname: string | null): boolean {
   if (!pathname) return true;
-  return [ORDERS_URL, MOCKUPS_URL, "/dashboard/configuracion"].some(
+  return BRANCH_ALLOWED_PATHS.some(
     (url) => pathname === url || pathname.startsWith(`${url}/`)
   );
 }

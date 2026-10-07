@@ -45,8 +45,8 @@ export function openCommandPalette() {
 }
 
 const ORDERS_URL = "/dashboard/orders";
-const TASKS_URL = "/dashboard/tareas";
 const CLIENTS_URL = "/dashboard/clientes";
+const TASKS_URL = "/dashboard/tareas";
 const CONFIG_URL = "/dashboard/configuracion";
 
 function clientName(client: Client): string {
@@ -141,7 +141,8 @@ export function CommandPalette() {
           },
         ]
       : []),
-    ...(canManageOperations && canSeeClients
+    // La sucursal da de alta SUS clientes (el backend los liga a su sucursal).
+    ...(canCreateOrders && canSeeClients
       ? [
           {
             value: "action:new-client",

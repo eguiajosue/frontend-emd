@@ -20,6 +20,9 @@
  * - `POST /__e2e/reset-inventory`: vuelve el inventario a sus 3 artículos iniciales.
  * - `POST /__e2e/reset-preferences`: vuelve las preferencias al estado inicial
  *   (barra lateral por defecto: `navPreferences: null`).
+ * - `POST /__e2e/reset-branches`: sucursales, clientes, productos frecuentes y contadores de la sucursal.
+ * - `POST /__e2e/seed-branch-orders {count}`: `count` pedidos extra de Punto Madero (alternan pendiente/entregado).
+ * - `GET  /__e2e/clients` · `GET /__e2e/presets` · `GET /__e2e/forbidden-calls`: lo guardado / lo que la sucursal intentó pedir.
  * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
  */
 import { createServer } from "node:http";
@@ -104,6 +107,27 @@ let tareasTv = tareasTvIniciales();
 const ORDEN_AUTORIZAR = 110;
 /** Veces que una cuenta de sucursal pidió la hoja de materiales (debe ser 0). */
 let hojasPedidasPorSucursal = 0;
+
+/** Llamadas que la sucursal NO debe hacer (inventario, empresas); el test comprueba que son 0. */
+let llamadasProhibidas = { inventory: 0, companies: 0 };
+
+/**
+ * Clientes (`/clients`): la sucursal sólo ve y crea los SUYOS (el backend los
+ * liga a su sucursal); la matriz ve todos y puede filtrar `?branchId=`.
+ */
+const clientesIniciales = () => [
+  { id: 1, first_name: "Colegio", last_name: "San Marcos", phone: null, email: null, address: null, companyId: null, company: null, branchId: null, branch: null },
+  { id: 2, first_name: "Ferretería", last_name: "El Tornillo", phone: null, email: null, address: null, companyId: null, company: null, branchId: null, branch: null },
+  { id: 3, first_name: "Escuela", last_name: "Madero", phone: "555-0100", email: null, address: null, companyId: null, company: null, branchId: 1, branch: { id: 1, name: "Punto Madero" } },
+];
+let clientes = clientesIniciales();
+let siguienteClienteId = 50;
+
+/** Catálogo de productos frecuentes (`/order-product-presets`): empieza vacío. */
+let presetsProducto = [];
+let siguientePresetId = 1;
+const clavePreset = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
 const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
 let autorizar = autorizarInicial();
 const pedidoAutorizar = () => ({
@@ -566,7 +590,7 @@ const rutas = {
   "GET /orders": () => pedidos(),
   "GET /status": () => estados,
   "GET /users": () => usuarios,
-  "GET /clients": () => [],
+  "GET /clients": () => clientes,
   "GET /settings": () => ({ deliveredRetentionHours: 72 }),
   "GET /notifications/unread-count": () => ({ unreadCount: 0 }),
   // Tour de bienvenida ya visto: si no, su capa (fixed, z-110) tapa la
@@ -881,6 +905,10 @@ createServer((req, res) => {
     const quien = usuarioDe(req);
     const misAreas = areasDe(quien);
     const esGestor = quien.roles.some((x) => GESTORES.includes(x.name));
+    if (path.startsWith("/inventory") && esSucursal(quien)) {
+      llamadasProhibidas.inventory++;
+      return send({ message: "Forbidden" }, 403);
+    }
     if (path.startsWith("/inventory") && misAreas.length === 0 && !esGestor) return send({ message: "Forbidden" }, 403);
     if (path === "/inventory/areas" && req.method === "GET") return send(misAreas);
     if (path === "/inventory/movements" && req.method === "GET") {
@@ -1037,7 +1065,95 @@ createServer((req, res) => {
       hojasPedidasPorSucursal = 0;
       sucursales = sucursalesIniciales();
       pedidosSucursalCreados = [];
+      siguientePedidoSucursalId = 200;
+      clientes = clientesIniciales();
+      siguienteClienteId = 50;
+      presetsProducto = [];
+      siguientePresetId = 1;
+      llamadasProhibidas = { inventory: 0, companies: 0 };
+      preferencias = { ...PREFERENCIAS_INICIALES };
       return send({ ok: true });
+    }
+    if (req.method === "GET" && path === "/__e2e/clients") return send(clientes);
+    if (req.method === "GET" && path === "/__e2e/presets") return send(presetsProducto);
+    if (req.method === "GET" && path === "/__e2e/forbidden-calls") return send(llamadasProhibidas);
+    if (req.method === "POST" && path === "/__e2e/seed-branch-orders") {
+      const { count = 25 } = JSON.parse(body || "{}");
+      for (let i = 1; i <= count; i++) {
+        const entregado = i % 2 === 0;
+        pedidosSucursalCreados.push({
+          id: siguientePedidoSucursalId++, statusId: entregado ? 5 : 1, status: { id: entregado ? 5 : 1, name: entregado ? "entregado" : "pendiente" },
+          clientNameOverride: `Cliente ${i}`, description: `Pedido de prueba ${i}`,
+          creationDate: new Date(Date.UTC(2026, 7, 1, 12) + i * 86_400_000).toISOString(), deliveryDate: null,
+          deliveredAt: entregado ? "2026-09-01T12:00:00.000Z" : null, area: "taller", requiresDesign: false, areaTasks: [], orderProducts: [],
+          assignedUser: null, branchId: 1, branch: { id: 1, name: "Punto Madero" },
+          branchEmployeeId: 1, branchEmployee: { id: 1, name: "Ana López" },
+        });
+      }
+      return send({ ok: true, total: pedidosSucursalCreados.length });
+    }
+
+    // Empresas: no son de la sucursal (y la pantalla no debe ni pedirlas).
+    if (path === "/companies" && esSucursal(quien)) {
+      llamadasProhibidas.companies++;
+      return send({ message: "Forbidden" }, 403);
+    }
+
+    // Clientes: la sucursal sólo ve/crea/edita los suyos; la matriz ve todos (`?branchId=` filtra).
+    {
+      const ruta = path.match(/^\/clients(?:\/(\d+))?$/);
+      if (ruta) {
+        const datos = () => JSON.parse(body || "{}");
+        const id = ruta[1] ? Number(ruta[1]) : null;
+        if (id === null && req.method === "GET") {
+          const branchId = url.searchParams.get("branchId");
+          return send(
+            clientes.filter((c) => (esSucursal(quien) ? c.branchId === quien.branchId : !branchId || String(c.branchId) === branchId))
+          );
+        }
+        if (id === null && req.method === "POST") {
+          const dto = datos();
+          if (!dto.first_name?.trim()) return send({ message: "El nombre es requerido" }, 400);
+          const b = esSucursal(quien) ? sucursales.find((x) => x.id === quien.branchId) : null;
+          const nuevo = {
+            id: siguienteClienteId++, first_name: dto.first_name, last_name: dto.last_name ?? "", phone: dto.phone ?? null,
+            email: dto.email ?? null, address: dto.address ?? null, companyId: b ? null : dto.companyId ?? null, company: null,
+            // La sucursal NO manda branchId: el backend lo liga a la suya.
+            branchId: b ? b.id : null, branch: b ? { id: b.id, name: b.name } : null,
+          };
+          clientes.push(nuevo);
+          return send(nuevo, 201);
+        }
+        if (id !== null && ["GET", "PATCH", "DELETE"].includes(req.method)) {
+          const c = clientes.find((x) => x.id === id);
+          if (!c || (esSucursal(quien) && c.branchId !== quien.branchId)) return send({ message: "Cliente no encontrado" }, 404);
+          if (req.method === "GET") return send(c);
+          if (req.method === "DELETE") {
+            if (esSucursal(quien)) return send({ message: "Sin permisos para eliminar clientes" }, 403);
+            clientes = clientes.filter((x) => x !== c);
+            return res.writeHead(204).end();
+          }
+          const cambios = datos();
+          delete cambios.branchId;
+          Object.assign(c, cambios);
+          return send(c);
+        }
+      }
+    }
+
+    // Productos frecuentes: el alta es idempotente (devuelve el existente).
+    if (path === "/order-product-presets" && req.method === "GET") {
+      return send([...presetsProducto].sort((a, b) => (b.uses ?? 0) - (a.uses ?? 0) || a.id - b.id));
+    }
+    if (path === "/order-product-presets" && req.method === "POST") {
+      const name = String(JSON.parse(body || "{}").name ?? "").replace(/\s+/g, " ").trim();
+      if (name.length < 1 || name.length > 80) return send({ message: "El nombre debe tener entre 1 y 80 caracteres" }, 400);
+      if (clavePreset(name) === "prohibido") return send({ message: "Ese nombre de producto no está permitido" }, 400);
+      const existente = presetsProducto.find((p) => clavePreset(p.name) === clavePreset(name));
+      if (existente) return send(existente, 200);
+      const nuevo = { id: siguientePresetId++, name, uses: 0 };
+      presetsProducto.push(nuevo);
+      return send(nuevo, 201);
     }
     if (req.method === "GET" && path === "/__e2e/branch-orders") return send(pedidosSucursalCreados);
     if (req.method === "GET" && path === "/roles") return send(roles);
@@ -1081,7 +1197,25 @@ createServer((req, res) => {
 
     // Pedidos: la sucursal sólo ve (y levanta) los suyos; el empleado es obligatorio.
     if (path === "/orders" && req.method === "GET" && esSucursal(quien)) {
-      return send(pedidos().filter((p) => p.branchId === quien.branchId));
+      const propios = pedidos().filter((p) => p.branchId === quien.branchId);
+      // Sin parámetros: lista plana (Mis pedidos). Con `page`/`limit`/filtros: historial paginado.
+      if (!["page", "limit", "q", "statusId", "from", "to"].some((k) => url.searchParams.has(k))) return send(propios);
+      const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+      const statusId = Number(url.searchParams.get("statusId")) || null;
+      const from = url.searchParams.get("from");
+      const to = url.searchParams.get("to");
+      const filtrados = propios
+        .filter((p) => !statusId || p.statusId === statusId)
+        .filter((p) => !from || new Date(p.creationDate) >= new Date(from))
+        .filter((p) => !to || new Date(p.creationDate) <= new Date(to))
+        .filter((p) => !q || `${p.id} ${p.clientNameOverride ?? ""} ${p.description ?? ""}`.toLowerCase().includes(q))
+        .sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate) || b.id - a.id);
+      const limit = Number(url.searchParams.get("limit")) || 20;
+      const page = Number(url.searchParams.get("page")) || 1;
+      return send({
+        data: filtrados.slice((page - 1) * limit, page * limit),
+        meta: { total: filtrados.length, page, limit, totalPages: Math.max(1, Math.ceil(filtrados.length / limit)) },
+      });
     }
     if (path === "/orders" && req.method === "POST") {
       const dto = JSON.parse(body || "{}");
@@ -1091,9 +1225,12 @@ createServer((req, res) => {
         const e = b?.employees.find((x) => x.id === dto.branchEmployeeId);
         if (!e) return send({ message: "El empleado no pertenece a la sucursal" }, 400);
         if (!e.active) return send({ message: "El empleado está inactivo" }, 400);
+        const cliente = dto.clientId ? clientes.find((c) => c.id === dto.clientId && c.branchId === b.id) : null;
+        if (dto.clientId && !cliente) return send({ message: "El cliente no pertenece a la sucursal" }, 400);
         const creado = {
           id: siguientePedidoSucursalId++, statusId: 6, status: { id: 6, name: "en diseño" },
-          clientNameOverride: dto.clientNameOverride ?? "Cliente", description: dto.description,
+          clientId: cliente?.id ?? null, client: cliente ?? null,
+          clientNameOverride: cliente ? null : dto.clientNameOverride ?? "Cliente", description: dto.description,
           creationDate: new Date().toISOString(), deliveryDate: dto.deliveryDate ?? null, deliveredAt: null,
           area: "diseno", requiresDesign: true, areaTasks: [], orderProducts: dto.orderProducts ?? [],
           assignedUser: usuarios[2], branchId: b.id, branch: { id: b.id, name: b.name },

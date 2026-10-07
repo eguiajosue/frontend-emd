@@ -53,9 +53,17 @@ function initialTabFromUrl(): "clientes" | "empresas" {
 }
 
 const ClientesPage = () => {
-  const { canManageOperations } = usePermissions();
-  const { data: companies } = useEntityList<Company>("companies");
+  const { canManageOperations, isBranch } = usePermissions();
+  // La sucursal da de alta y edita SUS clientes (el backend los filtra y los liga
+  // a su sucursal); no ve empresas, plantillas de pedido ni elimina.
+  const canEditClients = canManageOperations || isBranch;
+  const { data: companies } = useEntityList<Company>("companies", { enabled: !isBranch });
+  // Misma consulta que la tabla (cache compartida): decide si la matriz necesita la columna "Sucursal".
+  const { data: allClients } = useEntityList<Client>("clients");
+  const showBranchColumn = !isBranch && allClients.some((c) => c.branch);
   const [tab, setTab] = useState<"clientes" | "empresas">(initialTabFromUrl);
+  // Sin pestaña Empresas, la sucursal siempre ve Clientes (aunque la URL diga ?tab=empresas).
+  const activeTab = isBranch ? "clientes" : tab;
   const [ordersClientId, setOrdersClientId] = useState<number | null>(null);
   const [templatesClientId, setTemplatesClientId] = useState<number | null>(null);
   // `?new=1` (acción "Nuevo cliente" de la paleta ⌘K) abre el alta. Se
@@ -83,7 +91,7 @@ const ClientesPage = () => {
   const clientColumnsWithOrders = useMemo(
     () =>
       (args: CrudColumnsArgs<Client>): ColumnDef<Client>[] => {
-        const base = getClientColumns(args);
+        const base = getClientColumns(args, { showCompany: !isBranch, showBranch: showBranchColumn });
         return [
           ...base.slice(0, -1),
           {
@@ -91,16 +99,19 @@ const ClientesPage = () => {
             header: "",
             cell: ({ row }) => (
               <div className="flex items-center">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title="Ver pedidos del cliente"
-                  aria-label="Ver pedidos del cliente"
-                  onClick={() => setOrdersClientId(row.original.id)}
-                >
-                  <History className="h-4 w-4" />
-                </Button>
+                {/* La sucursal ve sus pedidos en Mi historial: el backend le cierra GET /clients/:id/orders. */}
+                {!isBranch && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Ver pedidos del cliente"
+                    aria-label="Ver pedidos del cliente"
+                    onClick={() => setOrdersClientId(row.original.id)}
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                )}
                 {/* Plantillas de pedido: sólo quien da de alta pedidos. */}
                 {canManageOperations && (
                   <Button
@@ -120,11 +131,13 @@ const ClientesPage = () => {
           ...base.slice(-1),
         ];
       },
-    [canManageOperations]
+    [canManageOperations, isBranch, showBranchColumn]
   );
 
-  const clientFilters: CrudFilterConfig<Client>[] = useMemo(
-    () => [
+  const clientFilters: CrudFilterConfig<Client>[] = useMemo(() => {
+    // La sucursal no ve empresas: no hay nada que filtrar.
+    if (isBranch) return [];
+    return [
       {
         key: "companyId",
         label: "Empresa",
@@ -132,9 +145,8 @@ const ClientesPage = () => {
         options: companies.map((c) => ({ value: String(c.id), label: c.name })),
         matches: (item, value) => String(item.companyId ?? "") === value,
       },
-    ],
-    [companies]
-  );
+    ];
+  }, [companies, isBranch]);
 
   const clientFields: FieldConfig[] = useMemo(
     () => [
@@ -143,14 +155,18 @@ const ClientesPage = () => {
       { name: "phone", label: "Teléfono" },
       { name: "email", label: "Email", type: "email" },
       { name: "address", label: "Dirección" },
-      {
-        name: "companyId",
-        label: "Empresa",
-        type: "select",
-        options: companies.map((c) => ({ value: c.id, label: c.name })),
-      },
+      ...(isBranch
+        ? []
+        : [
+            {
+              name: "companyId",
+              label: "Empresa",
+              type: "select" as const,
+              options: companies.map((c) => ({ value: c.id, label: c.name })),
+            },
+          ]),
     ],
-    [companies]
+    [companies, isBranch]
   );
 
   const handleTabChange = (value: string) => {
@@ -164,18 +180,21 @@ const ClientesPage = () => {
   return (
     <div className="space-y-4">
       <Title title="Clientes" />
-      <Tabs value={tab} onValueChange={handleTabChange}>
-        <TabsList>
-          <TabsTrigger value="clientes">Clientes</TabsTrigger>
-          <TabsTrigger value="empresas">Empresas</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        {!isBranch && (
+          <TabsList>
+            <TabsTrigger value="clientes">Clientes</TabsTrigger>
+            <TabsTrigger value="empresas">Empresas</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="clientes">
           <CrudPage<Client>
             entity="clients"
             title="Clientes"
             createLabel="Nuevo Cliente"
-            canEdit={canManageOperations}
+            canEdit={canEditClients}
+            canDelete={!isBranch}
             openCreateOnMount={createOnMount}
             onFormClose={clearNewParam}
             fields={clientFields}
@@ -204,35 +223,37 @@ const ClientesPage = () => {
           />
         </TabsContent>
 
-        <TabsContent value="empresas">
-          <CrudPage<Company>
-            entity="companies"
-            title="Empresas"
-            createLabel="Nueva Empresa"
-            canEdit={canManageOperations}
-            fields={companyFields}
-            schema={companySchema}
-            columns={getCompanyColumns}
-            search={{ placeholder: "Buscar empresa..." }}
-            emptyMessage="Ninguna empresa registrada por ahora"
-            emptyDescription="Agrupar a los clientes corporativos creando la primera empresa."
-            emptyIcon={Building2}
-            deleteDescription="Esta acción eliminará la empresa de forma permanente."
-            dialogTitle={(editing) => (editing ? "Editar Empresa" : "Nueva Empresa")}
-            hideTitle
-            initialValues={(editing) =>
-              editing
-                ? {
-                    name: editing.name,
-                    phone: editing.phone ?? "",
-                    email: editing.email ?? "",
-                    address: editing.address ?? "",
-                    location: editing.location ?? "",
-                  }
-                : {}
-            }
-          />
-        </TabsContent>
+        {!isBranch && (
+          <TabsContent value="empresas">
+            <CrudPage<Company>
+              entity="companies"
+              title="Empresas"
+              createLabel="Nueva Empresa"
+              canEdit={canManageOperations}
+              fields={companyFields}
+              schema={companySchema}
+              columns={getCompanyColumns}
+              search={{ placeholder: "Buscar empresa..." }}
+              emptyMessage="Ninguna empresa registrada por ahora"
+              emptyDescription="Agrupar a los clientes corporativos creando la primera empresa."
+              emptyIcon={Building2}
+              deleteDescription="Esta acción eliminará la empresa de forma permanente."
+              dialogTitle={(editing) => (editing ? "Editar Empresa" : "Nueva Empresa")}
+              hideTitle
+              initialValues={(editing) =>
+                editing
+                  ? {
+                      name: editing.name,
+                      phone: editing.phone ?? "",
+                      email: editing.email ?? "",
+                      address: editing.address ?? "",
+                      location: editing.location ?? "",
+                    }
+                  : {}
+              }
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <ClientOrdersDialog

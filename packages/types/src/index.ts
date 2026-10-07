@@ -38,6 +38,9 @@ export interface Client extends BaseEntity {
   email?: string | null;
   address?: string | null;
   company?: Company | null;
+  /** Sucursal dueña del cliente ("Punto Madero"); `null`/ausente = cliente de la matriz. */
+  branchId?: number | null;
+  branch?: BranchRef | null;
 }
 
 export interface User extends BaseEntity {

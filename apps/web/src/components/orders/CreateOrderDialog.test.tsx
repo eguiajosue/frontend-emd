@@ -66,6 +66,11 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => ({ invalidateQueries }),
 }));
 
+const createPresetMock = vi.fn();
+vi.mock("@/hooks/useProductPresets", () => ({
+  useCreateProductPreset: () => ({ createPreset: createPresetMock, isCreating: false }),
+}));
+
 const requestMock = vi.fn();
 vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
@@ -422,6 +427,25 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Agregar Playera a frecuentes" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(updatePreferencesMock).toHaveBeenCalledWith({ frequentProductIds: [2, 1] });
+  });
+
+  it("Personalizar crea un producto nuevo (POST) y lo guarda en las preferencias", async () => {
+    mockData.orderProductPresets = [{ id: 1, name: "Playera" }];
+    createPresetMock.mockResolvedValue({ id: 9, name: "Termo grabado", uses: 0 });
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    await userEvent.type(screen.getByLabelText("Producto nuevo"), "Termo grabado");
+    await userEvent.click(screen.getByRole("button", { name: "Agregar" }));
+    expect(createPresetMock).toHaveBeenCalledWith("Termo grabado");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(updatePreferencesMock).toHaveBeenCalledWith({ frequentProductIds: [1, 9] });
+  });
+
+  it("con el catálogo vacío 'Personalizar' sigue disponible para crear el primer producto", async () => {
+    mockData.orderProductPresets = [];
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    expect(screen.getByLabelText("Producto nuevo")).toBeInTheDocument();
   });
 
   it("el stepper suma y resta sin bajar de 1", async () => {
