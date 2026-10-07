@@ -31,7 +31,7 @@ vi.mock("@/components/clients/ClientTemplatesDialog", () => ({ ClientTemplatesDi
 import ClientesPage from "./page";
 import { getClientColumns } from "./components/clientColumns";
 
-type ColumnsFn = (args: { onEdit: () => void; onDelete: () => void; canEdit: boolean; canDelete?: boolean }) => { header?: string }[];
+type ColumnsFn = (args: { onEdit: () => void; onDelete: () => void; canEdit: boolean; canDelete?: boolean }) => { id?: string; header?: string; cell?: unknown }[];
 
 const crud = (entity: string) => mocks.crudProps.find((p) => p.entity === entity);
 
@@ -72,6 +72,15 @@ describe("Clientes - sucursal", () => {
     expect(headers).not.toContain("Empresa");
     expect(headers).toContain("");
   });
+
+  it("no ofrece \"Ver pedidos del cliente\" (el backend le cierra esa ruta; usa Mi historial)", () => {
+    render(<ClientesPage />);
+    expect(screen.queryByRole("button", { name: "Ver pedidos del cliente" })).not.toBeInTheDocument();
+    const cols = (crud("clients")!.columns as ColumnsFn)({ onEdit() {}, onDelete() {}, canEdit: true, canDelete: false });
+    const actions = cols.find((c) => c.id === "viewOrders")!;
+    const { container } = render(<>{(actions.cell as (ctx: unknown) => React.ReactNode)({ row: { original: { id: 1 } } })}</>);
+    expect(container.querySelector('[aria-label="Ver pedidos del cliente"]')).toBeNull();
+  });
 });
 
 describe("Clientes - matriz", () => {
@@ -83,6 +92,14 @@ describe("Clientes - matriz", () => {
     expect(props.canDelete).toBe(true);
     expect((props.filters as unknown[]).length).toBe(1);
     expect((props.fields as { name: string }[]).map((f) => f.name)).toContain("companyId");
+  });
+
+  it("conserva \"Ver pedidos del cliente\"", () => {
+    render(<ClientesPage />);
+    const cols = (crud("clients")!.columns as ColumnsFn)({ onEdit() {}, onDelete() {}, canEdit: true, canDelete: true });
+    const actions = cols.find((c) => c.id === "viewOrders")!;
+    const { container } = render(<>{(actions.cell as (ctx: unknown) => React.ReactNode)({ row: { original: { id: 1 } } })}</>);
+    expect(container.querySelector('[aria-label="Ver pedidos del cliente"]')).not.toBeNull();
   });
 
   it("muestra la columna Sucursal sólo si hay clientes de sucursal", () => {

@@ -99,16 +99,19 @@ const ClientesPage = () => {
             header: "",
             cell: ({ row }) => (
               <div className="flex items-center">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title="Ver pedidos del cliente"
-                  aria-label="Ver pedidos del cliente"
-                  onClick={() => setOrdersClientId(row.original.id)}
-                >
-                  <History className="h-4 w-4" />
-                </Button>
+                {/* La sucursal ve sus pedidos en Mi historial: el backend le cierra GET /clients/:id/orders. */}
+                {!isBranch && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title="Ver pedidos del cliente"
+                    aria-label="Ver pedidos del cliente"
+                    onClick={() => setOrdersClientId(row.original.id)}
+                  >
+                    <History className="h-4 w-4" />
+                  </Button>
+                )}
                 {/* Plantillas de pedido: sólo quien da de alta pedidos. */}
                 {canManageOperations && (
                   <Button
