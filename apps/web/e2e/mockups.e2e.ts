@@ -346,7 +346,9 @@ test("5 · Rotulaciones: cada vehículo carga, lleva un logo, cambia de vista, e
   const shots = process.env.E2E_SHOTS_DIR;
   const errores: string[] = [];
   page.on("console", (m) => {
-    if (m.type() === "error" && !/favicon|404/.test(m.text())) errores.push(m.text());
+    // El mock de la API no atiende WebSockets (tiempo real de notificaciones): ese ruido
+    // crece con la duración del caso y no tiene que ver con el 3D.
+    if (m.type() === "error" && !/favicon|404|socket\.io/.test(m.text())) errores.push(m.text());
   });
   page.on("pageerror", (e) => errores.push(e.message));
   await login(page);
