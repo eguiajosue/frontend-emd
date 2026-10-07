@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   alphaBounds,
+  computeRowsLayout,
   computeSheetLayout,
+  DOWNLOAD_VIEW_OPTIONS,
+  downloadViewOptions,
+  sheetPlanFor,
+  vehicleSheetPlan,
+  vehicleSingleViewSize,
   fitScale,
   pickSideView,
   selectSheetViews,
@@ -123,5 +129,58 @@ describe("selectSheetViews", () => {
     const [side] = selectSheetViews(layers, "side");
     expect(side.label).toBe("Lado");
     expect(side.view).toBe(sheetViewsFor(layers)[2].view);
+  });
+});
+
+describe("vehículos: vistas y lámina", () => {
+  const left = { placement: { position: [0, 0, 0], normal: [1, 0, 0], scale: 1, rotation: 0 } } as never;
+  const roof = { placement: { position: [0, 0, 0], normal: [0, 1, 0], scale: 1, rotation: 0 } } as never;
+
+  it("lámina: Frente, Atrás y los dos lados; Arriba sólo con diseños en techo o cofre", () => {
+    expect(sheetViewsFor([], "car").map((v) => v.label)).toEqual(["Frente", "Atrás", "Lado izquierdo", "Lado derecho"]);
+    expect(sheetViewsFor([left], "pickup")).toHaveLength(4);
+    expect(sheetViewsFor([roof], "car").map((v) => v.view)).toEqual(["front", "back", "left", "right", "top"]);
+    // Las prendas no cambian.
+    expect(sheetViewsFor([], "tshirt").map((v) => v.label)).toEqual(["Frente", "Espalda", "Lado"]);
+  });
+
+  it("descarga de una vista y menú por producto", () => {
+    expect(selectSheetViews([], "left", "car")).toEqual([{ view: "left", label: "Lado izquierdo" }]);
+    expect(selectSheetViews([], "top", "bicycle")).toEqual([{ view: "top", label: "Arriba" }]);
+    expect(selectSheetViews([], "back", "trailer")[0].label).toBe("Atrás");
+    expect(selectSheetViews([left], "side", "car")[0].view).toBe("left");
+    expect(selectSheetViews([], "back", "tshirt")[0].label).toBe("Espalda");
+    expect(downloadViewOptions("car").map((o) => o.key)).toEqual(["all", "front", "back", "left", "right", "top"]);
+    expect(downloadViewOptions("tshirt").map((o) => o.key)).toEqual(["all", "front", "back", "side"]);
+    expect(downloadViewOptions()).toBe(DOWNLOAD_VIEW_OPTIONS);
+  });
+
+  it("computeRowsLayout reparte filas sin encimar paneles ni salirse de la lámina", () => {
+    const panels = computeRowsLayout({ rows: [3, 2], rowWeights: [0.55, 0.45], width: 1600, height: 960 });
+    expect(panels).toHaveLength(5);
+    for (const p of panels) {
+      expect(p.x).toBeGreaterThanOrEqual(0);
+      expect(p.x + p.width).toBeLessThanOrEqual(1600);
+      expect(p.y + p.height).toBeLessThan(960);
+      expect(p.width).toBeGreaterThan(100);
+    }
+    expect(panels[3].y).toBeGreaterThan(panels[0].y + panels[0].height);
+    expect(panels[3].width).toBeGreaterThan(panels[0].width);
+    expect(computeRowsLayout({ rows: [] })).toEqual([]);
+  });
+
+  it("el tráiler completo usa una fila por costado; los demás, dos filas", () => {
+    const four = sheetViewsFor([], "trailer");
+    expect(vehicleSheetPlan("trailer", "full", four).rows).toEqual([2, 1, 1]);
+    expect(vehicleSheetPlan("trailer", "cab", four).rows).toEqual([2, 2]);
+    expect(vehicleSheetPlan("car", undefined, sheetViewsFor([roof], "car")).rows).toEqual([3, 2]);
+    expect(vehicleSingleViewSize("car", undefined, "left").width).toBeGreaterThan(vehicleSingleViewSize("car", undefined, "front").width);
+    expect(sheetPlanFor("tshirt", [], "front", undefined)).toMatchObject({ width: 900, height: 900 });
+    expect(sheetPlanFor("car", four, "all", undefined).rows).toEqual([2, 2]);
+  });
+
+  it("selectSheetViews de prendas conserva el comportamiento anterior", () => {
+    expect(selectSheetViews([], "all").map((v) => v.label)).toEqual(["Frente", "Espalda", "Lado"]);
+    expect(selectSheetViews([], "side")[0].label).toBe("Lado");
   });
 });

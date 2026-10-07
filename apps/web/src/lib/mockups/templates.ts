@@ -1,6 +1,7 @@
 import { dataUrlBytes } from "@/lib/mockups/dataUrl";
 import { assertGarmentEnabled, garmentLabel, isGarmentEnabled } from "@/lib/mockups/garments";
 import { newLayerId, normalizeHexColor } from "@/lib/mockups/studio";
+import { isVehiclePart } from "@/lib/mockups/vehicles";
 import {
   DEFAULT_COLORS,
   MAX_TEMPLATE_THUMBNAIL_BYTES,
@@ -99,6 +100,8 @@ export function configFromTemplate(template: { garment?: unknown; config?: unkno
       colors,
       layers,
       ...(raw.options && typeof raw.options === "object" ? { options: raw.options } : {}),
+      // Tráiler: la parte que se rotulaba (por defecto, completo).
+      ...(garment === "trailer" ? { vehiclePart: isVehiclePart(raw.vehiclePart) ? raw.vehiclePart : ("full" as const) } : {}),
     },
   };
 }

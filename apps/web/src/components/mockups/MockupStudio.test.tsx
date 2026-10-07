@@ -44,6 +44,7 @@ const { placements, presets } = vi.hoisted(() => {
 });
 vi.mock("@/lib/mockups/presets", () => ({
   PLACEMENT_PRESETS: presets,
+  presetsFor: (garment: Garment) => presets[garment] ?? [],
   defaultPlacement: (garment: Garment) => ({ ...placements[garment as "tshirt" | "cap"] }),
   applyPreset: (layer: DesignLayer, preset: PlacementPreset): DesignLayer => ({
     ...layer,
@@ -373,7 +374,9 @@ describe("MockupStudio", () => {
 
   it("sólo ofrece las prendas habilitadas (sudadera y camisa siguen ocultas)", () => {
     render(<MockupStudio />);
-    expect(screen.getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Playera", "Gorra", "Termo", "Taza"]);
+    const prendas = screen.getByRole("radiogroup", { name: "Prenda" });
+    expect(within(prendas).getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Playera", "Gorra", "Termo", "Taza"]);
+    expect(screen.getByRole("radiogroup", { name: "Categoría" })).toBeInTheDocument();
     expect(screen.queryByText("Sudadera")).not.toBeInTheDocument();
   });
 });
