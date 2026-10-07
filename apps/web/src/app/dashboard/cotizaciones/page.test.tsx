@@ -248,6 +248,20 @@ describe("Página Cotizaciones", () => {
     expect(await screen.findByRole("button", { name: /Comentario: Le pareció caro/ })).toBeInTheDocument();
   });
 
+  it("Agregar comentario desde el menú ⋯ deja el cuadro abierto y con el foco", async () => {
+    db = [make({ clientName: "TNL", comment: null })];
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Más acciones de TNL" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Agregar comentario" }));
+    const box = await screen.findByRole("textbox", { name: "Comentario" });
+    // El menú devuelve el foco a su botón al cerrarse: eso no debe cerrar el cuadro.
+    await new Promise((r) => setTimeout(r, 150));
+    expect(screen.getByRole("textbox", { name: "Comentario" })).toBe(box);
+    await waitFor(() => expect(box).toHaveFocus());
+    await userEvent.type(box, "Pidió descuento{Enter}");
+    await waitFor(() => expect(patches()[0][1]).toMatchObject({ body: { comment: "Pidió descuento" } }));
+  });
+
   it("tecla N abre el alta rápida; cliente libre + descripción + prioridad hoy", async () => {
     renderPage();
     await screen.findByText("Todavía no hay cotizaciones");

@@ -74,6 +74,12 @@ export function QuoteCard({
   onCommentEditorOpened,
 }: QuoteCardProps) {
   const [editingComment, setEditingComment] = useState(false);
+  const openCommentFromMenu = useRef(false);
+  const keepFocusIfCommenting = (event: Event) => {
+    if (!openCommentFromMenu.current) return;
+    event.preventDefault();
+    openCommentFromMenu.current = false;
+  };
   const showComment = editingComment || Boolean(quote.comment) || COMMENT_STATUSES.includes(quote.status);
   const isDefaultDescription = quote.description.trim() === DEFAULT_QUOTE_DESCRIPTION;
   const timeLabel =
@@ -116,11 +122,22 @@ export function QuoteCard({
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent
+            align="end"
+            className="w-52"
+            // Al cerrarse, Radix devuelve el foco al botón "⋯". Si la acción fue abrir el
+            // comentario, eso le quitaba el foco al cuadro y su onBlur lo cerraba al instante.
+            onCloseAutoFocus={keepFocusIfCommenting}
+          >
             <DropdownMenuItem onSelect={() => onEdit(quote)}>
               <Pencil className="mr-2 h-4 w-4" /> Editar
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setEditingComment(true)}>
+            <DropdownMenuItem
+              onSelect={() => {
+                openCommentFromMenu.current = true;
+                setEditingComment(true);
+              }}
+            >
               <MessageSquareText className="mr-2 h-4 w-4" /> {quote.comment ? "Editar comentario" : "Agregar comentario"}
             </DropdownMenuItem>
             {quote.stage === "enviada" && (
@@ -140,7 +157,15 @@ export function QuoteCard({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <QuoteStatusMenu status={quote.status} onChange={(status) => onStatusChange(quote, status)} />
+        <QuoteStatusMenu
+          status={quote.status}
+          onChange={(status) => {
+            // "Comentarios" abre el cuadro del comentario: el menú no debe quitarle el foco al cerrarse.
+            if (COMMENT_STATUSES.includes(status) && !quote.comment) openCommentFromMenu.current = true;
+            onStatusChange(quote, status);
+          }}
+          onCloseAutoFocus={keepFocusIfCommenting}
+        />
         {quote.stage === "por_enviar" && (
           <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-full" onClick={() => onMarkSent(quote)}>
             <Send className="h-3.5 w-3.5" aria-hidden /> Marcar como enviada

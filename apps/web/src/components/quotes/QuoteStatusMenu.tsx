@@ -28,10 +28,13 @@ export function QuoteStatusMenu({
   status,
   onChange,
   disabled,
+  onCloseAutoFocus,
 }: {
   status: QuoteStatus;
   onChange: (status: QuoteStatus) => void;
   disabled?: boolean;
+  /** Se llama al cerrarse el menú, antes de devolver el foco al botón (preventDefault lo evita). */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   const style = QUOTE_STATUS_STYLES[status];
   return (
@@ -49,7 +52,7 @@ export function QuoteStatusMenu({
         {QUOTE_STATUS_LABELS[status]}
         <ChevronDown className="h-3.5 w-3.5 opacity-60" aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="w-56" onCloseAutoFocus={onCloseAutoFocus}>
         <DropdownMenuRadioGroup
           value={status}
           onValueChange={(value) => {
