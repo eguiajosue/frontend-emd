@@ -83,9 +83,15 @@ test("3 · la lámina del mockup imprime la tabla de tallas", async ({ page, req
   });
 
   const panel = page.getByRole("region", { name: "Tallas" });
-  await panel.getByLabel(/^General M/).fill("5");
+  const generalM = panel.locator("#mockup-sizes-general-M");
+  await generalM.fill("5");
+  await expect(generalM).toHaveValue("5");
   await panel.getByRole("button", { name: /Mujer \(dama\)/ }).click();
-  await panel.getByLabel(/^Mujer S/).fill("3");
+  // Por id y no por etiqueta: así la casilla es siempre la talla S de Mujer.
+  const mujerS = panel.locator("#mockup-sizes-mujer-S");
+  await expect(mujerS).toBeVisible();
+  await mujerS.fill("3");
+  await expect(mujerS).toHaveValue("3");
   await expect(panel.getByText("Total: 8 pzas")).toBeVisible();
 
   await page.getByRole("button", { name: "Adjuntar a pedido" }).click();
