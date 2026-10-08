@@ -272,6 +272,11 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
     isDesignFlowStatusName(order.status?.name) &&
     !isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
 
+  // Pruebas de bordado: sólo con el diseño ya autorizado (o sin circuito de diseño).
+  const designPending =
+    isDesignFlowStatusName(order.status?.name) &&
+    !isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
+
   const subtitle = awaitingAuthorization
     ? tasks.length === 0
       ? isManager
@@ -435,7 +440,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                     {timing && <span className="pl-[1.125rem]">{timing}</span>}
                   </span>
 
-                  {task.area === "bordado" && (
+                  {/* Digitalizado y pruebas empiezan cuando el cliente autoriza. */}
+                  {task.area === "bordado" && !designPending && (
                     <EmbroideryPrepControls
                       orderId={orderId}
                       task={task}

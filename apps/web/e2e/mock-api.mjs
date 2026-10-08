@@ -24,6 +24,7 @@
  * - `POST /__e2e/seed-branch-orders {count}`: `count` pedidos extra de Punto Madero (alternan pendiente/entregado).
  * - `GET  /__e2e/clients` · `GET /__e2e/presets` · `GET /__e2e/forbidden-calls`: lo guardado / lo que la sucursal intentó pedir.
  * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
+ * - `POST /__e2e/seed-bordado-prep`: suma tres tareas de Bordado en digitalizado / en pruebas (tablero de cuatro columnas).
  * - `POST /__e2e/seed-logo-fixtures`: 2ª sucursal "Plaza Norte" y pedidos extra para probar logos y el filtro Origen
  *   (#111 de Punto Madero con hoja autorizada y tarea de Bordado en la tele, #112 de Plaza Norte).
  * - `POST /__e2e/seed-logos {branchId}`: carga los PNG reales de `e2e/fixtures` como logos de esa sucursal.
@@ -174,6 +175,16 @@ const tareasTvIniciales = () => [
 ];
 let tareasTv = tareasTvIniciales();
 
+// Etapas previas de Bordado (digitalizado → pruebas → producción), para el tablero de cuatro columnas.
+const prueba = (round, result, extra = {}) => ({ id: round, round, sentAt: enHoras(-3), sentNotes: null, photoName: null, result, resultNotes: null, decidedAt: null, ...extra });
+const tareasPrepIniciales = () => [
+  { id: 7, orderId: 107, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-6), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, "rechazada", { resultNotes: "El hilo se frunce en el contorno", decidedAt: enHoras(-1) })], order: pedidoTv(107, "Escuela Benito", "Escudos para 50 uniformes", enHoras(26)) },
+  { id: 8, orderId: 108, area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignedUserId: null, createdAt: enHoras(-9), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, null)], order: pedidoTv(108, "Cafetería Luna", "Gorras con logo", enHoras(50)) },
+  { id: 9, orderId: 109, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-2), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [], order: pedidoTv(109, "Gimnasio Sur", "Toallas bordadas", enHoras(24 * 5)) },
+];
+let tareasPrep = [];
+const todasTv = () => [...tareasTv, ...tareasPrep];
+
 /**
  * Pedido #110 "esperando autorización" para el flujo autorizar → hoja de
  * materiales → producción. NO está en `GET /orders` (para no mover los
@@ -204,6 +215,34 @@ let siguienteClienteId = 50;
 let presetsProducto = [];
 let siguientePresetId = 1;
 const clavePreset = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Portal del cliente: enlaces por pedido y respuestas del cliente (pendientes de confirmar). */
+const portalInicial = () => ({ links: {}, respuestas: [], siguienteId: 1 });
+let portal = portalInicial();
+const estadoCompartir = (orderId) => ({
+  link: portal.links[orderId] ?? null,
+  pendingResponse: portal.respuestas.find((r) => r.orderId === orderId && r.status === "pendiente") ?? null,
+});
+function vistaPortal(orderId) {
+  const p = orderId === ORDEN_AUTORIZAR ? pedidoAutorizar() : pedidos().find((x) => x.id === orderId);
+  if (!p) return null;
+  const nombre = (p.status?.name ?? "").toLowerCase();
+  const stage =
+    nombre === "esperando autorización" ? "autorizacion" : nombre === "en diseño" || nombre === "cambios solicitados" ? "diseno" : nombre === "entregado" ? "entregado" : "produccion";
+  const etiquetas = { diseno: "Diseño", autorizacion: "Tu aprobación", produccion: "Producción", listo: "Listo para entregar", entregado: "Entregado" };
+  const r = (rondasDiseno[orderId] ?? (orderId === ORDEN_AUTORIZAR ? rondaAutorizar() : [])).at(-1);
+  const awaiting = Boolean(r && stage === "autorizacion" && !r.approved && !r.feedbackText);
+  const respuesta = r ? portal.respuestas.filter((x) => x.revisionId === r.id && (x.status === "pendiente" || x.status === "aplicada")).at(-1) ?? null : null;
+  return {
+    order: { id: p.id, description: p.description, clientName: p.clientNameOverride, deliveryDate: p.deliveryDate, creationDate: p.creationDate, branch: null },
+    stage: { key: stage, label: etiquetas[stage] },
+    stages: [...(p.requiresDesign ? ["diseno", "autorizacion"] : []), "produccion", "listo", "entregado"].map((key) => ({ key, label: etiquetas[key] })),
+    products: [{ name: "Playera escolar", quantity: 40, sizes: { general: { S: 10, M: 20, L: 10 } } }],
+    design: r ? { revisionId: r.id, round: r.round, sentAt: r.sentAt, approved: r.approved, awaitingResponse: awaiting, files: r.montageFiles } : null,
+    mockups: [],
+    response: respuesta,
+  };
+}
 
 const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
 let autorizar = autorizarInicial();
@@ -305,7 +344,7 @@ function tareasDelArea(u) {
       order: { id: p.id, description: p.description, deliveryDate: p.deliveryDate, statusId: p.statusId, clientNameOverride: p.clientNameOverride, client: null },
     };
   });
-  const sinExtras = tareasTv.map(({ order: { creationDate, status, ...order }, ...t }) => ({ ...t, order }));
+  const sinExtras = todasTv().map(({ order: { creationDate, status, ...order }, ...t }) => ({ ...t, order }));
   return [...deBase, ...sinExtras].filter((t) => roles.includes(t.area));
 }
 
@@ -326,11 +365,12 @@ function misTareas(u) {
       });
     }
   }
-  for (const t of [...tareas.map((x) => ({ ...x, order: pedidos().find((p) => p.id === x.orderId) })), ...tareasTv]) {
+  for (const t of [...tareas.map((x) => ({ ...x, order: pedidos().find((p) => p.id === x.orderId) })), ...todasTv()]) {
     if (!roles.includes(t.area) || t.status === "terminado" || !(libre(t) || mia(t))) continue;
     const o = t.order;
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
+      ...(t.prepStage !== undefined && { prepStage: t.prepStage, lastTest: t.sampleTests?.at(-1) ?? null }),
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
       order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status, branch: o.branch ?? null },
     });
@@ -778,9 +818,14 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/__e2e/logos") {
       return send(Object.fromEntries(Object.entries(logosSucursal).map(([id, l]) => [id, { onLight: Boolean(l.onLight), onDark: Boolean(l.onDark) }])));
     }
+    if (req.method === "POST" && path === "/__e2e/seed-bordado-prep") {
+      tareasPrep = tareasPrepIniciales();
+      return send({ ok: true });
+    }
     if (req.method === "POST" && path === "/__e2e/reset-tareas") {
       tareas = tareasIniciales();
       tareasTv = tareasTvIniciales();
+      tareasPrep = [];
       autorizar = autorizarInicial();
       inventario = inventarioInicial();
       movimientosInventario = [];
@@ -818,6 +863,59 @@ createServer((req, res) => {
       autorizar.tarea = { ...tareaAutorizar(), supply: autorizar.supply };
       return send({ ...rondaAutorizar()[0], supplyWarnings: [] });
     }
+    // ── Portal del cliente ──────────────────────────────────────────────────
+    if (req.method === "POST" && path === "/__e2e/reset-portal") {
+      portal = portalInicial();
+      return send({ ok: true });
+    }
+    const compartir = path.match(/^\/orders\/(\d+)\/share-link(\/regenerate)?$/);
+    if (compartir) {
+      const orderId = Number(compartir[1]);
+      const nuevo = () => ({ token: `tok${orderId}${Math.random().toString(36).slice(2, 12)}xxxxxxxxxxxxxxxxxxxx`, createdAt: new Date().toISOString(), lastViewedAt: null, viewCount: 0 });
+      if (req.method === "GET") return send(estadoCompartir(orderId));
+      if (req.method === "POST" && compartir[2]) portal.links[orderId] = nuevo();
+      else if (req.method === "POST") portal.links[orderId] ??= nuevo();
+      else if (req.method === "DELETE") {
+        delete portal.links[orderId];
+        return send({ revoked: true });
+      }
+      return send(estadoCompartir(orderId));
+    }
+    const descartar = path.match(/^\/orders\/(\d+)\/client-responses\/(\d+)\/discard$/);
+    if (descartar && req.method === "POST") {
+      const r = portal.respuestas.find((x) => x.id === Number(descartar[2]) && x.status === "pendiente");
+      if (!r) return send({ message: "Esa respuesta ya no está pendiente" }, 409);
+      r.status = "descartada";
+      return send({ discarded: true });
+    }
+    const publico = path.match(/^\/portal\/([^/]+)(?:\/(design-files|mockups)\/(\d+)|\/(respond))?$/);
+    if (publico) {
+      const entrada = Object.entries(portal.links).find(([, l]) => l.token === publico[1]);
+      if (!entrada) return send({ message: "Este enlace no existe o ya no está disponible" }, 404);
+      const orderId = Number(entrada[0]);
+      const vista = vistaPortal(orderId);
+      if (publico[2] === "design-files") {
+        const archivo = vista?.design?.files.some((f) => f.id === Number(publico[3])) ? archivosDiseno[Number(publico[3])] : null;
+        return archivo ? send(archivo) : send({ message: "No encontrado" }, 404);
+      }
+      if (publico[4] && req.method === "POST") {
+        const dto = JSON.parse(body || "{}");
+        if (!vista?.design?.awaitingResponse) return send({ message: "Este diseño ya no está esperando tu respuesta." }, 409);
+        if (dto.kind === "cambios" && !dto.comment?.trim()) return send({ message: "Cuéntanos qué te gustaría cambiar" }, 400);
+        portal.respuestas.forEach((x) => {
+          if (x.orderId === orderId && x.status === "pendiente") x.status = "reemplazada";
+        });
+        const nueva = { id: portal.siguienteId++, orderId, revisionId: vista.design.revisionId, kind: dto.kind, comment: dto.comment?.trim() || null, status: "pendiente", createdAt: new Date().toISOString() };
+        portal.respuestas.push(nueva);
+        return send({ response: nueva }, 201);
+      }
+      if (req.method === "GET" && !publico[2]) {
+        entrada[1].lastViewedAt = new Date().toISOString();
+        entrada[1].viewCount += 1;
+        return send(vista);
+      }
+    }
+
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
@@ -1142,6 +1240,25 @@ createServer((req, res) => {
       }
     }
 
+    // Etapas previas de Bordado: mandar a pruebas y resultado de la prueba.
+    const prep = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/(send-to-test|test-result)$/);
+    if (prep && req.method === "POST") {
+      const id = Number(prep[1]);
+      const dto = JSON.parse(body || "{}");
+      const actual = tareasPrep.find((t) => t.id === id);
+      if (!actual) return send({ message: "No existe" }, 404);
+      let siguiente;
+      if (prep[2] === "send-to-test") {
+        const ronda = (actual.sampleTests?.length ?? 0) + 1;
+        siguiente = { ...actual, prepStage: "en_pruebas", sampleTests: [...(actual.sampleTests ?? []), prueba(ronda, null, { sentNotes: dto.notes ?? null })] };
+      } else {
+        const tests = (actual.sampleTests ?? []).map((t, i, all) => (i === all.length - 1 ? { ...t, result: dto.result, resultNotes: dto.notes ?? null, decidedAt: new Date().toISOString() } : t));
+        siguiente = { ...actual, sampleTests: tests, prepStage: dto.result === "aprobada" ? null : "digitalizado" };
+      }
+      tareasPrep = tareasPrep.map((t) => (t.id === id ? siguiente : t));
+      return send(siguiente, 201);
+    }
+
     // Avance de una tarea de área: es lo que el flujo 3 verifica.
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
     if (avance && Number(avance[1]) === 90 && req.method === "PATCH") {
@@ -1169,7 +1286,8 @@ createServer((req, res) => {
       };
       tareas = tareas.map(avanzar);
       tareasTv = tareasTv.map(avanzar);
-      return send([...tareas, ...tareasTv].find((t) => t.id === id));
+      tareasPrep = tareasPrep.map(avanzar);
+      return send([...tareas, ...todasTv()].find((t) => t.id === id));
     }
 
     // Hoja de autorización: rondas de diseño y sus archivos (sólo lectura).

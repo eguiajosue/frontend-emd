@@ -27,8 +27,9 @@ import type { GarmentModel } from "./garmentModel";
 import { loadShirtModel } from "./ShirtModel";
 import { ContactShadows, createStudioEnvironment, StudioLightRig } from "./studioLighting";
 import { createTruckerCapModel } from "./TruckerCapModel";
-import { createTazaModel, createTermoModel } from "./DrinkwareModel";
-import { createVehicleModel } from "./vehicleModels";
+import { createTermoModel } from "./DrinkwareModel";
+import { loadGlbModel } from "./GlbModel";
+import { loadVehicleModel } from "./vehicleModels";
 import { isVehicle, vehiclePartOf } from "@/lib/mockups/vehicles";
 import { PRINT_FINISH, type DecalFinish } from "./DesignDecal";
 import { isLaserEngraved } from "@/lib/mockups/garments";
@@ -380,8 +381,8 @@ export class MockupScene {
     const key = modelKey(config);
     this.loadingGarment = key;
     this.callbacks().onStatus?.("loading");
-    // Sólo playera y gorra tienen modelo (ver lib/mockups/garments.ts): una
-    // prenda sin modelo termina en "error" en vez de dibujar otra.
+    // Una prenda sin modelo (ver lib/mockups/garments.ts) termina en "error"
+    // en vez de dibujar otra.
     const load: Promise<GarmentModel> =
       garment === "tshirt"
         ? loadShirtModel(config.colors)
@@ -389,10 +390,10 @@ export class MockupScene {
           ? Promise.resolve(createTruckerCapModel(config.colors))
           : garment === "termo"
             ? Promise.resolve(createTermoModel(config.colors))
-            : garment === "taza"
-              ? Promise.resolve(createTazaModel(config.colors))
+            : garment === "taza" || garment === "mousepad"
+              ? loadGlbModel(garment, config.colors)
               : isVehicle(garment)
-                ? Promise.resolve(createVehicleModel(garment, config.colors, vehiclePartOf(config)))
+                ? loadVehicleModel(garment, config.colors, vehiclePartOf(config))
                 : Promise.reject(new Error(`La prenda «${garment}» todavía no tiene modelo 3D`));
     this.garmentPromise = load.then(
       (model) => {
@@ -454,8 +455,8 @@ export class MockupScene {
     this.controls.minDistance = base * 0.45;
     this.controls.maxDistance = base * 1.6;
     // Vehículos: se pueden ver desde arriba (techo / cofre) y casi a ras del piso.
-    this.controls.minPolarAngle = isVehicle(garment) ? 0.03 : garment === "cap" || garment === "taza" ? Math.PI * 0.1 : Math.PI * 0.26;
-    this.controls.maxPolarAngle = isVehicle(garment) ? Math.PI * 0.53 : garment === "cap" ? Math.PI * 0.6 : Math.PI * 0.62;
+    this.controls.minPolarAngle = isVehicle(garment) || garment === "mousepad" ? 0.03 : garment === "cap" || garment === "taza" ? Math.PI * 0.1 : Math.PI * 0.26;
+    this.controls.maxPolarAngle = isVehicle(garment) ? Math.PI * 0.53 : garment === "mousepad" ? Math.PI * 0.45 : garment === "cap" ? Math.PI * 0.6 : Math.PI * 0.62;
 
     this.shadows.configure(center, box.min.y - 0.002, model.shadow);
     this.lights.fit(center, sphere.radius);
@@ -477,15 +478,29 @@ export class MockupScene {
       // Vehículos: cada vista se encuadra con las medidas que de verdad se ven
       // (el frente es angosto, el costado largo, el techo ocupa el largo).
       const { x, y, z } = this.current.extent;
+      // Los modelos GLB son largos y tienen mucho frente: visto de frente (o de
+      // atrás), la parte cercana queda mucho más cerca de la cámara que el
+      // centro y se salía del cuadro. La bicicleta, procedural, ya cabía.
+      const nearDepth = this.current.garment === "bicycle" ? z : z * (this.current.garment === "trailer" ? 3.2 : 2);
       const dims =
         view === "front" || view === "back"
-          ? { h: x, v: y, depth: z }
+          ? { h: x, v: y, depth: nearDepth }
           : view === "top"
             ? { h: x, v: z, depth: y }
             : view === "angle"
               ? { h: Math.hypot(x, z) * 0.95, v: y, depth: Math.hypot(x, z) * 0.35 }
               : { h: z, v: y, depth: x };
       return (Math.max(dims.v / vTan, dims.h / hTan) + dims.depth * 0.45) * margin;
+    }
+    if (this.current.garment === "mousepad") {
+      // Plano y visto casi de planta: lo que llena la pantalla es su largo en
+      // profundidad (z), acortado por la elevación de la cámara, no su altura.
+      const { x, y, z } = this.current.extent;
+      const e = this.current.model.viewElevation;
+      const sideways = view === "left" || view === "right";
+      const h = sideways ? z : x;
+      const v = (sideways ? x : z) * Math.sin(e) + y * Math.cos(e);
+      return (Math.max(v / vTan, h / hTan) + Math.max(x, z) * 0.15) * margin;
     }
     const { halfHeight, halfWidth } = this.current;
     return (Math.max(halfHeight / vTan, halfWidth / hTan) + halfWidth * 0.5) * margin;

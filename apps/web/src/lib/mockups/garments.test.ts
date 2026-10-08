@@ -18,8 +18,8 @@ import { DEFAULT_COLORS, GARMENT_LABELS, RAW_STEEL_HEX, isRawSteel, type MockupC
 
 describe("registro de prendas", () => {
   it("playera, gorra, termo y taza están habilitadas; sudadera y camisa siguen ocultas", () => {
-    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap", "termo", "taza", "car", "minivan", "pickup", "trailer", "bicycle"]);
-    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra", "Termo", "Taza", "Carro", "Minivan", "Pickup", "Tráiler", "Bicicleta"]);
+    expect(ENABLED_GARMENTS).toEqual(["tshirt", "cap", "termo", "taza", "mousepad", "car", "minivan", "pickup", "trailer", "bicycle"]);
+    expect(enabledGarments().map((g) => g.label)).toEqual(["Playera", "Gorra", "Termo", "Taza", "Mousepad", "Carro", "Minivan", "Pickup", "Tráiler", "Bicicleta"]);
     expect(isGarmentEnabled("termo")).toBe(true);
     expect(isGarmentEnabled("taza")).toBe(true);
     expect(isGarmentEnabled("hoodie")).toBe(false);
@@ -61,7 +61,7 @@ describe("registro de prendas", () => {
 describe("termo y taza", () => {
   it("son procedurales, con sus presets y acabado propio (láser / impresión)", () => {
     expect(GARMENTS.termo.model).toEqual({ kind: "procedural" });
-    expect(GARMENTS.taza.model).toEqual({ kind: "procedural" });
+    expect(GARMENTS.taza.model).toEqual({ kind: "glb", url: "/models/mug.glb" });
     expect(isLaserEngraved("termo")).toBe(true);
     expect(isLaserEngraved("taza")).toBe(false);
     expect(isLaserEngraved("tshirt")).toBe(false);

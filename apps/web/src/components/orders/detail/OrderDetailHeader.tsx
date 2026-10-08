@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ShareWithClientButton } from "@/components/orders/ShareWithClient";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -144,6 +145,9 @@ export function OrderDetailHeader({
           </span>
         </div>
       </div>
+
+      {/* Enlace del cliente a su pedido (portal): sólo Recepción/admin. */}
+      {permissions.canEdit && <ShareWithClientButton order={order} />}
 
       <DropdownMenu>
         <SimpleTooltip label="Más acciones">

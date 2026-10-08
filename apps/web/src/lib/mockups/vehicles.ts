@@ -55,13 +55,14 @@ export function hasVehicleParts(garment: Garment): boolean {
 }
 
 /**
- * Zonas (en z, el largo del tráiler, unidades de escena) de la cabina y de la
+ * Zonas (en z, el largo del camión, unidades de escena) de la cabina y de la
  * caja. Un diseño con `position.z` fuera de la parte visible se manda al
- * diseño por defecto de esa parte al cambiarla.
+ * diseño por defecto de esa parte al cambiarla. El corte (0.35) también es
+ * por donde `GlbModel.ts` separa las mallas de la cabina de las de la caja.
  */
 export const TRAILER_ZONES: Record<Exclude<VehiclePart, "full">, { zMin: number; zMax: number }> = {
-  cab: { zMin: 0, zMax: 1 },
-  box: { zMin: -1, zMax: 0 },
+  cab: { zMin: 0.35, zMax: 1 },
+  box: { zMin: -1, zMax: 0.35 },
 };
 
 /** ¿Un punto (z) del tráiler pertenece a la parte indicada? */

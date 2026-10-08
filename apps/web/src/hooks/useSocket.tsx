@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "sonner";
+import { isCompactScreen, quietNotice } from "@/lib/quietNotices";
 import { Bell, MessageSquare } from "lucide-react";
 import { statusMap } from "@/lib/orderStatus";
 import { SOCKET_URL } from "@/lib/config";
@@ -135,6 +136,7 @@ export function useSocket() {
       details: { description?: string | null; area?: string | null; clientName?: string | null },
       orderId?: number | string
     ) => {
+      if (isCompactScreen()) return quietNotice(true);
       playNotificationSound();
       const descriptionParts = [
         details.description || undefined,
@@ -162,6 +164,7 @@ export function useSocket() {
     const handleNewOrder = (order: OrderNotificationPayload) => {
       invalidateOrders();
       if (isAdmin) {
+        if (isCompactScreen()) return quietNotice();
         toast.info("Nuevo pedido creado", {
           description: `Pedido #${order.id}${
             order.clientName ? ` de ${order.clientName}` : ""
@@ -200,6 +203,7 @@ export function useSocket() {
       const statusLabel = order.status
         ? statusMap[Number(order.status)] || order.status
         : "desconocido";
+      if (isCompactScreen()) return quietNotice();
       toast.info(`Pedido #${order.id} actualizado`, {
         description: `Nuevo estado: ${statusLabel}`,
       });
@@ -218,6 +222,7 @@ export function useSocket() {
       // Los mensajes propios y los que ya se están viendo no interrumpen.
       if (message.senderId === userId) return;
       if (pathnameRef.current?.startsWith("/dashboard/chat")) return;
+      if (isCompactScreen()) return quietNotice(true);
       toast(`Mensaje de ${message.senderName || message.senderUsername || "un compañero"}`, {
         description: message.body,
         icon: <MessageSquare className="h-5 w-5" />,

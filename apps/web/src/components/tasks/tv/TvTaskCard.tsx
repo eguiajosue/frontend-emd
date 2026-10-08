@@ -6,11 +6,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Loader2, Play, RotateCcw, UserRound } from "lucide-react";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
+import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
 import { Button } from "@/components/ui/button";
 import { TONE_META } from "@/components/orders/OrderJobCard";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatCountdown, formatElapsed, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
+import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
 import { isReturnedDesign } from "@/lib/myTasks";
 import { PRIORITY_STYLE, type ArrivalPriority } from "@/lib/packageArrivals";
 import { assigneeLabel, tvColumnOf, type TvTask } from "@/lib/tvBoard";
@@ -38,6 +40,8 @@ export function tvAction(task: TvTask): TvAction {
   }
   const column = tvColumnOf(task);
   if (column === "terminado") return null;
+  // Digitalizado / en pruebas todavía no se puede empezar: sus botones son los de la etapa.
+  if (isEmbroideryTask(task) && prepStageOf(task)) return null;
   if (column === "en_proceso") return { label: "Terminar", next: "terminado", icon: CheckCircle2 };
   if (task.mine) return { label: "Empezar", next: "en_proceso", icon: Play };
   if (task.assignee == null) return { label: "Tomar y empezar", next: "en_proceso", icon: Play };
@@ -57,6 +61,8 @@ interface TvTaskCardProps {
   /** Brillo de recién llegada, del color de la prioridad. */
   highlight: ArrivalPriority | null;
   reduced: boolean;
+  /** Bordado: ¿puede mandar a pruebas / aprobar / rechazar desde la tele? */
+  canMovePrep?: boolean;
 }
 
 /**
@@ -74,12 +80,15 @@ export const TvTaskCard = memo(function TvTaskCard({
   hidden,
   highlight,
   reduced,
+  canMovePrep = false,
 }: TvTaskCardProps) {
   const AreaIcon = getAreaIcon(task.area);
   const action = tvAction(task);
   const ActionIcon = action?.icon;
   const column = tvColumnOf(task);
   const done = column === "terminado";
+  const embroidery = isEmbroideryTask(task);
+  const stage = embroidery ? prepStageOf(task) : null;
   const tone = TONE_META[state.tone];
   const glow = highlight ? PRIORITY_STYLE[highlight] : null;
   const completedAgo = task.completedAt ? now - new Date(task.completedAt).getTime() : null;
@@ -138,6 +147,9 @@ export const TvTaskCard = memo(function TvTaskCard({
           <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" summaryClassName="text-base" />
         </div>
 
+        {embroidery && <EmbroideryStepper task={task} tv />}
+        {embroidery && <RejectionNote task={task} tv />}
+
         <div className="flex flex-wrap items-center gap-2">
           {done ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-base font-medium text-emerald-300">
@@ -174,6 +186,8 @@ export const TvTaskCard = memo(function TvTaskCard({
             Entrega: <span className="font-medium text-foreground">{formatDeliveryDate(task.order.deliveryDate, timeFormat)}</span>
           </p>
         )}
+
+        {stage && <EmbroideryPrepActions task={task} canAct={canMovePrep} tv className="relative z-10" />}
 
         {action && ActionIcon && (
           <Button

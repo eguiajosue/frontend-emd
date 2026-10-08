@@ -125,8 +125,8 @@ export function switchVehiclePart(config: MockupConfig, part: VehiclePart): Mock
   };
 }
 
-/** Productos que no son prenda (termo, taza y vehículos): no llevan tabla de tallas. */
-const GARMENTS_WITHOUT_SIZES: readonly Garment[] = ["termo", "taza"];
+/** Productos que no son prenda (termo, taza, mousepad y vehículos): no llevan tabla de tallas. */
+const GARMENTS_WITHOUT_SIZES: readonly Garment[] = ["termo", "taza", "mousepad"];
 
 /** ¿Esta prenda se pide por tallas? (el panel y la tabla impresa sólo salen si sí). */
 export function garmentHasSizes(garment: Garment): boolean {
@@ -179,7 +179,7 @@ export function mockupFilename(garment: Garment, date = new Date(), only: Downlo
 
 export function buildMockupPayload(result: MockupStudioResult): CreateOrderMockupPayload {
   assertGarmentEnabled(result.config.garment);
-  // Tallas "escondidas" de una prenda anterior no se guardan en un termo o taza.
+  // Tallas "escondidas" de una prenda anterior no se guardan en un termo, taza o mousepad.
   const config = { ...result.config };
   if (!garmentHasSizes(config.garment)) delete config.sizes;
   // La parte sólo la lleva el tráiler (el backend rechaza `vehiclePart` en los demás).

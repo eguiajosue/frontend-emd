@@ -21,7 +21,8 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
-import { OrderQuickStatusChip } from "@/components/orders/OrderQuickStatusChip";
+import { OrderStageLine, OrderStepButton, OrderTurnLabel } from "@/components/orders/OrderNextStep";
+import { useOrderStep } from "@/hooks/useOrderStep";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName, type TimeFormatPreference } from "@/lib/format";
 import {
@@ -32,7 +33,7 @@ import {
   type DeadlineState,
   type DeadlineTone,
 } from "@/lib/orderDeadline";
-import { isDesignFlowStatusName } from "@/lib/orderStatus";
+import { DESIGN_FLOW_STATUS_NAMES, isDesignFlowStatusName, isOrderInDesignStatus } from "@/lib/orderStatus";
 import { getStatusDotClasses } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
@@ -139,8 +140,10 @@ interface OrderJobCardProps {
   selectable?: boolean;
   selected?: boolean;
   onSelectedChange?: (id: number, checked: boolean) => void;
-  /** Modo TV: sin acciones, tipografía más grande para leer de lejos. */
+  /** Modo TV: tipografía más grande para leer de lejos. */
   wall?: boolean;
+  /** Elegida con el teclado (flechas / J-K): se resalta y Enter le da el siguiente paso. */
+  keyboardActive?: boolean;
 }
 
 /**
@@ -158,12 +161,19 @@ export const OrderJobCard = memo(function OrderJobCard({
   selected = false,
   onSelectedChange,
   wall = false,
+  keyboardActive = false,
 }: OrderJobCardProps) {
+  const stepCtx = useOrderStep();
+  const step = stepCtx?.stepFor(order) ?? null;
   const meta = TONE_META[state.tone];
   // Mientras está en diseño, la primera "área" que lo toca es Diseño; las de
   // producción vienen después (antes se veía "Bordado" en un pedido que
   // todavía estaba en manos de Diseño).
-  const inDesign = !!order.requiresDesign && isDesignFlowStatusName(order.status?.name);
+  // "autorizado" ya es producción: el diseño terminó y las áreas arrancan.
+  const inDesign =
+    !!order.requiresDesign &&
+    isDesignFlowStatusName(order.status?.name) &&
+    !isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
   const allAreas = inDesign
     ? ["diseno", ...getOrderAreas(order).filter((a) => a !== "diseno")]
     : getOrderAreas(order);
@@ -180,12 +190,16 @@ export const OrderJobCard = memo(function OrderJobCard({
 
   return (
     <article
+      data-order-card={order.id}
+      tabIndex={-1}
+      aria-current={keyboardActive ? "true" : undefined}
       className={cn(
-        "group relative flex w-full min-w-0 flex-col rounded-2xl border border-border/60 bg-card shadow-soft transition-[box-shadow,border-color] duration-150 hover:border-border hover:shadow-soft-md",
+        "group relative flex w-full min-w-0 flex-col rounded-2xl outline-none border border-border/60 bg-card shadow-soft transition-[box-shadow,border-color] duration-150 hover:border-border hover:shadow-soft-md",
         // Vencido: el borde se tiñe apenas; la píldora y la cuenta en rojo ya
         // lo dicen sin pintar la tarjeta entera.
         state.tone === "overdue" && "border-rose-500/35 dark:border-rose-400/35",
-        selected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+        selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        keyboardActive && "ring-4 ring-primary/70 ring-offset-2 ring-offset-background"
       )}
     >
       {/* Botón que cubre toda la tarjeta: un solo destino de click, con nombre accesible. */}
@@ -268,6 +282,8 @@ export const OrderJobCard = memo(function OrderJobCard({
           </ul>
         )}
 
+        {step && <OrderStageLine step={step} large={wall} />}
+
         {/* Progreso de tareas de área: barra gruesa del color del estado. */}
         <div className="mt-auto space-y-2">
           <div className={cn("flex items-center gap-1.5", wall ? "text-sm" : "text-[0.8125rem]")}>
@@ -324,20 +340,20 @@ export const OrderJobCard = memo(function OrderJobCard({
         </div>
       </div>
 
-      <footer className="pointer-events-none relative flex items-center gap-2 border-t border-border/60 px-5 py-3">
-        <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
-        {!wall && (
-          <div className="pointer-events-auto relative z-10 ml-auto flex min-w-0 items-center">
-            <OrderQuickStatusChip order={order} />
-          </div>
+      <footer className="pointer-events-none relative flex flex-wrap items-center gap-2 border-t border-border/60 px-5 py-3">
+        {step?.turn ? (
+          <OrderTurnLabel step={step} large={wall} />
+        ) : (
+          <StatusBadge statusId={order.statusId} statusName={order.status?.name} />
         )}
-        <ChevronRight
-          className={cn(
-            "pointer-events-none h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5",
-            wall && "ml-auto"
-          )}
-          aria-hidden
-        />
+        {step?.action ? (
+          <OrderStepButton order={order} step={step} onOpen={onOpen} large={wall} className="ml-auto" />
+        ) : (
+          <ChevronRight
+            className="pointer-events-none ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
+            aria-hidden
+          />
+        )}
       </footer>
     </article>
   );

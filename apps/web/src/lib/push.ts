@@ -49,6 +49,28 @@ interface VapidPublicKeyResponse {
 }
 
 /**
+ * Pide permiso y crea (o reutiliza) la suscripción push de ESTE navegador,
+ * sin mandarla a ningún lado. `null` si no hay soporte, permiso o VAPID.
+ */
+export async function getBrowserPushSubscription(): Promise<PushSubscriptionJSON | null> {
+  if (!isPushSupported()) return null;
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return null;
+  const { publicKey } = await request<VapidPublicKeyResponse>("push/vapid-public-key");
+  if (!publicKey) return null;
+  const registration = await navigator.serviceWorker.ready;
+  const existing = await registration.pushManager.getSubscription();
+  const subscription =
+    existing ??
+    (await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    }));
+  const json = subscription.toJSON();
+  return json.endpoint && json.keys?.p256dh && json.keys?.auth ? json : null;
+}
+
+/**
  * Pide permiso de notificaciones, obtiene la clave pública VAPID del backend
  * y crea (o reutiliza) la suscripción push del navegador, mandándola a
  * `POST /push/subscribe`. Devuelve `null` si el navegador no soporta push,

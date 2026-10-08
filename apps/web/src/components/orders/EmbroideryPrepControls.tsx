@@ -1,30 +1,24 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { toast } from "sonner";
-import { Camera, ImageIcon, Loader2, Paperclip, X } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
-import { useAreaTasks, useSampleTestPhoto } from "@/hooks/useAreaTasks";
-import { normalizeImageFile, readFileAsUploadInput } from "@/lib/fileInput";
-import { getErrorMessage } from "@/lib/api";
+import {
+  EmbroideryPrepDialog,
+  type PrepDialogMode,
+} from "@/components/orders/EmbroideryPrepDialog";
+import { useSampleTestPhoto } from "@/hooks/useAreaTasks";
 import { cn } from "@/lib/utils";
-import type {
-  AreaTaskSampleTest,
-  OrderAreaTask,
-  SampleTestResult,
-} from "@/types";
+import type { AreaTaskSampleTest, OrderAreaTask } from "@/types";
 
 /** Etiqueta y color del chip de una tarea de Bordado en digitalización/pruebas. */
 export const PREP_STAGE_META = {
@@ -51,44 +45,6 @@ function formatDate(value?: string | null) {
     ? ""
     : format(date, "d MMM, HH:mm", { locale: es });
 }
-
-type DialogMode = "send" | "approve" | "reject";
-
-const DIALOG_COPY: Record<
-  DialogMode,
-  {
-    title: string;
-    description: string;
-    confirm: string;
-    required: boolean;
-    placeholder: string;
-  }
-> = {
-  send: {
-    title: "Mandar a pruebas",
-    description:
-      "Se abre una ronda nueva en el registro de pruebas de este pedido.",
-    confirm: "Mandar a pruebas",
-    required: false,
-    placeholder:
-      "Qué se corrigió o con qué parámetros se hace la prueba (opcional)",
-  },
-  approve: {
-    title: "Aprobar la prueba",
-    description: "La tarea queda lista para que Bordado empiece la producción.",
-    confirm: "Aprobar prueba",
-    required: false,
-    placeholder: "Observaciones (opcional)",
-  },
-  reject: {
-    title: "Rechazar la prueba",
-    description:
-      "La tarea regresa a digitalizado para corregirse y volver a pruebas.",
-    confirm: "Rechazar prueba",
-    required: true,
-    placeholder: "Qué hay que corregir",
-  },
-};
 
 /** Foto de una ronda, que se baja recién cuando se pide verla. */
 function SampleTestPhoto({
@@ -158,82 +114,9 @@ export function EmbroideryPrepControls({
   task,
   canAct,
 }: EmbroideryPrepControlsProps) {
-  const { sendToTest, decideTest } = useAreaTasks(orderId);
-  const [mode, setMode] = useState<DialogMode | null>(null);
-  const [notes, setNotes] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-
-  // Vista previa local de la foto elegida; se libera al cambiarla o cerrar.
-  useEffect(() => {
-    if (!photo) {
-      setPhotoUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(photo);
-    setPhotoUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photo]);
-
+  const [mode, setMode] = useState<PrepDialogMode | null>(null);
   const tests: AreaTaskSampleTest[] = task.sampleTests ?? [];
-  const pending = sendToTest.isPending || decideTest.isPending;
   if (!task.prepStage && tests.length === 0) return null;
-
-  const close = () => {
-    setMode(null);
-    setNotes("");
-    setPhoto(null);
-  };
-
-  const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
-    const picked = event.target.files?.[0];
-    if (!picked) return;
-    if (!picked.type.startsWith("image/")) {
-      toast.error("La foto debe ser una imagen.");
-      return;
-    }
-    // Las fotos del celular pesan varios MB: se reducen a un JPEG liviano.
-    const normalized = await normalizeImageFile(picked);
-    if (!normalized) {
-      toast.error("No se pudo leer esa foto. Prueba con otra.");
-      return;
-    }
-    setPhoto(normalized);
-  };
-
-  const submit = async () => {
-    if (!mode) return;
-    const text = notes.trim();
-    if (DIALOG_COPY[mode].required && !text) return;
-    try {
-      if (mode === "send") {
-        await sendToTest.mutateAsync({
-          taskId: task.id,
-          notes: text || undefined,
-          photo: photo ? await readFileAsUploadInput(photo) : undefined,
-        });
-        toast.success("Enviado a pruebas");
-      } else {
-        const result: SampleTestResult =
-          mode === "approve" ? "aprobada" : "rechazada";
-        await decideTest.mutateAsync({
-          taskId: task.id,
-          result,
-          notes: text || undefined,
-        });
-        toast.success(
-          mode === "approve"
-            ? "Prueba aprobada: ya puede producir"
-            : "Prueba rechazada: vuelve a digitalizado",
-        );
-      }
-      close();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const copy = mode ? DIALOG_COPY[mode] : null;
 
   return (
     <div className="order-last basis-full space-y-2">
@@ -242,7 +125,6 @@ export function EmbroideryPrepControls({
           type="button"
           size="sm"
           className="text-xs"
-          disabled={pending}
           onClick={() => setMode("send")}
         >
           Mandar a pruebas
@@ -254,7 +136,6 @@ export function EmbroideryPrepControls({
             type="button"
             size="sm"
             className="text-xs"
-            disabled={pending}
             onClick={() => setMode("approve")}
           >
             Aprobar prueba
@@ -264,7 +145,6 @@ export function EmbroideryPrepControls({
             size="sm"
             variant="outline"
             className="text-xs"
-            disabled={pending}
             onClick={() => setMode("reject")}
           >
             Rechazar prueba
@@ -325,93 +205,12 @@ export function EmbroideryPrepControls({
         </ol>
       )}
 
-      <Dialog open={mode !== null} onOpenChange={(open) => !open && close()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{copy?.title}</DialogTitle>
-            <DialogDescription>{copy?.description}</DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={1000}
-            rows={3}
-            placeholder={copy?.placeholder}
-            aria-label="Observaciones"
-          />
-          {mode === "send" && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">
-                Foto de la prueba (opcional)
-              </p>
-              {photoUrl && (
-                <div className="relative w-fit">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoUrl}
-                    alt="Vista previa de la prueba"
-                    className="max-h-48 rounded-lg border"
-                  />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="secondary"
-                    className="absolute right-1 top-1 h-7 w-7 rounded-full"
-                    aria-label="Quitar foto"
-                    onClick={() => setPhoto(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <CameraCaptureButton onChange={handlePhoto} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  asChild
-                >
-                  <label className="cursor-pointer">
-                    <Paperclip className="h-4 w-4" />
-                    Elegir de la galería
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handlePhoto}
-                    />
-                  </label>
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <Camera className="mr-1 inline h-3 w-3" aria-hidden />
-                Recepción la ve para revisar y autorizar la prueba.
-              </p>
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={close}
-              disabled={pending}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "reject" ? "destructive" : "default"}
-              disabled={pending || (!!copy?.required && !notes.trim())}
-              onClick={submit}
-            >
-              {pending && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
-              {copy?.confirm}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmbroideryPrepDialog
+        orderId={orderId}
+        taskId={task.id}
+        mode={mode}
+        onClose={() => setMode(null)}
+      />
     </div>
   );
 }

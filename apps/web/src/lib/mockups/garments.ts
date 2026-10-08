@@ -18,9 +18,10 @@ import {
  * vestir ya están aquí, pero ocultas: sus modelos 3D los descarga el usuario
  * (CC0/CC-BY) y hasta entonces `ENABLED_GARMENTS` sólo deja playera y gorra.
  *
- * Rotulaciones: carro, minivan, pickup, tráiler y bicicleta (vinil sobre
- * vehículos) viven en el mismo registro, con `category: "rotulaciones"`; sus
- * modelos son 100 % procedurales (`components/mockups/*Model.ts`).
+ * Rotulaciones: carro, minivan, pickup, camión y bicicleta (vinil sobre
+ * vehículos) viven en el mismo registro, con `category: "rotulaciones"`. Carro,
+ * minivan, pickup, camión, taza y mousepad son GLB (`components/mockups/GlbModel.ts`);
+ * la gorra, el termo y la bicicleta se construyen por código.
  *
  * Para habilitar una prenda nueva: poner su GLB en `public/models/`, llenar
  * `model`, sus presets en `presets.ts`, cargarla en `mockupScene.ts`
@@ -39,6 +40,7 @@ export const ENABLED_GARMENTS = [
   "cap",
   "termo",
   "taza",
+  "mousepad",
   "car",
   "minivan",
   "pickup",
@@ -56,6 +58,7 @@ export const ALL_GARMENTS = [
   "dress-shirt",
   "termo",
   "taza",
+  "mousepad",
   "car",
   "minivan",
   "pickup",
@@ -175,18 +178,29 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
     label: GARMENT_LABELS.taza,
     category: "prendas",
     referenceModel: "Cerámica 11 oz · sublimación",
-    model: { kind: "procedural" },
+    model: { kind: "glb", url: "/models/mug.glb" },
     colorParts: [{ part: "body", label: "Color de la taza" }],
     defaultColors: DEFAULT_COLORS.taza,
     options: { decoration: "print" },
     presets: PLACEMENT_PRESETS.taza,
   },
+  mousepad: {
+    id: "mousepad",
+    label: GARMENT_LABELS.mousepad,
+    category: "prendas",
+    referenceModel: "Tapete 30 × 36 cm · sublimación",
+    model: { kind: "glb", url: "/models/mousepad.glb" },
+    colorParts: [{ part: "body", label: "Color del mousepad" }],
+    defaultColors: DEFAULT_COLORS.mousepad,
+    options: { decoration: "print" },
+    presets: PLACEMENT_PRESETS.mousepad,
+  },
   car: {
     id: "car",
     label: GARMENT_LABELS.car,
     category: "rotulaciones",
-    referenceModel: "Sedán compacto",
-    model: { kind: "procedural" },
+    referenceModel: "Sedán compacto (Nissan Sentra)",
+    model: { kind: "glb", url: "/models/car.glb" },
     colorParts: [{ part: "body", label: "Color del carro" }],
     defaultColors: DEFAULT_COLORS.car,
     options: { decoration: "print" },
@@ -196,8 +210,8 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
     id: "minivan",
     label: GARMENT_LABELS.minivan,
     category: "rotulaciones",
-    referenceModel: "Minivan con puerta corrediza",
-    model: { kind: "procedural" },
+    referenceModel: "Van de carga (Ford Transit)",
+    model: { kind: "glb", url: "/models/minivan.glb" },
     colorParts: [{ part: "body", label: "Color de la minivan" }],
     defaultColors: DEFAULT_COLORS.minivan,
     options: { decoration: "print" },
@@ -207,8 +221,8 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
     id: "pickup",
     label: GARMENT_LABELS.pickup,
     category: "rotulaciones",
-    referenceModel: "Pickup doble cabina",
-    model: { kind: "procedural" },
+    referenceModel: "Pickup doble cabina (Ram 1500)",
+    model: { kind: "glb", url: "/models/pickup.glb" },
     colorParts: [{ part: "body", label: "Color de la pickup" }],
     defaultColors: DEFAULT_COLORS.pickup,
     options: { decoration: "print" },
@@ -218,8 +232,8 @@ export const GARMENTS: Record<Garment, GarmentDefinition> = {
     id: "trailer",
     label: GARMENT_LABELS.trailer,
     category: "rotulaciones",
-    referenceModel: "Tractocamión con caja seca",
-    model: { kind: "procedural" },
+    referenceModel: "Camión con caja seca",
+    model: { kind: "glb", url: "/models/truck.glb" },
     colorParts: [
       { part: "body", label: "Color de la cabina" },
       { part: "mesh", label: "Color de la caja" },

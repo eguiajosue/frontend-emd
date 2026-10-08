@@ -4,7 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Search } from "lucide-react";
-import { openCommandPalette } from "@/components/CommandPalette";
+import { openCommandPalette } from "@/lib/commandPalette";
 import { Button } from "@/components/ui/button";
 import { useNavGroups } from "@/hooks/useVisibleNavItems";
 import { buildBreadcrumbs, type Breadcrumb } from "@/lib/navMenu";

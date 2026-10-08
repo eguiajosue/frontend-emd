@@ -354,6 +354,23 @@ test("4 · termo: el diseño se graba con láser (acero sobre pintura y sobre ac
   await presets.getByRole("button", { name: "Frente" }).click();
   await page.waitForTimeout(1200);
   await shot("taza-frente");
+
+  // Mousepad: se diseña sobre la cara de arriba, sin tallas ni panel de láser.
+  await prenda.getByRole("radio", { name: "Mousepad" }).click();
+  await cargado();
+  await expect(host).toHaveAttribute("data-garment", "mousepad");
+  await expect(page.getByTestId("laser-engrave-panel")).toHaveCount(0);
+  await expect(page.getByText("Tallas", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Subir diseño").setInputFiles({ name: "color.png", mimeType: "image/png", buffer: tinyPng(96) });
+  await expect(presets.getByRole("button", { name: "Centro" })).toBeVisible();
+  await presets.getByRole("button", { name: "Esquina inferior derecha" }).click();
+  await page.waitForTimeout(1200);
+  await shot("mousepad-esquina");
+  await presets.getByRole("button", { name: "Centro" }).click();
+  await page.getByRole("textbox", { name: "Color del mousepad (código hex)" }).fill("b91c1c");
+  await page.getByRole("textbox", { name: "Color del mousepad (código hex)" }).press("Enter");
+  await page.waitForTimeout(1200);
+  await shot("mousepad-centro-rojo");
 });
 
 test("5 · Rotulaciones: cada vehículo carga, lleva un logo, cambia de vista, el tráiler por partes, descarga y adjunta", async ({ page, request }) => {
@@ -392,7 +409,7 @@ test("5 · Rotulaciones: cada vehículo carga, lleva un logo, cambia de vista, e
 
   const casos: [string, string, string, string][] = [
     ["Carro", "car", "Puerta izquierda", "carro"],
-    ["Minivan", "minivan", "Puerta corrediza izquierda", "minivan"],
+    ["Minivan", "minivan", "Costado izquierdo (carga)", "minivan"],
     ["Pickup", "pickup", "Caja – lateral izquierdo", "pickup"],
     ["Bicicleta", "bicycle", "Tubo diagonal izquierdo", "bicicleta"],
   ];

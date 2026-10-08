@@ -32,6 +32,14 @@ vi.mock("@/hooks/useInventory", () => ({
   }),
 }));
 
+// Respuesta del cliente desde su enlace (portal): ninguna salvo que el test la ponga.
+let shareState: { link: unknown; pendingResponse: unknown } = { link: null, pendingResponse: null };
+const discardResponse = vi.fn();
+vi.mock("@/hooks/useClientPortal", () => ({
+  useShareState: () => ({ data: shareState }),
+  useShareLinkActions: () => ({ discard: { mutate: discardResponse, isPending: false } }),
+}));
+
 vi.mock("@/hooks/useAreaTasks", () => ({
   useAreaTasks: () => ({ tasks: [] }),
 }));
@@ -239,5 +247,56 @@ describe("DesignFlowSection - Empezar diseño", () => {
     );
     expect(screen.getByText("Dani")).toBeInTheDocument();
     permissions = { roles: ["admin"], isAdmin: true };
+  });
+});
+
+describe("DesignFlowSection - el cliente respondió desde su enlace", () => {
+  const waiting = { ...order, status: { id: 22, name: "esperando autorización" } } as Order;
+  const response = (kind: "aprobar" | "cambios", comment: string | null = null) => ({
+    id: 77,
+    revisionId: 1,
+    kind,
+    comment,
+    status: "pendiente",
+    createdAt: new Date(Date.now() - 3_600_000).toISOString(),
+  });
+
+  it("aprobó: 'Confirmar y autorizar' abre la hoja de materiales", async () => {
+    revisions = [revision(1, false)];
+    shareState = {
+      link: { token: "t", createdAt: "", lastViewedAt: new Date().toISOString(), viewCount: 2 },
+      pendingResponse: response("aprobar"),
+    };
+    render(<DesignFlowSection order={waiting} />);
+    const card = screen.getByRole("region", { name: "Respuesta del cliente desde su enlace" });
+    expect(card).toHaveTextContent("El cliente aprobó el diseño desde su enlace");
+    expect(card).toHaveTextContent("2 veces");
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar y autorizar" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Hoja de materiales");
+  });
+
+  it("pidió cambios: confirmar abre 'Pidió cambios' con su comentario ya escrito", async () => {
+    revisions = [revision(1, false)];
+    shareState = { link: null, pendingResponse: response("cambios", "El logo más grande") };
+    render(<DesignFlowSection order={waiting} />);
+    await userEvent.click(screen.getByRole("button", { name: "Confirmar y mandar a Diseño" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("El cliente pidió cambios");
+    expect(screen.getByPlaceholderText(/agrandar el logo/)).toHaveValue("El logo más grande");
+  });
+
+  it("Descartar no aplica nada", async () => {
+    revisions = [revision(1, false)];
+    shareState = { link: null, pendingResponse: response("aprobar") };
+    render(<DesignFlowSection order={waiting} />);
+    await userEvent.click(screen.getByRole("button", { name: "Descartar" }));
+    expect(discardResponse).toHaveBeenCalledWith(77);
+  });
+
+  it("una respuesta a una ronda anterior no se muestra", () => {
+    revisions = [revision(1, false), revision(2, false)];
+    shareState = { link: null, pendingResponse: response("aprobar") };
+    render(<DesignFlowSection order={waiting} />);
+    expect(screen.queryByRole("region", { name: "Respuesta del cliente desde su enlace" })).toBeNull();
+    shareState = { link: null, pendingResponse: null };
   });
 });

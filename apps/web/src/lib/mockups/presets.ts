@@ -126,50 +126,62 @@ export const PLACEMENT_PRESETS: Record<Garment, PlacementPreset[]> = {
       view: "right",
     },
   ],
-  // Rotulaciones (vehículos): las posiciones salen de raycasts sobre las
-  // superficies rotulables de cada modelo (`components/mockups/*Model.ts`, los
-  // tests de `vehiclePresets.test.ts` verifican que sigan sobre la pintura).
-  // Izquierda / derecha son las del vehículo (la izquierda del conductor está
-  // en +X). Los diseños de techo, cofre y cajuela giran 180° para leerse
-  // derechos en la vista "Arriba" (frente del vehículo hacia arriba).
+  // Mousepad (GLB, 30 × 36 cm): sólo se diseña la cara de arriba. La vista
+  // "Frente" mira casi de planta; "izquierda / derecha" son las de la pantalla.
+  mousepad: [
+    { id: "centro", label: "Centro", placement: { position: [0, 0.009, 0], normal: [0, 1, 0], scale: 0.22 }, view: "front" },
+    { id: "esquina-superior-izquierda", label: "Esquina superior izquierda", placement: { position: [-0.105, 0.009, -0.125], normal: [0, 1, 0], scale: 0.07 }, view: "front" },
+    { id: "esquina-superior-derecha", label: "Esquina superior derecha", placement: { position: [0.105, 0.009, -0.125], normal: [0, 1, 0], scale: 0.07 }, view: "front" },
+    { id: "esquina-inferior-izquierda", label: "Esquina inferior izquierda", placement: { position: [-0.105, 0.009, 0.125], normal: [0, 1, 0], scale: 0.07 }, view: "front" },
+    { id: "esquina-inferior-derecha", label: "Esquina inferior derecha", placement: { position: [0.105, 0.009, 0.125], normal: [0, 1, 0], scale: 0.07 }, view: "front" },
+  ],
+  // Rotulaciones (vehículos): las posiciones salen de raycasts sobre la
+  // pintura de cada modelo GLB (`components/mockups/GlbModel.ts`; el test
+  // `glbPresets.test.ts` verifica que sigan sobre ella). Izquierda / derecha
+  // son las del vehículo (la izquierda del conductor está en +X). Los diseños
+  // de techo, cofre y cajuela giran 180° para leerse derechos en la vista
+  // "Arriba" (frente del vehículo hacia arriba).
   car: [
-    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.092, 0.062, 0.02], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
-    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.092, 0.062, 0.02], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
-    { id: "costado-izquierdo", label: "Costado completo izquierdo", placement: { position: [0.092, 0.062, -0.035], normal: [1, 0, 0], scale: 0.14 }, view: "left" },
-    { id: "costado-derecho", label: "Costado completo derecho", placement: { position: [-0.092, 0.062, -0.035], normal: [-1, 0, 0], scale: 0.14 }, view: "right" },
-    { id: "cofre", label: "Cofre", placement: { position: [0, 0.08577, 0.14], normal: [0, 0.98739, 0.15832], scale: 0.08, rotation: Math.PI }, view: "top" },
-    { id: "techo", label: "Techo", placement: { position: [0, 0.146, -0.05], normal: [0, 1, 0], scale: 0.08, rotation: Math.PI }, view: "top" },
-    { id: "cajuela", label: "Cajuela", placement: { position: [0, 0.1, -0.19], normal: [0, 1, 0], scale: 0.07, rotation: Math.PI }, view: "top" },
-    { id: "trasera", label: "Parte trasera", placement: { position: [0, 0.09, -0.2363], normal: [0, 0.40891, -0.91257], scale: 0.07 }, view: "back" },
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.0862, 0.07, 0.04], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.0864, 0.07, 0.04], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
+    { id: "costado-izquierdo", label: "Costado completo izquierdo", placement: { position: [0.0871, 0.07, -0.02], normal: [1, 0, 0], scale: 0.14 }, view: "left" },
+    { id: "costado-derecho", label: "Costado completo derecho", placement: { position: [-0.0873, 0.07, -0.02], normal: [-1, 0, 0], scale: 0.14 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.1006, 0.15], normal: [0.009, 0.997, 0.081], scale: 0.08, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.1465, -0.07], normal: [0.012, 0.993, -0.114], scale: 0.07, rotation: Math.PI }, view: "top" },
+    { id: "cajuela", label: "Cajuela", placement: { position: [0, 0.1106, -0.19], normal: [0.003, 0.997, -0.077], scale: 0.06, rotation: Math.PI }, view: "top" },
+    { id: "trasera", label: "Parte trasera", placement: { position: [0, 0.085, -0.2174], normal: [0, 0.021, -1], scale: 0.07 }, view: "back" },
   ],
   minivan: [
-    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.099, 0.072, 0.06], normal: [1, 0, 0], scale: 0.07 }, view: "left" },
-    { id: "puerta-corrediza-izquierda", label: "Puerta corrediza izquierda", placement: { position: [0.099, 0.072, -0.06], normal: [1, 0, 0], scale: 0.09 }, view: "left" },
-    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.099, 0.072, 0.06], normal: [-1, 0, 0], scale: 0.07 }, view: "right" },
-    { id: "puerta-corrediza-derecha", label: "Puerta corrediza derecha", placement: { position: [-0.099, 0.072, -0.06], normal: [-1, 0, 0], scale: 0.09 }, view: "right" },
-    { id: "cofre", label: "Cofre", placement: { position: [0, 0.08866, 0.18], normal: [0, 0.98695, 0.16101], scale: 0.08, rotation: Math.PI }, view: "top" },
-    { id: "techo", label: "Techo", placement: { position: [0, 0.176, -0.09], normal: [0, 1, 0], scale: 0.1, rotation: Math.PI }, view: "top" },
-    { id: "trasera", label: "Puerta trasera", placement: { position: [0, 0.095, -0.25475], normal: [0, 0.05327, -0.99858], scale: 0.08 }, view: "back" },
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.0955, 0.125, 0.17], normal: [1, 0, 0], scale: 0.07 }, view: "left" },
+    { id: "lateral-izquierdo", label: "Costado izquierdo (carga)", placement: { position: [0.0935, 0.19, -0.1], normal: [1, 0, 0], scale: 0.2 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.0957, 0.125, 0.17], normal: [-1, 0, 0], scale: 0.07 }, view: "right" },
+    { id: "lateral-derecho", label: "Costado derecho (carga)", placement: { position: [-0.0935, 0.19, -0.1], normal: [-1, 0, 0], scale: 0.2 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.1388, 0.28], normal: [-0.023, 0.945, 0.326], scale: 0.06, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.2758, -0.05], normal: [-0.038, 0.999, 0.02], scale: 0.12, rotation: Math.PI }, view: "top" },
+    { id: "trasera-izquierda", label: "Puerta trasera izquierda", placement: { position: [0.04, 0.17, -0.3178], normal: [0, 0.05, -0.999], scale: 0.08 }, view: "back" },
+    { id: "trasera-derecha", label: "Puerta trasera derecha", placement: { position: [-0.04, 0.17, -0.3178], normal: [0, 0.05, -0.999], scale: 0.08 }, view: "back" },
   ],
   pickup: [
-    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.094, 0.078, 0.05], normal: [1, 0, 0], scale: 0.06 }, view: "left" },
-    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.094, 0.078, 0.05], normal: [-1, 0, 0], scale: 0.06 }, view: "right" },
-    { id: "cofre", label: "Cofre", placement: { position: [0, 0.11184, 0.17], normal: [0, 0.99954, 0.03028], scale: 0.09, rotation: Math.PI }, view: "top" },
-    { id: "techo", label: "Techo", placement: { position: [0, 0.18, -0.02], normal: [0, 1, 0], scale: 0.07, rotation: Math.PI }, view: "top" },
-    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.095, 0.095, -0.18], normal: [1, 0, 0], scale: 0.12 }, view: "left" },
-    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.095, 0.095, -0.18], normal: [-1, 0, 0], scale: 0.12 }, view: "right" },
-    { id: "caja-compuerta", label: "Caja – compuerta", placement: { position: [0, 0.082, -0.2655], normal: [0, 0, -1], scale: 0.1 }, view: "back" },
+    { id: "puerta-izquierda", label: "Puerta izquierda", placement: { position: [0.1023, 0.115, 0.11], normal: [1, 0, 0], scale: 0.07 }, view: "left" },
+    { id: "puerta-derecha", label: "Puerta derecha", placement: { position: [-0.1023, 0.115, 0.11], normal: [-1, 0, 0], scale: 0.07 }, view: "right" },
+    { id: "puerta-trasera-izquierda", label: "Puerta trasera izquierda", placement: { position: [0.1026, 0.115, -0.01], normal: [1, 0, 0], scale: 0.07 }, view: "left" },
+    { id: "puerta-trasera-derecha", label: "Puerta trasera derecha", placement: { position: [-0.1026, 0.115, -0.01], normal: [-1, 0, 0], scale: 0.07 }, view: "right" },
+    { id: "cofre", label: "Cofre", placement: { position: [0, 0.1478, 0.27], normal: [0.021, 0.991, 0.131], scale: 0.09, rotation: Math.PI }, view: "top" },
+    { id: "techo", label: "Techo", placement: { position: [0, 0.2054, -0.04], normal: [-0.022, 1, -0.017], scale: 0.07, rotation: Math.PI }, view: "top" },
+    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.1058, 0.125, -0.17], normal: [1, 0, 0], scale: 0.09 }, view: "left" },
+    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.1058, 0.125, -0.17], normal: [-1, 0, 0], scale: 0.09 }, view: "right" },
+    { id: "caja-compuerta", label: "Caja – compuerta", placement: { position: [0, 0.1, -0.2737], normal: [0, 0, -1], scale: 0.09 }, view: "back" },
   ],
   trailer: [
-    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.13, 0.26, -0.6], normal: [1, 0, 0], scale: 0.5 }, view: "left", parts: ["full", "box"] },
-    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.13, 0.26, -0.6], normal: [-1, 0, 0], scale: 0.5 }, view: "right", parts: ["full", "box"] },
-    { id: "caja-puerta-trasera", label: "Caja – puerta trasera", placement: { position: [0, 0.26, -1.255], normal: [0, 0, -1], scale: 0.16 }, view: "back", parts: ["full", "box"] },
-    { id: "caja-techo", label: "Caja – techo", placement: { position: [0, 0.405, -0.6], normal: [0, 1, 0], scale: 0.16, rotation: Math.PI }, view: "top", parts: ["full", "box"] },
-    { id: "caja-frente", label: "Caja – frente", placement: { position: [0, 0.26, 0.085], normal: [0, 0, 1], scale: 0.16 }, view: "front", parts: ["box"] },
-    { id: "cabina-puerta-izquierda", label: "Cabina – puerta izquierda", placement: { position: [0.12, 0.18, 0.43], normal: [1, 0, 0], scale: 0.07 }, view: "left", parts: ["full", "cab"] },
-    { id: "cabina-puerta-derecha", label: "Cabina – puerta derecha", placement: { position: [-0.12, 0.18, 0.43], normal: [-1, 0, 0], scale: 0.07 }, view: "right", parts: ["full", "cab"] },
-    { id: "cabina-cofre", label: "Cabina – cofre", placement: { position: [0, 0.22901, 0.6], normal: [0, 0.99501, 0.09976], scale: 0.12, rotation: Math.PI }, view: "top", parts: ["full", "cab"] },
-    { id: "cabina-techo", label: "Cabina – techo", placement: { position: [0, 0.3409, 0.3], normal: [0, 0.99249, 0.12236], scale: 0.12, rotation: Math.PI }, view: "top", parts: ["full", "cab"] },
+    { id: "caja-lateral-izquierdo", label: "Caja – lateral izquierdo", placement: { position: [0.106, 0.22, -0.12], normal: [1, 0, 0], scale: 0.22 }, view: "left", parts: ["full", "box"] },
+    { id: "caja-lateral-derecho", label: "Caja – lateral derecho", placement: { position: [-0.106, 0.22, -0.12], normal: [-1, 0, 0], scale: 0.22 }, view: "right", parts: ["full", "box"] },
+    { id: "caja-puerta-trasera", label: "Caja – puerta trasera", placement: { position: [0, 0.22, -0.5885], normal: [0, 0, -1], scale: 0.16 }, view: "back", parts: ["full", "box"] },
+    { id: "caja-techo", label: "Caja – techo", placement: { position: [0, 0.3406, -0.12], normal: [0, 1, 0], scale: 0.16, rotation: Math.PI }, view: "top", parts: ["full", "box"] },
+    { id: "caja-frente", label: "Caja – frente", placement: { position: [0, 0.25, 0.3341], normal: [0, 0, 1], scale: 0.16 }, view: "front", parts: ["box"] },
+    { id: "cabina-puerta-izquierda", label: "Cabina – puerta izquierda", placement: { position: [0.1042, 0.18, 0.45], normal: [1, 0, 0], scale: 0.07 }, view: "left", parts: ["full", "cab"] },
+    { id: "cabina-puerta-derecha", label: "Cabina – puerta derecha", placement: { position: [-0.1044, 0.18, 0.45], normal: [-1, 0, 0], scale: 0.07 }, view: "right", parts: ["full", "cab"] },
+    { id: "cabina-frente", label: "Cabina – frente", placement: { position: [0, 0.15, 0.585], normal: [0.043, 0, 0.999], scale: 0.1 }, view: "front", parts: ["full", "cab"] },
+    { id: "cabina-techo", label: "Cabina – techo", placement: { position: [0, 0.2893, 0.45], normal: [-0.002, 1, 0.016], scale: 0.12, rotation: Math.PI }, view: "top", parts: ["full", "cab"] },
   ],
   bicycle: [
     { id: "tubo-diagonal-izquierdo", label: "Tubo diagonal izquierdo", placement: { position: [0.00563, 0.12875, 0.05], normal: [1, 0, 0], scale: 0.06 }, view: "left" },

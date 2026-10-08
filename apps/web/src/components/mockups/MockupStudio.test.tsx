@@ -375,7 +375,7 @@ describe("MockupStudio", () => {
   it("sólo ofrece las prendas habilitadas (sudadera y camisa siguen ocultas)", () => {
     render(<MockupStudio />);
     const prendas = screen.getByRole("radiogroup", { name: "Prenda" });
-    expect(within(prendas).getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Playera", "Gorra", "Termo", "Taza"]);
+    expect(within(prendas).getAllByRole("radio").map((r) => r.getAttribute("aria-label"))).toEqual(["Playera", "Gorra", "Termo", "Taza", "Mousepad"]);
     expect(screen.getByRole("radiogroup", { name: "Categoría" })).toBeInTheDocument();
     expect(screen.queryByText("Sudadera")).not.toBeInTheDocument();
   });
