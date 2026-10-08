@@ -54,6 +54,8 @@ import {
   type TvTask,
 } from "@/lib/tvBoard";
 import { cn } from "@/lib/utils";
+import { useAreaScoreboard } from "@/hooks/useAreaScoreboard";
+import { TvScoreboard } from "./TvScoreboard";
 import type { AreaTaskStatus } from "@/types";
 
 const TV_REFRESH_MS = 30_000;
@@ -461,6 +463,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   }, [board, now]);
 
   const loading = (isLoading || areaLoading) && allTasks.length === 0;
+  const { data: scoreboard } = useAreaScoreboard(activeArea);
   const areaTitle = activeArea ? getAreaLabel(activeArea) : areas.filter((a) => roles.includes(a)).map(getAreaLabel).join(" · ");
 
   return (
@@ -525,6 +528,8 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             </div>
           </header>
 
+          {scoreboard && <TvScoreboard data={scoreboard} />}
+
           <div className="flex flex-wrap items-center gap-3">
             <ul className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-5" aria-label="Conteo por plazo">
               {KPI_TONES.map((tone) => {
@@ -567,8 +572,8 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
                   {[ALL_AREAS, ...areas].map((value) => {
                     const Icon = value !== ALL_AREAS ? getAreaIcon(value) : null;
                     return (
-                      <ToggleGroupItem key={value} value={value} className="h-12 gap-2 border bg-card px-5 text-base">
-                        {Icon && <Icon aria-hidden />}
+                      <ToggleGroupItem key={value} value={value} data-area={Icon ? value : undefined} className="h-12 gap-2 border bg-card px-5 text-base">
+                        {Icon && <Icon aria-hidden className="text-[hsl(var(--tone))]" />}
                         {value === ALL_AREAS ? "Todas" : getAreaLabel(value)}
                       </ToggleGroupItem>
                     );

@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { OrdersJobWall } from "./OrdersJobWall";
 import type { Order } from "@/types";
 
+vi.mock("@/hooks/useAreaScoreboard", () => ({ useAreaScoreboard: () => ({ data: null }) }));
+
 const H = 3_600_000;
 
 function order(id: number, hoursToDue: number | null, overrides: Partial<Order> = {}): Order {

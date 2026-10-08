@@ -9,12 +9,12 @@ import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { PREP_STAGE_META } from "@/components/orders/EmbroideryPrepControls";
 import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
 import { Button } from "@/components/ui/button";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatCountdown, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
 import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
 import { isReturnedDesign } from "@/lib/myTasks";
 import { cn } from "@/lib/utils";
+import { AreaChip } from "@/components/AreaChip";
 import type { AreaTaskStatus, MyTask } from "@/types";
 
 const TONE_DOT: Record<DeadlineState["tone"], string> = {
@@ -68,7 +68,6 @@ interface TaskCardProps {
  * pie con el plazo + la acción. Toda la tarjeta abre el detalle del pedido.
  */
 export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen, onAdvance, busy, canMovePrep = false }: TaskCardProps) {
-  const AreaIcon = getAreaIcon(task.area);
   const action = primaryAction(task);
   const ActionIcon = action.icon;
   const returned = isReturnedDesign(task);
@@ -79,8 +78,9 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
 
   return (
     <article
+      data-area={task.area}
       className={cn(
-        "group relative flex h-full flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-[border-color,box-shadow] duration-150 hover:border-border hover:shadow-soft-md dark:border-border",
+        "area-stripe group relative flex h-full flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-[border-color,box-shadow] duration-150 hover:border-border hover:shadow-soft-md dark:border-border",
         returned && "border-orange-300/70 dark:border-orange-900"
       )}
     >
@@ -95,10 +95,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
 
       <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="muted" className="gap-1 px-2.5 py-1 text-foreground/80">
-            {AreaIcon && <AreaIcon className="h-3.5 w-3.5" aria-hidden />}
-            {getAreaLabel(task.area)}
-          </Badge>
+          <AreaChip area={task.area} className="px-2.5 py-1" />
           {returned && (
             <Badge
               variant="muted"

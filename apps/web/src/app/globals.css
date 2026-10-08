@@ -353,3 +353,43 @@
 [data-density="compact"] .density-gap {
   gap: 0.5rem !important;
 }
+
+/*
+ * Color de cada área (identidad "bloques de color de marca"): parte de los
+ * colores del logo (magenta, cian, lima, marino) + dos derivados. Se usa con
+ * `data-area="<área>"`: `--tone` es el color pleno (franjas, puntos) y
+ * `--tone-ink` el texto legible sobre su tinte, en claro y en oscuro.
+ */
+@layer base {
+  [data-area] { --tone: 240 6% 60%; --tone-ink: 240 10% 30%; }
+  [data-area="bordado"] { --tone: 330 74% 57%; --tone-ink: 330 72% 36%; }
+  [data-area="dtf"] { --tone: 189 62% 50%; --tone-ink: 189 85% 24%; }
+  [data-area="taller"] { --tone: 66 68% 50%; --tone-ink: 66 80% 24%; }
+  [data-area="diseno"] { --tone: 248 45% 55%; --tone-ink: 248 45% 36%; }
+  [data-area="laser"] { --tone: 30 92% 54%; --tone-ink: 26 85% 32%; }
+  [data-area="impresiones"] { --tone: 214 80% 56%; --tone-ink: 214 75% 34%; }
+  .dark [data-area] { --tone-ink: 240 6% 80%; }
+  .dark [data-area="bordado"] { --tone: 330 72% 62%; --tone-ink: 330 85% 80%; }
+  .dark [data-area="dtf"] { --tone: 189 62% 60%; --tone-ink: 189 70% 78%; }
+  .dark [data-area="taller"] { --tone: 66 60% 55%; --tone-ink: 66 65% 75%; }
+  .dark [data-area="diseno"] { --tone: 248 60% 70%; --tone-ink: 248 80% 84%; }
+  .dark [data-area="laser"] { --tone: 30 90% 60%; --tone-ink: 32 95% 76%; }
+  .dark [data-area="impresiones"] { --tone: 214 85% 65%; --tone-ink: 214 90% 80%; }
+}
+
+@layer components {
+  /* Etiqueta de área: tinte suave del color del área. */
+  .area-chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold;
+    background-color: hsl(var(--tone) / 0.16);
+    color: hsl(var(--tone-ink));
+  }
+  /* Franja izquierda de una tarjeta del área. */
+  .area-stripe { box-shadow: inset 4px 0 0 0 hsl(var(--tone)); }
+  /* Banda de encabezado de una columna/sección del área. */
+  .area-band {
+    background-image: linear-gradient(90deg, hsl(var(--tone) / 0.18), transparent 70%);
+    border-left: 4px solid hsl(var(--tone));
+  }
+  .area-dot { background-color: hsl(var(--tone)); }
+}

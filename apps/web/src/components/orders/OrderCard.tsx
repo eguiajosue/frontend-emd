@@ -3,7 +3,6 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
@@ -14,9 +13,9 @@ import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/l
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { chatInitials } from "@/hooks/useChat";
 import { useDeliveryProgress, getProgressLevel } from "@/lib/deliveryProgress";
-import { getAreaLabel, getAreaIcon } from "@/lib/areas";
 import { orderAreaTags } from "@/lib/orderAreas";
 import { cn } from "@/lib/utils";
+import { AreaChip } from "@/components/AreaChip";
 import { useMotionPreset } from "@/lib/motion";
 import { isDeliveredStatus } from "@/lib/orderStatus";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -131,15 +130,9 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             {/* Una etiqueta por área, no una sola: un pedido puede ir a
                 Bordado Y DTF. Ver `orderAreaTags`. */}
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              {areaTags.map((area) => {
-                const AreaIcon = getAreaIcon(area);
-                return (
-                  <Badge key={area} variant="muted" className="px-2 text-foreground/80">
-                    {AreaIcon && <AreaIcon className="h-3 w-3" aria-hidden />}
-                    {getAreaLabel(area)}
-                  </Badge>
-                );
-              })}
+              {areaTags.map((area) => (
+                <AreaChip key={area} area={area} />
+              ))}
             </div>
             <div className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
               {order.hasClientResourceFile && (

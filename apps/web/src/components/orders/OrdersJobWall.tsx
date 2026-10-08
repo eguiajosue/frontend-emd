@@ -20,6 +20,8 @@ import {
 } from "@/lib/orderDeadline";
 import type { TimeFormatPreference } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useAreaScoreboard } from "@/hooks/useAreaScoreboard";
+import { TvScoreboard } from "@/components/tasks/tv/TvScoreboard";
 import type { Order } from "@/types";
 
 const KPI_TONES: DeadlineTone[] = ["overdue", "at_risk", "on_time", "no_date", "finished"];
@@ -283,6 +285,7 @@ function OrdersTvWall({
     (e) => (!tone || e.state.tone === tone) && (!area || getOrderAreas(e.order).includes(area))
   );
   const clock = new Date(now);
+  const { data: scoreboard } = useAreaScoreboard(area);
   const shownOrders = shown.map((e) => e.order);
   const gridRef = useRef<HTMLUListElement>(null);
   const openFromTv = (id: number) => {
@@ -325,6 +328,7 @@ function OrdersTvWall({
             </SimpleTooltip>
           </div>
 
+          {scoreboard && <TvScoreboard data={scoreboard} />}
           <KpiStrip entries={live} activeTone={tone} onToneChange={setTone} large />
 
           {presentAreas.length > 1 && (
@@ -339,8 +343,8 @@ function OrdersTvWall({
               {[{ value: ALL_AREAS, label: "Todas" }, ...presentAreas].map((option) => {
                 const Icon = option.value !== ALL_AREAS ? getAreaIcon(option.value) : null;
                 return (
-                  <ToggleGroupItem key={option.value} value={option.value} className="gap-1.5 border bg-card">
-                    {Icon && <Icon aria-hidden />}
+                  <ToggleGroupItem key={option.value} value={option.value} data-area={Icon ? option.value : undefined} className="gap-1.5 border bg-card">
+                    {Icon && <Icon aria-hidden className="text-[hsl(var(--tone))]" />}
                     {option.label}
                   </ToggleGroupItem>
                 );

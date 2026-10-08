@@ -917,6 +917,9 @@ createServer((req, res) => {
     }
 
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
+    if (req.method === "GET" && path === "/orders/area-scoreboard") {
+      return send({ today: { done: 7, onTime: 7 }, week: { done: 41, onTime: 38 }, bestDay: { date: "2026-10-05", done: 12 }, streakDays: 4 });
+    }
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
     if (req.method === "GET" && path === "/__e2e/orders") return send(pedidosCreados);
