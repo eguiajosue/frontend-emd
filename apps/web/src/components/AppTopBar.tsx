@@ -26,22 +26,17 @@ import { useNavPreferences } from "@/hooks/useNavPreferences";
 import { formatRoleList } from "@/lib/roles";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/BrandLogo";
 
-/** Marca: píldora con el monograma magenta y el nombre de la app. */
+/** Marca: píldora con el logo de EMD. */
 function BrandPill() {
   return (
     <Link
       href="/dashboard"
-      aria-label="EMD HUB, inicio"
-      className="flex h-11 shrink-0 items-center gap-2.5 rounded-full border border-border/60 bg-card py-1.5 pl-1.5 pr-4 shadow-soft transition-colors hover:bg-card/80 dark:border-border"
+      aria-label="EMD marketing & design, inicio"
+      className="flex h-11 shrink-0 items-center rounded-full border border-border/60 bg-card px-5 shadow-soft transition-colors hover:bg-card/80 dark:border-border"
     >
-      <span
-        aria-hidden
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] font-heading text-sm font-bold text-primary-foreground shadow-sm shadow-primary/30"
-      >
-        E
-      </span>
-      <span className="font-heading text-[0.9375rem] font-semibold tracking-tight">EMD HUB</span>
+      <BrandLogo className="h-6" />
     </Link>
   );
 }
