@@ -14,6 +14,8 @@ export type NotificationType =
   | "design_approved"
   | "area_task_created"
   | "area_task_completed"
+  | "embroidery_test_approved"
+  | "embroidery_test_rejected"
   | "chat_message"
   | "inventory_low_stock"
   | "inventory_pending_discount"
@@ -47,6 +49,8 @@ const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
   design_approved: "diseno",
   area_task_created: "produccion",
   area_task_completed: "produccion",
+  embroidery_test_approved: "produccion",
+  embroidery_test_rejected: "produccion",
   order_ready: "produccion",
   inventory_low_stock: "inventario",
   inventory_pending_discount: "inventario",
@@ -124,6 +128,17 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     label: "Área terminada",
     className:
       "border-transparent bg-lime-500/10 text-lime-700 dark:bg-lime-400/15 dark:text-lime-300",
+  },
+  // Bordado: resultado de la prueba antes de producción.
+  embroidery_test_approved: {
+    label: "Prueba aprobada",
+    className:
+      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+  },
+  embroidery_test_rejected: {
+    label: "Prueba rechazada",
+    className:
+      "border-transparent bg-red-500/10 text-red-700 dark:bg-red-400/15 dark:text-red-300",
   },
   // Un artículo del inventario de un departamento cruzó su mínimo o se agotó.
   inventory_low_stock: {
