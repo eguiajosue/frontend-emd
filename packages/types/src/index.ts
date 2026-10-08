@@ -234,6 +234,8 @@ export interface AreaTaskSampleTest {
   round: number;
   sentAt: string;
   sentNotes?: string | null;
+  /** Nombre de la foto de la prueba; ausente/null = se mandó sin foto. */
+  photoName?: string | null;
   result: SampleTestResult | null;
   resultNotes?: string | null;
   decidedAt?: string | null;

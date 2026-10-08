@@ -3,10 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, getErrorMessage, request } from "@/lib/api";
-import { invalidateSupplyData, showSupplyWarnings } from "@/hooks/useAreaSupplies";
+import {
+  invalidateSupplyData,
+  showSupplyWarnings,
+} from "@/hooks/useAreaSupplies";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
+import type { UploadFileInput } from "@/lib/fileInput";
 import type { AreaTaskStatus, OrderAreaTask, SampleTestResult } from "@/types";
 
 /**
@@ -25,6 +29,7 @@ import type { AreaTaskStatus, OrderAreaTask, SampleTestResult } from "@/types";
  * - `DELETE /orders/:id/area-tasks/:taskId`
  * - `POST   /orders/:id/area-tasks/:taskId/send-to-test`  (Bordado: digitalizado → pruebas)
  * - `POST   /orders/:id/area-tasks/:taskId/test-result`   (Bordado: aprobada | rechazada)
+ * - `GET    /orders/:id/area-tasks/:taskId/tests/:testId/photo` (foto de la prueba)
  *
  * Mientras el backend no esté desplegado, un 404 se absorbe (cae a "sin
  * tareas") en vez de romper el detalle del pedido.
@@ -49,7 +54,7 @@ export function useAreaTasks(orderId: number | null) {
       try {
         return await request<OrderAreaTask[]>(
           `${ENDPOINTS.orders}/${orderId}/area-tasks`,
-          { token }
+          { token },
         );
       } catch (error) {
         if (isNotFound(error)) return [];
@@ -71,25 +76,41 @@ export function useAreaTasks(orderId: number | null) {
   };
 
   const setStatus = useMutation({
-    mutationFn: ({ taskId, status }: { taskId: number; status: AreaTaskStatus }) =>
+    mutationFn: ({
+      taskId,
+      status,
+    }: {
+      taskId: number;
+      status: AreaTaskStatus;
+    }) =>
       patchStatusChange<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/status`,
         { status },
-        token
+        token,
       ),
     onSuccess: (data) => {
       invalidate();
       showSupplyWarnings(data);
     },
-    onError: (error) => toast.error(getErrorMessage(error, "No se pudo actualizar la tarea.")),
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "No se pudo actualizar la tarea.")),
     meta: { ownErrorToast: true },
   });
 
   const sendToTest = useMutation({
-    mutationFn: ({ taskId, notes }: { taskId: number; notes?: string }) =>
+    mutationFn: ({
+      taskId,
+      notes,
+      photo,
+    }: {
+      taskId: number;
+      notes?: string;
+      /** Foto de la prueba hecha (opcional), para que Recepción la revise. */
+      photo?: UploadFileInput;
+    }) =>
       request<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/send-to-test`,
-        { token, method: "POST", body: { notes } }
+        { token, method: "POST", body: { notes, photo } },
       ),
     onSuccess: invalidate,
   });
@@ -106,7 +127,7 @@ export function useAreaTasks(orderId: number | null) {
     }) =>
       request<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/test-result`,
-        { token, method: "POST", body: { result, notes } }
+        { token, method: "POST", body: { result, notes } },
       ),
     onSuccess: invalidate,
   });
@@ -121,7 +142,7 @@ export function useAreaTasks(orderId: number | null) {
     }) =>
       request<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/assign`,
-        { token, method: "PATCH", body: { assignedUserId } }
+        { token, method: "PATCH", body: { assignedUserId } },
       ),
     onSuccess: invalidate,
   });
@@ -140,7 +161,7 @@ export function useAreaTasks(orderId: number | null) {
     mutationFn: (taskId: number) =>
       request<{ deleted: boolean }>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}`,
-        { token, method: "DELETE" }
+        { token, method: "DELETE" },
       ),
     onSuccess: invalidate,
   });
@@ -158,4 +179,31 @@ export function useAreaTasks(orderId: number | null) {
     addAreas,
     removeArea,
   };
+}
+
+/** Foto de una prueba de bordado (data URL), que se baja solo cuando se pide. */
+export function useSampleTestPhoto(
+  orderId: number,
+  taskId: number,
+  testId: number,
+  enabled: boolean,
+) {
+  const token = useAuthToken();
+  return useQuery<{ filename: string; mimeType: string; dataUrl: string }>({
+    queryKey: [
+      ...queryKeys.all("orders"),
+      "area-tasks",
+      orderId,
+      taskId,
+      "test-photo",
+      testId,
+    ],
+    enabled: enabled && Boolean(token),
+    staleTime: Infinity,
+    queryFn: () =>
+      request(
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/tests/${testId}/photo`,
+        { token },
+      ),
+  });
 }

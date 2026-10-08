@@ -14,6 +14,7 @@ export type NotificationType =
   | "design_approved"
   | "area_task_created"
   | "area_task_completed"
+  | "embroidery_test_sent"
   | "embroidery_test_approved"
   | "embroidery_test_rejected"
   | "chat_message"
@@ -49,6 +50,7 @@ const GROUP_BY_TYPE: Record<string, NotificationGroup> = {
   design_approved: "diseno",
   area_task_created: "produccion",
   area_task_completed: "produccion",
+  embroidery_test_sent: "produccion",
   embroidery_test_approved: "produccion",
   embroidery_test_rejected: "produccion",
   order_ready: "produccion",
@@ -129,7 +131,12 @@ export const NOTIFICATION_TAGS: Record<string, NotificationTagMeta> = {
     className:
       "border-transparent bg-lime-500/10 text-lime-700 dark:bg-lime-400/15 dark:text-lime-300",
   },
-  // Bordado: resultado de la prueba antes de producción.
+  // Bordado: prueba antes de producción (mandada a revisión y su resultado).
+  embroidery_test_sent: {
+    label: "Prueba por revisar",
+    className:
+      "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  },
   embroidery_test_approved: {
     label: "Prueba aprobada",
     className:
