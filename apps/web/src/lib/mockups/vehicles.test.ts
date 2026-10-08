@@ -14,7 +14,7 @@ describe("categorías y registro de vehículos", () => {
   it("los cinco vehículos están habilitados, con etiqueta en español, en Rotulaciones", () => {
     expect(VEHICLE_GARMENTS).toEqual(["car", "minivan", "pickup", "trailer", "bicycle"]);
     expect(enabledGarmentsIn("rotulaciones").map((g) => g.label)).toEqual(["Carro", "Minivan", "Pickup", "Tráiler", "Bicicleta"]);
-    expect(enabledGarmentsIn("prendas").map((g) => g.id)).toEqual(["tshirt", "cap", "termo", "taza"]);
+    expect(enabledGarmentsIn("prendas").map((g) => g.id)).toEqual(["tshirt", "cap", "termo", "taza", "mousepad"]);
     for (const v of VEHICLE_GARMENTS) {
       expect(isGarmentEnabled(v)).toBe(true);
       expect(isVehicle(v)).toBe(true);
@@ -50,7 +50,7 @@ describe("presets de vehículos", () => {
   it("la pickup trae caja – lateral y compuerta; el tráiler, caja y cabina", () => {
     expect(PLACEMENT_PRESETS.pickup.map((p) => p.label)).toEqual(expect.arrayContaining(["Caja – lateral izquierdo", "Caja – compuerta"]));
     expect(PLACEMENT_PRESETS.trailer.map((p) => p.label)).toEqual(
-      expect.arrayContaining(["Caja – lateral izquierdo", "Caja – puerta trasera", "Cabina – puerta izquierda", "Cabina – cofre"]),
+      expect.arrayContaining(["Caja – lateral izquierdo", "Caja – puerta trasera", "Cabina – puerta izquierda", "Cabina – frente"]),
     );
   });
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DEFAULT_COLORS, type GarmentColors } from "@/lib/mockups/types";
 import { dampColor, parseColor, type GarmentModel } from "./garmentModel";
+import { loadGlb } from "./glbLoader";
 
 /**
  * Playera básica: GLB de pmndrs/examples (t-shirt-configurator, MIT) con la
@@ -13,32 +13,8 @@ import { dampColor, parseColor, type GarmentModel } from "./garmentModel";
 
 export const SHIRT_MODEL_URL = "/models/tshirt.glb";
 
-// Una sola descarga por sesión: cambiar de prenda o remontar el lienzo
-// reutiliza el GLB ya parseado (cada renderer sube sus propios buffers).
-let gltfPromise: Promise<GLTF> | null = null;
-
-function loadShirtGltf(): Promise<GLTF> {
-  if (!gltfPromise) {
-    const loader = new GLTFLoader();
-    // Las texturas embebidas del GLB se leen como blob:. El ImageBitmapLoader
-    // por defecto usa fetch() y la CSP (connect-src) no permite blob:; con
-    // <img> (TextureLoader) sí, porque img-src incluye blob:.
-    loader.register((parser) => {
-      (parser as unknown as { textureLoader: THREE.Loader }).textureLoader = new THREE.TextureLoader(
-        parser.options.manager,
-      );
-      return { name: "EMD_img_texture_loader" };
-    });
-    gltfPromise = loader.loadAsync(SHIRT_MODEL_URL).catch((err) => {
-      gltfPromise = null; // permite reintentar
-      throw err;
-    });
-  }
-  return gltfPromise;
-}
-
 export async function loadShirtModel(colors: GarmentColors): Promise<GarmentModel> {
-  const gltf = await loadShirtGltf();
+  const gltf = await loadGlb(SHIRT_MODEL_URL);
   let source: THREE.Mesh | null = null;
   gltf.scene.traverse((o) => {
     if (!source && (o as THREE.Mesh).isMesh && o.name === "T_Shirt_male") source = o as THREE.Mesh;

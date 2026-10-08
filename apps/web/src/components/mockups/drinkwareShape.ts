@@ -81,72 +81,24 @@ export function termoLidProfile(): [number, number][] {
 
 /* --------------------------------- Taza ---------------------------------- */
 
+/**
+ * Taza del GLB (`public/models/mug.glb`, escalado en `GlbModel.ts`): un
+ * cilindro recto de 8.3 cm de diámetro con el asa hacia +X.
+ */
 export const TAZA = {
   bottomY: -0.048,
-  topY: 0.047,
-  radius: 0.041,
-  wall: 0.0035,
+  topY: 0.054,
+  radius: 0.0416,
   /** El asa sale hacia +X (izquierda de quien mira de frente es la pantalla derecha). */
   handleSide: 1,
 } as const;
 
 export const TAZA_SHAPE: DrinkwareShape = {
   printMinY: -0.038,
-  printMaxY: 0.04,
-  // Ligerísimo abombado (0.6 mm) para que no se vea como un tubo.
-  radiusAt: (y) => {
-    const t = (Math.min(TAZA.topY, Math.max(TAZA.bottomY, y)) - TAZA.bottomY) / (TAZA.topY - TAZA.bottomY);
-    return TAZA.radius + Math.sin(t * Math.PI) * 0.0006;
-  },
-  slopeAt: (y) => {
-    const h = TAZA.topY - TAZA.bottomY;
-    const t = (Math.min(TAZA.topY, Math.max(TAZA.bottomY, y)) - TAZA.bottomY) / h;
-    return (Math.cos(t * Math.PI) * Math.PI * 0.0006) / h;
-  },
+  printMaxY: 0.044,
+  radiusAt: () => TAZA.radius,
+  slopeAt: () => 0,
 };
-
-/** Perfil completo de la taza: exterior, borde redondeado e interior. */
-export function tazaProfile(): { outer: [number, number][]; inner: [number, number][] } {
-  const { bottomY, topY, wall } = TAZA;
-  const outer: [number, number][] = [[0, bottomY + 0.003], [TAZA.radius * 0.78, bottomY]];
-  const rr = 0.004;
-  for (let i = 0; i <= 6; i++) {
-    const a = -Math.PI / 2 + (i / 6) * (Math.PI / 2);
-    const r = TAZA_SHAPE.radiusAt(bottomY + rr);
-    outer.push([r - rr + Math.cos(a) * rr, bottomY + rr + Math.sin(a) * rr]);
-  }
-  for (let i = 1; i <= 30; i++) {
-    const y = bottomY + rr + ((topY - bottomY - rr) * i) / 30;
-    outer.push([TAZA_SHAPE.radiusAt(y), y]);
-  }
-  // Borde (labio) redondeado de lado a lado del grosor.
-  const inner: [number, number][] = [];
-  const rOut = TAZA_SHAPE.radiusAt(topY);
-  for (let i = 1; i <= 8; i++) {
-    const a = (i / 8) * Math.PI;
-    inner.push([rOut - wall / 2 + (Math.cos(a) * wall) / 2, topY + Math.sin(a) * (wall / 2)]);
-  }
-  inner.push([rOut - wall, topY - 0.004], [rOut - wall - 0.0004, bottomY + 0.012], [rOut - wall - 0.006, bottomY + 0.0065], [0, bottomY + 0.006]);
-  return { outer, inner };
-}
-
-/** Línea central del asa (en el plano XY, del lado +X). */
-export function tazaHandlePath(): [number, number, number][] {
-  const r = TAZA.radius - 0.002;
-  const pts: [number, number, number][] = [];
-  // Una "C" redondeada: sale arriba, baja y vuelve a entrar abajo.
-  const top = 0.03;
-  const bottom = -0.026;
-  const reach = 0.036;
-  for (let i = 0; i <= 24; i++) {
-    const t = i / 24;
-    const a = Math.PI / 2 - t * Math.PI; // de arriba (+90°) a abajo (−90°)
-    const y = (top + bottom) / 2 + (Math.sin(a) * (top - bottom)) / 2;
-    const x = r + Math.cos(a) * reach * (0.92 + 0.08 * Math.cos(a));
-    pts.push([x * TAZA.handleSide, y, 0]);
-  }
-  return pts;
-}
 
 /* ----------------------- Proyección cilíndrica --------------------------- */
 

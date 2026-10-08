@@ -13,11 +13,12 @@ import type { LaserEngraveSettings } from "./laserEngrave";
  * Prendas del estudio. "hoodie" y "dress-shirt" ya existen en el contrato
  * (plantillas, registro de prendas, generador de patrones) pero todavía no
  * tienen modelo 3D: la UI sólo ofrece las de `ENABLED_GARMENTS`
- * (`lib/mockups/garments.ts`). "termo" y "taza" no son prendas sino
+ * (`lib/mockups/garments.ts`). "termo", "taza" y "mousepad" no son prendas sino
  * productos promocionales, pero viven en el mismo registro y contrato.
  *
  * "car", "minivan", "pickup", "trailer" y "bicycle" son las ROTULACIONES
- * (vinil sobre vehículos): modelos 100 % procedurales, sin tallas.
+ * (vinil sobre vehículos): sin tallas. Carro, minivan, pickup y
+ * camión ("trailer") son GLB; la bicicleta es procedural.
  */
 export type Garment =
   | "tshirt"
@@ -26,6 +27,7 @@ export type Garment =
   | "dress-shirt"
   | "termo"
   | "taza"
+  | "mousepad"
   | "car"
   | "minivan"
   | "pickup"
@@ -145,8 +147,9 @@ export const DEFAULT_COLORS: Record<Garment, GarmentColors> = {
   "dress-shirt": { body: "#ffffff" },
   termo: { body: "#2b2e34" },
   taza: { body: "#ffffff" },
+  mousepad: { body: "#1f2937" },
   // Rotulaciones: vehículos blancos (el vinil resalta) salvo la cabina del
-  // tráiler (`body`), que va en azul marino; su caja (`mesh`) es blanca.
+  // camión (`body`), que va en azul marino; su caja (`mesh`) es blanca.
   car: { body: "#f4f4f5" },
   minivan: { body: "#f4f4f5" },
   pickup: { body: "#f4f4f5" },
@@ -171,6 +174,7 @@ export const GARMENT_LABELS: Record<Garment, string> = {
   "dress-shirt": "Camisa de vestir",
   termo: "Termo",
   taza: "Taza",
+  mousepad: "Mousepad",
   car: "Carro",
   minivan: "Minivan",
   pickup: "Pickup",

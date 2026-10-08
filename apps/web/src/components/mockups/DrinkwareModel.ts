@@ -1,12 +1,8 @@
 import * as THREE from "three";
 import { DEFAULT_COLORS, RAW_STEEL_HEX, isRawSteel, type GarmentColors } from "@/lib/mockups/types";
 import {
-  TAZA,
-  TAZA_SHAPE,
   TERMO,
   TERMO_SHAPE,
-  tazaHandlePath,
-  tazaProfile,
   termoBodyProfile,
   termoLidProfile,
   wrapDecalArrays,
@@ -15,8 +11,8 @@ import {
 import { dampColor, parseColor, type GarmentModel } from "./garmentModel";
 
 /**
- * Termo (tumbler de acero inoxidable con pintura electrostática) y taza de
- * cerámica, construidos por código (`LatheGeometry` + asa con `TubeGeometry`).
+ * Termo (tumbler de acero inoxidable con pintura electrostática), construido
+ * por código (`LatheGeometry`). La taza es un GLB (`GlbModel.ts`).
  *
  * Los diseños no usan el proyector plano de las prendas: se "envuelven" sobre
  * el cilindro (`wrapDecalArrays`), con el ancho medido sobre la superficie.
@@ -89,7 +85,7 @@ function lathe(points: [number, number][], segments = LATHE_SEGMENTS) {
 }
 
 /** Geometría del diseño envuelta sobre el cuerpo (en el espacio local = mundo). */
-function wrapGeometry(
+export function wrapGeometry(
   shape: DrinkwareShape,
   position: THREE.Vector3,
   rotation: number,
@@ -211,72 +207,6 @@ export function createTermoModel(colors: GarmentColors): GarmentModel {
     dispose() {
       disposables.forEach((d) => d.dispose());
       releaseBrushedTexture();
-    },
-  };
-}
-
-/* --------------------------------- Taza ---------------------------------- */
-
-export function createTazaModel(colors: GarmentColors): GarmentModel {
-  const disposables: { dispose: () => void }[] = [];
-  const track = <T extends { dispose: () => void }>(x: T) => {
-    disposables.push(x);
-    return x;
-  };
-  const root = new THREE.Group();
-  root.name = "taza";
-
-  // Cerámica esmaltada: base difusa con barniz brillante encima.
-  const glaze = { roughness: 0.32, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.06 };
-  const bodyMat = track(new THREE.MeshPhysicalMaterial({ ...glaze, envMapIntensity: 1.6 }));
-  const { outer, inner } = tazaProfile();
-  const body = new THREE.Mesh(track(lathe(outer)), bodyMat);
-  body.name = "taza-body";
-  body.castShadow = true;
-  root.add(body);
-
-  // Interior y labio: siempre blancos (como las tazas de sublimación de color).
-  const innerMat = track(new THREE.MeshPhysicalMaterial({ ...glaze, envMapIntensity: 1.6, color: "#f7f7f5", side: THREE.DoubleSide }));
-  const rim = new THREE.Mesh(track(lathe(inner)), innerMat);
-  rim.name = "taza-inner";
-  root.add(rim);
-
-  const curve = new THREE.CatmullRomCurve3(tazaHandlePath().map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-  const handleGeo = track(new THREE.TubeGeometry(curve, 64, 0.0062, 20, false));
-  handleGeo.scale(1, 1, 1.25); // asa un poco ovalada, más ancha de frente
-  const handle = new THREE.Mesh(handleGeo, bodyMat);
-  handle.name = "taza-handle";
-  handle.castShadow = true;
-  root.add(handle);
-
-  // Base sin esmalte (anillo de barro).
-  const foot = new THREE.Mesh(
-    track(new THREE.RingGeometry(TAZA.radius * 0.6, TAZA.radius * 0.78, 64)),
-    track(new THREE.MeshStandardMaterial({ color: "#d9d3c7", roughness: 0.95, side: THREE.DoubleSide })),
-  );
-  foot.rotation.x = Math.PI / 2;
-  foot.position.y = TAZA.bottomY + 0.0002;
-  root.add(foot);
-
-  const target = new THREE.Color();
-  const setColors = (next: GarmentColors, immediate?: boolean) => {
-    target.copy(parseColor(next.body, DEFAULT_COLORS.taza.body));
-    if (immediate) bodyMat.color.copy(target);
-  };
-  setColors(colors, true);
-
-  return {
-    root,
-    decalTargets: [body],
-    setColors,
-    update: (delta) => dampColor(bodyMat.color, target, 6, delta),
-    decalDepth: () => 0.02,
-    decalGeometry: (position, _normal, rotation, size) => wrapGeometry(TAZA_SHAPE, position, rotation, size),
-    focus: new THREE.Vector3(0.012, 0, 0),
-    viewElevation: 0.22,
-    shadow: { size: 0.32, far: 0.1, blur: 2.2, opacity: 0.6 },
-    dispose() {
-      disposables.forEach((d) => d.dispose());
     },
   };
 }
