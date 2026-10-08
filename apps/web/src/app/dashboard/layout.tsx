@@ -2,6 +2,7 @@
 
 import { AppSidebar, RAIL_OFFSET_COLLAPSED, RAIL_OFFSET_EXPANDED } from "@/components/app-sidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
@@ -10,10 +11,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isBranchAllowedPath } from "@/lib/navMenu";
 import { useMotionPreset } from "@/lib/motion";
-import { CommandPalette } from "@/components/CommandPalette";
-import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
-import { OnboardingTour } from "@/components/OnboardingTour";
+import dynamic from "next/dynamic";
 import { AppTopBar } from "@/components/AppTopBar";
+
+// Fuera del primer paquete: no se ven al entrar y pesan (cmdk, el tour). Se
+// bajan justo después de pintar la pantalla.
+const CommandPalette = dynamic(() => import("@/components/CommandPalette").then((m) => m.CommandPalette), { ssr: false });
+const KeyboardShortcuts = dynamic(() => import("@/components/KeyboardShortcuts").then((m) => m.KeyboardShortcuts), { ssr: false });
+const OnboardingTour = dynamic(() => import("@/components/OnboardingTour").then((m) => m.OnboardingTour), { ssr: false });
 import { useBreadcrumbs } from "@/components/AppHeaderNav";
 import { pageTitleFromBreadcrumbs } from "@/lib/navMenu";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
@@ -98,6 +103,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </motion.div>
           </AnimatePresence>
         </main>
+        <ConnectionStatus />
         <CommandPalette />
         <KeyboardShortcuts />
         <OnboardingTour />

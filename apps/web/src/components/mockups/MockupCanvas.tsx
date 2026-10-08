@@ -6,6 +6,9 @@ import type { MockupCanvasHandle, MockupCanvasProps } from "@/lib/mockups/types"
 import { cn } from "@/lib/utils";
 import { MockupScene, type SceneStatus } from "./mockupScene";
 import { WebGLFallback } from "./WebGLFallback";
+import { prefetchGlbs, subscribeGlbProgress } from "./glbLoader";
+import { GLB_SPECS } from "./GlbModel";
+import { SHIRT_MODEL_URL } from "./ShirtModel";
 
 /**
  * Lienzo 3D del creador de mockups. Se carga sólo en el cliente vía
@@ -29,6 +32,25 @@ const MockupCanvas = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function 
   propsRef.current = props;
   const [status, setStatus] = useState<SceneStatus>("loading");
   const [unsupported, setUnsupported] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  // Porcentaje de la descarga del modelo (los vehículos pesan varios MB).
+  useEffect(() => {
+    if (status !== "loading") {
+      setProgress(null);
+      return;
+    }
+    return subscribeGlbProgress((_url, fraction) => setProgress(fraction));
+  }, [status]);
+
+  // Con la primera prenda lista, el resto de modelos se baja en segundo plano:
+  // cambiar de producto ya no espera la descarga.
+  const prefetched = useRef(false);
+  useEffect(() => {
+    if (status !== "ready" || prefetched.current) return;
+    prefetched.current = true;
+    prefetchGlbs([SHIRT_MODEL_URL, ...Object.values(GLB_SPECS).map((spec) => spec.url)]);
+  }, [status]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -109,6 +131,7 @@ const MockupCanvas = forwardRef<MockupCanvasHandle, MockupCanvasProps>(function 
             <span className="flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-sm text-zinc-600 shadow-sm">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               Cargando prenda…
+              {progress != null && progress < 1 && <span className="tabular-nums">{Math.round(progress * 100)}%</span>}
             </span>
           ) : (
             <span className="max-w-xs rounded-xl bg-white/90 px-4 py-3 text-center text-sm text-zinc-700 shadow-sm">
