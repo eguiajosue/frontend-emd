@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import qrcode from "qrcode-generator";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { getErrorMessage } from "@/lib/api";
 import { useShareLinkActions, useShareState } from "@/hooks/useClientPortal";
 import { portalUrl, readyMessage, shareMessage, whatsappUrl } from "@/lib/clientPortal";
 import { isFinishedStatus } from "@/lib/orderStatus";
@@ -77,13 +78,19 @@ export function ShareWithClientDialog({ order, open, onOpenChange }: { order: Or
   const [showQr, setShowQr] = useState(false);
   const link = state.data?.link ?? null;
 
-  // La primera vez que se abre se crea el enlace (Recepción lo pidió al abrir).
+  // Al abrir sin enlace se crea, UNA vez por apertura. Si leer el estado falló
+  // se intenta igual: el POST devuelve el estado completo.
+  const autoCreated = useRef(false);
+  const stateSettled = state.isSuccess || state.isError;
   useEffect(() => {
-    if (open && state.isSuccess && !link && !create.isPending && !create.isError) create.mutate();
+    if (!open || !stateSettled || link || autoCreated.current) return;
+    autoCreated.current = true;
+    create.mutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, state.isSuccess, link]);
+  }, [open, stateSettled, link]);
   useEffect(() => {
     if (!open) {
+      autoCreated.current = false;
       setCopied(false);
       setShowQr(false);
       create.reset();
@@ -123,13 +130,23 @@ export function ShareWithClientDialog({ order, open, onOpenChange }: { order: Or
 
         {!link ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-            {create.isError ? (
-              <>
-                No se pudo crear el enlace.
-                <Button variant="link" className="h-auto p-0" onClick={() => create.mutate()}>
-                  Reintentar
-                </Button>
-              </>
+            {create.isError || (state.isError && !create.isPending) ? (
+              <div className="space-y-1" role="alert">
+                <p>
+                  No se pudo crear el enlace.{" "}
+                  <Button
+                    variant="link"
+                    className="h-auto p-0"
+                    onClick={() => {
+                      void state.refetch();
+                      create.mutate();
+                    }}
+                  >
+                    Reintentar
+                  </Button>
+                </p>
+                <p className="text-xs">{getErrorMessage(create.error ?? state.error, "Revisa tu conexión e inténtalo de nuevo.")}</p>
+              </div>
             ) : (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Preparando el enlace…

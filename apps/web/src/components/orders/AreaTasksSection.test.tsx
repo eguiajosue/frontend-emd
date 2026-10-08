@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AreaTasksSection } from "./AreaTasksSection";
+
+vi.mock("@/components/orders/EmbroideryPrepControls", () => ({
+  PREP_STAGE_META: {},
+  EmbroideryPrepControls: () => <div data-testid="prep-controls" />,
+}));
 import type { Order, OrderAreaTask } from "@/types";
 
 const removeMutateAsync = vi.fn();
@@ -89,5 +94,21 @@ describe("AreaTasksSection - duración de una tarea terminada", () => {
     render(<AreaTasksSection order={order} />);
 
     expect(screen.getByText(/tardó 3h 20m/)).toBeInTheDocument();
+  });
+});
+
+describe("AreaTasksSection - pruebas de bordado", () => {
+  const bordado = { id: 2, orderId: 7, area: "bordado", status: "pendiente", assignedUserId: null, prepStage: "digitalizado" } as OrderAreaTask;
+
+  it("no aparecen mientras el pedido sigue en diseño", () => {
+    tasks = [bordado];
+    render(<AreaTasksSection order={{ ...order, requiresDesign: true, status: { id: 20, name: "esperando autorización" } } as Order} />);
+    expect(screen.queryByTestId("prep-controls")).not.toBeInTheDocument();
+  });
+
+  it("aparecen cuando el cliente ya autorizó", () => {
+    tasks = [bordado];
+    render(<AreaTasksSection order={{ ...order, requiresDesign: true, status: { id: 21, name: "autorizado" } } as Order} />);
+    expect(screen.getByTestId("prep-controls")).toBeInTheDocument();
   });
 });

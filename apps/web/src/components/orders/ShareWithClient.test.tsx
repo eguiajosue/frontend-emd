@@ -4,14 +4,25 @@ import userEvent from "@testing-library/user-event";
 import { readyNoticeLabel, ShareWithClientButton, viewedLabel } from "./ShareWithClient";
 import type { Order } from "@/types";
 
+let stateError: Error | null = null;
+let createError: Error | null = null;
 let state: { link: unknown; pendingResponse: null } = { link: null, pendingResponse: null };
 const create = vi.fn();
 const regenerate = vi.fn();
 const revoke = vi.fn();
-const mutation = (fn: ReturnType<typeof vi.fn>) => ({ mutate: fn, reset: vi.fn(), isPending: false, isError: false });
+const mutation = (fn: ReturnType<typeof vi.fn>, error: Error | null = null) => ({
+  mutate: fn,
+  reset: vi.fn(),
+  isPending: false,
+  isError: !!error,
+  error,
+});
 vi.mock("@/hooks/useClientPortal", () => ({
-  useShareState: () => ({ data: state, isSuccess: true, isPending: false }),
-  useShareLinkActions: () => ({ create: mutation(create), regenerate: mutation(regenerate), revoke: mutation(revoke) }),
+  useShareState: () =>
+    stateError
+      ? { data: undefined, isSuccess: false, isError: true, isPending: false, error: stateError, refetch: vi.fn() }
+      : { data: state, isSuccess: true, isError: false, isPending: false, refetch: vi.fn() },
+  useShareLinkActions: () => ({ create: mutation(create, createError), regenerate: mutation(regenerate), revoke: mutation(revoke) }),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -65,5 +76,20 @@ describe("compartir con el cliente", () => {
   it("aviso pedido por el cliente, todavía sin mandar", () => {
     expect(readyNoticeLabel({ readyNotifiedAt: null, pushSubscribers: 2 })).toMatch(/en 2 dispositivos/);
     expect(readyNoticeLabel({ readyNotifiedAt: null, pushSubscribers: 0 })).toBeNull();
+  });
+
+  it("si el servidor falla: un solo intento y el error a la vista, sin quedarse cargando", async () => {
+    state = { link: null, pendingResponse: null };
+    stateError = new Error("Error interno del servidor");
+    createError = new Error("Error interno del servidor");
+    create.mockClear();
+    render(<ShareWithClientButton order={order} />);
+    await userEvent.click(screen.getByRole("button", { name: /Compartir/ }));
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Preparando el enlace/)).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo crear el enlace");
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+    stateError = null;
+    createError = null;
   });
 });

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getErrorMessage, request } from "@/lib/api";
+import { ApiError, getErrorMessage, request } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
 import type { ShareState } from "@/lib/clientPortal";
@@ -21,6 +21,9 @@ export function useShareState(orderId: number, enabled = true) {
     enabled: enabled && Boolean(token),
     queryFn: () => request<ShareState>(`${ENDPOINTS.orders}/${orderId}/share-link`, { token }),
     meta: { silentError: true },
+    // Un error del servidor no se arregla esperando: una sola reintentada y
+    // el diálogo muestra el error (antes se quedaba "Preparando…" un buen rato).
+    retry: (count, error) => !(error instanceof ApiError && error.status >= 400) && count < 1,
   });
 }
 
