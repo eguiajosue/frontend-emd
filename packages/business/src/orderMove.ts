@@ -33,13 +33,17 @@ export interface MoveActor {
  * trabajo que tiene abierto.
  */
 export function areaTasksToMove(order: Order, actor: MoveActor) {
-  const tasks = order.areaTasks ?? [];
-  if (tasks.length === 0) return [];
-  const mine = tasks.filter((task) => actor.areas.includes(task.area));
-  if (mine.length > 0) return mine;
-  if (actor.isManager) return tasks;
+  const all = order.areaTasks ?? [];
+  if (all.length === 0) return [];
+  // Una tarea de Bordado en digitalización o pruebas todavía no se puede
+  // empezar (el backend responde 400): no se mueve desde el tablero.
+  const movable = (tasks: typeof all) => tasks.filter((task) => !task.prepStage);
+  const mine = all.filter((task) => actor.areas.includes(task.area));
+  // Quien trabaja un área sólo mueve la suya, aunque esté bloqueada.
+  if (mine.length > 0) return movable(mine);
+  if (actor.isManager) return movable(all);
   // Sin área propia y sin permiso de coordinación: sólo si no hay ambigüedad.
-  return tasks.length === 1 ? tasks : [];
+  return all.length === 1 ? movable(all) : [];
 }
 
 /** `true` si mover este pedido a ese estado va a poder aplicarse. */

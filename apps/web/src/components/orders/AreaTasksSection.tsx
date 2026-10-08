@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
+import { EmbroideryPrepControls, PREP_STAGE_META } from "@/components/orders/EmbroideryPrepControls";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -346,10 +347,13 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
         <ul className="space-y-2">
           <AnimatePresence initial={false}>
             {tasks.map((task) => {
-              const meta = STATUS_META[task.status];
+              // Bordado en digitalización/pruebas: la etapa manda sobre "Pendiente".
+              const prep = task.prepStage ? PREP_STAGE_META[task.prepStage] : null;
+              const meta = prep ? { ...STATUS_META[task.status], ...prep } : STATUS_META[task.status];
               const StatusIcon = meta.icon;
               const AreaIcon = getAreaIcon(task.area);
-              const next = nextStatus(task.status);
+              // Sin producción hasta que la prueba se apruebe.
+              const next = task.prepStage ? null : nextStatus(task.status);
               const editable = canWork(task.area);
               const isMine = task.assignedUserId === userId;
               const timing = taskTiming(task);
@@ -384,7 +388,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                     <StatusIcon className="h-3.5 w-3.5" aria-hidden />
                     {/* Planificada mientras el cliente no autoriza: todavía no
                         es trabajo del área, así que "Pendiente" confundía. */}
-                    {awaitingAuthorization && task.status === "pendiente"
+                    {awaitingAuthorization && task.status === "pendiente" && !prep
                       ? "Espera autorización"
                       : meta.label}
                   </span>
@@ -430,6 +434,14 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                         tiene y desde cuándo está así. */}
                     {timing && <span className="pl-[1.125rem]">{timing}</span>}
                   </span>
+
+                  {task.area === "bordado" && (
+                    <EmbroideryPrepControls
+                      orderId={orderId}
+                      task={task}
+                      canAct={editable || isManager}
+                    />
+                  )}
 
                   <AreaSupplySummary supply={task.supply} clamp={false} className="order-last basis-full" />
 

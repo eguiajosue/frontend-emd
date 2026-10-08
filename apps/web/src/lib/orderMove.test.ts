@@ -76,3 +76,24 @@ describe("canApplyOrderMove", () => {
     expect(canApplyOrderMove(order(), 3, worker("bordado"))).toBe(true);
   });
 });
+
+describe("Bordado en digitalización o pruebas", () => {
+  const enPrep = (id: number, prepStage: "digitalizado" | "en_pruebas"): OrderAreaTask =>
+    ({ ...task(id, "bordado", "pendiente"), prepStage }) as OrderAreaTask;
+
+  it("no se mueve desde el tablero: el backend no deja empezarla sin prueba aprobada", () => {
+    const o = order([enPrep(1, "digitalizado"), task(2, "dtf", "pendiente")]);
+    expect(areaTasksToMove(o, manager).map((t) => t.id)).toEqual([2]);
+    expect(areaTasksToMove(o, worker("bordado"))).toEqual([]);
+  });
+
+  it("si todas las tareas están en etapas previas, el movimiento no se aplica", () => {
+    const o = order([enPrep(1, "en_pruebas")]);
+    expect(canApplyOrderMove(o, 3, manager)).toBe(false);
+  });
+
+  it("con la prueba aprobada (sin etapa) se mueve normal", () => {
+    const o = order([{ ...task(1, "bordado", "pendiente"), prepStage: null } as OrderAreaTask]);
+    expect(areaTasksToMove(o, worker("bordado")).map((t) => t.id)).toEqual([1]);
+  });
+});
