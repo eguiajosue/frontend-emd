@@ -18,8 +18,11 @@ import {
   Shirt,
   ReceiptText,
   type LucideIcon,
+  Radar,
 } from "lucide-react";
 import { isBranchOnly } from "@/lib/roles";
+
+export const COORDINATION_URL = "/dashboard/coordinacion";
 
 export interface NavItem {
   title: string;
@@ -232,6 +235,13 @@ export function buildMenuItems(): NavGroup[] {
           roles: ["admin", "recepcion", "superuser"],
         },
         {
+          // Carga por área/persona, tiempos por etapa y atrasados con motivo.
+          title: "Coordinación",
+          url: COORDINATION_URL,
+          icon: Radar,
+          roles: ["admin", "recepcion", "superuser"],
+        },
+        {
           title: "Historial",
           url: "/dashboard/historial",
           icon: History,
@@ -340,6 +350,7 @@ export const TAB_PRIORITY_URLS = [
   "/dashboard/notificaciones",
   "/dashboard/admin/rendimiento",
   "/dashboard/hoja-materiales",
+  COORDINATION_URL,
   "/dashboard/historial",
   MOCKUPS_URL,
   "/dashboard/clientes",

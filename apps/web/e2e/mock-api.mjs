@@ -217,6 +217,39 @@ let siguientePresetId = 1;
 const clavePreset = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
 /** Portal del cliente: enlaces por pedido y respuestas del cliente (pendientes de confirmar). */
+// Coordinación (GET /coordination/overview): datos fijos, el motivo se guarda en memoria.
+const diasAtras = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
+const atrasados = [
+  { id: 101, description: "24 polos bordados", clientName: "Colegio San Marcos", deliveryDate: diasAtras(4), daysLate: 4, status: "autorizado", reason: "material", note: "Falta hilo rojo", reasonAt: diasAtras(1),
+    areas: [{ area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignee: "Luis" }, { area: "dtf", status: "terminado", prepStage: null, assignee: null }] },
+  { id: 102, description: "Lona 2x1", clientName: "Ferretería El Tornillo", deliveryDate: diasAtras(2), daysLate: 2, status: "esperando autorización", reason: null, note: null, reasonAt: null, areas: [] },
+];
+const coordinacion = () => ({
+  generatedAt: new Date().toISOString(),
+  load: [
+    { area: "taller", pendiente: 3, enProceso: 1, atrasadas: 0, pronto: 1, sinPersona: 2, people: [{ userId: 31, name: "Marco", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }] },
+    { area: "dtf", pendiente: 5, enProceso: 2, atrasadas: 1, pronto: 2, sinPersona: 1, people: [{ userId: 32, name: "Sofía", pendiente: 4, enProceso: 2, atrasadas: 1, pronto: 2 }] },
+    { area: "bordado", pendiente: 8, enProceso: 3, atrasadas: 2, pronto: 3, sinPersona: 4, people: [{ userId: 33, name: "Luis", pendiente: 4, enProceso: 2, atrasadas: 2, pronto: 1 }, { userId: 34, name: "Carmen", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }] },
+    { area: "laser", pendiente: 0, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 0, people: [] },
+    { area: "impresiones", pendiente: 2, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 2, people: [] },
+  ],
+  stageTimes: {
+    windowDays: 30,
+    stages: [
+      { key: "diseno", label: "Diseño", count: 18, medianHours: 20.5, p75Hours: 41 },
+      { key: "autorizacion", label: "Autorización del cliente", count: 16, medianHours: 26, p75Hours: 70 },
+      { key: "entrega", label: "Listo → entregado", count: 22, medianHours: 9, p75Hours: 30 },
+    ],
+    areas: [
+      { area: "bordado", espera: { count: 12, medianHours: 30, p75Hours: 52 }, produccion: { count: 11, medianHours: 6.5, p75Hours: 12 } },
+      { area: "dtf", espera: { count: 15, medianHours: 8, p75Hours: 20 }, produccion: { count: 15, medianHours: 2, p75Hours: 3.5 } },
+      { area: "taller", espera: { count: 0, medianHours: null, p75Hours: null }, produccion: { count: 0, medianHours: null, p75Hours: null } },
+      { area: "laser", espera: { count: 0, medianHours: null, p75Hours: null }, produccion: { count: 0, medianHours: null, p75Hours: null } },
+      { area: "impresiones", espera: { count: 4, medianHours: 0.5, p75Hours: 2 }, produccion: { count: 4, medianHours: 1, p75Hours: 1.5 } },
+    ],
+  },
+  overdue: atrasados,
+});
 const portalInicial = () => ({ links: {}, respuestas: [], siguienteId: 1 });
 let portal = portalInicial();
 const estadoCompartir = (orderId) => ({
@@ -917,6 +950,14 @@ createServer((req, res) => {
     }
 
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
+    if (req.method === "GET" && path === "/coordination/overview") return send(coordinacion());
+    const motivo = path.match(/^\/coordination\/orders\/(\d+)\/delay-reason$/);
+    if (req.method === "PATCH" && motivo) {
+      const dto = JSON.parse(body || "{}");
+      const o = atrasados.find((x) => x.id === Number(motivo[1]));
+      if (o) Object.assign(o, { reason: dto.reason ?? null, note: dto.reason ? dto.note ?? null : null, reasonAt: dto.reason ? new Date().toISOString() : null });
+      return send({ id: Number(motivo[1]), delayReason: dto.reason ?? null });
+    }
     if (req.method === "GET" && path === "/orders/area-scoreboard") {
       return send({ today: { done: 7, onTime: 7 }, week: { done: 41, onTime: 38 }, bestDay: { date: "2026-10-05", done: 12 }, streakDays: 4 });
     }
