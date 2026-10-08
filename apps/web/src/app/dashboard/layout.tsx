@@ -12,11 +12,11 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { isBranchAllowedPath } from "@/lib/navMenu";
 import { useMotionPreset } from "@/lib/motion";
 import dynamic from "next/dynamic";
+import { CommandPalette } from "@/components/CommandPalette";
 import { AppTopBar } from "@/components/AppTopBar";
 
-// Fuera del primer paquete: no se ven al entrar y pesan (cmdk, el tour). Se
-// bajan justo después de pintar la pantalla.
-const CommandPalette = dynamic(() => import("@/components/CommandPalette").then((m) => m.CommandPalette), { ssr: false });
+// Fuera del primer paquete: no se ven al entrar. La paleta (⌘K) sí va
+// directa: cargada tarde perdía el atajo recién entrando.
 const KeyboardShortcuts = dynamic(() => import("@/components/KeyboardShortcuts").then((m) => m.KeyboardShortcuts), { ssr: false });
 const OnboardingTour = dynamic(() => import("@/components/OnboardingTour").then((m) => m.OnboardingTour), { ssr: false });
 import { useBreadcrumbs } from "@/components/AppHeaderNav";
