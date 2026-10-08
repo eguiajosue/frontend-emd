@@ -14,6 +14,7 @@ import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
 import { AREA_TASK_STATUS_BY_ORDER_STATUS, areaTasksToMove } from "@/lib/orderMove";
 import { getOrderNextStep, type NextStepViewer, type OrderNextStep } from "@/lib/orderNextStep";
 import { statusMap } from "@/lib/orderStatus";
+import { haptic } from "@/lib/haptics";
 import type { AreaTaskStatus, Order } from "@/types";
 
 /**
@@ -143,6 +144,7 @@ export function OrderStepProvider({ children }: { children: ReactNode }) {
       setPendingOrderId(null);
       refresh();
       setLast({ snapshot, at: Date.now() });
+      haptic("success");
       const toastId = `order-step-${order.id}`;
       toast.success(`Pedido #${order.id} → ${statusMap[target] ?? "actualizado"}`, {
         id: toastId,

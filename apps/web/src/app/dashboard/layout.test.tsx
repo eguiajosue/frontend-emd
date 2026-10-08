@@ -36,6 +36,8 @@ vi.mock("@/components/CommandPalette", () => ({ CommandPalette: () => null }));
 vi.mock("@/components/KeyboardShortcuts", () => ({ KeyboardShortcuts: () => null }));
 vi.mock("@/components/OnboardingTour", () => ({ OnboardingTour: () => null }));
 vi.mock("@/components/AppTopBar", () => ({ AppTopBar: () => null }));
+vi.mock("@/components/PullToRefresh", () => ({ PullToRefresh: () => null }));
+vi.mock("@/components/ConnectionStatus", () => ({ ConnectionStatus: () => null }));
 
 function Page() {
   mocks.pageMounted();

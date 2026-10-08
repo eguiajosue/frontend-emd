@@ -228,12 +228,18 @@
   body {
     /*
      * Red de seguridad: los diálogos/popovers/sheets de Radix son portales
-     * fuera de <main>, así que el overflow-x-hidden de <main> (ver
+     * fuera de <main>, así que el overflow-x-clip de <main> (ver
      * dashboard/layout.tsx) no los cubre. Si algún contenido dentro de un
      * portal desborda por error, esto evita que se convierta en scroll
      * horizontal de todo el documento.
+     *
+     * `clip` (no `hidden`): `hidden` vuelve a <body> un contenedor de scroll
+     * que nunca se desplaza, y entonces la barra superior `sticky` se iba
+     * con el contenido en el teléfono. `hidden` queda de respaldo para
+     * navegadores sin `clip`.
      */
     overflow-x: hidden;
+    overflow-x: clip;
     /*
      * Detalles que separan una web de una app instalada en el teléfono: sin
      * flash gris al tocar, y sin que el texto se reescale al girar el
@@ -392,4 +398,33 @@
     border-left: 4px solid hsl(var(--tone));
   }
   .area-dot { background-color: hsl(var(--tone)); }
+}
+
+/*
+ * App instalada en el TELÉFONO (standalone + dedo): sin el rebote que deja
+ * ver el fondo del navegador (el "jalar para actualizar" lo hace la app, ver
+ * PullToRefresh). Sólo con `pointer: coarse`: en escritorio `none` corta la
+ * rueda del mouse (ver la nota de `overscroll-behavior-y` arriba).
+ */
+@media (display-mode: standalone) and (pointer: coarse) {
+  html {
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer base {
+  /* Toques de app nativa: sin espera por doble toque para hacer zoom, sin
+     menú de "copiar/abrir enlace" al mantener presionada la navegación, y
+     sin seleccionar el texto de botones y pestañas por accidente. */
+  html {
+    touch-action: manipulation;
+  }
+  nav a,
+  button,
+  [role="tab"],
+  [role="button"] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }

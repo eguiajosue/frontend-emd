@@ -5,8 +5,8 @@
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#d91e7a",
+  "background_color": "#f3f3f4",
+  "theme_color": "#f3f3f4",
   "lang": "es",
   "icons": [
     {
@@ -38,6 +38,60 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "id": "/dashboard",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "any",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Nuevo pedido",
+      "short_name": "Nuevo",
+      "url": "/dashboard/orders?new=1",
+      "icons": [
+        {
+          "src": "/icons/icon-512.png",
+          "sizes": "512x512"
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "url": "/dashboard/orders",
+      "icons": [
+        {
+          "src": "/icons/icon-512.png",
+          "sizes": "512x512"
+        }
+      ]
+    },
+    {
+      "name": "Tareas asignadas",
+      "short_name": "Tareas",
+      "url": "/dashboard/tareas",
+      "icons": [
+        {
+          "src": "/icons/icon-512.png",
+          "sizes": "512x512"
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "short_name": "Avisos",
+      "url": "/dashboard/notificaciones",
+      "icons": [
+        {
+          "src": "/icons/icon-512.png",
+          "sizes": "512x512"
+        }
+      ]
     }
   ]
 }

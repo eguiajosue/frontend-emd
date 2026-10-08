@@ -5,6 +5,7 @@ import { Menu } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
 import { useNavLayout } from "@/hooks/useNavLayout";
@@ -67,6 +68,7 @@ export function MobileTabBar() {
               href={item.url}
               aria-current={active ? "page" : undefined}
               aria-label={item.title}
+              onClick={() => !active && haptic("light")}
               className={cn(
                 "relative flex h-12 items-center justify-center gap-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
                 active
