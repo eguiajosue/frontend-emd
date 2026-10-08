@@ -6,10 +6,13 @@ import { ArrowRight, CalendarDays, CheckCircle2, Loader2, Play, RotateCcw, Timer
 import { Badge } from "@/components/ui/badge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
+import { PREP_STAGE_META } from "@/components/orders/EmbroideryPrepControls";
+import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
 import { Button } from "@/components/ui/button";
 import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatCountdown, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
+import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
 import { isReturnedDesign } from "@/lib/myTasks";
 import { cn } from "@/lib/utils";
 import type { AreaTaskStatus, MyTask } from "@/types";
@@ -54,6 +57,8 @@ interface TaskCardProps {
   onOpen: (orderId: number) => void;
   onAdvance: (task: MyTask, status: AreaTaskStatus) => void;
   busy: boolean;
+  /** Bordado: ¿puede mandar a pruebas / aprobar / rechazar? (el área y Recepción). */
+  canMovePrep?: boolean;
 }
 
 /**
@@ -62,12 +67,15 @@ interface TaskCardProps {
  * Formato kanban: píldora de área arriba, título, cliente, píldora de fecha y
  * pie con el plazo + la acción. Toda la tarjeta abre el detalle del pedido.
  */
-export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen, onAdvance, busy }: TaskCardProps) {
+export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen, onAdvance, busy, canMovePrep = false }: TaskCardProps) {
   const AreaIcon = getAreaIcon(task.area);
   const action = primaryAction(task);
   const ActionIcon = action.icon;
   const returned = isReturnedDesign(task);
   const inProgress = task.kind === "production" && task.status === "en_proceso";
+  const embroidery = isEmbroideryTask(task);
+  const stage = embroidery ? prepStageOf(task) : null;
+  const stageMeta = stage ? PREP_STAGE_META[stage] : null;
 
   return (
     <article
@@ -100,6 +108,11 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
               Volvió con cambios
             </Badge>
           )}
+          {stageMeta && (
+            <Badge variant="muted" className={cn("px-2.5 py-1", stageMeta.classes)}>
+              {stageMeta.label}
+            </Badge>
+          )}
           {inProgress && (
             <Badge
               variant="muted"
@@ -129,6 +142,9 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           </div>
           <OrderSizesList products={task.order.orderProducts} />
         </div>
+
+        {embroidery && <EmbroideryStepper task={task} />}
+        {embroidery && <RejectionNote task={task} />}
 
         {task.kind === "production" && <AreaSupplySummary supply={task.supply} />}
 
@@ -160,16 +176,20 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
             {dueLabel(state)}
           </span>
         </p>
-        <Button
-          type="button"
-          size="sm"
-          disabled={busy}
-          onClick={() => (action.next ? onAdvance(task, action.next) : onOpen(task.order.id))}
-          className="z-10 ml-auto gap-1.5"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActionIcon className="h-4 w-4" />}
-          {action.label}
-        </Button>
+        {stage ? (
+          <EmbroideryPrepActions task={task} canAct={canMovePrep} className="relative z-10 ml-auto" />
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            disabled={busy}
+            onClick={() => (action.next ? onAdvance(task, action.next) : onOpen(task.order.id))}
+            className="z-10 ml-auto gap-1.5"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ActionIcon className="h-4 w-4" />}
+            {action.label}
+          </Button>
+        )}
       </div>
     </article>
   );

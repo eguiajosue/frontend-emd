@@ -24,6 +24,7 @@
  * - `POST /__e2e/seed-branch-orders {count}`: `count` pedidos extra de Punto Madero (alternan pendiente/entregado).
  * - `GET  /__e2e/clients` · `GET /__e2e/presets` · `GET /__e2e/forbidden-calls`: lo guardado / lo que la sucursal intentó pedir.
  * - `POST /__e2e/reset-tareas`: vuelve las tareas de área (Modo TV) al inicio.
+ * - `POST /__e2e/seed-bordado-prep`: suma tres tareas de Bordado en digitalizado / en pruebas (tablero de cuatro columnas).
  * - `POST /__e2e/seed-logo-fixtures`: 2ª sucursal "Plaza Norte" y pedidos extra para probar logos y el filtro Origen
  *   (#111 de Punto Madero con hoja autorizada y tarea de Bordado en la tele, #112 de Plaza Norte).
  * - `POST /__e2e/seed-logos {branchId}`: carga los PNG reales de `e2e/fixtures` como logos de esa sucursal.
@@ -174,6 +175,16 @@ const tareasTvIniciales = () => [
 ];
 let tareasTv = tareasTvIniciales();
 
+// Etapas previas de Bordado (digitalizado → pruebas → producción), para el tablero de cuatro columnas.
+const prueba = (round, result, extra = {}) => ({ id: round, round, sentAt: enHoras(-3), sentNotes: null, photoName: null, result, resultNotes: null, decidedAt: null, ...extra });
+const tareasPrepIniciales = () => [
+  { id: 7, orderId: 107, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-6), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, "rechazada", { resultNotes: "El hilo se frunce en el contorno", decidedAt: enHoras(-1) })], order: pedidoTv(107, "Escuela Benito", "Escudos para 50 uniformes", enHoras(26)) },
+  { id: 8, orderId: 108, area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignedUserId: null, createdAt: enHoras(-9), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, null)], order: pedidoTv(108, "Cafetería Luna", "Gorras con logo", enHoras(50)) },
+  { id: 9, orderId: 109, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-2), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [], order: pedidoTv(109, "Gimnasio Sur", "Toallas bordadas", enHoras(24 * 5)) },
+];
+let tareasPrep = [];
+const todasTv = () => [...tareasTv, ...tareasPrep];
+
 /**
  * Pedido #110 "esperando autorización" para el flujo autorizar → hoja de
  * materiales → producción. NO está en `GET /orders` (para no mover los
@@ -305,7 +316,7 @@ function tareasDelArea(u) {
       order: { id: p.id, description: p.description, deliveryDate: p.deliveryDate, statusId: p.statusId, clientNameOverride: p.clientNameOverride, client: null },
     };
   });
-  const sinExtras = tareasTv.map(({ order: { creationDate, status, ...order }, ...t }) => ({ ...t, order }));
+  const sinExtras = todasTv().map(({ order: { creationDate, status, ...order }, ...t }) => ({ ...t, order }));
   return [...deBase, ...sinExtras].filter((t) => roles.includes(t.area));
 }
 
@@ -326,11 +337,12 @@ function misTareas(u) {
       });
     }
   }
-  for (const t of [...tareas.map((x) => ({ ...x, order: pedidos().find((p) => p.id === x.orderId) })), ...tareasTv]) {
+  for (const t of [...tareas.map((x) => ({ ...x, order: pedidos().find((p) => p.id === x.orderId) })), ...todasTv()]) {
     if (!roles.includes(t.area) || t.status === "terminado" || !(libre(t) || mia(t))) continue;
     const o = t.order;
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
+      ...(t.prepStage !== undefined && { prepStage: t.prepStage, lastTest: t.sampleTests?.at(-1) ?? null }),
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
       order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status, branch: o.branch ?? null },
     });
@@ -778,9 +790,14 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/__e2e/logos") {
       return send(Object.fromEntries(Object.entries(logosSucursal).map(([id, l]) => [id, { onLight: Boolean(l.onLight), onDark: Boolean(l.onDark) }])));
     }
+    if (req.method === "POST" && path === "/__e2e/seed-bordado-prep") {
+      tareasPrep = tareasPrepIniciales();
+      return send({ ok: true });
+    }
     if (req.method === "POST" && path === "/__e2e/reset-tareas") {
       tareas = tareasIniciales();
       tareasTv = tareasTvIniciales();
+      tareasPrep = [];
       autorizar = autorizarInicial();
       inventario = inventarioInicial();
       movimientosInventario = [];
@@ -1142,6 +1159,25 @@ createServer((req, res) => {
       }
     }
 
+    // Etapas previas de Bordado: mandar a pruebas y resultado de la prueba.
+    const prep = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/(send-to-test|test-result)$/);
+    if (prep && req.method === "POST") {
+      const id = Number(prep[1]);
+      const dto = JSON.parse(body || "{}");
+      const actual = tareasPrep.find((t) => t.id === id);
+      if (!actual) return send({ message: "No existe" }, 404);
+      let siguiente;
+      if (prep[2] === "send-to-test") {
+        const ronda = (actual.sampleTests?.length ?? 0) + 1;
+        siguiente = { ...actual, prepStage: "en_pruebas", sampleTests: [...(actual.sampleTests ?? []), prueba(ronda, null, { sentNotes: dto.notes ?? null })] };
+      } else {
+        const tests = (actual.sampleTests ?? []).map((t, i, all) => (i === all.length - 1 ? { ...t, result: dto.result, resultNotes: dto.notes ?? null, decidedAt: new Date().toISOString() } : t));
+        siguiente = { ...actual, sampleTests: tests, prepStage: dto.result === "aprobada" ? null : "digitalizado" };
+      }
+      tareasPrep = tareasPrep.map((t) => (t.id === id ? siguiente : t));
+      return send(siguiente, 201);
+    }
+
     // Avance de una tarea de área: es lo que el flujo 3 verifica.
     const avance = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/status$/);
     if (avance && Number(avance[1]) === 90 && req.method === "PATCH") {
@@ -1169,7 +1205,8 @@ createServer((req, res) => {
       };
       tareas = tareas.map(avanzar);
       tareasTv = tareasTv.map(avanzar);
-      return send([...tareas, ...tareasTv].find((t) => t.id === id));
+      tareasPrep = tareasPrep.map(avanzar);
+      return send([...tareas, ...todasTv()].find((t) => t.id === id));
     }
 
     // Hoja de autorización: rondas de diseño y sus archivos (sólo lectura).

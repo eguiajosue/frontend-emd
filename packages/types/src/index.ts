@@ -1124,6 +1124,15 @@ export interface MyTask {
   taskId: number | null;
   /** Estado de la tarea de área, o nombre del estado de diseño del pedido. */
   status: string;
+  /** Sólo Bordado: etapa previa a producción (digitalizado | en_pruebas); null/ausente = ya puede producir. */
+  prepStage?: EmbroideryPrepStage | null;
+  /** Sólo Bordado: la última ronda de pruebas (para mostrar por qué se rechazó). */
+  lastTest?: {
+    round: number;
+    result: SampleTestResult | null;
+    sentNotes?: string | null;
+    resultNotes?: string | null;
+  } | null;
   /** A nombre del usuario (nunca desde la cuenta compartida). */
   mine: boolean;
   assignee: { id: number; firstName?: string | null; lastName?: string | null; username: string } | null;

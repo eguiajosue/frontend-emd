@@ -10,13 +10,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/feedback/states";
 import { TaskCard } from "@/components/tasks/TaskCard";
+import { EmbroideryTasksBoard } from "@/components/tasks/EmbroideryBoard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TasksTvMode } from "@/components/tasks/tv/TasksTvMode";
+import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
 import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { PRODUCTION_AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import {
+  buildEmbroideryBoard,
+  canMoveEmbroideryPrep,
+  isEmbroideryTask,
+  isEmbroideryView,
+  EMBROIDERY_AREA,
+} from "@/lib/embroideryBoard";
+import { buildTvBoard } from "@/lib/tvBoard";
 import { formatRoleList } from "@/lib/roles";
 import { groupMyTasks, taskAreas, taskDeadline } from "@/lib/myTasks";
 import { cn } from "@/lib/utils";
@@ -92,8 +102,25 @@ export default function TareasPage() {
   const activeArea = area !== ALL && areas.includes(area) ? area : null;
   const { mine, free } = useMemo(() => groupMyTasks(tasks, now, activeArea), [tasks, now, activeArea]);
 
-  const description =
-    tasks.length === 0
+  // Bordado va en un tablero de cuatro columnas (Digitalizado → En pruebas →
+  // En producción → Terminado) cuando es lo único que se está viendo.
+  const productionRoles = useMemo(
+    () => roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+    [roles]
+  );
+  const embroideryView = isEmbroideryView(activeArea, productionRoles, roles);
+  const userId = session?.user?.id ? Number(session.user.id) : null;
+  // Lo terminado ya no está en "mis tareas": se pide aparte (últimas horas).
+  const { areaTasks, isLoading: areaLoading } = useAreaBoardTasks(roles, embroideryView);
+  const embroideryBoard = useMemo(() => {
+    if (!embroideryView) return null;
+    const { terminado } = buildTvBoard({ myTasks: tasks, areaTasks, userId, now, area: EMBROIDERY_AREA });
+    return buildEmbroideryBoard([...tasks.filter(isEmbroideryTask), ...terminado], now);
+  }, [embroideryView, tasks, areaTasks, userId, now]);
+
+  const description = embroideryView
+    ? "El camino de cada bordado: se digitaliza, se prueba y entra a producción."
+    : tasks.length === 0
       ? `Tus tareas asignadas en ${formatRoleList(roles)}.`
       : `Tus tareas asignadas: ${mine.length} tuya${mine.length === 1 ? "" : "s"} · ${free.length} libre${
           free.length === 1 ? "" : "s"
@@ -110,6 +137,7 @@ export default function TareasPage() {
             onOpen={setOpenOrderId}
             onAdvance={advance}
             busy={pendingKey === task.key}
+            canMovePrep={canMoveEmbroideryPrep(roles)}
           />
         </li>
       ))}
@@ -165,6 +193,20 @@ export default function TareasPage() {
           <Skeleton className="h-52 w-full rounded-2xl" />
           <Skeleton className="h-52 w-full rounded-2xl" />
         </div>
+      ) : embroideryBoard ? (
+        areaLoading ? (
+          <Skeleton className="h-52 w-full rounded-2xl" />
+        ) : (
+          <EmbroideryTasksBoard
+            board={embroideryBoard}
+            now={now}
+            timeFormat={timeFormat}
+            onOpen={setOpenOrderId}
+            onAdvance={advance}
+            pendingKey={pendingKey}
+            canMovePrep={canMoveEmbroideryPrep(roles)}
+          />
+        )
       ) : mine.length === 0 && free.length === 0 ? (
         <EmptyState
           icon={PartyPopper}

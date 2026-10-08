@@ -1,6 +1,6 @@
 import { compareByUrgency } from "@/lib/orderDeadline";
 import { taskDeadline } from "@/lib/myTasks";
-import type { AreaSupply, AreaTaskStatus, MyTask } from "@/types";
+import type { AreaSupply, AreaTaskStatus, AreaTaskSampleTest, EmbroideryPrepStage, MyTask } from "@/types";
 
 /**
  * Tablero del Modo TV de "Tareas asignadas": TODO el trabajo de las áreas del
@@ -13,6 +13,10 @@ export interface AreaBoardTask {
   orderId: number;
   area: string;
   status: AreaTaskStatus;
+  /** Sólo Bordado: etapa previa a producción. */
+  prepStage?: EmbroideryPrepStage | null;
+  /** Sólo Bordado: registro de pruebas, de la más vieja a la más nueva. */
+  sampleTests?: AreaTaskSampleTest[];
   assignedUserId?: number | null;
   createdAt: string;
   startedAt?: string | null;
@@ -67,6 +71,14 @@ export function tvColumnOf(task: TvTask): TvColumnId {
   return "pendiente";
 }
 
+/** Última ronda de pruebas (la de `my-tasks` ya viene resumida). */
+function lastTestOf(tests?: AreaTaskSampleTest[]): MyTask["lastTest"] {
+  const last = tests?.[tests.length - 1];
+  return last
+    ? { round: last.round, result: last.result, sentNotes: last.sentNotes, resultNotes: last.resultNotes }
+    : null;
+}
+
 /** Convierte una tarea del área al formato de la bandeja. */
 export function areaTaskToTvTask(task: AreaBoardTask, userId: number | null): TvTask {
   const shared = task.assignedUser?.isSharedAccount === true;
@@ -78,6 +90,8 @@ export function areaTaskToTvTask(task: AreaBoardTask, userId: number | null): Tv
     area: task.area,
     taskId: task.id,
     status: task.status,
+    prepStage: task.prepStage ?? null,
+    lastTest: lastTestOf(task.sampleTests),
     mine: !shared && assigned != null && assigned === userId,
     assignee:
       task.assignedUser && !shared
@@ -146,6 +160,8 @@ export function buildTvBoard({
         ? {
             ...fromMine,
             status: fromArea.status,
+            prepStage: fromArea.prepStage ?? fromMine.prepStage ?? null,
+            lastTest: fromArea.lastTest ?? fromMine.lastTest ?? null,
             completedAt: fromArea.completedAt,
             startedAt: fromArea.startedAt,
             supply: fromArea.supply ?? fromMine.supply ?? null,

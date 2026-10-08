@@ -21,7 +21,15 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { EMBROIDERY_COLUMN_ICON } from "@/components/tasks/EmbroideryBoard";
+import { PRODUCTION_AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import {
+  buildEmbroideryBoard,
+  canMoveEmbroideryPrep,
+  EMBROIDERY_COLUMNS,
+  EMBROIDERY_AREA,
+  isEmbroideryView,
+} from "@/lib/embroideryBoard";
 import { isReturnedDesign, taskDeadline } from "@/lib/myTasks";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 import {
@@ -149,6 +157,30 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         : fullBoard,
     [fullBoard, activeArea]
   );
+  // Bordado se ve en cuatro columnas (Digitalizado → En pruebas → En
+  // producción → Terminado) cuando es lo único que se está viendo.
+  const productionRoles = useMemo(
+    () => roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+    [roles]
+  );
+  const embroideryView = isEmbroideryView(activeArea, productionRoles, roles);
+  const columns = useMemo(() => {
+    if (!embroideryView) {
+      return TV_COLUMNS.map((c) => ({ ...c, hint: null as string | null, Icon: COLUMN_ICON[c.id], list: board[c.id] }));
+    }
+    const eb = buildEmbroideryBoard(
+      [...board.pendiente, ...board.en_proceso, ...board.terminado].filter((t) => t.area === EMBROIDERY_AREA),
+      now
+    );
+    return EMBROIDERY_COLUMNS.map((c) => ({
+      id: c.id,
+      label: c.label,
+      hint: c.id === "terminado" ? "últimas 12 h" : null,
+      Icon: EMBROIDERY_COLUMN_ICON[c.id],
+      list: eb[c.id],
+    }));
+  }, [embroideryView, board, now]);
+  const canMovePrep = canMoveEmbroideryPrep(roles);
   const boardRef = useRef(fullBoard);
   boardRef.current = fullBoard;
 
@@ -556,10 +588,15 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             </div>
           ) : (
             <LayoutGroup id="tv-tareas">
-              <div className="grid min-h-0 flex-1 grid-cols-1 gap-5 md:grid-cols-3">
-                {TV_COLUMNS.map((column) => {
-                  const Icon = COLUMN_ICON[column.id];
-                  const list = board[column.id];
+              <div
+                className={cn(
+                  "grid min-h-0 flex-1 grid-cols-1 gap-5",
+                  embroideryView ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"
+                )}
+              >
+                {columns.map((column) => {
+                  const Icon = column.Icon;
+                  const list = column.list;
                   return (
                     <section
                       key={column.id}
@@ -572,7 +609,11 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
                       >
                         <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />
                         {column.label}
-                        {column.id === "terminado" && <span className="text-base font-normal text-muted-foreground">últimas 12 h</span>}
+                        {(embroideryView ? column.hint : column.id === "terminado" ? "últimas 12 h" : null) && (
+                          <span className="text-base font-normal text-muted-foreground">
+                            {embroideryView ? column.hint : "últimas 12 h"}
+                          </span>
+                        )}
                         <span className="ml-auto rounded-full bg-card px-3 py-0.5 text-xl tabular-nums text-muted-foreground">
                           {list.length}
                         </span>
@@ -598,6 +639,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
                                 hidden={hiddenKeys.has(task.key)}
                                 highlight={highlights[task.key] ?? null}
                                 reduced={reduced}
+                                canMovePrep={canMovePrep}
                               />
                           ))
                         )}
