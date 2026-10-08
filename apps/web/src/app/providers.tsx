@@ -116,6 +116,23 @@ function OfflineSyncWatcher() {
 }
 
 /**
+ * La barra de estado del teléfono (meta theme-color) sigue al tema elegido
+ * en la app, no sólo al del sistema: así se funde con el lienzo como en una
+ * app nativa.
+ */
+function ThemeColorSync() {
+  const { resolvedTheme } = useTheme();
+  useEffect(() => {
+    if (!resolvedTheme) return;
+    const color = resolvedTheme === "dark" ? "#0e0e16" : "#f3f3f4";
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute("content", color);
+    });
+  }, [resolvedTheme]);
+  return null;
+}
+
+/**
  * Registra el Service Worker generado por Serwist (`public/sw.js`).
  *
  * Sin este registro, `navigator.serviceWorker.ready` (usado por `lib/push.ts`
@@ -209,6 +226,7 @@ export default function Providers({
             <PreferencesSync />
             <OfflineSyncWatcher />
             <ServiceWorkerRegistrar />
+            <ThemeColorSync />
             {children}
             {isDev && <ReactQueryDevtools initialIsOpen={false} />}
             </TooltipProvider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -165,12 +165,37 @@ function UserMenu() {
  * En móvil queda fija con fondo translúcido y sólo marca + buscar + avisos
  * (la cuenta vive en "Más").
  */
-export function AppTopBar() {
+export function AppTopBar({ title }: { title?: string | null }) {
+  // Teléfono: al bajar, el título grande de la pantalla se va y aparece uno
+  // compacto en la barra (como el "large title" de iOS), con una línea fina
+  // que separa la barra del contenido.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 64);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0">
+    <header
+      data-scrolled={scrolled || undefined}
+      className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 transition-shadow md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0 max-md:data-[scrolled]:shadow-[0_1px_0_hsl(var(--border))]"
+    >
       <BrandPill />
-      <div className="flex min-w-0 flex-1 justify-center">
+      <div className="relative flex min-w-0 flex-1 justify-center self-stretch">
         <SectionNav />
+        {title && (
+          <span
+            aria-hidden={!scrolled}
+            className={cn(
+              "pointer-events-none absolute inset-0 flex items-center justify-center truncate px-1 font-heading text-base font-semibold transition-[opacity,transform] duration-200 md:hidden",
+              scrolled ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
+            )}
+          >
+            <span className="truncate">{title}</span>
+          </span>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <SearchButton />

@@ -3,6 +3,7 @@
 import { AppSidebar, RAIL_OFFSET_COLLAPSED, RAIL_OFFSET_EXPANDED } from "@/components/app-sidebar";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
@@ -75,9 +76,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main
           data-rail={expanded ? "expanded" : "collapsed"}
           style={{ "--rail-offset": expanded ? RAIL_OFFSET_EXPANDED : RAIL_OFFSET_COLLAPSED } as React.CSSProperties}
-          className="relative w-full min-w-0 overflow-x-hidden transition-[padding] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
+          className="relative w-full min-w-0 overflow-x-clip transition-[padding] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
         >
-          <AppTopBar />
+          <AppTopBar title={pageTitle} />
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -104,6 +105,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
         <ConnectionStatus />
+        <PullToRefresh />
         <CommandPalette />
         <KeyboardShortcuts />
         <OnboardingTour />

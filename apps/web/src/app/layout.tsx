@@ -48,10 +48,19 @@ export const metadata: Metadata = {
     // blanco) — necesita sí o sí un PNG.
     apple: "/icons/icon-512.png",
   },
+  // Instalada en iPhone: se abre como app (sin barra de Safari), con su nombre.
+  appleWebApp: { capable: true, title: "EMD", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d91e7a",
+  // La barra de estado toma el color del lienzo (como una app nativa) en vez
+  // del magenta; `ThemeColorSync` la ajusta si el tema elegido en la app no
+  // es el del sistema.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f3f3f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e0e16" },
+  ],
   width: "device-width",
   initialScale: 1,
   // Sin esto, env(safe-area-inset-*) siempre vale 0 en iOS y las hojas a

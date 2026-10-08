@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { LogOut, Share } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -13,6 +14,8 @@ import { BugReportDialog } from "./BugReportDialog";
 import { ConfiguracionLink, InstallAppButton } from "./app-sidebar";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
+import { haptic } from "@/lib/haptics";
+import { isIOSInstallRequired } from "@/lib/push";
 import { formatRoleList } from "@/lib/roles";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { useNavLayout } from "@/hooks/useNavLayout";
@@ -31,6 +34,29 @@ interface MobileMoreSheetProps {
  * `MobileTabBar.tsx`), no `useSidebar()`'s `openMobile`: esa plomería
  * pertenece al `Sidebar` primitive, que ya no se monta en móvil.
  */
+/** Cuánto hay que bajar la hoja con el dedo para cerrarla. */
+const SWIPE_CLOSE_PX = 90;
+
+/**
+ * iPhone/iPad no tienen botón de "Instalar": se explica cómo agregarla a la
+ * pantalla de inicio (sólo si todavía no se abrió como app).
+ */
+function IosInstallHint() {
+  const [show, setShow] = useState(false);
+  useEffect(() => setShow(isIOSInstallRequired()), []);
+  if (!show) return null;
+  return (
+    <div className="mb-2 flex items-start gap-3 rounded-2xl bg-primary/10 p-3 text-sm">
+      <Share className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      <p>
+        <span className="font-semibold">Instálala en tu iPhone:</span> toca{" "}
+        <span className="font-medium">Compartir</span> en Safari y luego{" "}
+        <span className="font-medium">“Agregar a inicio”</span>. Se abre como app y te llegan los avisos.
+      </p>
+    </div>
+  );
+}
+
 export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
@@ -44,14 +70,37 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const primaryUrls = new Set(primaryTabUrls);
   const remainingItems = visibleItems.filter((item) => !primaryUrls.has(item.url));
 
+  // Deslizar hacia abajo desde el asa/encabezado cierra la hoja, como en iOS/Android.
+  const [drag, setDrag] = useState(0);
+  const dragStart = useRef<number | null>(null);
+  const dragHandlers = {
+    onTouchStart: (e: React.TouchEvent) => {
+      dragStart.current = e.touches[0].clientY;
+    },
+    onTouchMove: (e: React.TouchEvent) => {
+      if (dragStart.current == null) return;
+      setDrag(Math.max(0, e.touches[0].clientY - dragStart.current));
+    },
+    onTouchEnd: () => {
+      if (drag > SWIPE_CLOSE_PX) {
+        haptic("light");
+        onOpenChange(false);
+      }
+      dragStart.current = null;
+      setDrag(0);
+    },
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         className="flex max-h-[85dvh] flex-col gap-0 rounded-t-[1.75rem] border-t-0 bg-card p-0 pb-[env(safe-area-inset-bottom)] shadow-soft-lg"
+        style={drag ? { transform: `translateY(${drag}px)`, transition: "none" } : undefined}
       >
+        <div {...dragHandlers} className="touch-none">
         {/* Asa del sheet: indica que la hoja se descarta deslizando/tocando afuera. */}
-        <span aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-muted" />
+        <span aria-hidden className="mx-auto mt-2.5 block h-1.5 w-10 shrink-0 rounded-full bg-muted" />
         <SheetHeader className="space-y-0 px-4 pb-3 pt-3 text-left">
           {/* Título sólo para lectores de pantalla: la tarjeta de identidad de
               abajo ya cumple el rol visual de encabezado. */}
@@ -82,8 +131,9 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
             </div>
           </div>
         </SheetHeader>
+        </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
           {remainingItems.length > 0 && (
             <nav aria-label="Más opciones de navegación" className="mb-3 flex flex-col gap-0.5">
               {remainingItems.map((item) => {
@@ -125,6 +175,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
           <Separator className="mb-2 bg-border/60" />
 
           <InstallAppButton />
+          <IosInstallHint />
           <ConfiguracionLink pathname={pathname} />
           <BugReportDialog />
 

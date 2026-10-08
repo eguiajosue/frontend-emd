@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
 import { Button } from "@/components/ui/button";
+import { MobileFab } from "@/components/MobileFab";
 import {
   CardsSkeleton,
   ErrorState,
@@ -691,7 +692,7 @@ const OrdersPage = () => {
     // El "siguiente paso" de las tarjetas (Lista, Cuadrícula y Modo TV) con su "Deshacer".
     <OrderStepProvider>
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4 max-sm:flex-nowrap max-sm:items-center">
         <div>
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
               quien ejecuta ve "Tareas asignadas" con su cuenta de pendientes.
@@ -703,9 +704,9 @@ const OrdersPage = () => {
           {canManageOperations && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" aria-label="Exportar">
                   <FileDown className="h-4 w-4" />
-                  Exportar
+                  <span className="max-sm:sr-only">Exportar</span>
                   <ChevronDown className="h-3.5 w-3.5 opacity-60" />
                 </Button>
               </DropdownMenuTrigger>
@@ -735,9 +736,12 @@ const OrdersPage = () => {
           )}
 
           {canCreateOrders && (
-            <Button data-tour="new-order-button" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
-            </Button>
+            <>
+              <Button data-tour="new-order-button" className="max-md:hidden" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
+              </Button>
+              <MobileFab icon={Plus} label="Nuevo pedido" onClick={() => setCreateOpen(true)} />
+            </>
           )}
         </div>
       </div>
@@ -745,7 +749,9 @@ const OrdersPage = () => {
       {/* Una sola banda de controles entre el encabezado y el trabajo: modo de
           vista, circuito y filtros. Antes eran tres bloques apilados y el
           tablero empezaba muy abajo. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* En el teléfono la banda es UNA línea que se desliza de lado (como los
+          chips de filtro de una app), en vez de tres renglones de controles. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 max-sm:-mx-4 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-4 max-sm:pb-1 max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden max-sm:[&>*]:shrink-0">
         <ToggleGroup
           type="single"
           variant="segmented"
