@@ -93,7 +93,8 @@ serwist.addEventListeners();
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let payload: { title?: string; body?: string; orderId?: number };
+  // `url`: avisos al cliente desde su portal (lleva a /p/<token>).
+  let payload: { title?: string; body?: string; orderId?: number; url?: string };
   try {
     payload = event.data.json();
   } catch {
@@ -104,7 +105,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: payload.body,
-      data: { orderId: payload.orderId },
+      data: { orderId: payload.orderId, url: payload.url },
     }),
   );
 });
@@ -113,9 +114,11 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const orderId = (event.notification.data as { orderId?: number } | undefined)
-    ?.orderId;
-  const targetUrl = orderId ? `/dashboard/orders/${orderId}` : "/dashboard";
+  const data = event.notification.data as { orderId?: number; url?: string } | undefined;
+  const orderId = data?.orderId;
+  // Sólo enlaces de este mismo sitio (el aviso del portal del cliente).
+  const ownUrl = data?.url && new URL(data.url, self.location.origin).origin === self.location.origin ? data.url : null;
+  const targetUrl = ownUrl ?? (orderId ? `/dashboard/orders/${orderId}` : "/dashboard");
 
   event.waitUntil(
     (async () => {

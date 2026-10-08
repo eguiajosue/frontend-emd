@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ShareWithClientButton, viewedLabel } from "./ShareWithClient";
+import { readyNoticeLabel, ShareWithClientButton, viewedLabel } from "./ShareWithClient";
 import type { Order } from "@/types";
 
 let state: { link: unknown; pendingResponse: null } = { link: null, pendingResponse: null };
@@ -48,5 +48,22 @@ describe("compartir con el cliente", () => {
   it("'Visto hace…' con las veces que lo abrió", () => {
     expect(viewedLabel({ lastViewedAt: new Date().toISOString(), viewCount: 3 })).toMatch(/^Visto hace .* · 3 veces$/);
     expect(viewedLabel(null)).toBeNull();
+  });
+
+  it("pedido listo: WhatsApp de 'ya está listo' y estado del aviso automático", async () => {
+    state = {
+      link: { token: "abc123", createdAt: "", lastViewedAt: null, viewCount: 0, readyNotifiedAt: new Date().toISOString(), pushSubscribers: 1 },
+      pendingResponse: null,
+    };
+    render(<ShareWithClientButton order={{ ...order, statusId: 4 } as Order} />);
+    await userEvent.click(screen.getByRole("button", { name: /Compartir/ }));
+    const wa = screen.getByRole("link", { name: /Avisar que está listo/ });
+    expect(decodeURIComponent(wa.getAttribute("href")!)).toContain("tu pedido #108 de EMD ya está listo");
+    expect(screen.getByText(/Aviso de "pedido listo" enviado hace/)).toBeInTheDocument();
+  });
+
+  it("aviso pedido por el cliente, todavía sin mandar", () => {
+    expect(readyNoticeLabel({ readyNotifiedAt: null, pushSubscribers: 2 })).toMatch(/en 2 dispositivos/);
+    expect(readyNoticeLabel({ readyNotifiedAt: null, pushSubscribers: 0 })).toBeNull();
   });
 });

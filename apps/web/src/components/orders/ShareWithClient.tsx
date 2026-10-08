@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import qrcode from "qrcode-generator";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Check, Copy, Eye, EyeOff, Link2Off, Loader2, MessageCircle, QrCode, RefreshCw, Share2 } from "lucide-react";
+import { BellRing, Check, Copy, Eye, EyeOff, Link2Off, Loader2, MessageCircle, QrCode, RefreshCw, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useShareLinkActions, useShareState } from "@/hooks/useClientPortal";
-import { portalUrl, shareMessage, whatsappUrl } from "@/lib/clientPortal";
+import { portalUrl, readyMessage, shareMessage, whatsappUrl } from "@/lib/clientPortal";
+import { isFinishedStatus } from "@/lib/orderStatus";
 import { getOrderClientName } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/types";
@@ -21,6 +22,21 @@ export function viewedLabel(link: { lastViewedAt: string | null; viewCount: numb
   if (!link.lastViewedAt) return "Todavía no lo abre";
   const ago = formatDistanceToNow(new Date(link.lastViewedAt), { locale: es, addSuffix: true });
   return `Visto ${ago}${link.viewCount > 1 ? ` · ${link.viewCount} veces` : ""}`;
+}
+
+/** Estado del aviso automático de "pedido listo" (lo manda el backend). */
+export function readyNoticeLabel(
+  link: { readyNotifiedAt?: string | null; pushSubscribers?: number } | null | undefined
+): string | null {
+  if (!link) return null;
+  if (link.readyNotifiedAt) {
+    return `Aviso de "pedido listo" enviado ${formatDistanceToNow(new Date(link.readyNotifiedAt), { locale: es, addSuffix: true })}`;
+  }
+  const n = link.pushSubscribers ?? 0;
+  if (n === 0) return null;
+  return n === 1
+    ? 'El cliente pidió aviso: le llegará solo al quedar "Listo para entregar"'
+    : `El cliente pidió aviso en ${n} dispositivos: le llegará solo al quedar "Listo para entregar"`;
 }
 
 /** Código QR del enlace, dibujado en SVG (sin imágenes ni servicios externos). */
@@ -77,7 +93,9 @@ export function ShareWithClientDialog({ order, open, onOpenChange }: { order: Or
 
   const url = link ? portalUrl(link.token) : "";
   const clientName = getOrderClientName(order);
-  const message = link ? shareMessage(order.id, url, clientName) : "";
+  const ready = isFinishedStatus(order.statusId);
+  const message = link ? (ready ? readyMessage : shareMessage)(order.id, url, clientName) : "";
+  const notice = readyNoticeLabel(link);
   const phone = order.client?.phone ?? null;
   const busy = state.isPending || create.isPending || regenerate.isPending || revoke.isPending;
 
@@ -132,7 +150,7 @@ export function ShareWithClientDialog({ order, open, onOpenChange }: { order: Or
               <Button asChild className="gap-2 bg-[#25D366] text-white hover:bg-[#1fb457]">
                 <a href={whatsappUrl(message, phone)} target="_blank" rel="noreferrer noopener">
                   <MessageCircle className="h-4 w-4" />
-                  {phone ? "Enviar por WhatsApp" : "Abrir WhatsApp"}
+                  {ready ? "Avisar que está listo" : phone ? "Enviar por WhatsApp" : "Abrir WhatsApp"}
                 </a>
               </Button>
               <Button type="button" variant="outline" className="gap-2" aria-pressed={showQr} onClick={() => setShowQr((v) => !v)}>
@@ -155,6 +173,12 @@ export function ShareWithClientDialog({ order, open, onOpenChange }: { order: Or
               {link.lastViewedAt ? <Eye className="h-4 w-4" aria-hidden /> : <EyeOff className="h-4 w-4" aria-hidden />}
               {viewedLabel(link)}
             </p>
+            {notice && (
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <BellRing className="h-4 w-4" aria-hidden />
+                {notice}
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-2 border-t border-border/60 pt-3">
               <Button type="button" variant="ghost" size="sm" className="gap-1.5" disabled={busy} onClick={() => regenerate.mutate()}>

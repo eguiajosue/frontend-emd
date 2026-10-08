@@ -44,7 +44,16 @@ export interface PortalView {
 
 /** `GET /orders/:id/share-link` (Recepción). */
 export interface ShareState {
-  link: { token: string; createdAt: string; lastViewedAt: string | null; viewCount: number } | null;
+  link: {
+    token: string;
+    createdAt: string;
+    lastViewedAt: string | null;
+    viewCount: number;
+    /** Cuándo se avisó al cliente que su pedido está listo (push/correo). */
+    readyNotifiedAt?: string | null;
+    /** Dispositivos del cliente esperando el aviso de "listo". */
+    pushSubscribers?: number;
+  } | null;
   pendingResponse: ClientDesignResponse | null;
 }
 
@@ -74,6 +83,12 @@ export function whatsappNumber(phone: string | null | undefined): string | null 
 export function shareMessage(orderId: number, url: string, clientName?: string | null): string {
   const hello = clientName ? `Hola ${clientName.split(" ")[0]}, ` : "Hola, ";
   return `${hello}aquí puedes ver tu pedido #${orderId} de EMD y revisar tu diseño: ${url}`;
+}
+
+/** WhatsApp de Recepción cuando el pedido ya está listo para entregar. */
+export function readyMessage(orderId: number, url: string, clientName?: string | null): string {
+  const hello = clientName ? `Hola ${clientName.split(" ")[0]}, ` : "Hola, ";
+  return `${hello}¡tu pedido #${orderId} de EMD ya está listo! Puedes pasar a recogerlo. Detalles: ${url}`;
 }
 
 export function whatsappUrl(message: string, phone?: string | null): string {

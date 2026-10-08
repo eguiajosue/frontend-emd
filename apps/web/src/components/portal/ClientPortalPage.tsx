@@ -27,6 +27,7 @@ import { ApiError, getErrorMessage, request } from "@/lib/api";
 import { STAGE_COPY, type ClientResponseKind, type PortalView } from "@/lib/clientPortal";
 import { GARMENT_LABELS } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
+import { ReadyNotice } from "./ReadyNotice";
 
 const portalKey = (token: string) => ["portal", token] as const;
 
@@ -388,6 +389,9 @@ export function ClientPortalPage({ token }: { token: string }) {
 
       <Section title="¿En qué va tu pedido?" delay={0.1}>
         <StageTimeline view={view} />
+        <div className="mt-4">
+          <ReadyNotice token={token} stage={view.stage.key} />
+        </div>
       </Section>
 
       {view.products.length > 0 && (
