@@ -195,6 +195,7 @@ describe("AppSidebar con preferencias de barra (favoritos, ocultos, expandida)",
       "Mockups",
       "Cotizaciones",
       "Calendario",
+      "Coordinación",
       "Historial",
     ]);
   });
