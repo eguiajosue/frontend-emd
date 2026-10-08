@@ -37,6 +37,7 @@ import { formatDate, formatDeliveryDate, getAssignedUserName, getOrderClientName
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { isOverdue } from "@/lib/deliveryProgress";
 import { KanbanBoard } from "@/components/orders/KanbanBoard";
+import { OrderStepProvider } from "@/hooks/useOrderStep";
 import { OrdersJobWall } from "@/components/orders/OrdersJobWall";
 import { motion } from "framer-motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
@@ -687,6 +688,8 @@ const OrdersPage = () => {
   const loading = isPending || isSessionLoading;
 
   return (
+    // El "siguiente paso" de las tarjetas (Lista, Cuadrícula y Modo TV) con su "Deshacer".
+    <OrderStepProvider>
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -935,6 +938,7 @@ const OrdersPage = () => {
         }}
       />
     </div>
+    </OrderStepProvider>
   );
 };
 

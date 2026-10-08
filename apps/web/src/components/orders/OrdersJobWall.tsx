@@ -7,6 +7,8 @@ import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { OrderJobCard, TONE_META } from "@/components/orders/OrderJobCard";
+import { OrderJumpDialog, OrderShortcutHints, OrderShortcutsDialog } from "@/components/orders/OrderShortcuts";
+import { useOrderKeyboardNav } from "@/hooks/useOrderKeyboardNav";
 import { useNow } from "@/hooks/useNow";
 import { AREA_OPTIONS, getAreaIcon } from "@/lib/areas";
 import {
@@ -175,14 +177,20 @@ export function OrdersJobWall({
   };
 
   const shown = tone ? entries.filter((e) => e.state.tone === tone) : entries;
+  const shownOrders = useMemo(() => shown.map((e) => e.order), [shown]);
+  const listRef = useRef<HTMLUListElement>(null);
+  // Teclado: sólo con el muro a la vista (la tele tiene el suyo).
+  const keys = useOrderKeyboardNav({ containerRef: listRef, orders: shownOrders, enabled: !tvOpen, onOpen: onOpenOrder });
 
   return (
     <div className="space-y-5">
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <h2 className="text-section-title">Por plazo de entrega</h2>
+          <span className="ml-auto" />
+          <OrderShortcutHints onHelp={() => keys.setHelpOpen(true)} />
           {/* Modo TV no tiene sentido en un teléfono. */}
-          <Button variant="outline" size="sm" className="ml-auto hidden gap-2 sm:inline-flex" onClick={() => setTvOpen(true)}>
+          <Button variant="outline" size="sm" className="hidden gap-2 sm:inline-flex" onClick={() => setTvOpen(true)}>
             <Maximize2 className="h-4 w-4" />
             Modo TV
           </Button>
@@ -198,7 +206,7 @@ export function OrdersJobWall({
           </Button>
         </p>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-4">
+        <ul ref={listRef} className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-4">
           {shown.map(({ order, state }) => (
             <li key={order.id} className="flex min-w-0">
               <div className="flex w-full min-w-0">
@@ -210,12 +218,16 @@ export function OrdersJobWall({
                   selectable={selectable}
                   selected={selectedIds.includes(order.id)}
                   onSelectedChange={onSelectedChange}
+                  keyboardActive={keys.activeId === order.id}
                 />
               </div>
             </li>
           ))}
         </ul>
       )}
+
+      <OrderShortcutsDialog open={keys.helpOpen} onOpenChange={keys.setHelpOpen} />
+      <OrderJumpDialog open={keys.searchOpen} onOpenChange={keys.setSearchOpen} onJump={keys.jumpTo} />
 
       {tvOpen && (
         <OrdersTvWall
@@ -271,6 +283,13 @@ function OrdersTvWall({
     (e) => (!tone || e.state.tone === tone) && (!area || getOrderAreas(e.order).includes(area))
   );
   const clock = new Date(now);
+  const shownOrders = shown.map((e) => e.order);
+  const gridRef = useRef<HTMLUListElement>(null);
+  const openFromTv = (id: number) => {
+    onClose();
+    onOpenOrder(id);
+  };
+  const keys = useOrderKeyboardNav({ containerRef: gridRef, orders: shownOrders, enabled: true, onOpen: openFromTv });
 
   return (
     // Siempre oscuro: una tele en el taller se mira de lejos y con luz de
@@ -329,7 +348,7 @@ function OrdersTvWall({
             </ToggleGroup>
           )}
 
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(21rem,1fr))] gap-5">
+          <ul ref={gridRef} className="grid grid-cols-[repeat(auto-fill,minmax(21rem,1fr))] gap-5">
             {shown.map(({ order, state }) => (
               <li key={order.id} className="flex min-w-0">
                 <div className="flex w-full min-w-0">
@@ -337,17 +356,22 @@ function OrdersTvWall({
                     order={order}
                     state={state}
                     timeFormat={timeFormat}
-                    onOpen={(id) => {
-                      onClose();
-                      onOpenOrder(id);
-                    }}
+                    onOpen={openFromTv}
                     wall
+                    keyboardActive={keys.activeId === order.id}
                   />
                 </div>
               </li>
             ))}
           </ul>
+
+          {/* La tele se usa con teclado: los atajos principales siempre a la vista. */}
+          <div className="sticky bottom-0 z-20 -mx-8 border-t border-border/60 bg-background/95 px-8 py-3 backdrop-blur">
+            <OrderShortcutHints large onHelp={() => keys.setHelpOpen(true)} />
+          </div>
         </div>
+        <OrderShortcutsDialog open={keys.helpOpen} onOpenChange={keys.setHelpOpen} />
+        <OrderJumpDialog open={keys.searchOpen} onOpenChange={keys.setSearchOpen} onJump={keys.jumpTo} />
       </DialogContent>
     </Dialog>
   );

@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
+import { OrderStageLine, OrderStepButton, OrderTurnLabel } from "@/components/orders/OrderNextStep";
+import { useOrderStep } from "@/hooks/useOrderStep";
 import { formatDeliveryDate, getAssignedUserName, getOrderClientName } from "@/lib/format";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { chatInitials } from "@/hooks/useChat";
@@ -41,6 +43,8 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
   const { staggerItemVariants, cardHoverMotion, cardTapMotion } = useMotionPreset();
   const areaTags = orderAreaTags(order);
   const { timeFormat } = useTimeFormat();
+  // Qué sigue: con un botón no hace falta arrastrar (en el teléfono es la única forma).
+  const step = useOrderStep()?.stepFor(order) ?? null;
 
   // Tareas pendientes por marcar de este pedido: tareas de producción por
   // área (ya vienen en `order.areaTasks`) + tareas del calendario de equipo
@@ -107,6 +111,18 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               Entrega: <span className="font-medium text-foreground">{formatDeliveryDate(order.deliveryDate, timeFormat)}</span>
             </span>
           </span>
+
+          {step && (
+            <div className="space-y-3">
+              <OrderStageLine step={step} />
+              {(step.turn || step.action) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <OrderTurnLabel step={step} />
+                  <OrderStepButton order={order} step={step} onOpen={onOpen} className="ml-auto" />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Pie: áreas a la izquierda; adjuntos, tareas pendientes y
               asignado a la derecha, como los contadores de la referencia. */}

@@ -107,6 +107,33 @@ export function useOrderHistory(orderId: number, options?: { enabled?: boolean }
  * historial, en una sola operación reutilizable (antes estaba duplicada entre
  * el detalle del pedido y "Mis Tareas").
  */
+/**
+ * Escribe el estado del pedido (`PATCH /orders/:id`) y su renglón de
+ * historial. Lo usan el cambio de estado del detalle y el "siguiente paso"
+ * de las tarjetas (que además puede deshacerlo).
+ */
+export async function writeOrderStatus(
+  order: Pick<Order, "id" | "statusId">,
+  newStatusId: number,
+  token: string | null | undefined
+) {
+  await patchStatusChange<Order>(`${ENDPOINTS.orders}/${order.id}`, { statusId: newStatusId }, token);
+  // Sin cambio real no se escribe historial: hasta ahora se creaba una
+  // fila por cada click aunque el estado fuera el mismo, y el historial
+  // acumulaba entradas "pendiente -> pendiente".
+  if (order.statusId !== newStatusId) {
+    await request<OrderHistory>(ENDPOINTS.orderHistories, {
+      method: "POST",
+      token,
+      body: {
+        orderId: order.id,
+        previousStatusId: order.statusId,
+        newStatusId,
+      },
+    });
+  }
+}
+
 export function useChangeOrderStatus() {
   const token = useAuthToken();
   const queryClient = useQueryClient();
@@ -124,25 +151,7 @@ export function useChangeOrderStatus() {
       order: Pick<Order, "id" | "statusId">;
       newStatusId: number;
     }) => {
-      await patchStatusChange<Order>(
-        `${ENDPOINTS.orders}/${order.id}`,
-        { statusId: newStatusId },
-        token
-      );
-      // Sin cambio real no se escribe historial: hasta ahora se creaba una
-      // fila por cada click aunque el estado fuera el mismo, y el historial
-      // acumulaba entradas "pendiente -> pendiente".
-      if (order.statusId !== newStatusId) {
-        await request<OrderHistory>(ENDPOINTS.orderHistories, {
-          method: "POST",
-          token,
-          body: {
-            orderId: order.id,
-            previousStatusId: order.statusId,
-            newStatusId,
-          },
-        });
-      }
+      await writeOrderStatus(order, newStatusId, token);
       return { orderId: order.id };
     },
     onSuccess: ({ orderId }) => {

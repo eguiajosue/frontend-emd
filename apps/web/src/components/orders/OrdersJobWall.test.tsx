@@ -4,10 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { OrdersJobWall } from "./OrdersJobWall";
 import type { Order } from "@/types";
 
-vi.mock("@/components/orders/OrderQuickStatusChip", () => ({
-  OrderQuickStatusChip: () => null,
-}));
-
 const H = 3_600_000;
 
 function order(id: number, hoursToDue: number | null, overrides: Partial<Order> = {}): Order {
