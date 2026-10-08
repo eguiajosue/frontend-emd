@@ -219,6 +219,28 @@ export interface UploadedFileInput {
 /** Avance de un área dentro de un pedido. */
 export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
 
+/**
+ * Etapa previa a producción de una tarea de Bordado: se digitaliza, se manda a
+ * pruebas y sólo con la prueba aprobada pasa a producción (`prepStage` null).
+ */
+export type EmbroideryPrepStage = "digitalizado" | "en_pruebas";
+
+/** Resultado de una prueba de bordado; una prueba en curso no tiene resultado. */
+export type SampleTestResult = "aprobada" | "rechazada";
+
+/** Ronda del registro de pruebas de una tarea de Bordado. */
+export interface AreaTaskSampleTest {
+  id: number;
+  round: number;
+  sentAt: string;
+  sentNotes?: string | null;
+  result: SampleTestResult | null;
+  resultNotes?: string | null;
+  decidedAt?: string | null;
+  sentBy?: { id: number; firstName?: string | null; lastName?: string | null } | null;
+  decidedBy?: { id: number; firstName?: string | null; lastName?: string | null } | null;
+}
+
 /** Origen de los insumos de un área: los trae el cliente o los ponemos nosotros. */
 export type SupplySource = "cliente" | "nosotros";
 
@@ -297,11 +319,15 @@ export interface OrderAreaTask {
   /** taller | dtf | bordado | laser | impresiones (nunca 'diseno'). */
   area: string;
   status: AreaTaskStatus;
+  /** Sólo Bordado: etapa previa a producción; null/ausente = ya puede producir. */
+  prepStage?: EmbroideryPrepStage | null;
   assignedUserId?: number | null;
   createdAt: string;
   startedAt?: string | null;
   completedAt?: string | null;
   assignedUser?: AssignedUser | null;
+  /** Registro de pruebas de bordado (una por ronda), de la más vieja a la más nueva. */
+  sampleTests?: AreaTaskSampleTest[];
   /** Origen de insumos del área; ausente/null en pedidos anteriores a la hoja. */
   supply?: AreaSupply | null;
 }

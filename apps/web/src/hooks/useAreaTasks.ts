@@ -7,7 +7,7 @@ import { invalidateSupplyData, showSupplyWarnings } from "@/hooks/useAreaSupplie
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
-import type { AreaTaskStatus, OrderAreaTask } from "@/types";
+import type { AreaTaskStatus, OrderAreaTask, SampleTestResult } from "@/types";
 
 /**
  * Tareas de área de un pedido.
@@ -23,6 +23,8 @@ import type { AreaTaskStatus, OrderAreaTask } from "@/types";
  * - `PATCH  /orders/:id/area-tasks/:taskId/status`
  * - `PATCH  /orders/:id/area-tasks/:taskId/assign`
  * - `DELETE /orders/:id/area-tasks/:taskId`
+ * - `POST   /orders/:id/area-tasks/:taskId/send-to-test`  (Bordado: digitalizado → pruebas)
+ * - `POST   /orders/:id/area-tasks/:taskId/test-result`   (Bordado: aprobada | rechazada)
  *
  * Mientras el backend no esté desplegado, un 404 se absorbe (cae a "sin
  * tareas") en vez de romper el detalle del pedido.
@@ -83,6 +85,32 @@ export function useAreaTasks(orderId: number | null) {
     meta: { ownErrorToast: true },
   });
 
+  const sendToTest = useMutation({
+    mutationFn: ({ taskId, notes }: { taskId: number; notes?: string }) =>
+      request<OrderAreaTask>(
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/send-to-test`,
+        { token, method: "POST", body: { notes } }
+      ),
+    onSuccess: invalidate,
+  });
+
+  const decideTest = useMutation({
+    mutationFn: ({
+      taskId,
+      result,
+      notes,
+    }: {
+      taskId: number;
+      result: SampleTestResult;
+      notes?: string;
+    }) =>
+      request<OrderAreaTask>(
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/test-result`,
+        { token, method: "POST", body: { result, notes } }
+      ),
+    onSuccess: invalidate,
+  });
+
   const assign = useMutation({
     mutationFn: ({
       taskId,
@@ -124,6 +152,8 @@ export function useAreaTasks(orderId: number | null) {
     isUnavailable: isNotFound(query.error),
     refetch: query.refetch,
     setStatus,
+    sendToTest,
+    decideTest,
     assign,
     addAreas,
     removeArea,
