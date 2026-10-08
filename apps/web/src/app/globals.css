@@ -16,6 +16,12 @@
     --brand-900: 330 68% 24%;
     --brand-950: 330 70% 14%;
 
+    /* Logo EMD: azul marino #1A1A31, cian #85D3E3, lima #CBDD57, magenta #E24699. */
+    --brand-navy: 240 31% 15%;
+    --brand-cyan: 189 62% 70%;
+    --brand-lime: 66 68% 58%;
+    --brand-magenta: 330 74% 57%;
+
     --accent2-50: 189 94% 95%;
     --accent2-100: 189 90% 88%;
     --accent2-200: 189 85% 76%;
@@ -31,26 +37,26 @@
        separan por contraste de superficie, casi sin borde ni sombra. Texto
        casi negro. Magenta EMD = acento de marca; "tinta" = acción principal
        (botón negro), como en la referencia. */
-    --background: 330 6% 95.5%;
-    --foreground: 330 10% 9%;
+    --background: 240 6% 95.5%;
+    --foreground: 240 31% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 330 10% 9%;
+    --card-foreground: 240 31% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 330 10% 9%;
-    --primary: 330 81% 46%;
+    --popover-foreground: 240 31% 15%;
+    --primary: 330 76% 48%;
     --primary-foreground: 0 0% 100%;
-    --ink: 330 10% 9%;
+    --ink: 240 31% 15%;
     --ink-foreground: 0 0% 100%;
-    --secondary: 330 6% 94.5%;
-    --secondary-foreground: 330 10% 14%;
-    --muted: 330 6% 95.5%;
-    --muted-foreground: 330 4% 40%;
-    --accent: 330 6% 94.5%;
-    --accent-foreground: 330 10% 14%;
+    --secondary: 240 6% 94.5%;
+    --secondary-foreground: 240 10% 14%;
+    --muted: 240 6% 95.5%;
+    --muted-foreground: 240 4% 40%;
+    --accent: 240 6% 94.5%;
+    --accent-foreground: 240 10% 14%;
     --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 6% 90%;
-    --input: 330 6% 88%;
+    --border: 240 6% 90%;
+    --input: 240 6% 88%;
     --ring: 330 81% 46%;
     --chart-1: 330 81% 53%;
     --chart-2: 217 85% 56%;
@@ -60,12 +66,12 @@
     --radius: 1rem;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 330 6% 30%;
-    --sidebar-primary: 330 10% 9%;
+    --sidebar-foreground: 240 6% 30%;
+    --sidebar-primary: 240 31% 15%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 6% 95%;
-    --sidebar-accent-foreground: 330 10% 9%;
-    --sidebar-border: 330 6% 90%;
+    --sidebar-accent: 240 6% 95%;
+    --sidebar-accent-foreground: 240 31% 15%;
+    --sidebar-border: 240 6% 90%;
     --sidebar-ring: 330 81% 46%;
   }
 
@@ -77,52 +83,52 @@
    */
   .theme-force-light {
     color-scheme: light;
-    --background: 330 6% 95.5%;
-    --foreground: 330 10% 9%;
+    --background: 240 6% 95.5%;
+    --foreground: 240 31% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 330 10% 9%;
+    --card-foreground: 240 31% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 330 10% 9%;
-    --primary: 330 81% 46%;
+    --popover-foreground: 240 31% 15%;
+    --primary: 330 76% 48%;
     --primary-foreground: 0 0% 100%;
-    --ink: 330 10% 9%;
+    --ink: 240 31% 15%;
     --ink-foreground: 0 0% 100%;
-    --secondary: 330 6% 94.5%;
-    --secondary-foreground: 330 10% 14%;
-    --muted: 330 6% 95.5%;
-    --muted-foreground: 330 4% 40%;
-    --accent: 330 6% 94.5%;
-    --accent-foreground: 330 10% 14%;
+    --secondary: 240 6% 94.5%;
+    --secondary-foreground: 240 10% 14%;
+    --muted: 240 6% 95.5%;
+    --muted-foreground: 240 4% 40%;
+    --accent: 240 6% 94.5%;
+    --accent-foreground: 240 10% 14%;
     --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 6% 90%;
-    --input: 330 6% 88%;
+    --border: 240 6% 90%;
+    --input: 240 6% 88%;
     --ring: 330 81% 46%;
   }
   .dark {
     /* Mismo lenguaje que el claro: lienzo casi negro neutro, tarjetas un
        escalón más claras (la sombra no se ve en oscuro), tinta invertida
        (botón principal blanco) y magenta suavizado para que no vibre. */
-    --background: 330 5% 6.5%;
-    --foreground: 330 6% 93%;
-    --card: 330 4% 10.5%;
-    --card-foreground: 330 6% 93%;
-    --popover: 330 4% 11.5%;
-    --popover-foreground: 330 6% 93%;
+    --background: 240 24% 7%;
+    --foreground: 240 6% 93%;
+    --card: 240 20% 11%;
+    --card-foreground: 240 6% 93%;
+    --popover: 240 4% 11.5%;
+    --popover-foreground: 240 6% 93%;
     --primary: 330 72% 62%;
     --primary-foreground: 330 30% 8%;
-    --ink: 330 6% 94%;
-    --ink-foreground: 330 8% 8%;
-    --secondary: 330 4% 15%;
-    --secondary-foreground: 330 6% 92%;
-    --muted: 330 4% 14.5%;
-    --muted-foreground: 330 4% 64%;
-    --accent: 330 4% 15%;
-    --accent-foreground: 330 6% 92%;
+    --ink: 240 6% 94%;
+    --ink-foreground: 240 8% 8%;
+    --secondary: 240 4% 15%;
+    --secondary-foreground: 240 6% 92%;
+    --muted: 240 4% 14.5%;
+    --muted-foreground: 240 4% 64%;
+    --accent: 240 4% 15%;
+    --accent-foreground: 240 6% 92%;
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 330 4% 17%;
-    --input: 330 4% 20%;
+    --border: 240 4% 17%;
+    --input: 240 4% 20%;
     --ring: 330 72% 62%;
     --chart-1: 330 72% 62%;
     --chart-2: 217 80% 64%;
@@ -130,17 +136,17 @@
     --chart-4: 262 65% 68%;
     --chart-5: 150 45% 50%;
 
-    --sidebar-background: 330 4% 10.5%;
-    --sidebar-foreground: 330 4% 70%;
-    --sidebar-primary: 330 6% 94%;
-    --sidebar-primary-foreground: 330 8% 8%;
-    --sidebar-accent: 330 4% 15%;
-    --sidebar-accent-foreground: 330 6% 93%;
-    --sidebar-border: 330 4% 17%;
+    --sidebar-background: 240 20% 11%;
+    --sidebar-foreground: 240 4% 70%;
+    --sidebar-primary: 240 6% 94%;
+    --sidebar-primary-foreground: 240 8% 8%;
+    --sidebar-accent: 240 4% 15%;
+    --sidebar-accent-foreground: 240 6% 93%;
+    --sidebar-border: 240 4% 17%;
     --sidebar-ring: 330 72% 62%;
 
-    --elevation-1: 330 4% 10.5%;
-    --elevation-2: 330 4% 13.5%;
+    --elevation-1: 240 20% 11%;
+    --elevation-2: 240 18% 14%;
   }
 
   /*
