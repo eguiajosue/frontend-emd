@@ -216,6 +216,34 @@ let presetsProducto = [];
 let siguientePresetId = 1;
 const clavePreset = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 
+/** Portal del cliente: enlaces por pedido y respuestas del cliente (pendientes de confirmar). */
+const portalInicial = () => ({ links: {}, respuestas: [], siguienteId: 1 });
+let portal = portalInicial();
+const estadoCompartir = (orderId) => ({
+  link: portal.links[orderId] ?? null,
+  pendingResponse: portal.respuestas.find((r) => r.orderId === orderId && r.status === "pendiente") ?? null,
+});
+function vistaPortal(orderId) {
+  const p = orderId === ORDEN_AUTORIZAR ? pedidoAutorizar() : pedidos().find((x) => x.id === orderId);
+  if (!p) return null;
+  const nombre = (p.status?.name ?? "").toLowerCase();
+  const stage =
+    nombre === "esperando autorización" ? "autorizacion" : nombre === "en diseño" || nombre === "cambios solicitados" ? "diseno" : nombre === "entregado" ? "entregado" : "produccion";
+  const etiquetas = { diseno: "Diseño", autorizacion: "Tu aprobación", produccion: "Producción", listo: "Listo para entregar", entregado: "Entregado" };
+  const r = (rondasDiseno[orderId] ?? (orderId === ORDEN_AUTORIZAR ? rondaAutorizar() : [])).at(-1);
+  const awaiting = Boolean(r && stage === "autorizacion" && !r.approved && !r.feedbackText);
+  const respuesta = r ? portal.respuestas.filter((x) => x.revisionId === r.id && (x.status === "pendiente" || x.status === "aplicada")).at(-1) ?? null : null;
+  return {
+    order: { id: p.id, description: p.description, clientName: p.clientNameOverride, deliveryDate: p.deliveryDate, creationDate: p.creationDate, branch: null },
+    stage: { key: stage, label: etiquetas[stage] },
+    stages: [...(p.requiresDesign ? ["diseno", "autorizacion"] : []), "produccion", "listo", "entregado"].map((key) => ({ key, label: etiquetas[key] })),
+    products: [{ name: "Playera escolar", quantity: 40, sizes: { general: { S: 10, M: 20, L: 10 } } }],
+    design: r ? { revisionId: r.id, round: r.round, sentAt: r.sentAt, approved: r.approved, awaitingResponse: awaiting, files: r.montageFiles } : null,
+    mockups: [],
+    response: respuesta,
+  };
+}
+
 const autorizarInicial = () => ({ aprobada: false, recibido: null, tarea: null, supply: null, movimientos: [] });
 let autorizar = autorizarInicial();
 const pedidoAutorizar = () => ({
@@ -835,6 +863,59 @@ createServer((req, res) => {
       autorizar.tarea = { ...tareaAutorizar(), supply: autorizar.supply };
       return send({ ...rondaAutorizar()[0], supplyWarnings: [] });
     }
+    // ── Portal del cliente ──────────────────────────────────────────────────
+    if (req.method === "POST" && path === "/__e2e/reset-portal") {
+      portal = portalInicial();
+      return send({ ok: true });
+    }
+    const compartir = path.match(/^\/orders\/(\d+)\/share-link(\/regenerate)?$/);
+    if (compartir) {
+      const orderId = Number(compartir[1]);
+      const nuevo = () => ({ token: `tok${orderId}${Math.random().toString(36).slice(2, 12)}xxxxxxxxxxxxxxxxxxxx`, createdAt: new Date().toISOString(), lastViewedAt: null, viewCount: 0 });
+      if (req.method === "GET") return send(estadoCompartir(orderId));
+      if (req.method === "POST" && compartir[2]) portal.links[orderId] = nuevo();
+      else if (req.method === "POST") portal.links[orderId] ??= nuevo();
+      else if (req.method === "DELETE") {
+        delete portal.links[orderId];
+        return send({ revoked: true });
+      }
+      return send(estadoCompartir(orderId));
+    }
+    const descartar = path.match(/^\/orders\/(\d+)\/client-responses\/(\d+)\/discard$/);
+    if (descartar && req.method === "POST") {
+      const r = portal.respuestas.find((x) => x.id === Number(descartar[2]) && x.status === "pendiente");
+      if (!r) return send({ message: "Esa respuesta ya no está pendiente" }, 409);
+      r.status = "descartada";
+      return send({ discarded: true });
+    }
+    const publico = path.match(/^\/portal\/([^/]+)(?:\/(design-files|mockups)\/(\d+)|\/(respond))?$/);
+    if (publico) {
+      const entrada = Object.entries(portal.links).find(([, l]) => l.token === publico[1]);
+      if (!entrada) return send({ message: "Este enlace no existe o ya no está disponible" }, 404);
+      const orderId = Number(entrada[0]);
+      const vista = vistaPortal(orderId);
+      if (publico[2] === "design-files") {
+        const archivo = vista?.design?.files.some((f) => f.id === Number(publico[3])) ? archivosDiseno[Number(publico[3])] : null;
+        return archivo ? send(archivo) : send({ message: "No encontrado" }, 404);
+      }
+      if (publico[4] && req.method === "POST") {
+        const dto = JSON.parse(body || "{}");
+        if (!vista?.design?.awaitingResponse) return send({ message: "Este diseño ya no está esperando tu respuesta." }, 409);
+        if (dto.kind === "cambios" && !dto.comment?.trim()) return send({ message: "Cuéntanos qué te gustaría cambiar" }, 400);
+        portal.respuestas.forEach((x) => {
+          if (x.orderId === orderId && x.status === "pendiente") x.status = "reemplazada";
+        });
+        const nueva = { id: portal.siguienteId++, orderId, revisionId: vista.design.revisionId, kind: dto.kind, comment: dto.comment?.trim() || null, status: "pendiente", createdAt: new Date().toISOString() };
+        portal.respuestas.push(nueva);
+        return send({ response: nueva }, 201);
+      }
+      if (req.method === "GET" && !publico[2]) {
+        entrada[1].lastViewedAt = new Date().toISOString();
+        entrada[1].viewCount += 1;
+        return send(vista);
+      }
+    }
+
     if (req.method === "GET" && path === "/orders/my-area-tasks") return send(tareasDelArea(usuarioDe(req)));
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);

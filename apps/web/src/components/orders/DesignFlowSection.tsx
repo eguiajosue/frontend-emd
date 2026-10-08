@@ -44,6 +44,9 @@ import {
   useDesignRevisionFileContent,
 } from "@/hooks/useDesignRevisions";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
+import { useShareLinkActions, useShareState } from "@/hooks/useClientPortal";
+import { viewedLabel } from "@/components/orders/ShareWithClient";
+import type { ClientDesignResponse } from "@/lib/clientPortal";
 import { useStartOrderDesign, useTakeOrderDesign } from "@/hooks/useOrders";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
@@ -74,6 +77,7 @@ import {
   Paperclip,
   Play,
   RotateCcw,
+  ThumbsUp,
   Upload,
   UserRound,
   X,
@@ -128,7 +132,15 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const { tasks: areaTasks } = useAreaTasks(order.id);
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  /** Lo que pidió el cliente desde su enlace, para precargar "Pidió cambios". */
+  const [feedbackPrefill, setFeedbackPrefill] = useState("");
   const [approveOpen, setApproveOpen] = useState(false);
+  // Respuesta del cliente desde su enlace (portal), pendiente de confirmar.
+  const canSeeClientResponse = isAdmin || roles.includes("recepcion");
+  const waitingForClient =
+    (order.status?.name ?? "").toLowerCase() === DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION;
+  const shareState = useShareState(order.id, order.requiresDesign && canSeeClientResponse && waitingForClient);
+  const { discard: discardClientResponse } = useShareLinkActions(order.id);
   const [montageDialogOpen, setMontageDialogOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -146,6 +158,9 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const isAuthorized = currentStatus === DESIGN_FLOW_STATUS_NAMES.AUTORIZADO;
 
   const latestRevision = revisions[revisions.length - 1] ?? null;
+  const pendingFromPortal = shareState.data?.pendingResponse ?? null;
+  const clientResponse =
+    pendingFromPortal && latestRevision && pendingFromPortal.revisionId === latestRevision.id ? pendingFromPortal : null;
   const nextRound = (latestRevision?.round ?? 0) + 1;
   /** Áreas ya planificadas: si las hay, autorizar no vuelve a preguntarlas. */
   const plannedAreas = areaTasks.map((task) => task.area);
@@ -410,7 +425,22 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
 
       {canReception && isWaitingAuthorization && latestRevision && (
         <div className="space-y-2 border-t border-border/60 pt-4">
-          <p className="text-sm font-medium">¿Qué respondió el cliente?</p>
+          {clientResponse && (
+            <ClientResponseCard
+              response={clientResponse}
+              viewed={viewedLabel(shareState.data?.link)}
+              discarding={discardClientResponse.isPending}
+              onConfirm={() => {
+                if (clientResponse.kind === "aprobar") setApproveOpen(true);
+                else {
+                  setFeedbackPrefill(clientResponse.comment ?? "");
+                  setFeedbackOpen(true);
+                }
+              }}
+              onDiscard={() => discardClientResponse.mutate(clientResponse.id)}
+            />
+          )}
+          <p className="text-sm font-medium">{clientResponse ? "O regístralo tú:" : "¿Qué respondió el cliente?"}</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setApproveOpen(true)} className="gap-1.5">
               <CheckCircle2 className="h-4 w-4" />
@@ -455,7 +485,11 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       {latestRevision && (
         <FeedbackDialog
           open={feedbackOpen}
-          onClose={() => setFeedbackOpen(false)}
+          initialText={feedbackPrefill}
+          onClose={() => {
+            setFeedbackOpen(false);
+            setFeedbackPrefill("");
+          }}
           isSubmitting={isSubmittingFeedback}
           onSubmit={async (feedbackText, feedbackFiles) => {
             const ok = await submitFeedback({
@@ -1246,11 +1280,14 @@ function MontageDialog({
 
 function FeedbackDialog({
   open,
+  initialText = "",
   onClose,
   onSubmit,
   isSubmitting,
 }: {
   open: boolean;
+  /** Texto precargado (lo que el cliente escribió en su enlace). */
+  initialText?: string;
   onClose: () => void;
   /** Devuelve `true` si el envío salió bien (recién ahí se limpia el diálogo). */
   onSubmit: (
@@ -1261,6 +1298,9 @@ function FeedbackDialog({
 }) {
   const { formButtonMotion } = useMotionPreset();
   const [text, setText] = useState("");
+  useEffect(() => {
+    if (open && initialText) setText(initialText);
+  }, [open, initialText]);
   // El cliente puede mandar varias fotos marcando qué cambiar, así que el
   // adjunto del feedback también es una lista (opcional).
   const [files, setFiles] = useState<StagedFile[]>([]);
@@ -1485,4 +1525,70 @@ function RequirementMark({ done, loading = false }: { done: boolean; loading?: b
   ) : (
     <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-label="Falta" />
   )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Respuesta del cliente desde su enlace (portal)                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * El cliente aprobó o pidió cambios desde su enlace. No se aplica solo:
+ * "Confirmar" abre el mismo paso que Recepción usaría a mano (autorizar con la
+ * hoja de materiales, o devolver a Diseño con su comentario ya escrito).
+ */
+function ClientResponseCard({
+  response,
+  viewed,
+  discarding,
+  onConfirm,
+  onDiscard,
+}: {
+  response: ClientDesignResponse;
+  viewed: string | null;
+  discarding: boolean;
+  onConfirm: () => void;
+  onDiscard: () => void;
+}) {
+  const approved = response.kind === "aprobar";
+  const ago = formatDistanceToNow(new Date(response.createdAt), { locale: es, addSuffix: true });
+  return (
+    <div
+      role="region"
+      aria-label="Respuesta del cliente desde su enlace"
+      className={cn(
+        "space-y-3 rounded-xl border p-4",
+        approved
+          ? "border-emerald-500/30 bg-emerald-500/5"
+          : "border-orange-500/30 bg-orange-500/5"
+      )}
+    >
+      <div className="flex items-start gap-2">
+        {approved ? (
+          <ThumbsUp className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+        ) : (
+          <MessagesSquare className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
+        )}
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-semibold">
+            {approved ? "El cliente aprobó el diseño desde su enlace" : "El cliente pidió cambios desde su enlace"}
+          </p>
+          {response.comment && <p className="whitespace-pre-wrap text-sm">&ldquo;{response.comment}&rdquo;</p>}
+          <p className="text-xs text-muted-foreground">
+            Respondió {ago}
+            {viewed ? ` · ${viewed}` : ""}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" className="gap-1.5" onClick={onConfirm}>
+          <CheckCircle2 className="h-4 w-4" />
+          {approved ? "Confirmar y autorizar" : "Confirmar y mandar a Diseño"}
+        </Button>
+        <Button size="sm" variant="ghost" disabled={discarding} onClick={onDiscard}>
+          {discarding && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+          Descartar
+        </Button>
+      </div>
+    </div>
+  );
 }
