@@ -9,7 +9,7 @@ import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
 import { Button } from "@/components/ui/button";
 import { TONE_META } from "@/components/orders/OrderJobCard";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { getAreaLabel } from "@/lib/areas";
 import { formatCountdown, formatElapsed, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
 import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
@@ -17,6 +17,7 @@ import { isReturnedDesign } from "@/lib/myTasks";
 import { PRIORITY_STYLE, type ArrivalPriority } from "@/lib/packageArrivals";
 import { assigneeLabel, tvColumnOf, type TvTask } from "@/lib/tvBoard";
 import { cn } from "@/lib/utils";
+import { AreaChip } from "@/components/AreaChip";
 import type { AreaTaskStatus } from "@/types";
 
 function clientName(task: TvTask): string {
@@ -82,7 +83,6 @@ export const TvTaskCard = memo(function TvTaskCard({
   reduced,
   canMovePrep = false,
 }: TvTaskCardProps) {
-  const AreaIcon = getAreaIcon(task.area);
   const action = tvAction(task);
   const ActionIcon = action?.icon;
   const column = tvColumnOf(task);
@@ -104,9 +104,10 @@ export const TvTaskCard = memo(function TvTaskCard({
     >
       <article
         data-tv-card={task.key}
+        data-area={task.area}
         aria-label={`Pedido #${task.order.id} · ${getAreaLabel(task.area)}`}
         className={cn(
-          "relative flex flex-col gap-3 rounded-3xl border border-border bg-card p-5 transition-[box-shadow,border-color] duration-500",
+          "area-stripe relative flex flex-col gap-3 rounded-3xl border border-border bg-card p-5 transition-[box-shadow,border-color] duration-500",
           "hover:border-foreground/30",
           done && "opacity-75",
           glow && cn("ring-4", glow.ring)
@@ -130,10 +131,7 @@ export const TvTaskCard = memo(function TvTaskCard({
           </button>
           {/* Tele con fondo oscuro: el logo BLANCO de la sucursal (o su nombre en texto). */}
           <BranchBadge order={task.order} surface="dark" size="lg" className="min-w-0 self-center" />
-          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-base text-foreground/85">
-            {AreaIcon && <AreaIcon className="h-4 w-4" aria-hidden />}
-            {getAreaLabel(task.area)}
-          </span>
+          <AreaChip area={task.area} large className="ml-auto shrink-0 px-3 text-base" />
         </div>
 
         <div className="min-w-0 space-y-1">

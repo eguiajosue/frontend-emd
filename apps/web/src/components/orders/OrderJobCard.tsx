@@ -23,7 +23,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { OrderStageLine, OrderStepButton, OrderTurnLabel } from "@/components/orders/OrderNextStep";
 import { useOrderStep } from "@/hooks/useOrderStep";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { getAreaLabel } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName, type TimeFormatPreference } from "@/lib/format";
 import {
   formatCountdown,
@@ -36,6 +36,7 @@ import {
 import { DESIGN_FLOW_STATUS_NAMES, isDesignFlowStatusName, isOrderInDesignStatus } from "@/lib/orderStatus";
 import { getStatusDotClasses } from "@/lib/statusColors";
 import { cn } from "@/lib/utils";
+import { AreaChip } from "@/components/AreaChip";
 import type { Order } from "@/types";
 
 export const TONE_META: Record<
@@ -263,17 +264,11 @@ export const OrderJobCard = memo(function OrderJobCard({
 
         {areas.length > 0 && (
           <ul className="flex flex-wrap gap-1.5" aria-label="Áreas" title={allAreas.map(getAreaLabel).join(", ")}>
-            {areas.map((area) => {
-              const Icon = getAreaIcon(area);
-              return (
-                <li key={area}>
-                  <Badge variant="muted" className="px-2">
-                    {Icon && <Icon className="h-3 w-3" aria-hidden />}
-                    {getAreaLabel(area)}
-                  </Badge>
-                </li>
-              );
-            })}
+            {areas.map((area) => (
+              <li key={area}>
+                <AreaChip area={area} large={wall} />
+              </li>
+            ))}
             {hiddenAreas > 0 && (
               <li>
                 <Badge variant="muted" className="px-2">+{hiddenAreas}</Badge>

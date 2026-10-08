@@ -371,11 +371,12 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                   animate="show"
                   exit={{ opacity: 0, height: 0 }}
                   layout
-                  className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3.5"
+                  data-area={task.area}
+                  className="area-stripe flex flex-wrap items-center gap-3 rounded-xl bg-muted/50 p-3.5"
                 >
                   <span className="flex min-w-[8rem] flex-1 items-center gap-2.5">
                     {AreaIcon && (
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card text-muted-foreground shadow-soft">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[hsl(var(--tone)/0.16)] text-[hsl(var(--tone-ink))]">
                         <AreaIcon className="h-4 w-4" aria-hidden />
                       </span>
                     )}

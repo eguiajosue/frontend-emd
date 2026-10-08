@@ -29,11 +29,11 @@ import { TONE_META } from "@/components/orders/OrderJobCard";
 import { useDeleteOrder } from "@/hooks/useOrders";
 import { useNow } from "@/hooks/useNow";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName } from "@/lib/format";
 import { formatElapsed, getDeadlineState, type DeadlineState } from "@/lib/orderDeadline";
 import type { OrderDetailPermissions } from "@/lib/orderDetail";
 import { cn } from "@/lib/utils";
+import { AreaChip } from "@/components/AreaChip";
 import { branchOriginLabel } from "@/lib/branch";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import type { Order } from "@/types";
@@ -95,7 +95,6 @@ export function OrderDetailHeader({
     if (result !== undefined) onDeleted();
   };
 
-  const AreaIcon = getAreaIcon(order.area);
   const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium";
 
   return (
@@ -120,10 +119,7 @@ export function OrderDetailHeader({
             className="py-1"
           />
           {order.area && (
-            <span className={cn(pill, "border border-border/60 bg-card text-foreground")}>
-              {AreaIcon && <AreaIcon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
-              {getAreaLabel(order.area)}
-            </span>
+            <AreaChip area={order.area} className="px-2.5 py-1" />
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2 text-muted-foreground">

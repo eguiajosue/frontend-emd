@@ -109,6 +109,20 @@ module.exports = {
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
   			}
+  		},
+  		keyframes: {
+  			'status-pop': {
+  				'0%': { transform: 'scale(0.85)', boxShadow: '0 0 0 0 currentColor' },
+  				'60%': { transform: 'scale(1.06)', boxShadow: '0 0 0 4px transparent' },
+  				'100%': { transform: 'scale(1)' }
+  			},
+  			shimmer: {
+  				'100%': { transform: 'translateX(100%)' }
+  			}
+  		},
+  		animation: {
+  			'status-pop': 'status-pop 420ms cubic-bezier(0.16, 1, 0.3, 1)',
+  			shimmer: 'shimmer 1.6s infinite'
   		}
   	}
   },

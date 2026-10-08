@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef } from "react";
 import {
   BadgeCheck,
   Ban,
@@ -58,10 +61,15 @@ interface StatusBadgeProps {
  */
 export function StatusBadge({ statusId, statusName, count, icon = true, className }: StatusBadgeProps) {
   const Icon = getStatusIcon(statusId, statusName);
+  // Sólo cuando el estado CAMBIA (no al montar): un "pop" breve que se nota de reojo.
+  const first = useRef(statusId);
+  const changed = first.current !== statusId;
   return (
     <span
+      key={changed ? `s-${statusId}` : undefined}
       className={cn(
         "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        changed && "motion-safe:animate-status-pop",
         getStatusBadgeClasses(statusId, statusName),
         className
       )}

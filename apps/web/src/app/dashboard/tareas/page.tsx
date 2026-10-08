@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/feedback/states";
 import { TaskCard } from "@/components/tasks/TaskCard";
+import { MovingItem } from "@/components/motion/MovingItem";
 import { EmbroideryTasksBoard } from "@/components/tasks/EmbroideryBoard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TasksTvMode } from "@/components/tasks/tv/TasksTvMode";
@@ -129,7 +130,7 @@ export default function TareasPage() {
   const renderList = (list: MyTask[]) => (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {list.map((task) => (
-        <li key={task.key} className="min-w-0">
+        <MovingItem key={task.key} id={`tarea-${task.key}`} className="min-w-0">
           <TaskCard
             task={task}
             state={taskDeadline(task, now)}
@@ -139,7 +140,7 @@ export default function TareasPage() {
             busy={pendingKey === task.key}
             canMovePrep={canMoveEmbroideryPrep(roles)}
           />
-        </li>
+        </MovingItem>
       ))}
     </ul>
   );
