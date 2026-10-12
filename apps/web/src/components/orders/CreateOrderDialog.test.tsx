@@ -24,10 +24,12 @@ vi.mock("@/hooks/useUserPreferences", () => ({
 
 let mockClientOrders: unknown[] = [];
 let mockRepeatSource: unknown = undefined;
+/** Las queries del contexto del cliente todavía cargando (esqueleto de "Empezar desde"). */
+let mockContextLoading = false;
 vi.mock("@/hooks/useOrders", () => ({
   useClientOrders: (clientId: number | null) => ({
-    orders: clientId ? mockClientOrders : [],
-    isLoading: false,
+    orders: clientId && !mockContextLoading ? mockClientOrders : [],
+    isLoading: Boolean(clientId) && mockContextLoading,
   }),
   useOrder: (_id: unknown, options?: { enabled?: boolean }) => ({
     data: options?.enabled ? mockRepeatSource : undefined,
@@ -37,8 +39,8 @@ vi.mock("@/hooks/useOrders", () => ({
 let mockInsights: unknown = null;
 vi.mock("@/hooks/useClientInsights", () => ({
   useClientInsights: (clientId: number | null) => ({
-    insights: clientId ? mockInsights : null,
-    isLoading: false,
+    insights: clientId && !mockContextLoading ? mockInsights : null,
+    isLoading: Boolean(clientId) && mockContextLoading,
   }),
 }));
 
@@ -59,6 +61,12 @@ vi.mock("@/hooks/useOrderTemplates", () => ({
     update: { mutateAsync: templateUpdate, isPending: false },
     markUsed: { mutate: templateMarkUsed },
   }),
+}));
+
+const prefetchClientMock = vi.fn();
+vi.mock("@/hooks/useOrderComposerPrefetch", () => ({
+  COMPOSER_PREVIOUS_ORDERS_LIMIT: 8,
+  usePrefetchClientContext: () => prefetchClientMock,
 }));
 
 const invalidateQueries = vi.fn();
@@ -108,6 +116,7 @@ vi.mock("sonner", () => ({
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
     warning: vi.fn(),
+    message: vi.fn(),
   },
 }));
 
@@ -159,6 +168,7 @@ beforeEach(() => {
   updatePreferencesMock.mockReset();
   updatePreferencesMock.mockResolvedValue({});
   mockRepeatSource = undefined;
+  mockContextLoading = false;
   requestMock.mockReset();
   requestMock.mockResolvedValue([]);
   invalidateQueries.mockReset();
@@ -168,6 +178,7 @@ beforeEach(() => {
   templateCreate.mockReset();
   templateUpdate.mockReset();
   templateMarkUsed.mockReset();
+  prefetchClientMock.mockReset();
   window.localStorage.clear();
 });
 
@@ -207,6 +218,10 @@ async function submit() {
   await userEvent.click(screen.getByRole("button", { name: /Crear pedido/ }));
 }
 
+async function openMoreMenu() {
+  await userEvent.click(screen.getByRole("button", { name: "Más opciones" }));
+}
+
 /** Pedido mínimo válido sin diseño (no depende de la lista de usuarios). */
 async function fillDirectOrder() {
   await pickClientByFreeText("Juan Pérez");
@@ -217,15 +232,23 @@ async function fillDirectOrder() {
   await userEvent.type(screen.getByLabelText("Descripción"), "Bordado urgente");
 }
 
-describe("CreateOrderDialog (una sola vista)", () => {
-  it("es una sola vista: no hay pasos ni botón Siguiente, y el CTA vive fuera del área con scroll", () => {
+const nextFrame = () => act(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+
+describe("CreateOrderDialog (comanda de una pantalla)", () => {
+  it("es una sola vista con zonas Qué se pide → Entrega → Ruta, sin Cancelar, y el CTA fuera del scroll", () => {
     renderDialog();
     expect(screen.queryByRole("button", { name: /Siguiente/ })).toBeNull();
-    for (const title of [/^Cliente$/, /^Diseño y producción$/, /^Qué se pide$/, /^Entrega\s*\(opcional\)$/]) {
-      expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
-    }
+    const headings = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Qué se pide", "Entrega", "Ruta"]);
+    expect(screen.queryByRole("button", { name: "Cancelar" })).toBeNull();
     const cta = screen.getByRole("button", { name: /Crear pedido/ });
     expect(cta.closest(".overflow-y-auto")).toBeNull();
+  });
+
+  it("abre con el foco en el cliente", async () => {
+    renderDialog();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Cliente" }));
   });
 
   it("sin cliente no crea y lleva el foco al cliente", async () => {
@@ -233,8 +256,23 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await submit();
     expect(await screen.findAllByText("Selecciona o escribe un cliente")).not.toHaveLength(0);
     expect(createMock).not.toHaveBeenCalled();
-    await act(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+    await nextFrame();
     expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Cliente" }));
+  });
+
+  it("el primer campo con error en pantalla recibe el foco (productos antes que la ruta)", async () => {
+    renderDialog();
+    await pickClientByFreeText("Ana");
+    await chooseWithoutDesign();
+    await submit();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Agregar producto" }));
+    const notice = screen.getByRole("alert");
+    expect(within(notice).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Productos",
+      "Descripción",
+      "Áreas de producción",
+    ]);
   });
 
   it("una fila con nombre pero sin cantidad bloquea y no se descarta en silencio", async () => {
@@ -243,13 +281,14 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await setQty("Playera", "");
     await submit();
     expect(await screen.findByText("Falta la cantidad")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Producto 1" })).toHaveTextContent("Playera");
+    expect(screen.getByRole("textbox", { name: "Producto 1" })).toHaveValue("Playera");
     expect(createMock).not.toHaveBeenCalled();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByLabelText("Cantidad de Playera"));
   });
 
-  it("sin productos muestra el estado vacío y no crea", async () => {
+  it("sin productos no crea", async () => {
     renderDialog();
-    expect(screen.getByText("Busca o escribe un producto.")).toBeInTheDocument();
     await pickClientByFreeText("Juan Pérez");
     await submit();
     expect(await screen.findByText("Agrega al menos un producto")).toBeInTheDocument();
@@ -318,13 +357,15 @@ describe("CreateOrderDialog (una sola vista)", () => {
     );
   });
 
-  it("con diseño, las áreas son la producción destino en orden de elección", async () => {
+  it("con diseño, las áreas son la producción destino en orden de elección (la primera es la principal)", async () => {
     mockData.users = [DESIGN_SHARED];
     renderDialog();
     await pickClientByFreeText("Ana");
     await toggleArea("Bordado");
     await toggleArea("DTF");
-    expect(screen.getByText(/2 áreas van a trabajar este pedido en paralelo\. Principal: Bordado\./)).toBeInTheDocument();
+    const group = screen.getByRole("group", { name: /^Áreas de producción/ });
+    expect(within(group).getByRole("button", { name: /Bordado/ })).toHaveTextContent("principal");
+    expect(within(group).getByRole("button", { name: /DTF/ })).not.toHaveTextContent("principal");
     await addProduct("Gorra");
     await userEvent.type(screen.getByLabelText("Descripción"), "Gorras");
     await submit();
@@ -339,15 +380,26 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await chooseWithoutDesign();
     await toggleArea("DTF");
     await toggleArea("Taller");
-    expect(
-      screen.getByText("2 áreas van a trabajar este pedido en paralelo. Lo recibe DTF.")
-    ).toBeInTheDocument();
+    const group = screen.getByRole("group", { name: /^Áreas de producción/ });
+    expect(within(group).getByRole("button", { name: /DTF/ })).toHaveTextContent("principal");
     await addProduct("Gorra");
     await userEvent.type(screen.getByLabelText("Descripción"), "Gorras");
     await submit();
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ area: "dtf", productionAreas: ["dtf", "taller"] })
-    );
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ area: "dtf", productionAreas: ["dtf", "taller"] }));
+  });
+
+  it("la ayuda de la ruta vive en el «?» (no como texto suelto)", async () => {
+    renderDialog();
+    expect(screen.queryByText(/pasa a producción cuando el cliente autoriza/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Ayuda sobre la ruta" }));
+    expect(await screen.findByText(/pasa a producción cuando el cliente autoriza/)).toBeInTheDocument();
+  });
+
+  it("los chips de área llevan el color de marca del área", () => {
+    renderDialog();
+    const group = screen.getByRole("group", { name: /^Áreas de producción/ });
+    const chip = within(group).getByRole("button", { name: /Bordado/ });
+    expect(chip.querySelector('[data-area="bordado"]')).not.toBeNull();
   });
 
   it("sin diseño y sin área no crea", async () => {
@@ -368,10 +420,7 @@ describe("CreateOrderDialog (una sola vista)", () => {
   });
 
   it("aplica los últimos defaults desde la primera apertura, saneados", () => {
-    window.localStorage.setItem(
-      "emd:lastOrderDefaults",
-      JSON.stringify({ requiresDesign: false, area: "bordado" })
-    );
+    window.localStorage.setItem("emd:lastOrderDefaults", JSON.stringify({ requiresDesign: false, area: "bordado" }));
     renderDialog();
     expect(screen.getByRole("radio", { name: "Sin diseño" })).toHaveAttribute("aria-checked", "true");
     const group = screen.getByRole("group", { name: /^Áreas de producción/ });
@@ -390,10 +439,44 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await addProduct("Playera");
     await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
     await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), "playera");
-    await userEvent.click(await screen.findByText('Usar "playera" como producto nuevo'));
+    // En minúsculas se guarda con mayúscula inicial, y suma a la misma línea.
+    await userEvent.click(await screen.findByText('Usar "Playera" como producto nuevo'));
     expect(screen.getAllByLabelText(/^Cantidad de /)).toHaveLength(1);
     expect(screen.getByLabelText("Cantidad de Playera")).toHaveValue("2");
     expect(screen.getByText("Se sumó a Playera (ahora 2)")).toBeInTheDocument();
+  });
+
+  it("renombrar una línea igual a otra las fusiona sumando cantidades", async () => {
+    renderDialog();
+    await addProduct("Playera");
+    await addProduct("Gorra");
+    const name = screen.getByRole("textbox", { name: "Producto 2" });
+    await userEvent.clear(name);
+    await userEvent.type(name, "playera{Enter}");
+    expect(screen.getAllByLabelText(/^Cantidad de /)).toHaveLength(1);
+    expect(screen.getByLabelText("Cantidad de Playera")).toHaveValue("2");
+  });
+
+  it("«50 playera» agrega con cantidad 50; Enter deja el foco para la siguiente línea", async () => {
+    mockData.orderProductPresets = [{ id: 1, name: "Playera bordada" }];
+    renderDialog();
+    const add = screen.getByRole("combobox", { name: "Agregar producto" });
+    await userEvent.click(add);
+    await userEvent.type(add, "50 playera bor");
+    expect(screen.getByRole("option", { name: "Playera bordada" })).toHaveTextContent("×50");
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByLabelText("Cantidad de Playera bordada")).toHaveValue("50");
+    expect(add).toHaveValue("");
+    expect(document.activeElement).toBe(add);
+    // Producto nuevo con cantidad al frente.
+    await userEvent.type(add, "12 Gorra{Enter}");
+    expect(screen.getByLabelText("Cantidad de Gorra")).toHaveValue("12");
+    // Cantidad al frente sobre una línea existente: suma.
+    await userEvent.type(add, "3 gorra{Enter}");
+    expect(screen.getByLabelText("Cantidad de Gorra")).toHaveValue("15");
+    // Enter vacío pasa a la descripción.
+    await userEvent.keyboard("{Enter}");
+    expect(document.activeElement).toBe(screen.getByLabelText("Descripción"));
   });
 
   it("los frecuentes agregan y suman", async () => {
@@ -416,13 +499,14 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(chips.map((c) => c.textContent)).toEqual(["Taza", "Playera"]);
   });
 
-  it("personalizar guarda la lista en las preferencias del usuario", async () => {
+  it("«Personalizar frecuentes» (menú ⋯) guarda la lista en las preferencias del usuario", async () => {
     mockData.orderProductPresets = [
       { id: 1, name: "Playera" },
       { id: 2, name: "Gorra" },
     ];
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Personalizar frecuentes" }));
     await userEvent.click(screen.getByRole("button", { name: "Quitar Playera" }));
     await userEvent.click(screen.getByRole("button", { name: "Agregar Playera a frecuentes" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
@@ -433,7 +517,8 @@ describe("CreateOrderDialog (una sola vista)", () => {
     mockData.orderProductPresets = [{ id: 1, name: "Playera" }];
     createPresetMock.mockResolvedValue({ id: 9, name: "Termo grabado", uses: 0 });
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Personalizar frecuentes" }));
     await userEvent.type(screen.getByLabelText("Producto nuevo"), "Termo grabado");
     await userEvent.click(screen.getByRole("button", { name: "Agregar" }));
     expect(createPresetMock).toHaveBeenCalledWith("Termo grabado");
@@ -441,10 +526,11 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(updatePreferencesMock).toHaveBeenCalledWith({ frequentProductIds: [1, 9] });
   });
 
-  it("con el catálogo vacío 'Personalizar' sigue disponible para crear el primer producto", async () => {
+  it("con el catálogo vacío 'Personalizar frecuentes' sigue disponible para crear el primer producto", async () => {
     mockData.orderProductPresets = [];
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Personalizar" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Personalizar frecuentes" }));
     expect(screen.getByLabelText("Producto nuevo")).toBeInTheDocument();
   });
 
@@ -473,14 +559,14 @@ describe("CreateOrderDialog (una sola vista)", () => {
     await act(async () => resolveCreate({ id: 9 }));
   });
 
-  it("Ctrl+Enter dentro de un combobox abierto elige la opción y NO crea con datos viejos", async () => {
+  it("Ctrl+Enter dentro de una lista abierta elige la opción y NO crea con datos viejos", async () => {
     renderDialog();
     await fillDirectOrder();
     await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
     await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), "Taza");
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     expect(createMock).not.toHaveBeenCalled();
-    // Con el popover cerrado, Ctrl+Enter sí crea, y con el producto nuevo incluido.
+    // Con la lista cerrada, Ctrl+Enter sí crea, y con el producto nuevo incluido.
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     expect(createMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -509,6 +595,8 @@ describe("CreateOrderDialog (una sola vista)", () => {
     renderDialog({ initialClientNameOverride: "Ana", onClose });
     expect(screen.getByTestId("order-client-name")).toHaveTextContent("Ana");
     expect(screen.getByText("Sin registrar")).toBeInTheDocument();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Agregar producto" }));
     await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.queryByText("¿Descartar pedido?")).toBeNull();
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -520,34 +608,304 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(screen.getByLabelText("Descripción")).toHaveValue("50 playeras bordadas");
   });
 
-  it("pide confirmar antes de cerrar si hay datos cargados", async () => {
-    const onClose = vi.fn();
-    renderDialog({ onClose });
-    await pickClientByFreeText("Juan Pérez");
-    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(await screen.findByText("¿Descartar pedido?")).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("button", { name: /Seguir editando/i }));
-    expect(screen.queryByText("¿Descartar pedido?")).toBeNull();
-    expect(screen.getByTestId("order-client-name")).toHaveTextContent("Juan Pérez");
-  });
-
   it("cierra directo si no hay nada cargado, aunque se haya preseleccionado la cuenta compartida", async () => {
     mockData.users = [DESIGN_SHARED];
     const onClose = vi.fn();
     renderDialog({ onClose });
-    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByText("¿Descartar pedido?")).toBeNull();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("entrega: «Mañana» fija la fecha, muestra la hora y tocarlo otra vez la quita", async () => {
+    renderDialog();
+    expect(screen.queryByRole("combobox", { name: "Hora de entrega" })).toBeNull();
+    const tomorrow = screen.getByRole("radio", { name: /^Mañana, / });
+    await userEvent.click(tomorrow);
+    expect(tomorrow).toHaveAttribute("data-state", "on");
+    expect(screen.getByRole("combobox", { name: "Hora de entrega" })).toBeInTheDocument();
+    expect(screen.getByTestId("order-summary")).toHaveTextContent(/Entrega/);
+    expect(screen.queryByRole("button", { name: "Quitar fecha" })).toBeNull();
+    await userEvent.click(tomorrow);
+    expect(tomorrow).toHaveAttribute("data-state", "off");
+    expect(screen.queryByRole("combobox", { name: "Hora de entrega" })).toBeNull();
+  });
+
+  it("el resumen del footer no se recorta", async () => {
+    renderDialog();
+    await fillDirectOrder();
+    const summary = screen.getByTestId("order-summary");
+    expect(summary.className).not.toMatch(/\btruncate\b/);
+    expect(summary).toHaveTextContent("Juan Pérez · Directo a Taller · 1 producto, 5 u.");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Buscar cliente                                                             */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateOrderDialog: buscar cliente", () => {
+  const CLIENTS = [
+    { id: 1, first_name: "Colegio", last_name: "San Marcos", phone: "81 1234 5678" },
+    { id: 2, first_name: "Ferretería", last_name: "El Tornillo", company: { id: 4, name: "Grupo Acero" } },
+    { id: 3, first_name: "Ana", last_name: "López" },
+  ];
+
+  it("sin texto muestra los recientes", async () => {
+    mockData.clients = CLIENTS;
+    window.localStorage.setItem("emd:recentClientIds", JSON.stringify([3]));
+    renderDialog();
+    await userEvent.click(screen.getByRole("combobox", { name: "Cliente" }));
+    expect(screen.getAllByRole("option").map((o) => o.getAttribute("aria-label"))).toEqual(["Ana López"]);
+    expect(screen.getByText("Recientes")).toBeInTheDocument();
+  });
+
+  it("busca por teléfono y Enter elige; el foco salta a «Agregar producto»", async () => {
+    mockData.clients = CLIENTS;
+    renderDialog();
+    const input = screen.getByRole("combobox", { name: "Cliente" });
+    await userEvent.click(input);
+    await userEvent.type(input, "1234 56");
+    expect(screen.getByRole("option", { name: "Colegio San Marcos" })).toHaveAttribute("aria-selected", "true");
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("Colegio San Marcos");
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Agregar producto" }));
+  });
+
+  it("pasar por un cliente precarga su contexto (lo aprendido, pedidos y plantillas)", async () => {
+    mockData.clients = CLIENTS;
+    renderDialog();
+    const input = screen.getByRole("combobox", { name: "Cliente" });
+    await userEvent.click(input);
+    await userEvent.type(input, "colegio");
+    expect(prefetchClientMock).toHaveBeenCalledWith(1);
+  });
+
+  it("busca por empresa y se mueve con flechas", async () => {
+    mockData.clients = CLIENTS;
+    renderDialog();
+    const input = screen.getByRole("combobox", { name: "Cliente" });
+    await userEvent.click(input);
+    await userEvent.type(input, "acero");
+    const options = screen.getAllByRole("option");
+    expect(options[0]).toHaveAccessibleName("Ferretería El Tornillo");
+    expect(options[0]).toHaveTextContent("Grupo Acero");
+    // Al final: usarlo como texto libre o registrarlo.
+    expect(options.map((o) => o.textContent)).toEqual([
+      "Ferretería El TornilloGrupo Acero",
+      'Usar "acero" como nombre de cliente',
+      "Registrar «acero»",
+    ]);
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("acero");
+    expect(screen.getByText("Sin registrar")).toBeInTheDocument();
+  });
+
+  it("Escape cierra la lista sin cerrar el panel", async () => {
+    mockData.clients = CLIENTS;
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    const input = screen.getByRole("combobox", { name: "Cliente" });
+    await userEvent.click(input);
+    await userEvent.type(input, "ana");
+    expect(input).toHaveAttribute("aria-expanded", "true");
+    await userEvent.keyboard("{Escape}");
+    expect(input).toHaveAttribute("aria-expanded", "false");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("«Registrar «X»» abre el alta de cliente con el nombre ya escrito", async () => {
+    renderDialog();
+    const input = screen.getByRole("combobox", { name: "Cliente" });
+    await userEvent.click(input);
+    await userEvent.type(input, "Tienda Sol");
+    await userEvent.click(screen.getByRole("option", { name: "Registrar «Tienda Sol»" }));
+    const alta = await screen.findByRole("dialog", { name: "Nuevo cliente" });
+    expect(within(alta).getByDisplayValue("Tienda Sol")).toBeInTheDocument();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Crear otro al terminar                                                     */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateOrderDialog: crear otro al terminar", () => {
+  it("deja el panel abierto con el mismo cliente, limpia el resto y avisa «#123 creado»", async () => {
+    const onClose = vi.fn();
+    const onCreated = vi.fn();
+    renderDialog({ onClose, onCreated });
+    await userEvent.click(screen.getByRole("switch", { name: "Crear otro al terminar" }));
+    expect(window.localStorage.getItem("emd:orderCreateAnother:v1:7")).toBe("1");
+    await fillDirectOrder();
+    await submit();
+
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(screen.getByTestId("order-created-banner")).toHaveTextContent("#123 creado · Taller");
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("Juan Pérez");
+    expect(screen.queryByLabelText("Cantidad de Playera")).toBeNull();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("");
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Agregar producto" }));
+
+    // «Ver» abre el pedido recién creado.
+    await userEvent.click(screen.getByRole("button", { name: "Ver" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onCreated).toHaveBeenCalledWith({ id: 123 });
+  });
+
+  it("Ctrl+Shift+Enter invierte «crear otro» sólo esa vez", async () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    await fillDirectOrder();
+    await userEvent.keyboard("{Control>}{Shift>}{Enter}{/Shift}{/Control}");
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(await screen.findByTestId("order-created-banner")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Crear otro al terminar" })).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("se recuerda por usuario y un alta puntual (cotización) no lo ofrece", () => {
+    window.localStorage.setItem("emd:orderCreateAnother:v1:7", "1");
+    const { unmount } = renderDialog();
+    expect(screen.getByRole("switch", { name: "Crear otro al terminar" })).toHaveAttribute("aria-checked", "true");
+    unmount();
+    renderDialog({ createAnotherEnabled: false });
+    expect(screen.queryByRole("switch", { name: "Crear otro al terminar" })).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Borrador                                                                   */
+/* -------------------------------------------------------------------------- */
+
+const DRAFT_KEY = "emd:orderDraft:v1:7";
+
+function seedDraft(savedAt: number, key = DRAFT_KEY) {
+  window.localStorage.setItem(
+    key,
+    JSON.stringify({
+      version: 1,
+      savedAt,
+      data: {
+        clientNameOverride: "Juan Pérez",
+        clientLabel: "Juan Pérez",
+        requiresDesign: false,
+        areas: ["taller"],
+        description: "Bordado urgente",
+        deliveryDate: "",
+        deliveryTime: "",
+        rows: [{ key: "row-4", customName: "Playera", quantity: 5 }],
+        materials: [],
+        base: null,
+        routeTouched: true,
+        descriptionTouched: true,
+      },
+    })
+  );
+}
+
+const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
+
+describe("CreateOrderDialog: borrador", () => {
+  it("se guarda solo (500 ms) y cerrar con datos no pregunta: queda el borrador", async () => {
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    await pickClientByFreeText("Juan Pérez");
+    await addProduct("Playera");
+    await wait(650);
+    const saved = JSON.parse(window.localStorage.getItem(DRAFT_KEY)!);
+    expect(saved.data.clientNameOverride).toBe("Juan Pérez");
+    expect(saved.data.rows).toEqual([expect.objectContaining({ customName: "Playera", quantity: 1 })]);
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(screen.queryByText("¿Descartar pedido?")).toBeNull();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("entrega: el atajo 'Mañana' fija la fecha y deja elegir la hora", async () => {
+  it("al abrir lo ofrece (nunca lo restaura solo) y «Continuar» lo carga", async () => {
+    seedDraft(Date.now() - 12 * 60_000);
     renderDialog();
-    await userEvent.click(screen.getByRole("radio", { name: "Mañana" }));
-    expect(screen.getByText(/^Entrega el/)).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Hora de entrega" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Quitar fecha" }));
-    expect(screen.queryByText(/^Entrega el/)).toBeNull();
+    expect(screen.getByText(/Borrador de hace 12 min · Juan Pérez/)).toBeInTheDocument();
+    expect(screen.queryByTestId("order-client-name")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("Juan Pérez");
+    expect(screen.getByLabelText("Cantidad de Playera")).toHaveValue("5");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Bordado urgente");
+    expect(screen.queryByText(/Borrador de hace/)).toBeNull();
+    // Las claves de fila siguen siendo únicas: una línea nueva no choca con la restaurada.
+    await addProduct("Gorra");
+    expect(screen.getAllByLabelText(/^Cantidad de /)).toHaveLength(2);
+    await submit();
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientNameOverride: "Juan Pérez",
+        area: "taller",
+        orderProducts: [
+          { customName: "Playera", quantity: 5 },
+          { customName: "Gorra", quantity: 1 },
+        ],
+      })
+    );
+    // Crear borra el borrador.
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("«Descartar» lo borra", async () => {
+    seedDraft(Date.now() - 60_000);
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: "Descartar" }));
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+    expect(screen.queryByText(/Borrador de hace/)).toBeNull();
+  });
+
+  it("vence a las 4 horas", () => {
+    seedDraft(Date.now() - 5 * 60 * 60_000);
+    renderDialog();
+    expect(screen.queryByText(/Borrador de hace/)).toBeNull();
+    expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("es por usuario: el de otro usuario no se ofrece", () => {
+    seedDraft(Date.now(), "emd:orderDraft:v1:8");
+    renderDialog();
+    expect(screen.queryByText(/Borrador de hace/)).toBeNull();
+    expect(window.localStorage.getItem("emd:orderDraft:v1:8")).not.toBeNull();
+  });
+
+  it("con un borrador sin resolver no se pisa: cerrar con datos pide confirmar", async () => {
+    seedDraft(Date.now() - 60_000);
+    const onClose = vi.fn();
+    renderDialog({ onClose });
+    await pickClientByFreeText("Otra persona");
+    await wait(650);
+    expect(JSON.parse(window.localStorage.getItem(DRAFT_KEY)!).data.clientNameOverride).toBe("Juan Pérez");
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(await screen.findByText("¿Descartar pedido?")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: /Seguir editando/i }));
+    expect(screen.queryByText("¿Descartar pedido?")).toBeNull();
+    expect(screen.getByTestId("order-client-name")).toHaveTextContent("Otra persona");
+  });
+
+  it("crear sin resolver el borrador viejo no lo borra (queda para después)", async () => {
+    const savedAt = Date.now() - 60_000;
+    seedDraft(savedAt);
+    renderDialog();
+    await fillDirectOrder();
+    await wait(650);
+    await submit();
+    expect(createMock).toHaveBeenCalledTimes(1);
+    // Es el mismo borrador de antes: ni se pisó al cargar ni se borró al crear.
+    expect(JSON.parse(window.localStorage.getItem(DRAFT_KEY)!).savedAt).toBe(savedAt);
+  });
+
+  it("con algo precargado no ofrece el borrador", () => {
+    seedDraft(Date.now());
+    renderDialog({ initialClientNameOverride: "Ana" });
+    expect(screen.queryByText(/Borrador de hace/)).toBeNull();
   });
 });
 
@@ -590,27 +948,43 @@ async function pickRecentClient() {
   mockData.clients = [CLIENT];
 }
 
+/** Elige al cliente desde los recientes del buscador. */
+async function chooseColegio() {
+  await userEvent.click(screen.getByRole("combobox", { name: "Cliente" }));
+  await userEvent.click(screen.getByRole("option", { name: "Colegio Alameda" }));
+}
+
+async function expandMaterials() {
+  await userEvent.click(screen.getByRole("button", { name: /^\d+ material(es)? de / }));
+}
+
 describe("CreateOrderDialog: repetir un pedido anterior", () => {
-  it("con cliente elegido lista sus pedidos y «Usar como base» copia productos, ruta, descripción y materiales", async () => {
+  it("«Empezar desde» ofrece el último pedido y usarlo copia productos, ruta, descripción y materiales", async () => {
     await pickRecentClient();
     mockClientOrders = [PREVIOUS_ORDER];
     requestMock.mockResolvedValueOnce(PREVIOUS_MATERIALS);
     renderDialog();
 
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
-    expect(screen.getByText("Pedidos anteriores")).toBeInTheDocument();
-    expect(screen.getByText("Figuras ×20")).toBeInTheDocument();
+    await chooseColegio();
+    const group = screen.getByRole("group", { name: "Empezar desde" });
+    const chip = within(group).getByRole("button", { name: "Usar el pedido #41 como base" });
+    expect(chip).toHaveTextContent("#41");
+    expect(chip).toHaveAttribute("title", "Figuras ×20");
 
-    await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
+    await userEvent.click(chip);
 
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
     expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras para el festival de primavera");
-    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
-    expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+    expect(screen.getAllByText("Como el pedido #41").length).toBeGreaterThan(0);
+    // Los materiales quedan en una sola línea plegada.
+    expect(await screen.findByRole("button", { name: "1 material de #41" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Vinil impreso sobre coroplast")).toBeNull();
+    await expandMaterials();
+    expect(screen.getByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
     expect(requestMock).toHaveBeenCalledWith("orders/41/materials", { token: "token" });
     // La fecha no se repite.
-    expect(screen.queryByText(/Entrega el/)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Hora de entrega" })).toBeNull();
 
     // Cambia lo de esta vez y crea.
     await setQty("Figuras", "35");
@@ -634,22 +1008,45 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
     });
   });
 
-  it("«Quitar base» vuelve a lo que había antes", async () => {
+  it("tocar otra vez el chip de la base vuelve a lo que había antes", async () => {
     await pickRecentClient();
     mockClientOrders = [PREVIOUS_ORDER];
     requestMock.mockResolvedValueOnce(PREVIOUS_MATERIALS);
     renderDialog();
 
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await userEvent.click(screen.getByRole("button", { name: "Usar el pedido #41 como base" }));
-    expect(await screen.findByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "1 material de #41" })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: /Quitar base/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Quitar base (pedido #41)" }));
 
     expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
     expect(screen.getByLabelText("Descripción")).toHaveValue("");
-    expect(screen.queryByText("Vinil impreso sobre coroplast")).toBeNull();
+    expect(screen.queryByRole("button", { name: /material(es)? de/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Usar el pedido #41 como base" })).toBeInTheDocument();
+  });
+
+  it("«Más» lista los pedidos anteriores y las plantillas", async () => {
+    await pickRecentClient();
+    mockClientOrders = [PREVIOUS_ORDER, { ...PREVIOUS_ORDER, id: 30, orderProducts: [{ customName: "Lona", quantity: 2 }] }];
+    mockTemplates = [TEMPLATE];
+    requestMock.mockResolvedValue([]);
+    renderDialog();
+    await chooseColegio();
+    await userEvent.click(screen.getByRole("button", { name: "Más" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Usar el pedido #30 como base" }));
+    expect(screen.getByLabelText("Cantidad de Lona")).toHaveValue("2");
+  });
+
+  it("muestra un esqueleto mientras carga el contexto del cliente (sin saltos)", async () => {
+    await pickRecentClient();
+    mockContextLoading = true;
+    renderDialog();
+    await chooseColegio();
+    const group = screen.getByRole("group", { name: "Empezar desde" });
+    expect(within(group).queryAllByRole("button")).toHaveLength(0);
+    expect(group).toHaveAttribute("aria-busy", "true");
+    expect(group.children.length).toBe(3);
   });
 
   it("«Repetir pedido» abre con el cliente y el pedido como base", async () => {
@@ -659,7 +1056,7 @@ describe("CreateOrderDialog: repetir un pedido anterior", () => {
 
     expect(await screen.findByTestId("order-client-name")).toHaveTextContent("Colegio Alameda");
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("20");
-    expect(screen.getByText("Como el pedido #41")).toBeInTheDocument();
+    expect(screen.getAllByText("Como el pedido #41").length).toBeGreaterThan(0);
   });
 });
 
@@ -695,7 +1092,7 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
     mockData.users = [DESIGN_SHARED];
     renderDialog();
 
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     const chip = screen.getByRole("button", { name: "Figuras de coroplast" });
     expect(chip).toHaveAttribute("aria-pressed", "false");
     await userEvent.click(chip);
@@ -703,7 +1100,8 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
     expect(chip).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
     expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras para eventos del colegio");
-    expect(screen.getByText("Plantilla «Figuras de coroplast»")).toBeInTheDocument();
+    expect(screen.getAllByText("Plantilla «Figuras de coroplast»").length).toBeGreaterThan(0);
+    await expandMaterials();
     expect(screen.getByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
     // La plantilla ya trae sus materiales: no se pide nada al backend.
     expect(requestMock).not.toHaveBeenCalled();
@@ -719,36 +1117,34 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
       })
     );
     expect(templateMarkUsed).toHaveBeenCalledWith(5);
-    expect(requestMock).toHaveBeenCalledWith(
-      "orders/123/materials",
-      expect.objectContaining({ method: "POST" })
-    );
+    expect(requestMock).toHaveBeenCalledWith("orders/123/materials", expect.objectContaining({ method: "POST" }));
   });
 
   it("tocar la plantilla en uso la quita", async () => {
     await pickRecentClient();
     mockTemplates = [TEMPLATE];
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
     await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
     expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
     expect(screen.getByLabelText("Descripción")).toHaveValue("");
   });
 
-  it("«Guardar como plantilla» guarda el pedido en pantalla (sin fecha ni archivo)", async () => {
+  it("«Guardar como plantilla» (menú ⋯) guarda el pedido en pantalla (sin fecha ni archivo)", async () => {
     await pickRecentClient();
     templateCreate.mockResolvedValue({ ...TEMPLATE, id: 8, name: "Playera", materials: [] });
     renderDialog();
 
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await chooseWithoutDesign();
     await toggleArea("Bordado");
     await addProduct("Playera");
     await setQty("Playera", "40");
     await userEvent.type(screen.getByLabelText("Descripción"), "Logo en el pecho");
 
-    await userEvent.click(screen.getByRole("button", { name: "Guardar como plantilla" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Guardar como plantilla" }));
     const name = await screen.findByLabelText("Nombre");
     expect(name).toHaveValue("Playera");
     await userEvent.click(screen.getByRole("button", { name: "Guardar plantilla" }));
@@ -765,17 +1161,27 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
       },
     });
     // Lo que está en pantalla pasa a ser esa plantilla.
-    expect(await screen.findByText("Plantilla «Playera»")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Actualizar plantilla «Playera»" })).toBeInTheDocument();
+    expect((await screen.findAllByText("Plantilla «Playera»")).length).toBeGreaterThan(0);
+    await openMoreMenu();
+    expect(screen.getByRole("menuitem", { name: "Actualizar plantilla «Playera»" })).toBeInTheDocument();
+  });
+
+  it("sin cliente registrado no se puede guardar plantilla", async () => {
+    renderDialog();
+    await pickClientByFreeText("Ana");
+    await addProduct("Playera");
+    await openMoreMenu();
+    expect(screen.getByRole("menuitem", { name: "Guardar como plantilla" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("sin diseño y sin áreas no deja guardar la plantilla", async () => {
     await pickRecentClient();
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await chooseWithoutDesign();
     await addProduct("Playera");
-    await userEvent.click(screen.getByRole("button", { name: "Guardar como plantilla" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Guardar como plantilla" }));
     expect(await screen.findByText(/sin diseño, la plantilla necesita a dónde ir/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
   });
@@ -785,10 +1191,11 @@ describe("CreateOrderDialog: plantillas del cliente", () => {
     mockTemplates = [TEMPLATE];
     templateUpdate.mockResolvedValue(TEMPLATE);
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await userEvent.click(screen.getByRole("button", { name: "Figuras de coroplast" }));
     await setQty("Figuras", "20");
-    await userEvent.click(screen.getByRole("button", { name: "Actualizar plantilla «Figuras de coroplast»" }));
+    await openMoreMenu();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Actualizar plantilla «Figuras de coroplast»" }));
     expect(templateUpdate).toHaveBeenCalledWith({
       id: 5,
       payload: expect.objectContaining({
@@ -849,15 +1256,17 @@ describe("CreateOrderDialog: lo aprendido del cliente", () => {
     await pickRecentClient();
     mockInsights = INSIGHTS;
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await userEvent.type(screen.getByLabelText("Descripción"), "Figuras del festival");
 
-    expect(screen.getByText("Lo habitual: Figuras ×12")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" }));
+    const habitual = screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" });
+    expect(habitual.getAttribute("title")).toMatch(/^Figuras ×12 · sin diseño · aprendido de 6 pedidos$/);
+    await userEvent.click(habitual);
 
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
     expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
-    expect(screen.getByText("Lo habitual")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Quitar lo habitual" })).toHaveAttribute("aria-pressed", "true");
+    await expandMaterials();
     expect(screen.getByText("Vinil impreso sobre coroplast")).toBeInTheDocument();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Figuras del festival");
 
@@ -877,24 +1286,29 @@ describe("CreateOrderDialog: lo aprendido del cliente", () => {
     );
   });
 
-  it("«Quitar» deshace lo habitual", async () => {
+  it("tocar otra vez «Lo habitual» lo deshace", async () => {
     await pickRecentClient();
     mockInsights = INSIGHTS;
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await userEvent.click(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" }));
-    await userEvent.click(screen.getByRole("button", { name: /Quitar$/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Quitar lo habitual" }));
     expect(screen.queryByLabelText("Cantidad de Figuras")).toBeNull();
     expect(screen.getByRole("button", { name: "Usar lo habitual de Colegio Alameda" })).toBeInTheDocument();
   });
 
-  it("«Suele pedir» agrega con la cantidad habitual (sólo lo que pidió 2+ veces)", async () => {
+  it("los habituales del cliente van primero en «agregar rápido» con su cantidad (sólo lo que pidió 2+ veces)", async () => {
     await pickRecentClient();
     mockInsights = { ...INSIGHTS, suggestion: null };
+    mockData.orderProductPresets = [
+      { id: 1, name: "Taza" },
+      { id: 2, name: "lona" },
+    ];
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
-    const group = screen.getByRole("group", { name: "Suele pedir" });
-    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Figuras×12", "Lona×1"]);
+    await chooseColegio();
+    const group = screen.getByRole("group", { name: "Agregar rápido" });
+    // Deduplicado: "lona" del catálogo no se repite.
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Figuras×12", "Lona×1", "Taza"]);
 
     await userEvent.click(within(group).getByRole("button", { name: /Agregar Figuras, 12/ }));
     expect(screen.getByLabelText("Cantidad de Figuras")).toHaveValue("12");
@@ -905,22 +1319,60 @@ describe("CreateOrderDialog: lo aprendido del cliente", () => {
     await pickRecentClient();
     mockInsights = { ...INSIGHTS, suggestion: null };
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
+    await chooseColegio();
     await addProduct("Gorra");
     expect(screen.getByLabelText("Cantidad de Gorra")).toHaveValue("30");
     await addProduct("Mochila");
     expect(screen.getByLabelText("Cantidad de Mochila")).toHaveValue("1");
   });
 
-  it("sugiere la fecha según su anticipación habitual (y la hora en que suele recibir)", async () => {
+  it("ofrece su fecha habitual como chip y propone la hora en que suele recibir", async () => {
     await pickRecentClient();
     mockInsights = INSIGHTS;
     renderDialog();
-    await userEvent.click(screen.getByRole("button", { name: "Colegio Alameda" }));
-    expect(screen.getByText(/suele pedir con 7 días de anticipación/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /^Usar .*, 14:00$/ }));
-    expect(screen.getByRole("radio", { name: "En 1 semana" })).toHaveAttribute("data-state", "on");
-    expect(screen.queryByText(/suele pedir con 7 días/)).toBeNull();
+    await chooseColegio();
+    const chip = screen.getByRole("radio", { name: /su anticipación habitual/ });
+    expect(chip).toHaveTextContent("habitual");
+    await userEvent.click(chip);
+    expect(chip).toHaveAttribute("data-state", "on");
+    expect(screen.getByRole("combobox", { name: "Hora de entrega" })).toHaveTextContent("14:00");
+  });
+
+  it("propone la ruta con la que suele ir el cliente, con «Deshacer»", async () => {
+    await pickRecentClient();
+    mockInsights = {
+      ...INSIGHTS,
+      suggestion: null,
+      route: { designShare: 0.1, requiresDesign: false, areas: [{ area: "bordado", share: 0.8 }] },
+    };
+    renderDialog();
+    expect(screen.getByRole("radio", { name: "Con diseño" })).toBeChecked();
+    await chooseColegio();
+    expect(screen.getByRole("radio", { name: "Sin diseño" })).toBeChecked();
+    const group = screen.getByRole("group", { name: /^Áreas de producción/ });
+    expect(within(group).getByRole("button", { name: /Bordado/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Como suele pedir")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    expect(screen.getByRole("radio", { name: "Con diseño" })).toBeChecked();
+    expect(within(group).getByRole("button", { name: /Bordado/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByText("Como suele pedir")).toBeNull();
+  });
+
+  it("no pisa una ruta que el usuario ya eligió", async () => {
+    await pickRecentClient();
+    mockInsights = {
+      ...INSIGHTS,
+      suggestion: null,
+      route: { designShare: 0.1, requiresDesign: false, areas: [{ area: "bordado", share: 0.8 }] },
+    };
+    renderDialog();
+    await toggleArea("DTF");
+    await chooseColegio();
+    expect(screen.getByRole("radio", { name: "Con diseño" })).toBeChecked();
+    const group = screen.getByRole("group", { name: /^Áreas de producción/ });
+    expect(within(group).getByRole("button", { name: /Bordado/ })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByText("Como suele pedir")).toBeNull();
   });
 });
 
@@ -1023,26 +1475,58 @@ describe("CreateOrderDialog: cuenta de sucursal (Punto Madero)", () => {
     mockIsBranch = true;
   });
 
+  /** La sucursal no ve la ruta: cliente, producto y descripción. */
+  async function fillBranchOrder() {
+    await pickClientByFreeText("Juan Pérez");
+    await addProduct("Playera");
+    await setQty("Playera", "5");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Bordado urgente");
+  }
+
+  it("no muestra la ruta (la decide el backend) y abre con el foco en quién levanta", async () => {
+    renderDialog();
+    expect(screen.queryByRole("radio", { name: "Con diseño" })).toBeNull();
+    expect(screen.queryByRole("group", { name: /^Áreas de producción/ })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Asignar a/ })).toBeNull();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: /¿Quién levanta el pedido\?/ }));
+  });
+
   it("pide elegir el empleado y no crea sin él", async () => {
     renderDialog();
-    expect(screen.getByRole("heading", { name: "Sucursal Punto Madero" })).toBeInTheDocument();
-    await fillDirectOrder();
+    await fillBranchOrder();
     await submit();
     expect(await screen.findAllByText("Elige quién levanta el pedido")).not.toHaveLength(0);
     expect(createMock).not.toHaveBeenCalled();
+    await nextFrame();
+    expect(document.activeElement).toBe(screen.getByRole("combobox", { name: /¿Quién levanta el pedido\?/ }));
   });
 
-  it("sólo ofrece los empleados activos que manda el backend y los envía en el payload", async () => {
-    renderDialog();
+  it("sólo ofrece los empleados activos que manda el backend, los envía y los recuerda en el día", async () => {
+    const { unmount } = renderDialog();
     await userEvent.click(screen.getByRole("combobox", { name: /¿Quién levanta el pedido\?/ }));
     expect(screen.getByRole("option", { name: "Ana López" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Carla Díaz" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Beto Ruiz" })).toBeNull();
     await userEvent.click(screen.getByRole("option", { name: "Carla Díaz" }));
 
-    await fillDirectOrder();
+    await fillBranchOrder();
     await submit();
-    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ branchEmployeeId: 3 }));
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        branchEmployeeId: 3,
+        requiresDesign: true,
+        area: undefined,
+        productionArea: undefined,
+        productionAreas: undefined,
+        assignedUserId: undefined,
+      })
+    );
+    unmount();
+
+    // La próxima apertura ya trae a Carla.
+    renderDialog();
+    expect(screen.getByRole("combobox", { name: /¿Quién levanta el pedido\?/ })).toHaveTextContent("Carla Díaz");
   });
 
   it("la matriz no ve el selector ni manda empleado", async () => {

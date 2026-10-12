@@ -43,6 +43,7 @@ import { OrdersJobWall } from "@/components/orders/OrdersJobWall";
 import { motion } from "framer-motion";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { CreateOrderDialog } from "@/components/orders/CreateOrderDialog";
+import { usePrefetchNewOrder } from "@/hooks/useOrderComposerPrefetch";
 import {
   OrdersFilterBar,
   EMPTY_ORDERS_FILTERS,
@@ -213,6 +214,9 @@ const OrdersPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // Hover/focus en "Nuevo Pedido" (o el FAB): clientes, usuarios y productos
+  // quedan en caché antes de abrir el panel.
+  const prefetchNewOrder = usePrefetchNewOrder({ isBranch });
   // Precarga del cliente al reabrir el wizard desde "Crear otro pedido para
   // {cliente}" en el toast de éxito (ver CreateOrderDialog).
   const [createPrefillClient, setCreatePrefillClient] = useState<{
@@ -737,10 +741,16 @@ const OrdersPage = () => {
 
           {canCreateOrders && (
             <>
-              <Button data-tour="new-order-button" className="max-md:hidden" onClick={() => setCreateOpen(true)}>
+              <Button
+                data-tour="new-order-button"
+                className="max-md:hidden"
+                onClick={() => setCreateOpen(true)}
+                onPointerEnter={prefetchNewOrder}
+                onFocus={prefetchNewOrder}
+              >
                 <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
               </Button>
-              <MobileFab icon={Plus} label="Nuevo pedido" onClick={() => setCreateOpen(true)} />
+              <MobileFab icon={Plus} label="Nuevo pedido" onClick={() => setCreateOpen(true)} onIntent={prefetchNewOrder} />
             </>
           )}
         </div>

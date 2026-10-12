@@ -48,7 +48,7 @@ export function NewOrderScene() {
       <div className="mb-2 flex items-center justify-between">
         <span className="font-semibold">Pedidos</span>
         <FakeButton pressed={p === 0}>
-          <Plus className="h-3 w-3" /> Nueva Orden
+          <Plus className="h-3 w-3" /> Nuevo Pedido
         </FakeButton>
       </div>
       <div className="space-y-1.5">
@@ -80,11 +80,14 @@ export function NewOrderScene() {
           >
             <p className="font-semibold">Nuevo pedido</p>
             <div className="rounded-md border border-border px-2 py-1 text-muted-foreground">
-              Cliente: <span className="text-foreground"><Typing text="Bordados SA" active={p >= 1} /></span>
+              <span className="text-foreground"><Typing text="Bordados SA" active={p >= 1} /></span>
+            </div>
+            <div className="rounded-md border border-dashed border-border px-2 py-1 text-muted-foreground">
+              {p >= 2 ? <span className="text-foreground">Playera ×20</span> : <Typing text="20 playera" active={p >= 1} />}
             </div>
             <div className="flex gap-1.5">
-              <Pill tone={p >= 2 ? "violet" : "muted"}>Playera ×20</Pill>
-              <Pill>Entrega: Mañana</Pill>
+              <Pill>Hoy</Pill>
+              <Pill tone="violet">Mañana</Pill>
             </div>
             <div className="flex justify-end">
               <FakeButton pressed={p === 3}>Crear pedido</FakeButton>
@@ -111,14 +114,17 @@ export function LearnedClientScene() {
         </div>
         <AnimatePresence>
           {p >= 1 && (
-            <motion.div key="habit" {...pop} className="rounded-lg bg-primary/10 px-2 py-1.5 text-[11px]">
-              <span className="font-medium">Lo habitual:</span> Polo bordada ×40 · aprendido de 6 pedidos
+            <motion.div key="habit" {...pop} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="text-[10px] text-muted-foreground">Empezar desde</span>
+              <Pill tone="violet">Lo habitual</Pill>
+              <Pill>Uniformes</Pill>
+              <Pill>↻ #88 · hace 3 d</Pill>
             </motion.div>
           )}
         </AnimatePresence>
         <div className="flex flex-wrap gap-1.5">
-          <span className="text-[10px] text-muted-foreground">Suele pedir</span>
-          {["Polo bordada", "Gorra", "Sudadera"].map((name, i) => (
+          <span className="text-[10px] text-muted-foreground">Qué se pide</span>
+          {["Polo bordada ×40", "Gorra ×25", "Sudadera ×10"].map((name, i) => (
             <motion.span
               key={name}
               initial={false}
@@ -162,11 +168,11 @@ export function FrequentsScene() {
   const p = useScenePhase(5, 1200);
   const order = p >= 2 ? ["Taza", "Playera", "Gorra"] : ["Playera", "Gorra", "Taza"];
   return (
-    <Screen title="Nuevo pedido · Frecuentes">
+    <Screen title="Nuevo pedido · Qué se pide">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Frecuentes</span>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Qué se pide</span>
         <FakeButton variant="outline" pressed={p === 0}>
-          Personalizar
+          ⋯ Personalizar frecuentes
         </FakeButton>
       </div>
       <div className="flex gap-1.5">
@@ -212,8 +218,8 @@ export function DesignChoiceScene() {
   const p = useScenePhase(4, 1500);
   const withDesign = p < 2;
   return (
-    <Screen title="Nuevo pedido · Diseño y producción">
-      <p className="mb-1.5 text-[10px] text-muted-foreground">¿Requiere diseño?</p>
+    <Screen title="Nuevo pedido · Ruta">
+      <p className="mb-1.5 text-[10px] text-muted-foreground">Ruta</p>
       <div className="mb-3 inline-flex rounded-full bg-muted p-0.5">
         {["Con diseño", "Sin diseño"].map((label, i) => {
           const active = (i === 0) === withDesign;

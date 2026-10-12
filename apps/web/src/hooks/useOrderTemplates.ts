@@ -29,12 +29,12 @@ function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-export function useClientOrderTemplates(clientId: number | null) {
-  const token = useAuthToken();
-  const query = useQuery<OrderTemplate[]>({
+/** Query de las plantillas de un cliente (compartida por el hook y el prefetch). */
+export function clientTemplatesQueryOptions(token: string | undefined, clientId: number | null) {
+  return {
     queryKey: orderTemplateKeys.byClient(clientId ?? 0),
     enabled: Boolean(token) && clientId !== null,
-    queryFn: async () => {
+    queryFn: async (): Promise<OrderTemplate[]> => {
       try {
         return await request<OrderTemplate[]>(
           `${ENDPOINTS.clients}/${clientId}/${TEMPLATES}`,
@@ -46,8 +46,13 @@ export function useClientOrderTemplates(clientId: number | null) {
         throw error;
       }
     },
-    retry: (failureCount, error) => !isNotFound(error) && failureCount < 2,
-  });
+    retry: (failureCount: number, error: unknown) => !isNotFound(error) && failureCount < 2,
+  };
+}
+
+export function useClientOrderTemplates(clientId: number | null) {
+  const token = useAuthToken();
+  const query = useQuery<OrderTemplate[]>(clientTemplatesQueryOptions(token, clientId));
   return {
     templates: query.data ?? [],
     isLoading: query.isLoading,

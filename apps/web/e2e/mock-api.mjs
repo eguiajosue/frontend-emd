@@ -12,6 +12,7 @@
  *
  * Rutas sólo para los tests (no existen en el backend real):
  * - `GET  /__e2e/orders`: los POST /orders recibidos (alta de pedido con tallas).
+ * - `POST /__e2e/reset-orders`: los olvida (cada spec que crea pedidos deja la lista como la encontró).
  * - `GET  /__e2e/mockups`: los POST de mockups recibidos, tal cual llegaron.
  * - `POST /__e2e/reset`:   vacía mockups, plantillas, logos y "Mis colores".
  * - `GET  /__e2e/preferences`: las preferencias guardadas (p. ej. `mockupColors`).
@@ -964,6 +965,10 @@ createServer((req, res) => {
     if (req.method === "GET" && path === "/orders/my-tasks") return send(misTareas(usuarioDe(req)));
     if (req.method === "GET" && path === "/__e2e/mockups") return send(recibidos);
     if (req.method === "GET" && path === "/__e2e/orders") return send(pedidosCreados);
+    if (req.method === "POST" && path === "/__e2e/reset-orders") {
+      pedidosCreados.length = 0;
+      return send({ ok: true });
+    }
     if (req.method === "GET" && path === "/__e2e/preferences") return send(preferencias);
     if (req.method === "GET" && path === "/__e2e/mockup-templates") return send(plantillas);
     if (req.method === "GET" && path === "/__e2e/quotes") return send(cotizaciones);

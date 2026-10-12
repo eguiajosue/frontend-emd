@@ -10,7 +10,18 @@ import { haptic } from "@/lib/haptics";
  * queda al alcance del pulgar, encima de la barra de pestañas (y del home
  * indicator), en vez de arriba junto al título.
  */
-export function MobileFab({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick: () => void }) {
+export function MobileFab({
+  icon: Icon,
+  label,
+  onClick,
+  onIntent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  /** Al apoyar el dedo / enfocar: sirve para precargar lo que va a abrir. */
+  onIntent?: () => void;
+}) {
   const reduced = useReducedMotion();
   // Al bajar se encoge a sólo el ícono (y deja ver más contenido); arriba, con texto.
   const [compact, setCompact] = useState(false);
@@ -23,6 +34,8 @@ export function MobileFab({ icon: Icon, label, onClick }: { icon: LucideIcon; la
   return (
     <motion.button
       type="button"
+      onPointerDown={onIntent}
+      onFocus={onIntent}
       onClick={() => {
         haptic("light");
         onClick();
