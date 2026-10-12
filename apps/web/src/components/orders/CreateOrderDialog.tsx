@@ -6,7 +6,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { toast } from "sonner";
-import { z } from "zod";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -83,11 +82,28 @@ import {
   UPLOAD_FILE_MAX_BYTES,
 } from "@/lib/fileInput";
 import { AREA_ICONS, PRODUCTION_AREA_OPTIONS, getAreaLabel, type AreaValue } from "@/lib/areas";
-import { DEFAULT_DELIVERY_TIME, combineDateAndTime } from "@/lib/format";
+import { DEFAULT_DELIVERY_TIME } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { getErrorMessage, request } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
+import {
+  FIELD_LABELS,
+  FIELD_ORDER,
+  ORDER_FIELD_IDS,
+  ROW_ERROR_MISSING_NAME,
+  ROW_ERROR_MISSING_QUANTITY,
+  buildCreateOrderPayload,
+  buildTemplatePayload,
+  completeRows as filterCompleteRows,
+  computeValidation as validateOrder,
+  deriveAssignment,
+  orderSchema,
+  toOrderProducts,
+  type FieldKey,
+  type OrderFormData,
+  type OrderProductRow,
+} from "@/lib/createOrderPayload";
 import {
   DATE_FORMAT,
   DELIVERY_PRESETS,
@@ -132,92 +148,6 @@ import type {
   User,
 } from "@/types";
 
-/* -------------------------------------------------------------------------- */
-/* Validación                                                                 */
-/* -------------------------------------------------------------------------- */
-
-const orderProductSchema = z.object({
-  customName: z.string().min(1, "Falta el nombre del producto"),
-  quantity: z.number().min(1, "La cantidad debe ser al menos 1"),
-  /** Desglose de tallas; la forma fina la valida el backend. */
-  sizes: z.record(z.string(), z.record(z.string(), z.number().int().min(0))).optional(),
-});
-
-/**
- * Reglas del alta (WORKFLOW.md §1). Sólo cambiaron los mensajes respecto al
- * wizard (todos en voseo); la lógica del `superRefine` es la misma.
- */
-const orderSchema = z
-  .object({
-    clientId: z.number().optional(),
-    clientNameOverride: z.string().optional(),
-    area: z.string().optional(),
-    requiresDesign: z.boolean(),
-    description: z
-      .string()
-      .trim()
-      .min(1, "Escribe una descripción")
-      .max(MAX_DESCRIPTION_LENGTH, "Máximo 1000 caracteres"),
-    deliveryDate: z.string().optional().or(z.literal("")),
-    assignedUserId: z.number().optional(),
-    orderProducts: z.array(orderProductSchema).min(1, "Agrega al menos un producto"),
-    /** Cuenta de sucursal: el empleado que levanta el pedido es obligatorio. */
-    isBranch: z.boolean().optional(),
-    branchEmployeeId: z.number().optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (data.isBranch && !data.branchEmployeeId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["branchEmployeeId"],
-        message: "Elige quién levanta el pedido",
-      });
-    }
-    if (!data.clientId && !data.clientNameOverride?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["clientId"],
-        message: "Selecciona o escribe un cliente",
-      });
-    }
-    // Sin diseño el área destino es obligatoria (a donde va el pedido directo);
-    // con diseño es opcional, se puede definir después (Recepción o Diseño).
-    if (!data.requiresDesign && !data.area) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["area"],
-        message: "Elige al menos un área de producción",
-      });
-    }
-    // Con montaje el pedido arranca en Diseño y necesita responsable sí o sí
-    // (ver WORKFLOW.md §1.a). "Cualquier diseñador" es una opción válida: se
-    // resuelve a la cuenta compartida del área, no a "sin asignar".
-    if (data.requiresDesign && !data.assignedUserId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["assignedUserId"],
-        message: "Elige un diseñador o «Cualquier diseñador»",
-      });
-    }
-  });
-
-/** Orden de los campos en pantalla: a dónde va el foco ante el primer error. */
-const FIELD_ORDER = ["branchEmployeeId", "clientId", "area", "assignedUserId", "orderProducts", "description"] as const;
-type FieldKey = (typeof FIELD_ORDER)[number];
-
-/** Iguales a los labels visibles (se usan en el aviso del footer y en "Falta: …"). */
-const FIELD_LABELS: Record<FieldKey, string> = {
-  branchEmployeeId: "Empleado",
-  clientId: "Cliente",
-  area: "Áreas de producción",
-  assignedUserId: "Asignar a",
-  orderProducts: "Productos",
-  description: "Descripción",
-};
-
-/** Rol del área de Diseño; los pedidos con montaje arrancan siempre aquí. */
-const DESIGN_ROLE = "diseno";
-
 /** Radix Select no admite `value=""`: centinela para "Sin asignar" / "Sin hora". */
 const NONE = "__none__";
 
@@ -231,15 +161,6 @@ const TAP = "min-h-11 sm:min-h-0";
 
 /** Texto de error con contraste AA también en modo oscuro. */
 const ERROR_TEXT = "text-xs font-medium text-red-700 dark:text-red-400";
-
-interface OrderProductRow {
-  /** Clave estable de la fila (no viaja al backend). */
-  key: string;
-  customName: string;
-  quantity?: number;
-  /** Desglose de tallas (prendas). Si tiene piezas, `quantity` es su total. */
-  sizes?: SizeBreakdown | null;
-}
 
 /** Estado del formulario antes de aplicar una base, para "Quitar base". */
 interface FormSnapshot {
@@ -410,7 +331,19 @@ function OptionalTag() {
  * Mismo contenedor que antes: panel lateral en escritorio, pantalla completa
  * en móvil. La lógica de negocio (schema, payload, asignación) no cambió.
  */
-export function CreateOrderDialog({
+export function CreateOrderDialog(props: CreateOrderDialogProps) {
+  // Cada apertura monta un formulario nuevo (`key`): el estado arranca limpio
+  // sin depender del orden de los efectos de reset / repetir / plantilla.
+  const [session, setSession] = useState(0);
+  const [prevOpen, setPrevOpen] = useState(props.open);
+  if (props.open !== prevOpen) {
+    setPrevOpen(props.open);
+    if (props.open) setSession((n) => n + 1);
+  }
+  return <OrderComposer key={session} {...props} />;
+}
+
+function OrderComposer({
   open,
   onClose,
   onCreated,
@@ -450,7 +383,7 @@ export function CreateOrderDialog({
   const [requiresDesign, setRequiresDesign] = useState(true);
   /** Áreas de producción en orden de elección: la primera es la principal. */
   const [areas, setAreas] = useState<string[]>([]);
-  const [assignedUserId, setAssignedUserId] = useState<number | undefined>(undefined);
+  const [chosenAssigneeId, setAssignedUserId] = useState<number | undefined>(undefined);
   const [description, setDescription] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
@@ -656,39 +589,17 @@ export function CreateOrderDialog({
   const primaryArea = areas[0];
   // Área que decide a quién se le puede asignar el pedido (ver WORKFLOW.md §1):
   // con montaje siempre es Diseño, sin montaje es el área principal elegida.
-  const assignmentArea = requiresDesign ? DESIGN_ROLE : primaryArea;
 
-  const usersInAssignmentArea = useMemo(
-    () =>
-      assignmentArea ? users.filter((u) => u.roles?.some((r) => r.name === assignmentArea)) : [],
-    [users, assignmentArea]
+  const assignment = useMemo(
+    () => deriveAssignment({ users, requiresDesign, areas, assignedUserId: chosenAssigneeId }),
+    [users, requiresDesign, areas, chosenAssigneeId]
   );
-
-  /** Cuenta compartida del área ("Área: Diseño"), usada como "cualquiera del área". */
-  const sharedAccountForArea = useMemo(
-    () => usersInAssignmentArea.find((u) => u.isSharedAccount),
-    [usersInAssignmentArea]
-  );
-  const individualsInArea = useMemo(
-    () => usersInAssignmentArea.filter((u) => !u.isSharedAccount),
-    [usersInAssignmentArea]
-  );
-
-  // Al cambiar el área de asignación, una selección de otra área deja de ser
-  // válida: se limpia y se propone la cuenta compartida del área nueva. No
-  // marca `dirty` (no es algo que cargó el usuario).
-  useEffect(() => {
-    if (!assignmentArea) {
-      if (assignedUserId !== undefined) setAssignedUserId(undefined);
-      return;
-    }
-    const stillValid =
-      assignedUserId !== undefined && usersInAssignmentArea.some((u) => u.id === assignedUserId);
-    if (stillValid) return;
-    if (assignedUserId !== sharedAccountForArea?.id) setAssignedUserId(sharedAccountForArea?.id);
-  }, [assignmentArea, usersInAssignmentArea, sharedAccountForArea, assignedUserId]);
-
-  const isSharedAssignee = assignedUserId !== undefined && sharedAccountForArea?.id === assignedUserId;
+  const assignmentArea = assignment.assignmentArea;
+  const usersInAssignmentArea = assignment.usersInArea;
+  const sharedAccountForArea = assignment.sharedAccount;
+  const individualsInArea = assignment.individuals;
+  const assignedUserId = assignment.assignedUserId;
+  const isSharedAssignee = assignment.isShared;
 
   const assignedUserLabel = useMemo(() => {
     if (!assignedUserId) return "Sin asignar";
@@ -825,7 +736,7 @@ export function CreateOrderDialog({
     });
   }
 
-  const completeRows = rows.filter((r) => r.customName.trim() && r.quantity && r.quantity > 0);
+  const completeRows = filterCompleteRows(rows);
   const unitCount = completeRows.reduce((sum, r) => sum + (r.quantity ?? 0), 0);
 
   /* --------------- Repetir un pedido anterior / usar una plantilla ---------- */
@@ -1058,18 +969,7 @@ export function CreateOrderDialog({
   }, [open, templateSource, templateId]);
 
   /** Lo que se guarda como plantilla: el pedido tal como está en pantalla. */
-  const templatePayload = () => ({
-    requiresDesign,
-    productionAreas: areas,
-    description: description.trim(),
-    products: completeRows.map((r) => ({ customName: r.customName, quantity: r.quantity! })),
-    materials: materials.map((m) => ({
-      materialId: m.materialId,
-      quantity: m.quantity,
-      description: m.description,
-      supplierId: m.supplierId,
-    })),
-  });
+  const templatePayload = () => buildTemplatePayload({ requiresDesign, areas, description, rows, materials });
   const canSaveTemplate = Boolean(clientId) && completeRows.length > 0;
   const templateContentSummary = [
     `${completeRows.length} ${completeRows.length === 1 ? "producto" : "productos"}`,
@@ -1180,7 +1080,7 @@ export function CreateOrderDialog({
 
   /* ------------------------------ Validación ------------------------------ */
 
-  const currentFormData = () => ({
+  const currentFormData = (): OrderFormData => ({
     isBranch,
     branchEmployeeId,
     clientId,
@@ -1190,42 +1090,10 @@ export function CreateOrderDialog({
     description,
     deliveryDate,
     assignedUserId,
-    orderProducts: completeRows.map((r) => ({
-      customName: r.customName,
-      quantity: r.quantity!,
-      ...(r.sizes && sizeBreakdownTotal(r.sizes) > 0 ? { sizes: r.sizes } : {}),
-    })),
+    orderProducts: toOrderProducts(rows),
   });
 
-  /**
-   * Errores del formulario: schema + filas de producto. Una fila con nombre
-   * pero sin cantidad nunca se descarta en silencio: bloquea con un error en
-   * esa fila.
-   */
-  const computeValidation = () => {
-    const nextRowErrors: Record<string, string> = {};
-    rows.forEach((row) => {
-      const hasName = Boolean(row.customName.trim());
-      const hasQty = row.quantity !== undefined && row.quantity > 0;
-      if (hasName && !hasQty) nextRowErrors[row.key] = "Falta la cantidad";
-      else if (!hasName && hasQty) nextRowErrors[row.key] = "Falta el nombre del producto";
-    });
-
-    const fieldErrors: Partial<Record<FieldKey, string>> = {};
-    const parsed = orderSchema.safeParse(currentFormData());
-    if (!parsed.success) {
-      for (const issue of parsed.error.issues) {
-        const field = String(issue.path[0]) as FieldKey;
-        if (FIELD_ORDER.includes(field) && !fieldErrors[field]) fieldErrors[field] = issue.message;
-      }
-    }
-    if (Object.keys(nextRowErrors).length > 0) {
-      fieldErrors.orderProducts = "Hay productos incompletos";
-    } else if (completeRows.length === 0) {
-      fieldErrors.orderProducts = "Agrega al menos un producto";
-    }
-    return { fieldErrors, rowErrors: nextRowErrors };
-  };
+  const computeValidation = () => validateOrder(rows, currentFormData());
 
   const validation = computeValidation();
   const missingFields = FIELD_ORDER.filter((f) => validation.fieldErrors[f]);
@@ -1262,21 +1130,20 @@ export function CreateOrderDialog({
 
   const focusField = (field: FieldKey, rowErrorMap: Record<string, string> = rowErrors) => {
     let target: HTMLElement | null = null;
-    if (field === "branchEmployeeId") target = document.getElementById("order-branch-employee");
-    else if (field === "clientId") target = document.getElementById("order-client");
-    else if (field === "area")
-      target = document.querySelector<HTMLElement>("#order-areas button");
-    else if (field === "assignedUserId") target = document.getElementById("order-assignee");
-    else if (field === "description") target = document.getElementById("order-description");
+    if (field === "branchEmployeeId") target = document.getElementById(ORDER_FIELD_IDS.branchEmployee);
+    else if (field === "clientId") target = document.getElementById(ORDER_FIELD_IDS.client);
+    else if (field === "area") target = document.querySelector<HTMLElement>(`#${ORDER_FIELD_IDS.areas} button`);
+    else if (field === "assignedUserId") target = document.getElementById(ORDER_FIELD_IDS.assignee);
+    else if (field === "description") target = document.getElementById(ORDER_FIELD_IDS.description);
     else if (field === "orderProducts") {
       const badRow = rows.find((r) => rowErrorMap[r.key]);
       target = badRow
         ? document.getElementById(
-            rowErrorMap[badRow.key] === "Falta la cantidad"
-              ? `order-qty-${badRow.key}`
-              : `order-product-${badRow.key}`
+            rowErrorMap[badRow.key] === ROW_ERROR_MISSING_QUANTITY
+              ? ORDER_FIELD_IDS.quantity(badRow.key)
+              : ORDER_FIELD_IDS.product(badRow.key)
           )
-        : document.getElementById("order-product-add");
+        : document.getElementById(ORDER_FIELD_IDS.productAdd);
     }
     target?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
     target?.focus();
@@ -1305,24 +1172,16 @@ export function CreateOrderDialog({
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const order = await create({
-        clientId: parsed.clientId,
-        clientNameOverride: parsed.clientId ? undefined : parsed.clientNameOverride?.trim(),
-        // Sin diseño, "área" es el destino directo. Con diseño, el pedido arranca
-        // en Diseño y "área" no aplica — lo que se manda es la producción destino.
-        area: parsed.requiresDesign ? undefined : parsed.area,
-        requiresDesign: parsed.requiresDesign,
-        productionArea: parsed.requiresDesign ? parsed.area : undefined,
-        productionAreas: areas.length > 0 ? areas : undefined,
-        userId: Number(session?.user?.id),
-        branchEmployeeId: isBranch ? parsed.branchEmployeeId : undefined,
-        assignedUserId: parsed.assignedUserId,
-        statusId: 1,
-        description: parsed.description,
-        deliveryDate: combineDateAndTime(parsed.deliveryDate, deliveryTime),
-        orderProducts: parsed.orderProducts,
-        clientResourceFile: clientResourceFile ?? undefined,
-      });
+      const order = await create(
+        buildCreateOrderPayload({
+          parsed,
+          areas,
+          deliveryTime,
+          isBranch,
+          userId: Number(session?.user?.id),
+          clientResourceFile,
+        })
+      );
 
       // Hoja de materiales copiada de la base: una línea a la vez (la primera
       // dispara el evento "Compra de materiales"; en paralelo podían correr dos).
@@ -2086,7 +1945,7 @@ export function CreateOrderDialog({
                                   </label>
                                   <CreatableCombobox
                                     id={`order-product-${row.key}`}
-                                    invalid={rowError === "Falta el nombre del producto"}
+                                    invalid={rowError === ROW_ERROR_MISSING_NAME}
                                     items={productPresets.map((p) => ({ id: p.id, label: p.name }))}
                                     selectedId={null}
                                     customValue={row.customName}
