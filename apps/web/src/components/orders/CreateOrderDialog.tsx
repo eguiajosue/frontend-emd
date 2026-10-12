@@ -2748,14 +2748,18 @@ function OrderComposer({
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
+              {/* En móvil se alternan: "Falta: …" mientras falte algo, después el resumen. */}
               {!showErrorNotice && missingFields.length > 0 && (
-                <p className={cn("text-meta", summaryParts.length > 0 && "max-sm:hidden")}>
+                <p className="text-meta">
                   Falta: {missingFields.map((f) => FIELD_LABELS[f].toLowerCase()).join(", ")}
                 </p>
               )}
               {summaryParts.length > 0 && (
                 <p
-                  className="text-xs leading-snug text-foreground/80 [overflow-wrap:anywhere]"
+                  className={cn(
+                    "text-xs leading-snug text-foreground/80 [overflow-wrap:anywhere]",
+                    !showErrorNotice && missingFields.length > 0 && "max-sm:hidden"
+                  )}
                   data-testid="order-summary"
                 >
                   {summaryParts.join(" · ")}
