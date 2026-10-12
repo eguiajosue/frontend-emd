@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -182,16 +182,43 @@ const MockupStudioDialog = dynamic(
 /** Radix Select no admite `value=""`: centinela para "Sin asignar" / "Sin hora". */
 const NONE = "__none__";
 
+/**
+ * Foco visible del panel: anillo magenta pleno, separado del control por el
+ * color del propio panel (en oscuro el panel usa `--elevation-2`). Se lee igual
+ * sobre un chip vacío que sobre uno seleccionado en tinta.
+ */
+const FOCUS_RING =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
+  "focus-visible:ring-offset-[hsl(var(--elevation-2,var(--popover)))]";
+
 /** Chip seleccionable: la selección se pinta en tinta, nunca en magenta (DESIGN.md). */
 const CHIP_CLASS =
-  "min-h-11 rounded-full border border-border bg-card px-3.5 text-sm font-normal text-foreground gap-1.5 sm:min-h-9 " +
-  "hover:bg-muted data-[state=on]:border-ink data-[state=on]:bg-ink data-[state=on]:text-ink-foreground data-[state=on]:hover:bg-ink/90";
+  "min-h-11 shrink-0 rounded-full border border-border bg-card px-3 text-sm font-normal text-foreground gap-1.5 sm:min-h-9 sm:px-3.5 " +
+  "hover:bg-muted data-[state=on]:border-ink data-[state=on]:bg-ink data-[state=on]:text-ink-foreground data-[state=on]:hover:bg-ink/90 " +
+  FOCUS_RING;
+
+/**
+ * Fila de chips: en móvil no se parte en dos renglones, se desliza de lado y
+ * llega hasta el borde de la pantalla (el chip cortado avisa que hay más). El
+ * `py-1` deja lugar al anillo de foco, que el scroll recortaría.
+ */
+const CHIP_RAIL =
+  "-mx-4 -my-1 flex flex-nowrap items-center gap-2 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] " +
+  "sm:mx-0 sm:my-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:py-0";
+
+/** Campo de selección a lo ancho en móvil (etiqueta a la izquierda, valor y flecha a la derecha). */
+const FIELD_ROW_MOBILE = "w-full justify-start [&>svg]:ml-auto sm:w-auto sm:[&>svg]:ml-0";
 
 /** Botones chicos: 44px de alto en móvil, compactos en escritorio. */
 const TAP = "min-h-11 sm:min-h-9";
 
 /** Texto de error con contraste AA también en modo oscuro. */
 const ERROR_TEXT = "text-xs font-medium text-red-700 dark:text-red-400";
+
+/** Campo con error: borde y anillo en rojo (no en el magenta del foco normal). */
+const INVALID_FIELD =
+  "aria-[invalid=true]:border-red-600 aria-[invalid=true]:focus-visible:border-red-600 aria-[invalid=true]:focus-visible:ring-red-600/25 " +
+  "dark:aria-[invalid=true]:border-red-400 dark:aria-[invalid=true]:focus-visible:border-red-400 dark:aria-[invalid=true]:focus-visible:ring-red-400/25";
 
 /** Chips de "Empezar desde" visibles; el resto va en "Más". */
 const START_CHIPS_MAX = 4;
@@ -313,11 +340,29 @@ const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(
 /* Piezas chicas                                                              */
 /* -------------------------------------------------------------------------- */
 
-/** Encabezado de zona: chico, sin tarjeta (jerarquía por tipografía y espacio). */
-function ZoneTitle({ id, children, meta }: { id: string; children: React.ReactNode; meta?: React.ReactNode }) {
+/**
+ * Rol tipográfico de cada zona de la comanda (Qué se pide, Descripción,
+ * Entrega, Ruta): el "título de sección" del sistema, igual en todas, sin
+ * tarjeta ni línea. La jerarquía la hacen el tipo y el espacio entre zonas.
+ */
+const ZONE_TITLE_CLASS = "text-section-title text-foreground";
+
+/** Encabezado de zona, con un dato opcional a la derecha (conteo, origen, "opcional"). */
+function ZoneTitle({
+  id,
+  children,
+  meta,
+  sub = false,
+}: {
+  id: string;
+  children: React.ReactNode;
+  meta?: React.ReactNode;
+  /** Sub-grupo dentro de una zona (ej. "Empezar desde" bajo el cliente): rol de etiqueta. */
+  sub?: boolean;
+}) {
   return (
     <div className="flex min-h-6 items-center justify-between gap-3">
-      <h3 id={id} className="text-label">
+      <h3 id={id} className={sub ? "text-label" : ZONE_TITLE_CLASS}>
         {children}
       </h3>
       {meta && <div className="flex min-w-0 items-center gap-1.5 text-meta">{meta}</div>}
@@ -468,7 +513,7 @@ function OrderComposer({
   const { session, isBranch } = usePermissions();
   const userId = session?.user?.id;
   const { branch: myBranch } = useMyBranch(isBranch);
-  const { formButtonMotion, reduced } = useMotionPreset();
+  const { formButtonMotion, revealMotion, reduced } = useMotionPreset();
   const { data: clients } = useEntityList<Client>("clients");
   const { data: productPresets } = useEntityList<OrderProductPreset>("orderProductPresets", {
     staleTime: CATALOG_STALE_TIME,
@@ -1669,6 +1714,8 @@ function OrderComposer({
   const hasMoreBases = previousOrders.length > 1 || sortedTemplates.length > chipTemplates.length;
   const hasStartFrom = Boolean(suggestion) || templates.length > 0 || previousOrders.length > 0;
   const showStartFrom = Boolean(clientCtxId) && (clientContextLoading || hasStartFrom);
+  /** Si ya estaba al abrir (cliente precargado), no se anima: el panel entra con todo en su lugar. */
+  const [startFromAtMount] = useState(showStartFrom);
 
   const routeMeta =
     form.base && !form.routeTouched
@@ -1758,49 +1805,67 @@ function OrderComposer({
         )}
 
         {/* ───────────── Cuerpo ───────────── */}
-        <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
-          <div className="space-y-6">
-            {showDraftPrompt && pendingDraft && (
-              <div
-                role="status"
-                className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm"
-              >
-                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0 flex-1">
-                  Borrador de {draftAgeLabel(pendingDraft.savedAt, Date.now())}
-                  {pendingDraft.data.clientLabel || pendingDraft.data.clientNameOverride
-                    ? ` · ${pendingDraft.data.clientLabel || pendingDraft.data.clientNameOverride}`
-                    : ""}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Button type="button" size="sm" variant="outline" className={TAP} onClick={restoreDraft}>
-                    Continuar
-                  </Button>
-                  <Button type="button" size="sm" variant="ghost" className={TAP} onClick={discardDraft}>
-                    Descartar
-                  </Button>
-                </span>
-              </div>
-            )}
+        <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">
+          {/* Avisos arriba, fuera de la pila de zonas: el de "creado" lleva su
+              espacio DENTRO (padding) para que al plegarse no salte un margen. */}
+          {showDraftPrompt && pendingDraft && (
+            <div
+              role="status"
+              className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm sm:mb-7"
+            >
+              <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 flex-1">
+                Borrador de {draftAgeLabel(pendingDraft.savedAt, Date.now())}
+                {pendingDraft.data.clientLabel || pendingDraft.data.clientNameOverride
+                  ? ` · ${pendingDraft.data.clientLabel || pendingDraft.data.clientNameOverride}`
+                  : ""}
+              </span>
+              <span className="flex items-center gap-1">
+                <Button type="button" size="sm" variant="outline" className={TAP} onClick={restoreDraft}>
+                  Continuar
+                </Button>
+                <Button type="button" size="sm" variant="ghost" className={TAP} onClick={discardDraft}>
+                  Descartar
+                </Button>
+              </span>
+            </div>
+          )}
 
+          {/* "✓ #123 creado": entra plegado desde arriba y se pliega al irse (5 s). */}
+          <AnimatePresence>
             {createdBanner && (
-              <div
-                role="status"
-                className="flex items-center gap-2 rounded-xl bg-muted/60 px-3 py-1 text-sm"
-                data-testid="order-created-banner"
-              >
-                <Check className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">
-                  #{createdBanner.order?.id} creado{createdBanner.destination ? ` · ${createdBanner.destination}` : ""}
-                </span>
-                {onCreated && (
-                  <Button type="button" size="sm" variant="ghost" className={cn("px-2", TAP)} onClick={viewCreatedOrder}>
-                    Ver
-                  </Button>
-                )}
-              </div>
+              <motion.div key={createdBanner.order?.id ?? "created"} {...revealMotion}>
+                <div className="pb-6 sm:pb-7">
+                  <div
+                    role="status"
+                    className="flex min-h-11 items-center gap-2 rounded-xl bg-muted/60 py-1 pl-3 pr-1 text-sm sm:min-h-10"
+                    data-testid="order-created-banner"
+                  >
+                    <Check className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-medium tabular-nums">#{createdBanner.order?.id}</span> creado
+                      {createdBanner.destination ? (
+                        <span className="text-muted-foreground"> · {createdBanner.destination}</span>
+                      ) : null}
+                    </span>
+                    {onCreated && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn("px-3", TAP)}
+                        onClick={viewCreatedOrder}
+                      >
+                        Ver
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
             )}
+          </AnimatePresence>
 
+          <div className="space-y-6 sm:space-y-7">
             {/* ───────────── Cliente ───────────── */}
             <section aria-label="Cliente" className="space-y-3">
               {hasClient ? (
@@ -1874,15 +1939,25 @@ function OrderComposer({
 
               {/* ───────────── Empezar desde ───────────── */}
               {showStartFrom && (
-                <div className="space-y-1.5">
-                  <ZoneTitle id="order-start-from" meta={form.base ? baseMeta(form.base) : undefined}>
+                // Aparece al elegir cliente: se despliega en vez de empujar todo de golpe.
+                <motion.div
+                  initial={startFromAtMount ? false : revealMotion.initial}
+                  animate={revealMotion.animate}
+                  className="space-y-1.5"
+                >
+                  <ZoneTitle sub id="order-start-from" meta={form.base ? baseMeta(form.base) : undefined}>
                     Empezar desde
                   </ZoneTitle>
                   <div
+                    // Al pasar de esqueleto a chips el grupo se monta de nuevo y entra con un fundido.
+                    key={clientContextLoading && !hasStartFrom ? "loading" : "ready"}
                     role="group"
                     aria-labelledby="order-start-from"
                     aria-busy={clientContextLoading && !hasStartFrom}
-                    className="flex min-h-11 flex-wrap items-center gap-2 sm:min-h-9"
+                    className={cn(
+                      "flex min-h-11 flex-wrap items-center gap-2 sm:min-h-9",
+                      !(clientContextLoading && !hasStartFrom) && "duration-200 animate-in fade-in-0"
+                    )}
                   >
                     {clientContextLoading && !hasStartFrom ? (
                       <>
@@ -2042,7 +2117,7 @@ function OrderComposer({
                       </>
                     )}
                   </div>
-                </div>
+                </motion.div>
               )}
             </section>
 
@@ -2108,16 +2183,23 @@ function OrderComposer({
               )}
 
               {form.rows.length > 0 && (
-                <ul aria-label="Productos" className="divide-y divide-border/60">
+                // Columnas compartidas por todas las líneas (subgrid): la cantidad
+                // y la papelera quedan alineadas tenga o no la línea "Tallas".
+                <ul
+                  aria-label="Productos"
+                  className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-1 divide-y divide-border/60 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-x-2"
+                >
                   {form.rows.map((row, index) => {
                     const rowError = rowErrors[row.key];
                     const qty = row.quantity;
                     const sized = sizeBreakdownTotal(row.sizes) > 0;
                     return (
-                      <li
+                      <motion.li
                         key={row.key}
+                        initial={revealMotion.initial}
+                        animate={revealMotion.animate}
                         className={cn(
-                          "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-1 gap-y-1 rounded-lg py-1.5 transition-colors sm:grid-cols-[minmax(0,1fr)_auto_auto_auto]",
+                          "col-span-full grid grid-cols-subgrid items-center gap-y-1 py-2 transition-colors duration-300 sm:py-1.5",
                           highlightKey === row.key && "bg-muted"
                         )}
                       >
@@ -2129,7 +2211,7 @@ function OrderComposer({
                           defaultValue={row.customName}
                           autoComplete="off"
                           maxLength={200}
-                          className="col-span-full h-11 min-w-0 rounded-md bg-transparent px-1 text-base font-medium outline-none hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/60 sm:col-span-1 sm:h-9 sm:text-sm"
+                          className="col-span-full -ml-1 h-11 min-w-0 rounded-md bg-transparent px-1 text-base font-medium outline-none hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/60 sm:col-span-1 sm:h-9 sm:text-sm"
                           onBlur={(e) => {
                             const next = e.currentTarget.value;
                             if (!clampName(next)) e.currentTarget.value = row.customName;
@@ -2146,7 +2228,7 @@ function OrderComposer({
                             }
                           }}
                         />
-                        <div className="inline-flex items-center justify-self-start rounded-full border border-border focus-within:ring-2 focus-within:ring-ring/60">
+                        <div className="inline-flex items-center justify-self-start rounded-full border border-border bg-card has-[input:focus-visible]:border-ring/60 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring/30">
                           <Button
                             type="button"
                             variant="ghost"
@@ -2206,7 +2288,9 @@ function OrderComposer({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="size-11 justify-self-end text-muted-foreground hover:text-destructive focus-visible:text-destructive sm:size-9"
+                          // Lugar fijo (fila de controles, última columna): con el panel de
+                          // tallas abierto la papelera no se cae debajo de la grilla.
+                          className="col-start-3 row-start-2 size-11 justify-self-end text-muted-foreground hover:text-destructive focus-visible:text-destructive sm:col-start-4 sm:row-start-1 sm:size-9"
                           aria-label={`Quitar ${row.customName}`}
                           onClick={() => removeRow(row.key)}
                         >
@@ -2218,7 +2302,7 @@ function OrderComposer({
                             {rowError}
                           </p>
                         )}
-                      </li>
+                      </motion.li>
                     );
                   })}
                 </ul>
@@ -2244,24 +2328,27 @@ function OrderComposer({
               </p>
               <FieldError id="order-products" error={errors.orderProducts} />
 
-              <div className="space-y-1.5">
-                <label htmlFor={IDS.description} className="text-sm font-medium">
-                  Descripción
-                </label>
+              {/* Visualmente es una zona más (mismo título y mismo aire que las demás). */}
+              <div className="space-y-3 pt-3 sm:pt-4">
+                <div className="flex min-h-6 items-center">
+                  <label htmlFor={IDS.description} className={ZONE_TITLE_CLASS}>
+                    Descripción
+                  </label>
+                </div>
                 <Textarea
                   id={IDS.description}
                   rows={2}
                   maxLength={MAX_DESCRIPTION_LENGTH}
                   value={form.description}
                   placeholder="Ubicación del logo, colores, textos…"
-                  className="min-h-[4.5rem] max-h-60 [field-sizing:content]"
+                  className={cn("min-h-[4.5rem] max-h-60 [field-sizing:content]", INVALID_FIELD)}
                   onChange={(e) => update({ description: e.target.value, descriptionTouched: true, dirty: true })}
                   onBlur={validateDescriptionOnBlur}
                   aria-required
                   aria-invalid={Boolean(errors.description)}
                   aria-describedby={errors.description ? `${IDS.description}-error` : undefined}
                 />
-                <div className="flex items-start justify-between gap-3">
+                <div className="-mt-1.5 flex items-start justify-between gap-3 empty:hidden">
                   <FieldError id={IDS.description} error={errors.description} />
                   {form.description.length >= 900 && (
                     <span className="ml-auto text-meta tabular-nums">
@@ -2273,74 +2360,78 @@ function OrderComposer({
             </section>
 
             {/* ───────────── Entrega ───────────── */}
-            <section aria-labelledby="order-delivery-title" className="space-y-2">
+            <section aria-labelledby="order-delivery-title" className="space-y-3">
               <ZoneTitle id="order-delivery-title" meta="opcional">
                 Entrega
               </ZoneTitle>
-              <div className="flex flex-wrap items-center gap-2">
-                <ToggleGroup
-                  type="single"
-                  value={activeDateChip}
-                  onValueChange={(key) => {
-                    const chip = dateChips.find((c) => c.key === key);
-                    // Tocar el chip activo lo apaga (sin botón aparte para quitar la fecha).
-                    changeDeliveryDate(chip ? chip.date : "");
-                  }}
-                  aria-label="Fecha de entrega"
-                  className="flex flex-wrap justify-start gap-2"
-                >
-                  {dateChips.map((chip) => (
-                    <ToggleGroupItem key={chip.key} value={chip.key} aria-label={chip.ariaLabel} className={CHIP_CLASS}>
-                      {chip.key === "habitual" && <Sparkles className="h-3.5 w-3.5" aria-hidden />}
-                      {chip.label}
-                      {chip.hint && <span className="text-xs opacity-70">{chip.hint}</span>}
-                    </ToggleGroupItem>
-                  ))}
-                </ToggleGroup>
-                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id={IDS.deliveryDate}
-                      type="button"
-                      variant="outline"
-                      aria-pressed={isCustomDate}
-                      aria-label={isCustomDate ? `Otra fecha: ${shortDateLabel(form.deliveryDate)}` : "Otra fecha"}
-                      data-state={isCustomDate ? "on" : "off"}
-                      className={CHIP_CLASS}
-                    >
-                      <CalendarDays className="h-4 w-4" aria-hidden />
-                      {isCustomDate ? shortDateLabel(form.deliveryDate) : "Otra fecha"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      locale={es}
-                      weekStartsOn={1}
-                      selected={parseDeliveryDate(form.deliveryDate)}
-                      defaultMonth={parseDeliveryDate(form.deliveryDate) ?? today}
-                      onSelect={(d) => {
-                        changeDeliveryDate(d ? format(d, DATE_FORMAT) : "");
-                        setDatePickerOpen(false);
-                      }}
-                      classNames={{
-                        head_cell: "text-muted-foreground rounded-md w-11 font-normal text-[0.8rem] sm:w-8",
-                        day: cn(
-                          buttonVariants({ variant: "ghost" }),
-                          "h-11 w-11 rounded-full p-0 font-normal aria-selected:opacity-100 sm:h-8 sm:w-8"
-                        ),
-                        day_selected:
-                          "bg-ink text-ink-foreground hover:bg-ink hover:text-ink-foreground focus:bg-ink focus:text-ink-foreground",
-                        day_today: "bg-muted font-semibold text-foreground",
-                        cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
-                        nav_button: cn(
-                          buttonVariants({ variant: "outline" }),
-                          "h-11 w-11 rounded-full bg-transparent p-0 sm:h-7 sm:w-7"
-                        ),
-                      }}
-                    />
-                  </PopoverContent>
-                </Popover>
+              {/* Móvil: los días en una fila deslizable y la hora a lo ancho debajo.
+                  Escritorio: todo en una línea (la fila se vuelve `contents`). */}
+              <div className="space-y-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:space-y-0">
+                <div className={cn(CHIP_RAIL, "sm:contents")}>
+                  <ToggleGroup
+                    type="single"
+                    value={activeDateChip}
+                    onValueChange={(key) => {
+                      const chip = dateChips.find((c) => c.key === key);
+                      // Tocar el chip activo lo apaga (sin botón aparte para quitar la fecha).
+                      changeDeliveryDate(chip ? chip.date : "");
+                    }}
+                    aria-label="Fecha de entrega"
+                    className="flex shrink-0 flex-nowrap justify-start gap-2 sm:flex-wrap"
+                  >
+                    {dateChips.map((chip) => (
+                      <ToggleGroupItem key={chip.key} value={chip.key} aria-label={chip.ariaLabel} className={CHIP_CLASS}>
+                        {chip.key === "habitual" && <Sparkles className="h-3.5 w-3.5" aria-hidden />}
+                        {chip.label}
+                        {chip.hint && <span className="text-xs opacity-70">{chip.hint}</span>}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id={IDS.deliveryDate}
+                        type="button"
+                        variant="outline"
+                        aria-pressed={isCustomDate}
+                        aria-label={isCustomDate ? `Otra fecha: ${shortDateLabel(form.deliveryDate)}` : "Otra fecha"}
+                        data-state={isCustomDate ? "on" : "off"}
+                        className={CHIP_CLASS}
+                      >
+                        <CalendarDays className="h-4 w-4" aria-hidden />
+                        {isCustomDate ? shortDateLabel(form.deliveryDate) : "Otra fecha"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        locale={es}
+                        weekStartsOn={1}
+                        selected={parseDeliveryDate(form.deliveryDate)}
+                        defaultMonth={parseDeliveryDate(form.deliveryDate) ?? today}
+                        onSelect={(d) => {
+                          changeDeliveryDate(d ? format(d, DATE_FORMAT) : "");
+                          setDatePickerOpen(false);
+                        }}
+                        classNames={{
+                          head_cell: "text-muted-foreground rounded-md w-11 font-normal text-[0.8rem] sm:w-8",
+                          day: cn(
+                            buttonVariants({ variant: "ghost" }),
+                            "h-11 w-11 rounded-full p-0 font-normal aria-selected:opacity-100 sm:h-8 sm:w-8"
+                          ),
+                          day_selected:
+                            "bg-ink text-ink-foreground hover:bg-ink hover:text-ink-foreground focus:bg-ink focus:text-ink-foreground",
+                          day_today: "bg-muted font-semibold text-foreground",
+                          cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+                          nav_button: cn(
+                            buttonVariants({ variant: "outline" }),
+                            "h-11 w-11 rounded-full bg-transparent p-0 sm:h-7 sm:w-7"
+                          ),
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 {form.deliveryDate && (
                   <Select
                     value={form.deliveryTime || NONE}
@@ -2349,8 +2440,12 @@ function OrderComposer({
                     <SelectTrigger
                       id={IDS.deliveryTime}
                       aria-label="Hora de entrega"
-                      className="h-11 w-auto min-w-[7.5rem] gap-1.5 rounded-full sm:h-9"
+                      className={cn(
+                        "h-11 min-w-[7.5rem] gap-1.5 rounded-full duration-200 animate-in fade-in-0 sm:h-9",
+                        FIELD_ROW_MOBILE
+                      )}
                     >
+                      <span className="shrink-0 text-muted-foreground sm:!hidden">Hora</span>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-72">
@@ -2369,7 +2464,7 @@ function OrderComposer({
 
             {/* ───────────── Ruta ───────────── */}
             {!isBranch && (
-              <section aria-labelledby="order-route-title" className="space-y-2.5">
+              <section aria-labelledby="order-route-title" className="space-y-3">
                 <ZoneTitle
                   id="order-route-title"
                   meta={
@@ -2389,7 +2484,10 @@ function OrderComposer({
                           <button
                             type="button"
                             aria-label="Ayuda sobre la ruta"
-                            className="-my-2 flex size-9 items-center justify-center rounded-full hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                            className={cn(
+                            "-my-2 -mr-2 flex size-9 items-center justify-center rounded-full hover:bg-muted hover:text-foreground",
+                            FOCUS_RING
+                          )}
                           >
                             <HelpCircle className="h-4 w-4" aria-hidden />
                           </button>
@@ -2404,12 +2502,13 @@ function OrderComposer({
                   Ruta
                 </ZoneTitle>
 
-                <div className="flex flex-wrap items-center gap-2">
+                {/* Móvil: tipo de ruta y responsable apilados a lo ancho (sin cortes a media fila). */}
+                <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
                   <RadioGroupPrimitive.Root
                     value={form.requiresDesign ? "design" : "direct"}
                     onValueChange={changeRoute}
                     aria-label="¿Requiere diseño?"
-                    className="inline-grid grid-cols-2 gap-1 rounded-full border border-border/60 bg-card p-1"
+                    className="grid grid-cols-2 gap-1 rounded-full border border-border bg-muted/50 p-1 sm:inline-grid"
                   >
                     {[
                       { value: "design", label: "Con diseño" },
@@ -2418,7 +2517,12 @@ function OrderComposer({
                       <RadioGroupPrimitive.Item
                         key={option.value}
                         value={option.value}
-                        className="min-h-9 rounded-full px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 data-[state=checked]:bg-ink data-[state=checked]:text-ink-foreground sm:min-h-7"
+                        className={cn(
+                          // El área táctil crece 4px arriba y abajo (44px en móvil) sin agrandar la píldora.
+                          "relative min-h-9 rounded-full px-4 text-sm font-medium text-muted-foreground transition-[color,background-color] duration-150 before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] hover:text-foreground sm:min-h-7",
+                          "data-[state=checked]:bg-ink data-[state=checked]:text-ink-foreground data-[state=checked]:shadow-sm",
+                          FOCUS_RING
+                        )}
                       >
                         {option.label}
                       </RadioGroupPrimitive.Item>
@@ -2438,7 +2542,7 @@ function OrderComposer({
                         aria-required={form.requiresDesign}
                         aria-invalid={Boolean(errors.assignedUserId)}
                         aria-describedby={errors.assignedUserId ? `${IDS.assignee}-error` : undefined}
-                        className="h-11 w-auto min-w-0 max-w-full gap-1.5 rounded-full sm:h-9"
+                        className={cn("h-11 min-w-0 max-w-full gap-1.5 rounded-full sm:h-9", FIELD_ROW_MOBILE, INVALID_FIELD)}
                       >
                         <span className="shrink-0 text-muted-foreground">Asignar a</span>
                         <SelectValue placeholder={form.requiresDesign ? "Elige diseñador" : "Sin asignar"} />
@@ -2460,7 +2564,7 @@ function OrderComposer({
                       </SelectContent>
                     </Select>
                   ) : (
-                    <span className="text-meta">Elige un área para asignar</span>
+                    <span className="flex min-h-9 items-center text-meta sm:min-h-0">Elige un área para asignar</span>
                   )}
                 </div>
 
@@ -2471,7 +2575,7 @@ function OrderComposer({
                     type="multiple"
                     value={form.areas}
                     onValueChange={changeAreas}
-                    className="flex flex-wrap justify-start gap-2"
+                    className={cn(CHIP_RAIL, "justify-start")}
                   >
                     {PRODUCTION_AREA_OPTIONS.map((option) => {
                       const isPrimary = form.areas.length > 1 && primaryArea === option.value;
@@ -2480,7 +2584,7 @@ function OrderComposer({
                           key={option.value}
                           value={option.value}
                           aria-invalid={Boolean(errors.area)}
-                          className={CHIP_CLASS}
+                          className={cn(CHIP_CLASS, "aria-[invalid=true]:border-red-600 dark:aria-[invalid=true]:border-red-400")}
                         >
                           <span
                             data-area={option.value}
@@ -2503,7 +2607,11 @@ function OrderComposer({
             )}
 
             {/* ───────────── Extras ───────────── */}
-            <section aria-label="Extras" className="space-y-2 border-t border-border/60 pt-4">
+            {/* Extras: una barra de herramientas callada, sin línea ni tarjeta. Los
+                botones fantasma se corren su propio padding (-mx-3) para que el
+                ícono de "Archivo" caiga en el borde del contenido y el de "⋯" en el
+                borde derecho, alineados con todo lo de arriba. */}
+            <section aria-label="Extras" className="space-y-2">
               {(materialsLoading || form.materials.length > 0) && (
                 <div>
                   {materialsLoading ? (
@@ -2583,9 +2691,9 @@ function OrderComposer({
                 capture="environment"
                 onChange={handleClientResourceFileChange}
               />
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="-mx-3 flex flex-wrap items-center gap-1">
                 {clientResourceFile ? (
-                  <span className="flex min-w-0 max-w-full items-center gap-2 rounded-full bg-muted/60 py-1 pl-1 pr-1 text-sm">
+                  <span className="ml-3 flex min-w-0 max-w-full items-center gap-2 rounded-full bg-muted/60 py-1 pl-1 pr-1 text-sm duration-200 animate-in fade-in-0">
                     {clientResourceFilePreview ? (
                       <PreviewImage
                         src={clientResourceFilePreview}
@@ -2612,9 +2720,10 @@ function OrderComposer({
                   <Button
                     id={IDS.fileAttach}
                     type="button"
-                    variant={form.requiresDesign ? "outline" : "ghost"}
+                    variant="ghost"
                     title="Logo o referencias del cliente (PNG, JPG o PDF, hasta 5 MB). No es la hoja de autorización."
-                    className={cn("gap-1.5 rounded-full", TAP, !form.requiresDesign && "text-muted-foreground")}
+                    // Con diseño el archivo importa (el diseñador lo necesita): va en tinta; sin diseño, callado.
+                    className={cn("gap-1.5 rounded-full px-3", TAP, !form.requiresDesign && "text-muted-foreground")}
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Paperclip className="h-4 w-4" aria-hidden />
@@ -2624,7 +2733,7 @@ function OrderComposer({
                 <Button
                   type="button"
                   variant="ghost"
-                  className={cn("gap-1.5 rounded-full text-muted-foreground", TAP)}
+                  className={cn("gap-1.5 rounded-full px-3 text-muted-foreground", TAP)}
                   onClick={openMockupStudio}
                 >
                   <Shirt className="h-4 w-4" aria-hidden />
@@ -2669,11 +2778,14 @@ function OrderComposer({
               </div>
 
               {pendingMockups.length > 0 && (
-                <ul className="flex flex-wrap gap-2" aria-label="Mockups para el pedido">
+                <ul className="flex flex-wrap gap-2 pt-1" aria-label="Mockups para el pedido">
                   {pendingMockups.map((m, index) => {
                     const name = `Mockup ${index + 1}`;
                     return (
-                      <li key={m.key} className="flex items-center gap-2 rounded-xl bg-muted/50 p-1.5 pr-1">
+                      <li
+                        key={m.key}
+                        className="flex items-center gap-2 rounded-xl bg-muted/50 p-1.5 pr-1 duration-200 animate-in fade-in-0 motion-safe:zoom-in-95"
+                      >
                         <PreviewImage
                           src={m.result.image.dataUrl}
                           alt={name}
@@ -2710,7 +2822,9 @@ function OrderComposer({
         </div>
 
         {/* ───────────── Footer fijo ───────────── */}
-        <div className="shrink-0 border-t border-border/60 bg-popover px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:py-3">
+        {/* Sin fondo propio: hereda el del panel (en oscuro, `elevation-2`); antes
+            `bg-popover` lo dejaba un escalón más oscuro que el cuerpo. */}
+        <div className="shrink-0 border-t border-border/60 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-4">
           <div
             ref={errorSummaryRef}
             role="alert"
@@ -2722,7 +2836,12 @@ function OrderComposer({
             )}
           >
             {showErrorNotice && (
-              <React.Fragment key={attempt}>
+              // Cada intento vuelve a montar el aviso: entra con un fundido corto (y un leve
+              // ascenso si el sistema permite movimiento) para que se note que respondió.
+              <span
+                key={attempt}
+                className="flex flex-wrap items-center gap-x-2 gap-y-1 duration-200 animate-in fade-in-0 motion-safe:slide-in-from-bottom-1"
+              >
                 <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
                 {submitError ? (
                   <span>No se pudo crear el pedido: {submitError}</span>
@@ -2742,32 +2861,46 @@ function OrderComposer({
                     ))}
                   </>
                 )}
-              </React.Fragment>
+              </span>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
-              {/* En móvil se alternan: "Falta: …" mientras falte algo, después el resumen. */}
-              {!showErrorNotice && missingFields.length > 0 && (
-                <p className="text-meta">
-                  Falta: {missingFields.map((f) => FIELD_LABELS[f].toLowerCase()).join(", ")}
-                </p>
-              )}
-              {summaryParts.length > 0 && (
-                <p
-                  className={cn(
-                    "text-xs leading-snug text-foreground/80 [overflow-wrap:anywhere]",
-                    !showErrorNotice && missingFields.length > 0 && "max-sm:hidden"
-                  )}
-                  data-testid="order-summary"
-                >
-                  {summaryParts.join(" · ")}
-                </p>
-              )}
-            </div>
+          {/* Renglón 1 (todo el ancho): qué falta y el resumen del pedido, para
+              leerlo de un vistazo antes de crear. Renglón 2: el modo y la acción. */}
+          <div className="min-w-0 space-y-0.5 pb-3 text-xs leading-snug sm:text-sm empty:hidden">
+            {/* En móvil se alternan: "Falta: …" mientras falte algo, después el resumen. */}
+            {!showErrorNotice && missingFields.length > 0 && (
+              <p className="text-muted-foreground">
+                Falta:{" "}
+                <span className="text-foreground/80">
+                  {missingFields.map((f) => FIELD_LABELS[f].toLowerCase()).join(", ")}
+                </span>
+              </p>
+            )}
+            {summaryParts.length > 0 && (
+              <p
+                className={cn(
+                  "text-foreground/75 [overflow-wrap:anywhere]",
+                  !showErrorNotice && missingFields.length > 0 && "max-sm:hidden"
+                )}
+                data-testid="order-summary"
+              >
+                {summaryParts.map((part, index) => (
+                  <React.Fragment key={index}>
+                    {index > 0 && <span className="text-muted-foreground/70"> · </span>}
+                    {/* El cliente manda: es lo primero que se confirma con la vista. */}
+                    <span className={cn(index === 0 && selectedClientLabel && "font-medium text-foreground")}>
+                      {part}
+                    </span>
+                  </React.Fragment>
+                ))}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
             {createAnotherEnabled && (
-              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground max-sm:mr-auto">
+              <label className="flex min-h-11 cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:min-h-0">
                 <Switch
                   className="data-[state=checked]:bg-ink"
                   checked={createAnother}
@@ -2780,7 +2913,7 @@ function OrderComposer({
                 Crear otro al terminar
               </label>
             )}
-            <motion.div tabIndex={-1} className="max-sm:ml-auto" {...(submitting ? {} : formButtonMotion)}>
+            <motion.div tabIndex={-1} className="ml-auto" {...(submitting ? {} : formButtonMotion)}>
               <Button
                 id={IDS.submit}
                 type="button"

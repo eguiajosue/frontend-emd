@@ -39,7 +39,8 @@ export function OrderProductSizesField({ rowKey, productName, sizes, onChange }:
           aria-controls={`order-sizes-${rowKey}`}
           title={hasSizes && !open ? formatSizeBreakdown(sizes) : undefined}
           className={cn(
-            "inline-flex min-h-11 max-w-[11rem] items-center gap-1 justify-self-end rounded-full px-3 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:min-h-9",
+            // Móvil: junto a la papelera; escritorio: pegado a la cantidad (columna compartida).
+            "inline-flex min-h-11 max-w-[11rem] items-center gap-1 justify-self-end rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9 sm:justify-self-start",
             (open || hasSizes) && "text-foreground"
           )}
           onClick={() => setOpen((v) => !v)}
@@ -51,7 +52,10 @@ export function OrderProductSizesField({ rowKey, productName, sizes, onChange }:
         <span aria-hidden />
       )}
       {open && (
-        <div id={`order-sizes-${rowKey}`} className="col-span-full mt-1 rounded-lg border border-border/60 p-2">
+        <div
+          id={`order-sizes-${rowKey}`}
+          className="col-span-full mt-1 rounded-lg border border-border/60 p-2 duration-200 animate-in fade-in-0 motion-safe:slide-in-from-top-1"
+        >
           <SizeGrid
             idPrefix={`order-sizes-${rowKey}`}
             label={productName}

@@ -163,7 +163,9 @@ export function InlineCombobox({
         onBlur={() => setFocused(false)}
         onKeyDown={onKeyDown}
         className={cn(
-          "flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 aria-[invalid=true]:border-red-600 sm:h-10 sm:text-sm",
+          // Mismo foco que Textarea/Select (borde + halo suave); en error, rojo.
+          "flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base shadow-sm transition-[border-color,box-shadow] placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 sm:h-10 sm:text-sm",
+          "aria-[invalid=true]:border-red-600 aria-[invalid=true]:focus-visible:ring-red-600/25 dark:aria-[invalid=true]:border-red-400 dark:aria-[invalid=true]:focus-visible:ring-red-400/25",
           inputClassName
         )}
       />
@@ -183,7 +185,7 @@ export function InlineCombobox({
           return (
             <React.Fragment key={option.id}>
               {header && (
-                <li role="presentation" className="px-2.5 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <li role="presentation" className="px-2.5 pb-1 pt-2 text-label">
                   {header}
                 </li>
               )}
