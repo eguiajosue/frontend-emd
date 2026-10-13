@@ -24,15 +24,33 @@
  * la variable falta o es inválida se conserva el comportamiento anterior para
  * no romper la app.
  */
-export function resolveConnectSrc(raw: string | undefined): string {
+export function resolveConnectSrc(raw: string | undefined, storageUrl?: string): string {
   try {
     if (!raw) throw new Error("missing");
     const url = new URL(raw);
     if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("bad");
     const ws = `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`;
-    return `connect-src 'self' ${url.origin} ${ws}`;
+    return `connect-src 'self' ${url.origin} ${ws}${storageOrigin(storageUrl)}`;
   } catch {
     return "connect-src 'self' https: wss: http: ws:";
+  }
+}
+
+/**
+ * Origen del bucket (R2) al que el navegador sube los archivos de producción
+ * directo con URLs firmadas (NEXT_PUBLIC_STORAGE_URL, p. ej.
+ * `https://<bucket>.<accountid>.r2.cloudflarestorage.com` o el endpoint
+ * `https://<accountid>.r2.cloudflarestorage.com`). Sin ella, `connect-src`
+ * bloquearía esos PUT.
+ */
+function storageOrigin(raw: string | undefined): string {
+  try {
+    if (!raw) return "";
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    return ` ${url.origin}`;
+  } catch {
+    return "";
   }
 }
 
@@ -44,9 +62,11 @@ export interface CspOptions {
   nonce?: string;
   isDev: boolean;
   backendUrl: string | undefined;
+  /** Origen del bucket para subir archivos grandes directo (opcional). */
+  storageUrl?: string;
 }
 
-export function buildContentSecurityPolicy({ nonce, isDev, backendUrl }: CspOptions): string {
+export function buildContentSecurityPolicy({ nonce, isDev, backendUrl, storageUrl }: CspOptions): string {
   const scriptSrc = [
     "script-src",
     nonce ? `'nonce-${nonce}' 'strict-dynamic'` : "'self'",
@@ -61,7 +81,7 @@ export function buildContentSecurityPolicy({ nonce, isDev, backendUrl }: CspOpti
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    resolveConnectSrc(backendUrl),
+    resolveConnectSrc(backendUrl, storageUrl),
     "worker-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
