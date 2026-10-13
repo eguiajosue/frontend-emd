@@ -298,7 +298,7 @@ test("al crear un pedido hay que elegir al empleado, y queda guardado", async ({
   await expect(dialog.getByRole("radio", { name: "Sin diseño" })).toHaveCount(0);
   await expect(dialog.getByRole("group", { name: /^Áreas de producción/ })).toHaveCount(0);
   await dialog.getByRole("combobox", { name: "Agregar producto" }).click();
-  await page.getByPlaceholder("+ Agregar producto…").fill("Playera");
+  await page.getByPlaceholder("+ Escribe cualquier producto…").fill("Playera");
   await page.getByText('Usar "Playera" como producto nuevo').click();
   await dialog.getByLabel("Cantidad de Playera").fill("5");
   await dialog.getByLabel("Descripción").fill("Playeras del torneo");

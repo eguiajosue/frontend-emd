@@ -41,7 +41,7 @@ test("2 · crear un pedido con desglose de tallas", async ({ page, request }) =>
     .getByRole("button", { name: /Taller/ })
     .click();
   await dialogo.getByRole("combobox", { name: "Agregar producto" }).click();
-  await page.getByPlaceholder("+ Agregar producto…").fill("Playera");
+  await page.getByPlaceholder("+ Escribe cualquier producto…").fill("Playera");
   await page.getByText('Usar "Playera" como producto nuevo').click();
   await dialogo.getByLabel("Descripción").fill("Playeras con tallas");
 

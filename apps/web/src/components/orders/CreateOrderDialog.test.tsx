@@ -204,7 +204,7 @@ async function toggleArea(label: string) {
 
 async function addProduct(name: string) {
   await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
-  await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), name);
+  await userEvent.type(screen.getByPlaceholderText("+ Escribe cualquier producto…"), name);
   await userEvent.click(await screen.findByText(`Usar "${name}" como producto nuevo`));
 }
 
@@ -438,7 +438,7 @@ describe("CreateOrderDialog (comanda de una pantalla)", () => {
     renderDialog();
     await addProduct("Playera");
     await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
-    await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), "playera");
+    await userEvent.type(screen.getByPlaceholderText("+ Escribe cualquier producto…"), "playera");
     // En minúsculas se guarda con mayúscula inicial, y suma a la misma línea.
     await userEvent.click(await screen.findByText('Usar "Playera" como producto nuevo'));
     expect(screen.getAllByLabelText(/^Cantidad de /)).toHaveLength(1);
@@ -464,7 +464,8 @@ describe("CreateOrderDialog (comanda de una pantalla)", () => {
     await userEvent.click(add);
     await userEvent.type(add, "50 playera bor");
     expect(screen.getByRole("option", { name: "Playera bordada" })).toHaveTextContent("×50");
-    await userEvent.keyboard("{Enter}");
+    // Lo escrito va primero (productos personalizados); la sugerencia queda a una flecha.
+    await userEvent.keyboard("{ArrowDown}{Enter}");
     expect(screen.getByLabelText("Cantidad de Playera bordada")).toHaveValue("50");
     expect(add).toHaveValue("");
     expect(document.activeElement).toBe(add);
@@ -563,7 +564,7 @@ describe("CreateOrderDialog (comanda de una pantalla)", () => {
     renderDialog();
     await fillDirectOrder();
     await userEvent.click(screen.getByRole("combobox", { name: "Agregar producto" }));
-    await userEvent.type(screen.getByPlaceholderText("+ Agregar producto…"), "Taza");
+    await userEvent.type(screen.getByPlaceholderText("+ Escribe cualquier producto…"), "Taza");
     await userEvent.keyboard("{Control>}{Enter}{/Control}");
     expect(createMock).not.toHaveBeenCalled();
     // Con la lista cerrada, Ctrl+Enter sí crea, y con el producto nuevo incluido.

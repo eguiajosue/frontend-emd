@@ -900,7 +900,7 @@ function OrderComposer({
       .filter((p) => normalizeProductKey(p.name).includes(key))
       .sort((a, b) => Number(!startsWith(a)) - Number(!startsWith(b)))
       .slice(0, 6);
-    const options: InlineOption[] = matches.map((p) => ({
+    const presetOptions: InlineOption[] = matches.map((p) => ({
       id: `p-${p.id}`,
       label: p.name,
       textValue: p.name,
@@ -910,8 +910,11 @@ function OrderComposer({
         setProductQuery("");
       },
     }));
-    if (!matches.some((p) => normalizeProductKey(p.name) === key)) {
-      options.push({
+    // Lo que se escribe manda: el pedido es personalizable, así que lo escrito
+    // va primero (Enter lo agrega tal cual) y las sugerencias quedan a una flecha.
+    if (matches.some((p) => normalizeProductKey(p.name) === key)) return presetOptions;
+    return [
+      {
         id: "new",
         label: `Usar "${tidyProductName(name)}" como producto nuevo`,
         hint: qtyHint(name),
@@ -920,9 +923,9 @@ function OrderComposer({
           addProduct(name, quantity);
           setProductQuery("");
         },
-      });
-    }
-    return options;
+      },
+      ...presetOptions,
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productQuery, productPresets, insights, form.rows]);
 
@@ -2312,7 +2315,7 @@ function OrderComposer({
                 <InlineCombobox
                   id={IDS.productAdd}
                   label="Agregar producto"
-                  placeholder="+ Agregar producto…"
+                  placeholder="+ Escribe cualquier producto…"
                   value={productQuery}
                   onValueChange={setProductQuery}
                   options={productOptions}
@@ -2323,7 +2326,7 @@ function OrderComposer({
                 />
               )}
               <p id="order-products-hint" className="sr-only">
-                Escribe la cantidad al frente para agregarla de una vez, por ejemplo 50 playera. Enter agrega y deja el
+                Escribe cualquier producto, aunque no esté en la lista, y la cantidad al frente si quieres, por ejemplo 50 playera. Enter agrega y deja el
                 cursor aquí para el siguiente; Enter vacío pasa a la descripción.
               </p>
               <FieldError id="order-products" error={errors.orderProducts} />
