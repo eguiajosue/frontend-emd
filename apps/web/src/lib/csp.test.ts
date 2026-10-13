@@ -67,3 +67,19 @@ describe("generateNonce", () => {
     expect(a).toMatch(/^[A-Za-z0-9+/]{22}==$/);
   });
 });
+
+describe("resolveConnectSrc con bucket de archivos", () => {
+  it("agrega el origen del bucket para los PUT de archivos grandes", () => {
+    expect(
+      resolveConnectSrc("http://localhost:4010", "https://acc.r2.cloudflarestorage.com/bucket")
+    ).toBe(
+      "connect-src 'self' http://localhost:4010 ws://localhost:4010 https://acc.r2.cloudflarestorage.com"
+    );
+  });
+
+  it("ignora un valor inválido", () => {
+    expect(resolveConnectSrc("http://localhost:4010", "nope")).toBe(
+      "connect-src 'self' http://localhost:4010 ws://localhost:4010"
+    );
+  });
+});
