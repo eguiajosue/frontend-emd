@@ -89,22 +89,22 @@ export const GUIDES: Record<GuideKey, Guide> = {
       },
       {
         title: "Crear un pedido",
-        text: "En \"Pedidos\" toca \"+ Nueva Orden\" (o la tecla N). Elige el cliente, agrega los productos y la fecha de entrega, y toca \"Crear pedido\" (o Ctrl+Enter). Si no pones hora, queda a las 18:00.",
+        text: "En \"Pedidos\" toca \"Nuevo Pedido\" (o la tecla N). Busca el cliente por nombre, teléfono o empresa, escribe los productos con la cantidad al frente (\"50 playera\" + Enter) y toca \"Crear pedido\" (o Ctrl+Enter). Si cierras a medias queda un borrador; con \"Crear otro al terminar\" el panel sigue abierto para el siguiente.",
         scene: <NewOrderScene />,
       },
       {
         title: "La app recuerda a tus clientes",
-        text: "Al elegir un cliente registrado aparece \"Lo habitual\" y lo que \"Suele pedir\", con sus cantidades de siempre. También puedes usar sus plantillas o \"Repetir pedido\" desde un pedido anterior.",
+        text: "Al elegir un cliente registrado, \"Empezar desde\" ofrece \"Lo habitual\", sus plantillas y su último pedido. Sus productos de siempre salen primero con su cantidad, y su fecha y ruta habituales se proponen solas (con \"Deshacer\").",
         scene: <LearnedClientScene />,
       },
       {
         title: "Tus frecuentes",
-        text: "Los productos de \"Frecuentes\" se agregan con un toque. Con \"Personalizar\" eliges cuáles ver y los ordenas arrastrando. Solo cambian para ti.",
+        text: "Tus productos frecuentes salen como botones en \"Qué se pide\" y se agregan con un toque. En el menú \"⋯\" → \"Personalizar frecuentes\" eliges cuáles ver y los ordenas arrastrando. Solo cambian para ti.",
         scene: <FrequentsScene />,
       },
       {
         title: "Con diseño o sin diseño",
-        text: "Con diseño, el pedido pasa primero por Diseño. Sin diseño, va directo a las áreas de producción que elijas (al menos una).",
+        text: "En \"Ruta\": con diseño, el pedido pasa primero por Diseño. Sin diseño, va directo a las áreas de producción que elijas (al menos una; la primera es la principal). El \"?\" lo recuerda.",
         scene: <DesignChoiceScene />,
       },
       {

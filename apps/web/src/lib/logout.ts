@@ -1,4 +1,5 @@
 import { signOut } from "next-auth/react";
+import { clearOrderComposerMemory } from "@/lib/orderComposer";
 
 /**
  * Cierra la sesión y vuelve al login.
@@ -33,6 +34,9 @@ export async function logout(message?: string): Promise<void> {
     await signOut({ redirect: false });
   } finally {
     await clearPrivateCaches().catch(() => undefined);
+    // Borradores de "Nuevo pedido" y quién levanta en la sucursal: en un
+    // equipo compartido el siguiente usuario no ve el pedido a medias.
+    clearOrderComposerMemory();
     if (typeof window !== "undefined") {
       const query = message ? `?message=${encodeURIComponent(message)}` : "";
       window.location.href = `/login${query}`;

@@ -120,8 +120,18 @@ const AyudaPage = () => {
                   </li>
                   <li>
                     <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">N</kbd>{" "}
-                    en la pantalla de Pedidos abre &quot;+ Nueva Orden&quot; (sin tener nada
+                    en la pantalla de Pedidos abre &quot;Nuevo pedido&quot; (sin tener nada
                     escribiendo en un campo).
+                  </li>
+                  <li>
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">
+                      Ctrl/Cmd + Enter
+                    </kbd>{" "}
+                    crea el pedido desde cualquier campo; con{" "}
+                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">
+                      Shift
+                    </kbd>{" "}
+                    invierte &quot;Crear otro al terminar&quot; sólo esa vez.
                   </li>
                   <li>
                     <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">Esc</kbd>{" "}

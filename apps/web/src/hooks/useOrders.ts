@@ -664,15 +664,12 @@ export function useOrderAuditLog(orderId: number | null, options?: { enabled?: b
  * Pedidos de un cliente, del más nuevo al más viejo. Con `limit` pide sólo
  * esa primera página (ej. "Pedidos anteriores" del alta); sin él, todos.
  */
-export function useClientOrders(clientId: number | null, options?: { limit?: number }) {
-  const token = useAuthToken();
-  const enabled = Boolean(token) && clientId !== null;
-  const limit = options?.limit;
-
-  const query = useQuery<Order[]>({
+/** Query de los pedidos de un cliente (compartida por el hook y el prefetch). */
+export function clientOrdersQueryOptions(token: string | undefined, clientId: number | null, limit?: number) {
+  return {
     queryKey: ["clientOrders", clientId, limit ?? "all"],
-    enabled,
-    queryFn: async () => {
+    enabled: Boolean(token) && clientId !== null,
+    queryFn: async (): Promise<Order[]> => {
       try {
         const payload = await request<Order[] | Paginated<Order>>(
           `${ENDPOINTS.clients}/${clientId}/orders${limit ? `?page=1&limit=${limit}` : ""}`,
@@ -684,8 +681,13 @@ export function useClientOrders(clientId: number | null, options?: { limit?: num
         throw error;
       }
     },
-    retry: (failureCount, error) => !isNotFound(error) && failureCount < 2,
-  });
+    retry: (failureCount: number, error: unknown) => !isNotFound(error) && failureCount < 2,
+  };
+}
+
+export function useClientOrders(clientId: number | null, options?: { limit?: number }) {
+  const token = useAuthToken();
+  const query = useQuery<Order[]>(clientOrdersQueryOptions(token, clientId, options?.limit));
 
   return {
     orders: query.data ?? [],

@@ -106,6 +106,26 @@ export const formButtonMotion = {
 };
 
 /**
+ * Aparición/retiro "en su lugar" de un bloque dentro de un formulario (una
+ * línea de producto, un aviso, una fila de chips): crece desde alto 0 para que
+ * lo de abajo se desplace con suavidad en vez de saltar. Sale más rápido de lo
+ * que entra. `overflow` vuelve a `visible` al terminar para no recortar los
+ * anillos de foco del contenido.
+ */
+export const revealMotion = {
+  initial: { opacity: 0, height: 0, overflow: "hidden" as const },
+  animate: { opacity: 1, height: "auto", transition: SPRING_STANDARD, transitionEnd: { overflow: "visible" as const } },
+  exit: { opacity: 0, height: 0, overflow: "hidden" as const, transition: SPRING_MICRO },
+};
+
+/** Reduced-motion: sin cambio de alto (sin movimiento), sólo el fundido que confirma el cambio. */
+export const reducedRevealMotion = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15, ease: "linear" as const } },
+  exit: { opacity: 0, transition: { duration: 0.1, ease: "linear" as const } },
+};
+
+/**
  * Variantes "reducidas" (crossfade simple, sin desplazamiento ni escala) para
  * cuando el usuario tiene prefers-reduced-motion activado. Framer Motion no
  * puede leer la media query dentro de un objeto de variants estático, así que
@@ -137,6 +157,7 @@ export function useMotionPreset() {
     reduced: Boolean(reduced),
     staggerItemVariants: reduced ? reducedStaggerItemVariants : staggerItemVariants,
     routeTransition: reduced ? reducedRouteTransition : routeTransition,
+    revealMotion: reduced ? reducedRevealMotion : revealMotion,
     cardHoverMotion: reduced ? { whileHover: {}, transition: { duration: 0 } } : cardHoverMotion,
     cardTapMotion: reduced ? { whileTap: {}, transition: { duration: 0 } } : cardTapMotion,
     formButtonMotion: reduced

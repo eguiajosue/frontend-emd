@@ -473,6 +473,7 @@ function QuotesBoard() {
       <CreateOrderDialog
         open={converting !== null}
         onClose={() => setConverting(null)}
+        createAnotherEnabled={false}
         initialClientId={converting?.clientId ?? undefined}
         initialClientNameOverride={converting && !converting.clientId ? converting.clientName : undefined}
         initialDescription={

@@ -27,4 +27,27 @@ describe("logout purga las cachés privadas del service worker", () => {
     vi.stubGlobal("caches", undefined);
     await expect(clearPrivateCaches()).resolves.toBeUndefined();
   });
+
+  it("logout() borra los borradores de Nuevo pedido de este navegador", async () => {
+    const store = new Map<string, string>([
+      ["emd:orderDraft:v1:7", "{}"],
+      ["emd:branchEmployee:v1:9", "{}"],
+      ["emd:recentClientIds", "[1]"],
+    ]);
+    vi.stubGlobal("caches", undefined);
+    vi.stubGlobal("window", {
+      location: { href: "" },
+      localStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+        key: (i: number) => [...store.keys()][i] ?? null,
+        get length() {
+          return store.size;
+        },
+      },
+    });
+    await logout();
+    expect([...store.keys()]).toEqual(["emd:recentClientIds"]);
+  });
 });

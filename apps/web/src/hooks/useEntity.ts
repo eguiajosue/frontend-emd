@@ -60,6 +60,18 @@ export interface EntityListOptions {
   staleTime?: number;
 }
 
+/** queryFn de un listado (compartida por `useEntityList` y los prefetch). */
+export function entityListQueryFn<T>(
+  entity: EntityKey,
+  token: string | undefined,
+  params?: EntityListOptions["params"]
+) {
+  return async (): Promise<T[]> => {
+    const payload = await request<T[] | Paginated<T>>(ENDPOINTS[entity], { token, params });
+    return unwrapList<T>(payload);
+  };
+}
+
 /** Listado de una entidad. Devuelve siempre un array (nunca `undefined`). */
 export function useEntityList<T>(
   entity: EntityKey,
@@ -72,13 +84,7 @@ export function useEntityList<T>(
     queryKey: queryKeys.list(entity, params),
     enabled: Boolean(token) && enabled,
     ...(staleTime !== undefined ? { staleTime } : {}),
-    queryFn: async () => {
-      const payload = await request<T[] | Paginated<T>>(ENDPOINTS[entity], {
-        token,
-        params,
-      });
-      return unwrapList<T>(payload);
-    },
+    queryFn: entityListQueryFn<T>(entity, token, params),
   });
 
   return { ...query, data: query.data ?? [] } as UseQueryResult<T[]> & { data: T[] };

@@ -201,9 +201,11 @@ test("en el alta de pedido puede crear un cliente nuevo ahí mismo", async ({ pa
   await login(page, "puntomadero");
   await page.goto("/dashboard/orders?new=1");
   const dialog = page.getByRole("dialog", { name: "Nuevo pedido" });
-  await dialog.getByRole("button", { name: "Nuevo cliente" }).click();
+  // Se escribe el nombre en el buscador y la última opción lo registra.
+  await dialog.getByRole("combobox", { name: "Cliente" }).fill("Tienda Sol");
+  await page.getByRole("option", { name: "Registrar «Tienda Sol»" }).click();
   const alta = page.getByRole("dialog", { name: "Nuevo cliente" });
-  await alta.getByLabel("Nombre").fill("Tienda Sol");
+  await expect(alta.getByLabel("Nombre")).toHaveValue("Tienda Sol");
   await alta.getByRole("button", { name: /Crear|Guardar/ }).click();
   await expect(dialog.getByText("Tienda Sol").first()).toBeVisible();
   const guardados = await (await request.get(`${MOCK_API}/__e2e/clients`)).json();
@@ -223,7 +225,8 @@ test("frecuentes: crea un producto nuevo desde 'Personalizar' y queda guardado",
   await login(page, "puntomadero");
   await page.goto("/dashboard/orders?new=1");
   const pedido = page.getByRole("dialog", { name: "Nuevo pedido" });
-  await pedido.getByRole("button", { name: "Personalizar" }).click();
+  await pedido.getByRole("button", { name: "Más opciones" }).click();
+  await page.getByRole("menuitem", { name: "Personalizar frecuentes" }).click();
 
   const frecuentes = page.getByRole("dialog", { name: "Mis frecuentes" });
   await frecuentes.getByLabel("Producto nuevo").fill("Termo grabado");
@@ -260,7 +263,8 @@ test("frecuentes: la matriz (Recepción) también crea productos nuevos", async 
   await login(page);
   await page.goto("/dashboard/orders?new=1");
   const pedido = page.getByRole("dialog", { name: "Nuevo pedido" });
-  await pedido.getByRole("button", { name: "Personalizar" }).click();
+  await pedido.getByRole("button", { name: "Más opciones" }).click();
+  await page.getByRole("menuitem", { name: "Personalizar frecuentes" }).click();
   const frecuentes = page.getByRole("dialog", { name: "Mis frecuentes" });
   await frecuentes.getByLabel("Producto nuevo").fill("Mandil");
   await frecuentes.getByLabel("Producto nuevo").press("Enter");
@@ -290,10 +294,11 @@ test("al crear un pedido hay que elegir al empleado, y queda guardado", async ({
   await dialog.getByRole("combobox", { name: "Cliente" }).click();
   await page.getByPlaceholder("Buscar cliente…").fill("Escuela Norte");
   await page.getByText('Usar "Escuela Norte" como nombre de cliente').click();
-  await dialog.getByRole("radio", { name: "Sin diseño" }).click();
-  await dialog.getByRole("group", { name: /^Áreas de producción/ }).getByRole("button", { name: /Taller/ }).click();
+  // La ruta la decide el backend (con diseño, a la cuenta compartida): la sucursal no la ve.
+  await expect(dialog.getByRole("radio", { name: "Sin diseño" })).toHaveCount(0);
+  await expect(dialog.getByRole("group", { name: /^Áreas de producción/ })).toHaveCount(0);
   await dialog.getByRole("combobox", { name: "Agregar producto" }).click();
-  await page.getByPlaceholder("+ Agregar producto…").fill("Playera");
+  await page.getByPlaceholder("+ Escribe cualquier producto…").fill("Playera");
   await page.getByText('Usar "Playera" como producto nuevo').click();
   await dialog.getByLabel("Cantidad de Playera").fill("5");
   await dialog.getByLabel("Descripción").fill("Playeras del torneo");
@@ -309,7 +314,14 @@ test("al crear un pedido hay que elegir al empleado, y queda guardado", async ({
   await expect(page.getByRole("option", { name: "Beto Ruiz" })).toHaveCount(0);
   await page.getByRole("option", { name: "Carla Díaz" }).click();
 
+  const enviado = page.waitForRequest((r) => r.method() === "POST" && new URL(r.url()).pathname.endsWith("/orders"));
   await dialog.getByRole("button", { name: /Crear pedido/ }).click();
+  // Lo que manda el front: sin ruta propia (la fuerza el backend).
+  const cuerpo = (await enviado).postDataJSON();
+  expect(cuerpo).toMatchObject({ branchEmployeeId: 3, requiresDesign: true, clientNameOverride: "Escuela Norte" });
+  expect(cuerpo.area).toBeUndefined();
+  expect(cuerpo.productionAreas).toBeUndefined();
+  expect(cuerpo.assignedUserId).toBeUndefined();
   await expect
     .poll(async () => (await (await request.get(`${MOCK_API}/__e2e/branch-orders`)).json()).length)
     .toBe(1);
