@@ -176,11 +176,14 @@ const tareasTvIniciales = () => [
 let tareasTv = tareasTvIniciales();
 
 // Etapas previas de Bordado (digitalizado → pruebas → producción), para el tablero de cuatro columnas.
+// Etapas de Bordado como las siembra el backend (ids de DEFAULT_AREAS).
+const ETAPA_DIGITALIZADO = { id: 301, key: "digitalizado", name: "Digitalizado", kind: "work" };
+const ETAPA_PRUEBAS = { id: 302, key: "en_pruebas", name: "En pruebas", kind: "review" };
 const prueba = (round, result, extra = {}) => ({ id: round, round, sentAt: enHoras(-3), sentNotes: null, photoName: null, result, resultNotes: null, decidedAt: null, ...extra });
 const tareasPrepIniciales = () => [
-  { id: 7, orderId: 107, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-6), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, "rechazada", { resultNotes: "El hilo se frunce en el contorno", decidedAt: enHoras(-1) })], order: pedidoTv(107, "Escuela Benito", "Escudos para 50 uniformes", enHoras(26)) },
-  { id: 8, orderId: 108, area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignedUserId: null, createdAt: enHoras(-9), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, null)], order: pedidoTv(108, "Cafetería Luna", "Gorras con logo", enHoras(50)) },
-  { id: 9, orderId: 109, area: "bordado", status: "pendiente", prepStage: "digitalizado", assignedUserId: null, createdAt: enHoras(-2), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [], order: pedidoTv(109, "Gimnasio Sur", "Toallas bordadas", enHoras(24 * 5)) },
+  { id: 7, orderId: 107, area: "bordado", status: "pendiente", stage: ETAPA_DIGITALIZADO, assignedUserId: null, createdAt: enHoras(-6), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, "rechazada", { resultNotes: "El hilo se frunce en el contorno", decidedAt: enHoras(-1) })], order: pedidoTv(107, "Escuela Benito", "Escudos para 50 uniformes", enHoras(26)) },
+  { id: 8, orderId: 108, area: "bordado", status: "pendiente", stage: ETAPA_PRUEBAS, assignedUserId: null, createdAt: enHoras(-9), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [prueba(1, null)], order: pedidoTv(108, "Cafetería Luna", "Gorras con logo", enHoras(50)) },
+  { id: 9, orderId: 109, area: "bordado", status: "pendiente", stage: ETAPA_DIGITALIZADO, assignedUserId: null, createdAt: enHoras(-2), startedAt: null, completedAt: null, assignedUser: null, sampleTests: [], order: pedidoTv(109, "Gimnasio Sur", "Toallas bordadas", enHoras(24 * 5)) },
 ];
 let tareasPrep = [];
 const todasTv = () => [...tareasTv, ...tareasPrep];
@@ -221,7 +224,7 @@ const clavePreset = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").to
 const diasAtras = (d) => new Date(Date.now() - d * 86_400_000).toISOString();
 const atrasados = [
   { id: 101, description: "24 polos bordados", clientName: "Colegio San Marcos", deliveryDate: diasAtras(4), daysLate: 4, status: "autorizado", reason: "material", note: "Falta hilo rojo", reasonAt: diasAtras(1),
-    areas: [{ area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignee: "Luis" }, { area: "dtf", status: "terminado", prepStage: null, assignee: null }] },
+    areas: [{ area: "bordado", status: "pendiente", stage: ETAPA_PRUEBAS, assignee: "Luis" }, { area: "dtf", status: "terminado", stage: null, assignee: null }] },
   { id: 102, description: "Lona 2x1", clientName: "Ferretería El Tornillo", deliveryDate: diasAtras(2), daysLate: 2, status: "esperando autorización", reason: null, note: null, reasonAt: null, areas: [] },
 ];
 const coordinacion = () => ({
@@ -403,7 +406,7 @@ function misTareas(u) {
     const o = t.order;
     items.push({
       key: `task-${t.id}`, kind: "production", area: t.area, taskId: t.id, status: t.status,
-      ...(t.prepStage !== undefined && { prepStage: t.prepStage, lastTest: t.sampleTests?.at(-1) ?? null }),
+      ...(t.stage !== undefined && { stage: t.stage, lastTest: t.sampleTests?.at(-1) ?? null }),
       mine: mia(t), assignee: libre(t) ? null : t.assignedUser, startedAt: t.startedAt ?? null,
       order: { id: o.id, description: o.description, deliveryDate: o.deliveryDate, creationDate: o.creationDate, statusId: o.statusId, clientNameOverride: o.clientNameOverride, designStartedAt: null, designStartedByName: null, client: null, status: o.status, branch: o.branch ?? null },
     });
@@ -1284,20 +1287,20 @@ createServer((req, res) => {
       }
     }
 
-    // Etapas previas de Bordado: mandar a pruebas y resultado de la prueba.
-    const prep = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/(send-to-test|test-result)$/);
+    // Etapas previas de Bordado: pasar a la siguiente etapa y resultado de la revisión.
+    const prep = path.match(/^\/orders\/\d+\/area-tasks\/(\d+)\/(advance-stage|stage-result)$/);
     if (prep && req.method === "POST") {
       const id = Number(prep[1]);
       const dto = JSON.parse(body || "{}");
       const actual = tareasPrep.find((t) => t.id === id);
       if (!actual) return send({ message: "No existe" }, 404);
       let siguiente;
-      if (prep[2] === "send-to-test") {
+      if (prep[2] === "advance-stage") {
         const ronda = (actual.sampleTests?.length ?? 0) + 1;
-        siguiente = { ...actual, prepStage: "en_pruebas", sampleTests: [...(actual.sampleTests ?? []), prueba(ronda, null, { sentNotes: dto.notes ?? null })] };
+        siguiente = { ...actual, stage: ETAPA_PRUEBAS, sampleTests: [...(actual.sampleTests ?? []), prueba(ronda, null, { sentNotes: dto.notes ?? null })] };
       } else {
         const tests = (actual.sampleTests ?? []).map((t, i, all) => (i === all.length - 1 ? { ...t, result: dto.result, resultNotes: dto.notes ?? null, decidedAt: new Date().toISOString() } : t));
-        siguiente = { ...actual, sampleTests: tests, prepStage: dto.result === "aprobada" ? null : "digitalizado" };
+        siguiente = { ...actual, sampleTests: tests, stage: dto.result === "aprobada" ? null : ETAPA_DIGITALIZADO };
       }
       tareasPrep = tareasPrep.map((t) => (t.id === id ? siguiente : t));
       return send(siguiente, 201);
