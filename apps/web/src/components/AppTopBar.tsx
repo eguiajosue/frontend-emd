@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Bug, ChevronDown, Download, LogOut, Settings } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -109,11 +109,13 @@ function UserMenu() {
             className="flex h-11 items-center gap-1.5 rounded-full border border-border/60 bg-card p-1 pr-2.5 shadow-soft dark:border-border"
           >
             <span className="relative">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-xs font-semibold uppercase text-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                seed={user?.username}
+                className="h-9 w-9"
+                fallbackClassName="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-xs font-semibold uppercase text-primary-foreground"
+              >
+                {initials}
+              </UserAvatar>
               <span
                 aria-hidden
                 className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"

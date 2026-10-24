@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { chatInitials } from "@/hooks/useChat";
 import { useChatTyping } from "@/hooks/useChatTyping";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -68,20 +68,20 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
               <Hash className="h-4 w-4" />
             </span>
           ) : (
-            <Avatar className="h-9 w-9">
-              <AvatarFallback
-                className={cn(
-                  "text-xs font-semibold",
-                  active && "bg-ink text-ink-foreground"
-                )}
-              >
-                {chatInitials({
-                  username: "",
-                  firstName: conversation.title,
-                  lastName: null,
-                })}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              seed={conversation.otherUser?.username}
+              className="h-9 w-9"
+              fallbackClassName={cn(
+                "text-xs font-semibold",
+                active && "bg-ink text-ink-foreground"
+              )}
+            >
+              {chatInitials({
+                username: "",
+                firstName: conversation.title,
+                lastName: null,
+              })}
+            </UserAvatar>
           )}
           {/* Punto de presencia "en línea": sólo mensajes directos con el
               otro usuario conectado ahora mismo (mismo patrón que el

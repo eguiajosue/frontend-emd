@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -561,9 +561,9 @@ export function MessageThread({
         ) : null}
         <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
           {!mine ? (
-            <Avatar className="h-7 w-7 shrink-0">
-              <AvatarFallback className="text-[10px] font-semibold">{chatInitials(author)}</AvatarFallback>
-            </Avatar>
+            <UserAvatar seed={author.username} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-semibold">
+              {chatInitials(author)}
+            </UserAvatar>
           ) : null}
           <div
             className={cn(
@@ -635,15 +635,17 @@ export function MessageThread({
                 <Hash className="h-4 w-4" />
               </span>
             ) : (
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="text-xs font-semibold">
-                  {chatInitials({
-                    username: "",
-                    firstName: conversation.title,
-                    lastName: null,
-                  })}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                seed={conversation.otherUser?.username}
+                className="h-9 w-9"
+                fallbackClassName="text-xs font-semibold"
+              >
+                {chatInitials({
+                  username: "",
+                  firstName: conversation.title,
+                  lastName: null,
+                })}
+              </UserAvatar>
             )}
             {/* Punto de presencia "en línea": mismo criterio y patrón visual
                 que ConversationList/app-sidebar.tsx — refuerza (no reemplaza)
@@ -696,9 +698,9 @@ export function MessageThread({
                 key={member.id}
                 className="flex items-center gap-2 rounded-full border border-border/60 bg-card py-1 pl-1 pr-3 text-xs"
               >
-                <Avatar className="h-5 w-5">
-                  <AvatarFallback className="text-[10px]">{chatInitials(member)}</AvatarFallback>
-                </Avatar>
+                <UserAvatar seed={member.username} className="h-5 w-5" fallbackClassName="text-[10px]">
+                  {chatInitials(member)}
+                </UserAvatar>
                 <span>{chatDisplayName(member)}</span>
                 {member.isMonitor ? (
                   <Badge variant="secondary" className="gap-1 font-normal">
