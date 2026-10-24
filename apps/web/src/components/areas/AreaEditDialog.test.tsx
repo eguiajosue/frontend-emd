@@ -7,8 +7,10 @@ import { AreaEditDialog, changesOf } from "./AreaEditDialog";
 
 const update = vi.fn();
 const setStages = vi.fn();
+const setMachines = vi.fn();
+const setFields = vi.fn();
 vi.mock("@/hooks/useAreaAdmin", () => ({
-  useAreaAdminMutations: () => ({ create: vi.fn(), update, setStages, isCreating: false, isUpdating: false }),
+  useAreaAdminMutations: () => ({ create: vi.fn(), update, setStages, setMachines, setFields, isCreating: false, isUpdating: false }),
 }));
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -27,6 +29,10 @@ beforeEach(() => {
   update.mockResolvedValue({});
   setStages.mockReset();
   setStages.mockResolvedValue({});
+  setMachines.mockReset();
+  setMachines.mockResolvedValue({});
+  setFields.mockReset();
+  setFields.mockResolvedValue({});
   resetAreaCatalog();
 });
 
@@ -41,6 +47,8 @@ describe("changesOf", () => {
     generalViewEnabled: true,
     inventoryCategories: [] as string[],
     inventoryUnits: [] as string[],
+    capacity: "",
+    turnaroundHours: "",
   };
 
   it("sin cambios no manda nada", () => {
@@ -153,5 +161,50 @@ describe("AreaEditDialog", () => {
   it("sin etapas ofrece agregarlas", () => {
     render(<AreaEditDialog area={area("taller")} onClose={vi.fn()} />);
     expect(screen.getByText(/Sin etapas: las tareas nacen listas para producir/)).toBeInTheDocument();
+  });
+
+  it("guarda capacidad y tiempos como números (vacío = sin dato)", async () => {
+    const user = userEvent.setup();
+    render(<AreaEditDialog area={area("taller", { capacity: 4 })} onClose={vi.fn()} />);
+
+    expect(screen.getByLabelText(/Capacidad/)).toHaveValue("4");
+    await user.clear(screen.getByLabelText(/Capacidad/));
+    await user.type(screen.getByLabelText(/Horas típicas/), "3");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledWith(1, { capacity: null, turnaroundHours: 3 }));
+  });
+
+  it("guarda máquinas y datos propios con sus propias llamadas", async () => {
+    const user = userEvent.setup();
+    render(<AreaEditDialog area={area("taller")} onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Agregar máquina" }));
+    await user.type(screen.getByLabelText("Nombre de la máquina 1"), "Torno 1");
+    await user.click(screen.getByRole("button", { name: "Agregar dato" }));
+    await user.type(screen.getByLabelText("Nombre del dato 1"), "Material");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() => expect(setMachines).toHaveBeenCalledWith(1, { machines: [{ name: "Torno 1" }] }));
+    expect(setFields).toHaveBeenCalledWith(1, { fields: [{ label: "Material", type: "text", required: false }] });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("no guarda si la capacidad no es válida", async () => {
+    const user = userEvent.setup();
+    render(<AreaEditDialog area={area("taller")} onClose={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/Capacidad/), "-2");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByText(/La capacidad debe ser un número entero/)).toBeInTheDocument();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("el tipo de un dato que ya existe no se puede cambiar", () => {
+    const fields = [{ id: 1, key: "alto", label: "Alto", type: "number" as const, required: false, options: [], unit: "cm" }];
+    render(<AreaEditDialog area={area("taller", { fields })} onClose={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Tipo del dato 1" })).toBeDisabled();
+    expect(screen.getByLabelText("Unidad del dato 1")).toHaveValue("cm");
   });
 });
