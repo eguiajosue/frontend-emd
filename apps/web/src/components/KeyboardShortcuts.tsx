@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { usePermissions } from "@/hooks/usePermissions";
-import { homePathForRoles } from "@/lib/navMenu";
+import { homePathFor } from "@/lib/navMenu";
 import {
   OPEN_SHORTCUTS_EVENT,
   SEQUENCE_TIMEOUT_MS,
@@ -57,8 +57,8 @@ export function KeyboardShortcuts() {
   const pendingG = useRef<number | null>(null);
 
   const goShortcuts = useMemo(
-    () => resolveGoShortcuts(navItems, homePathForRoles(session?.user?.roles ?? [])),
-    [navItems, session?.user?.roles]
+    () => resolveGoShortcuts(navItems, homePathFor({ roles: session?.user?.roles ?? [], areas: session?.user?.areas ?? [] })),
+    [navItems, session?.user?.roles, session?.user?.areas]
   );
   const goRef = useRef(goShortcuts);
   goRef.current = goShortcuts;

@@ -17,8 +17,8 @@ import {
   useMoveOrderStatus,
 } from "@/hooks/useOrders";
 import { usePermissions } from "@/hooks/usePermissions";
-import { statusIdsForRoles } from "@/lib/roleTaskMapping";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { statusIdsFor } from "@/lib/roleTaskMapping";
+import { DESIGN_AREA, productionAreasOf } from "@/lib/areas";
 import { CATALOG_STALE_TIME, useEntityList, useAuthToken } from "@/hooks/useEntity";
 import { useAppSettings } from "@/hooks/useSettings";
 import {
@@ -146,9 +146,6 @@ function OrdersUrlWatcher({ onChange }: { onChange: (params: URLSearchParams) =>
   return null;
 }
 
-/** Roles que corresponden a un área de producción (Diseño no es un destino). */
-const PRODUCTION_ROLES: string[] = PRODUCTION_AREA_OPTIONS.map((a) => a.value);
-
 const VIEW_MODE_KEY = "orders-view-mode";
 const CIRCUIT_KEY = "orders-circuit";
 type ViewMode = "list" | "grid";
@@ -172,22 +169,20 @@ const CIRCUITS: { value: Circuit; label: string }[] = [
  *
  * El comportamiento cambia sólo por rol vía filtrado de datos:
  *  - admin/superuser/recepcion ven TODOS los pedidos y pueden crear/editar.
- *  - roles operativos (dtf/bordado/diseno/laser/taller/impresiones) ven sólo
+ *  - quien sólo trabaja en áreas (Diseño o producción) ve sólo
  *    los pedidos en su(s) etapa(s) (misma lógica que tenía "Estatus de Pedidos").
  * Todo lo demás (toggle lista/cuadrícula, detalle animado, export a Excel,
  * cambio de estado, archivos del cliente) es la misma pantalla para todos.
  */
-const WORK_AREA_ROLE_SET = new Set(["diseno", "taller", "dtf", "bordado", "laser", "impresiones"]);
-
 const OrdersPage = () => {
-  const { roles, canManageOperations, isBranch, isSessionLoading, session } = usePermissions();
+  const { roles, areas: myAreas, canManageOperations, isBranch, isSessionLoading, session } = usePermissions();
   // La sucursal también levanta pedidos (con el empleado obligatorio), pero no los gestiona.
   const canCreateOrders = canManageOperations || isBranch;
   // Diseño y Producción no gestionan pedidos: su pantalla es "Tareas
   // asignadas". Un link viejo (notificación, marcador) los lleva ahí.
   const ordersRouter = useRouter();
   const redirectToTasks =
-    !isSessionLoading && !canManageOperations && roles.some((r) => WORK_AREA_ROLE_SET.has(r));
+    !isSessionLoading && !canManageOperations && myAreas.length > 0;
   useEffect(() => {
     if (redirectToTasks) ordersRouter.replace(TASKS_URL);
   }, [redirectToTasks, ordersRouter]);
@@ -584,10 +579,7 @@ const OrdersPage = () => {
   // Áreas de producción del usuario: definen cuál tarea de área manda al
   // ubicar un pedido en el tablero de producción (ver
   // `effectiveProductionStatusId`).
-  const viewerAreas = useMemo(
-    () => roles.filter((role) => PRODUCTION_ROLES.includes(role)),
-    [roles]
-  );
+  const viewerAreas = useMemo(() => productionAreasOf(myAreas), [myAreas]);
 
   // Mover un pedido escribe donde el tablero lee: las tareas de área cuando
   // las hay, el estado del pedido cuando no.
@@ -622,7 +614,7 @@ const OrdersPage = () => {
   // pedido. Se permite sólo hacia estados que ese rol puede fijar (mismo
   // criterio que los botones de estado del detalle) y sólo en producción: el
   // circuito de Diseño se avanza con sus propias acciones de autorización.
-  const myStageIds = useMemo(() => statusIdsForRoles(roles), [roles]);
+  const myStageIds = useMemo(() => statusIdsFor({ roles, areas: myAreas }), [roles, myAreas]);
   const canMoveOrder = useCallback(
     (order: Order, statusId: number) => {
       if (effectiveProductionStatusId(order, viewerAreas) === statusId) return false;
@@ -645,11 +637,8 @@ const OrdersPage = () => {
   // ambos porque siguen todo el circuito.
   // La sucursal sigue sus pedidos de punta a punta: ve ambos tableros, de sólo
   // lectura (no mueve nada: `canMoveOrder` no le deja ningún destino).
-  const worksInDesign = canManageOperations || isBranch || roles.includes("diseno");
-  const worksInProduction =
-    canManageOperations ||
-    isBranch ||
-    roles.some((r) => PRODUCTION_ROLES.includes(r));
+  const worksInDesign = canManageOperations || isBranch || myAreas.includes(DESIGN_AREA);
+  const worksInProduction = canManageOperations || isBranch || viewerAreas.length > 0;
   // Si un pedido en diseño llegó igual (ej. rol mixto mal configurado), el
   // tablero se muestra antes que esconder trabajo. El de producción, en cambio,
   // se muestra sólo a quien produce: desde que un pedido queda "autorizado"
@@ -679,11 +668,11 @@ const OrdersPage = () => {
     () =>
       isBranch
         ? { title: "Mis pedidos", description: "Los pedidos que levantó tu sucursal." }
-        : ordersScreenCopy(roles, {
+        : ordersScreenCopy({ roles, areas: myAreas }, {
             canManageOperations,
             pendingCount: canManageOperations ? undefined : pendingCount,
           }),
-    [roles, canManageOperations, pendingCount, isBranch]
+    [roles, myAreas, canManageOperations, pendingCount, isBranch]
   );
 
   const loading = isPending || isSessionLoading;

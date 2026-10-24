@@ -18,7 +18,7 @@ import { HandoffStages } from "@/components/orders/OrderHandoff";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePendingSync } from "@/hooks/usePendingSync";
 import { useForceFinishOrder, useMoveOrderStatus } from "@/hooks/useOrders";
-import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { getAreaLabel, productionAreasOf } from "@/lib/areas";
 import { buildOrderHandoff } from "@/lib/orderHandoff";
 import {
   getOrderNextAction,
@@ -62,10 +62,10 @@ export function OrderProgressPanel({
 
   const moveActor = useMemo(
     () => ({
-      areas: viewer.roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
+      areas: productionAreasOf(viewer.areas),
       isManager: viewer.canManageOperations,
     }),
-    [viewer.roles, viewer.canManageOperations]
+    [viewer.areas, viewer.canManageOperations]
   );
   const { move, isMoving } = useMoveOrderStatus(moveActor);
   const { forceFinish, isForcing } = useForceFinishOrder();

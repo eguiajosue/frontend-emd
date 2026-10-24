@@ -4,6 +4,7 @@ import {
   isOrderInDesignStatus,
 } from "./orderStatus";
 import type { Order } from "@emd/types";
+import { DESIGN_AREA } from "./areas";
 
 /**
  * Áreas que hay que mostrar como etiqueta en la tarjeta de un pedido.
@@ -26,7 +27,7 @@ export function orderAreaTags(order: Order): string[] {
 
   // En diseño (montaje, espera de autorización, cambios): el pedido es de
   // Diseño, aunque el destino de producción ya esté elegido.
-  if (isDesignFlowStatusName(statusName) && !authorized) return ["diseno"];
+  if (isDesignFlowStatusName(statusName) && !authorized) return [DESIGN_AREA];
 
   const taskAreas = (order.areaTasks ?? []).map((task) => task.area);
   if (taskAreas.length > 0) return [...new Set(taskAreas)];

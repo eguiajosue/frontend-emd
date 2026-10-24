@@ -21,8 +21,8 @@ const KIND_LABEL: Record<HomeKind, string> = { reception: "Recepción", design: 
  * Diseño y en un área de producción elige cuál ver (se recuerda).
  */
 export default function InicioPage() {
-  const { roles, session, isSessionLoading } = usePermissions();
-  const kinds = homeKindsFor(roles);
+  const { roles, areas, session, isSessionLoading } = usePermissions();
+  const kinds = homeKindsFor({ roles, areas });
   const [chosen, setChosen] = useState<HomeKind | null>(null);
 
   useEffect(() => {
@@ -88,5 +88,5 @@ export default function InicioPage() {
 
   if (active === "reception") return <ReceptionHome firstName={firstName} switcher={switcher} />;
   if (active === "design") return <DesignHome firstName={firstName} switcher={switcher} />;
-  return <ProductionHome firstName={firstName} roles={roles} switcher={switcher} />;
+  return <ProductionHome firstName={firstName} areas={areas} switcher={switcher} />;
 }

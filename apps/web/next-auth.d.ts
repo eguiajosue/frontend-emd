@@ -10,6 +10,8 @@ declare module "next-auth" {
       first_name: string;
       last_name: string;
       roles: string[];
+      /** Slugs de las áreas en las que trabaja (separadas de los roles). */
+      areas: string[];
     } & DefaultSession["user"];
     /** Presente ("RefreshAccessTokenError") si el refresh del access token falló. */
     error?: string;
@@ -23,6 +25,7 @@ declare module "next-auth" {
     first_name: string;
     last_name: string;
     roles: string[];
+    areas?: string[];
   }
 }
 
@@ -36,6 +39,7 @@ declare module "next-auth/jwt" {
     first_name?: string;
     last_name?: string;
     roles?: string[];
+    areas?: string[];
     error?: string;
   }
 }

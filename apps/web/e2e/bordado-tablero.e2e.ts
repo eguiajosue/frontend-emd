@@ -50,24 +50,24 @@ test("1 · Tareas asignadas: cuatro columnas y cada tarjeta en su etapa", async 
   await expect(columna(page, "En pruebas").getByRole("button", { name: /Empezar/ })).toHaveCount(0);
 });
 
-test("2 · el flujo completo: mandar a pruebas, aprobar, rechazar y empezar", async ({ page }) => {
+test("2 · el flujo completo: pasar de etapa, aprobar, rechazar y empezar", async ({ page }) => {
   await page.goto("/dashboard/tareas");
 
   // Digitalizado → En pruebas (con notas).
-  await tarjeta(page, 109).getByRole("button", { name: "Mandar a pruebas" }).click();
+  await tarjeta(page, 109).getByRole("button", { name: "Pasar a «En pruebas»" }).click();
   await page.getByLabel("Observaciones").fill("Puntada satín, 7 cm");
-  await page.getByRole("dialog").getByRole("button", { name: "Mandar a pruebas" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Pasar a «En pruebas»" }).click();
   await expect(columna(page, "En pruebas").getByRole("article").filter({ hasText: "#109" })).toBeVisible();
   await expect(columna(page, "Digitalizado").getByRole("article").filter({ hasText: "#109" })).toHaveCount(0);
 
   // En pruebas → En producción (aprobada).
   await tarjeta(page, 108).getByRole("button", { name: "Aprobar" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Aprobar prueba" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Aprobar", exact: true }).click();
   await expect(columna(page, "En producción").getByRole("article").filter({ hasText: "#108" })).toBeVisible();
 
   // Rechazar pide el motivo y devuelve la tarjeta a Digitalizado con el aviso.
   await tarjeta(page, 109).getByRole("button", { name: "Rechazar" }).click();
-  const confirmar = page.getByRole("dialog").getByRole("button", { name: "Rechazar prueba" });
+  const confirmar = page.getByRole("dialog").getByRole("button", { name: "Rechazar", exact: true });
   await expect(confirmar).toBeDisabled();
   await page.getByLabel("Observaciones").fill("Se ve corrida");
   await confirmar.click();
@@ -94,6 +94,6 @@ test("3 · Modo TV: las mismas cuatro columnas y los botones de etapa", async ({
   await expect(col("En producción").getByRole("article", { name: /Pedido #105/ })).toBeVisible();
 
   await col("En pruebas").getByRole("button", { name: "Aprobar" }).click();
-  await page.getByRole("dialog", { name: "Aprobar la prueba" }).getByRole("button", { name: "Aprobar prueba" }).click();
+  await page.getByRole("dialog", { name: "Aprobar «En pruebas»" }).getByRole("button", { name: "Aprobar", exact: true }).click();
   await expect(col("En producción").getByRole("article", { name: /Pedido #108/ })).toBeVisible({ timeout: 15_000 });
 });

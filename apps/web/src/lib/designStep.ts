@@ -1,5 +1,6 @@
 import { DESIGN_FLOW_STATUS_NAMES, isDesignFlowStatusName } from "@/lib/orderStatus";
 import type { Order } from "@/types";
+import { DESIGN_AREA } from "@/lib/areas";
 
 export interface DesignStep {
   /** Texto corto para la tarjeta: quién tiene el pedido ahora. */
@@ -17,11 +18,11 @@ export interface DesignStep {
  */
 export function getDesignStep(
   order: Pick<Order, "requiresDesign" | "status" | "designStartedAt" | "designStartedByName">,
-  viewer: { roles: string[]; isAdmin: boolean }
+  viewer: { roles: string[]; areas: string[]; isAdmin: boolean }
 ): DesignStep | null {
   const name = (order.status?.name ?? "").toLowerCase();
   if (!order.requiresDesign || !isDesignFlowStatusName(name)) return null;
-  const isDesigner = viewer.roles.includes("diseno");
+  const isDesigner = viewer.areas.includes(DESIGN_AREA);
   const isReception = viewer.isAdmin || viewer.roles.includes("recepcion");
 
   if (name === DESIGN_FLOW_STATUS_NAMES.CAMBIOS_SOLICITADOS) {

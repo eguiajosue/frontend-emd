@@ -23,16 +23,17 @@ import {
   type OrderDetailViewer,
 } from "@/lib/orderDetail";
 import type { Order } from "@/types";
+import { DESIGN_AREA } from "@/lib/areas";
 
 /** Quién mira el pedido y qué puede hacer con él. */
 export function useOrderDetailAccess(order: Order | undefined): {
   viewer: OrderDetailViewer;
   permissions: OrderDetailPermissions | null;
 } {
-  const { roles, isAdmin, canManageOperations } = usePermissions();
+  const { roles, areas, isAdmin, canManageOperations } = usePermissions();
   const viewer = useMemo(
-    () => ({ roles, isAdmin, canManageOperations }),
-    [roles, isAdmin, canManageOperations]
+    () => ({ roles, areas, isAdmin, canManageOperations }),
+    [roles, areas, isAdmin, canManageOperations]
   );
   const permissions = useMemo(
     () => (order ? getOrderDetailPermissions(order, viewer) : null),
@@ -75,9 +76,9 @@ export function OrderDetailBody({
   const handoff = buildOrderHandoff(order, tasks);
   const stage = handoff.current.key;
 
-  const isBranchViewer = isBranchOnly(viewer.roles);
+  const isBranchViewer = isBranchOnly(viewer);
   const isManager = permissions.canEdit;
-  const isDesigner = !isManager && viewer.roles.includes("diseno");
+  const isDesigner = !isManager && viewer.areas.includes(DESIGN_AREA);
 
   const goToSection = useCallback((section: OrderDetailSectionTarget) => {
     document

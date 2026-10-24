@@ -10,7 +10,8 @@ import { OrderJobCard, TONE_META } from "@/components/orders/OrderJobCard";
 import { OrderJumpDialog, OrderShortcutHints, OrderShortcutsDialog } from "@/components/orders/OrderShortcuts";
 import { useOrderKeyboardNav } from "@/hooks/useOrderKeyboardNav";
 import { useNow } from "@/hooks/useNow";
-import { AREA_OPTIONS, getAreaIcon } from "@/lib/areas";
+import { getAreaIcon } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import {
   compareByUrgency,
   getDeadlineState,
@@ -260,6 +261,7 @@ function OrdersTvWall({
   onRefresh?: () => void;
   onClose: () => void;
 }) {
+  const areaOptions = useAreaOptions();
   const [tone, setTone] = useState<DeadlineTone | null>(null);
   const [area, setArea] = useState<string | null>(null);
   const [accent, setAccent] = useState<string | undefined>();
@@ -280,7 +282,7 @@ function OrdersTvWall({
 
   // Pedidos entregados/cancelados no son trabajo en curso: no van a la tele.
   const live = entries.filter((e) => e.state.tone !== "delivered" && e.state.tone !== "cancelled");
-  const presentAreas = AREA_OPTIONS.filter((a) => live.some((e) => getOrderAreas(e.order).includes(a.value)));
+  const presentAreas = areaOptions.filter((a) => live.some((e) => getOrderAreas(e.order).includes(a.value)));
   const shown = live.filter(
     (e) => (!tone || e.state.tone === tone) && (!area || getOrderAreas(e.order).includes(area))
   );

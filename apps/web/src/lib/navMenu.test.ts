@@ -8,7 +8,7 @@ import {
   buildMenuItems,
   isBranchAllowedPath,
   findActiveNavUrl,
-  homePathForRoles,
+  homePathFor,
   OPERATIONAL_MENU,
   isNavItemVisible,
   pageTitleFromBreadcrumbs,
@@ -36,15 +36,15 @@ describe("findActiveNavUrl", () => {
   });
 });
 
-describe("homePathForRoles", () => {
+describe("homePathFor", () => {
   it("admin y superuser al panel; Recepción, Diseño y Producción a su Inicio en vivo", () => {
-    expect(homePathForRoles(["admin"])).toBe("/dashboard/admin");
-    expect(homePathForRoles(["superuser"])).toBe("/dashboard/admin");
-    expect(homePathForRoles(["recepcion"])).toBe("/dashboard/inicio");
-    expect(homePathForRoles(["bordado"])).toBe("/dashboard/inicio");
-    expect(homePathForRoles(["diseno", "taller"])).toBe("/dashboard/inicio");
-    expect(homePathForRoles(["recepcion", "taller"])).toBe("/dashboard/inicio");
-    expect(homePathForRoles([])).toBe("/dashboard/orders");
+    expect(homePathFor({ roles: ["admin"], areas: [] })).toBe("/dashboard/admin");
+    expect(homePathFor({ roles: ["superuser"], areas: [] })).toBe("/dashboard/admin");
+    expect(homePathFor({ roles: ["recepcion"], areas: [] })).toBe("/dashboard/inicio");
+    expect(homePathFor({ roles: [], areas: ["bordado"] })).toBe("/dashboard/inicio");
+    expect(homePathFor({ roles: [], areas: ["diseno", "taller"] })).toBe("/dashboard/inicio");
+    expect(homePathFor({ roles: ["recepcion"], areas: ["taller"] })).toBe("/dashboard/inicio");
+    expect(homePathFor({ roles: [], areas: [] })).toBe("/dashboard/orders");
   });
 
   it("Inicio está en el menú de todos los roles", () => {
@@ -63,12 +63,12 @@ describe("menú de Diseño y Producción", () => {
     const items = buildMenuItems().flatMap((g) => g.items);
     const pedidos = items.find((i) => i.url === "/dashboard/orders")!;
     const tareas = items.find((i) => i.url === "/dashboard/tareas")!;
-    expect(isNavItemVisible(pedidos, ["taller"], false)).toBe(false);
-    expect(isNavItemVisible(pedidos, ["recepcion"], false)).toBe(true);
-    expect(isNavItemVisible(tareas, ["recepcion"], false)).toBe(false);
-    expect(isNavItemVisible(tareas, ["recepcion", "taller"], false)).toBe(true);
+    expect(isNavItemVisible(pedidos, { roles: [], areas: ["taller"] }, false)).toBe(false);
+    expect(isNavItemVisible(pedidos, { roles: ["recepcion"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(tareas, { roles: ["recepcion"], areas: [] }, false)).toBe(false);
+    expect(isNavItemVisible(tareas, { roles: ["recepcion"], areas: ["taller"] }, false)).toBe(true);
     // Admin ve todo el menú, pero no tiene bandeja propia.
-    expect(isNavItemVisible(tareas, ["admin"], false)).toBe(false);
+    expect(isNavItemVisible(tareas, { roles: ["admin"], areas: [] }, false)).toBe(false);
   });
 });
 
@@ -81,7 +81,7 @@ describe("buildMenuItems", () => {
 
   it("recepción no ve ningún ítem de Administración (el grupo queda vacío y se oculta)", () => {
     const admin = buildMenuItems().find((g) => g.groupLabel === "Administración")!;
-    expect(admin.items.filter((i) => isNavItemVisible(i, ["recepcion"], false))).toHaveLength(0);
+    expect(admin.items.filter((i) => isNavItemVisible(i, { roles: ["recepcion"], areas: [] }, false))).toHaveLength(0);
   });
 });
 
@@ -97,21 +97,21 @@ describe("Mockups", () => {
   });
 
   it("lo ven Recepción, administración y Diseño; Producción no", () => {
-    expect(isNavItemVisible(mockups, ["recepcion"], false)).toBe(true);
-    expect(isNavItemVisible(mockups, ["admin"], false)).toBe(true);
-    expect(isNavItemVisible(mockups, ["superuser"], false)).toBe(true);
-    expect(isNavItemVisible(mockups, ["diseno"], false)).toBe(true);
-    for (const role of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
-      expect(isNavItemVisible(mockups, [role], false)).toBe(false);
+    expect(isNavItemVisible(mockups, { roles: ["recepcion"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(mockups, { roles: ["admin"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(mockups, { roles: ["superuser"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(mockups, { roles: [], areas: ["diseno"] }, false)).toBe(true);
+    for (const area of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
+      expect(isNavItemVisible(mockups, { roles: [], areas: [area] }, false)).toBe(false);
     }
   });
 
   it("en el menú operativo sólo lo ve Diseño (no el resto de Producción)", () => {
     const operativo = OPERATIONAL_MENU.flatMap((g) => g.items).find((i) => i.url === "/dashboard/mockups")!;
     expect(operativo.title).toBe("Mockups");
-    expect(isNavItemVisible(operativo, ["diseno"], true)).toBe(true);
-    for (const role of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
-      expect(isNavItemVisible(operativo, [role], true)).toBe(false);
+    expect(isNavItemVisible(operativo, { roles: [], areas: ["diseno"] }, true)).toBe(true);
+    for (const area of ["taller", "dtf", "bordado", "laser", "impresiones"]) {
+      expect(isNavItemVisible(operativo, { roles: [], areas: [area] }, true)).toBe(false);
     }
   });
 
@@ -129,9 +129,9 @@ describe("Cotizaciones", () => {
     expect(QUOTES_URL).toBe("/dashboard/cotizaciones");
     expect(quotes.title).toBe("Cotizaciones");
     expect(urls.indexOf(QUOTES_URL)).toBe(urls.indexOf("/dashboard/mockups") + 1);
-    expect(isNavItemVisible(quotes, ["recepcion"], false)).toBe(true);
-    expect(isNavItemVisible(quotes, ["superuser"], false)).toBe(true);
-    expect(isNavItemVisible(quotes, ["diseno"], false)).toBe(false);
+    expect(isNavItemVisible(quotes, { roles: ["recepcion"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(quotes, { roles: ["superuser"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(quotes, { roles: [], areas: ["diseno"] }, false)).toBe(false);
     expect(buildBreadcrumbs(buildMenuItems(), QUOTES_URL)).toEqual([{ label: "Operación" }, { label: "Cotizaciones" }]);
   });
 });
@@ -199,7 +199,7 @@ describe("cuenta de sucursal (Punto Madero)", () => {
   it("el menú completo no la deja ver nada de gestión (cada ítem exige otros roles)", () => {
     const visible = buildMenuItems()
       .flatMap((g) => g.items)
-      .filter((item) => isNavItemVisible(item, ["sucursal"], false))
+      .filter((item) => isNavItemVisible(item, { roles: ["sucursal"], areas: [] }, false))
       .map((item) => item.title);
     expect(visible).not.toContain("Pedidos");
     expect(visible).not.toContain("Clientes");
@@ -232,6 +232,26 @@ describe("cuenta de sucursal (Punto Madero)", () => {
   });
 
   it("entra directo a Mis pedidos", () => {
-    expect(homePathForRoles(["sucursal"])).toBe("/dashboard/orders");
+    expect(homePathFor({ roles: ["sucursal"], areas: [] })).toBe("/dashboard/orders");
+  });
+});
+
+describe("menú: Áreas", () => {
+  const areasItem = () =>
+    buildMenuItems()
+      .flatMap((g) => g.items)
+      .find((i) => i.url === "/dashboard/areas")!;
+
+  it("sólo administración la ve, dentro de Administración", () => {
+    const group = buildMenuItems().find((g) => g.items.some((i) => i.url === "/dashboard/areas"));
+    expect(group?.groupLabel).toBe("Administración");
+    expect(isNavItemVisible(areasItem(), { roles: ["admin"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(areasItem(), { roles: ["superuser"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(areasItem(), { roles: ["recepcion"], areas: [] }, false)).toBe(false);
+    expect(isNavItemVisible(areasItem(), { roles: [], areas: ["taller"] }, false)).toBe(false);
+  });
+
+  it("las migas la nombran", () => {
+    expect(buildBreadcrumbs(buildMenuItems(), "/dashboard/areas").map((c) => c.label)).toEqual(["Administración", "Áreas"]);
   });
 });

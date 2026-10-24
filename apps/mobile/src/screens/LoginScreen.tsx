@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { normalizeSessionAccess } from '@emd/business';
 import { request, getErrorMessage } from '@emd/api-client';
 import type { StoredSession } from '../lib/session';
 
@@ -18,6 +19,7 @@ interface LoginResponse {
   id: number;
   username: string;
   roles: string[];
+  areas?: string[];
 }
 
 export function LoginScreen({
@@ -39,7 +41,7 @@ export function LoginScreen({
         method: 'POST',
         body: { username, password },
       });
-      onLoggedIn({ token: res.token, roles: res.roles });
+      onLoggedIn({ token: res.token, ...normalizeSessionAccess(res) });
     } catch (err) {
       setError(getErrorMessage(err, 'No se pudo iniciar sesión.'));
     } finally {

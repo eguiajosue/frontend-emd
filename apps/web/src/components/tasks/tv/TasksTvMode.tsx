@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, Clock3, Inbox, Package, Sun, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { EMBROIDERY_COLUMN_ICON } from "@/components/tasks/EmbroideryBoard";
-import { PRODUCTION_AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
-import {
-  buildEmbroideryBoard,
-  canMoveEmbroideryPrep,
-  EMBROIDERY_COLUMNS,
-  EMBROIDERY_AREA,
-  isEmbroideryView,
-} from "@/lib/embroideryBoard";
+import { STAGE_COLUMN_ICON } from "@/components/tasks/StageBoard";
+import { getAreaIcon, getAreaLabel, isDesignArea, productionAreaSlugs } from "@/lib/areas";
+import { buildStageBoard, canMoveStages, stageBoardArea, stageColumns } from "@/lib/stageBoard";
 import { isReturnedDesign, taskDeadline } from "@/lib/myTasks";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 import {
@@ -124,10 +118,11 @@ interface TasksTvModeProps {
  * entra como un paquete que cae y se abre.
  */
 export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
-  const { roles, session } = usePermissions();
+  const { roles, areas: myAreas, session } = usePermissions();
+  const access = useMemo(() => ({ roles, areas: myAreas }), [roles, myAreas]);
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const { tasks: myTasks, isLoading, isError, refetch } = useMyTasks();
-  const { areaTasks, isLoading: areaLoading, refetch: refetchArea } = useAreaBoardTasks(roles);
+  const { areaTasks, isLoading: areaLoading, refetch: refetchArea } = useAreaBoardTasks(access);
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
   const now = useNow(30_000);
@@ -146,7 +141,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
     () => [...fullBoard.pendiente, ...fullBoard.en_proceso, ...fullBoard.terminado],
     [fullBoard]
   );
-  const areas = useMemo(() => tvBoardAreas(allTasks, roles), [allTasks, roles]);
+  const areas = useMemo(() => tvBoardAreas(allTasks, myAreas), [allTasks, myAreas]);
   const activeArea = area && areas.includes(area) ? area : null;
   const board = useMemo<TvBoard>(
     () =>
@@ -159,30 +154,28 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         : fullBoard,
     [fullBoard, activeArea]
   );
-  // Bordado se ve en cuatro columnas (Digitalizado → En pruebas → En
-  // producción → Terminado) cuando es lo único que se está viendo.
-  const productionRoles = useMemo(
-    () => roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
-    [roles]
-  );
-  const embroideryView = isEmbroideryView(activeArea, productionRoles, roles);
+  // Un área con etapas (en Bordado: Digitalizado → En pruebas → En producción
+  // → Terminado) se ve por etapas cuando es lo único que se está viendo.
+  const stageArea = stageBoardArea(activeArea, access);
+  const stageView = stageArea !== null;
   const columns = useMemo(() => {
-    if (!embroideryView) {
+    if (!stageArea) {
       return TV_COLUMNS.map((c) => ({ ...c, hint: null as string | null, Icon: COLUMN_ICON[c.id], list: board[c.id] }));
     }
-    const eb = buildEmbroideryBoard(
-      [...board.pendiente, ...board.en_proceso, ...board.terminado].filter((t) => t.area === EMBROIDERY_AREA),
+    const stageBoard = buildStageBoard(
+      stageArea,
+      [...board.pendiente, ...board.en_proceso, ...board.terminado],
       now
     );
-    return EMBROIDERY_COLUMNS.map((c) => ({
+    return stageColumns(stageArea).map((c) => ({
       id: c.id,
       label: c.label,
-      hint: c.id === "terminado" ? "últimas 12 h" : null,
-      Icon: EMBROIDERY_COLUMN_ICON[c.id],
-      list: eb[c.id],
+      hint: c.kind === "done" ? "últimas 12 h" : null,
+      Icon: STAGE_COLUMN_ICON[c.kind],
+      list: stageBoard[c.id] ?? [],
     }));
-  }, [embroideryView, board, now]);
-  const canMovePrep = canMoveEmbroideryPrep(roles);
+  }, [stageArea, board, now]);
+  const canMovePrep = canMoveStages(access);
   const boardRef = useRef(fullBoard);
   boardRef.current = fullBoard;
 
@@ -363,7 +356,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             : k === "at_risk"
               ? new Date(t + 20 * 3600_000).toISOString()
               : new Date(t + 5 * 24 * 3600_000).toISOString();
-        const taskArea = activeArea ?? areas.find((a) => a !== "diseno") ?? areas[0] ?? roles[0] ?? "taller";
+        const taskArea = activeArea ?? areas.find((a) => !isDesignArea(a)) ?? areas[0] ?? myAreas[0] ?? productionAreaSlugs()[0] ?? "taller";
         const clients = ["Colegio Miraflores", "Taller Ruiz", "Club Deportivo Norte", "Hotel Las Palmas", "Café Central"];
         const task: TvTask = {
           key: `demo-${orderId}`,
@@ -407,7 +400,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
       setDemoTasks((prev) => [...prev, ...made.map((m) => m.task)]);
       setQueue((q) => made.reduce((acc, m) => enqueueArrival(acc, m.arrival), q));
     },
-    [activeArea, areas, roles, demoBranch]
+    [activeArea, areas, myAreas, demoBranch]
   );
 
   useEffect(() => {
@@ -464,7 +457,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
 
   const loading = (isLoading || areaLoading) && allTasks.length === 0;
   const { data: scoreboard } = useAreaScoreboard(activeArea);
-  const areaTitle = activeArea ? getAreaLabel(activeArea) : areas.filter((a) => roles.includes(a)).map(getAreaLabel).join(" · ");
+  const areaTitle = activeArea ? getAreaLabel(activeArea) : areas.filter((a) => myAreas.includes(a)).map(getAreaLabel).join(" · ");
 
   return (
     // Siempre oscuro, como el muro de pedidos: se mira de lejos y con luz de taller.
@@ -596,8 +589,9 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
               <div
                 className={cn(
                   "grid min-h-0 flex-1 grid-cols-1 gap-5",
-                  embroideryView ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"
+                  stageView ? "md:grid-cols-2 xl:[grid-template-columns:repeat(var(--stage-columns),minmax(0,1fr))]" : "md:grid-cols-3"
                 )}
+                style={stageView ? ({ "--stage-columns": columns.length } as CSSProperties) : undefined}
               >
                 {columns.map((column) => {
                   const Icon = column.Icon;
@@ -614,9 +608,9 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
                       >
                         <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />
                         {column.label}
-                        {(embroideryView ? column.hint : column.id === "terminado" ? "últimas 12 h" : null) && (
+                        {(stageView ? column.hint : column.id === "terminado" ? "últimas 12 h" : null) && (
                           <span className="text-base font-normal text-muted-foreground">
-                            {embroideryView ? column.hint : "últimas 12 h"}
+                            {stageView ? column.hint : "últimas 12 h"}
                           </span>
                         )}
                         <span className="ml-auto rounded-full bg-card px-3 py-0.5 text-xl tabular-nums text-muted-foreground">

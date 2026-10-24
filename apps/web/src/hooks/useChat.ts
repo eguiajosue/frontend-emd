@@ -38,7 +38,7 @@ export function useChatConversations() {
   const token = useAuthToken();
   // La cuenta de sucursal no tiene Chat: no se le pide (daría 403).
   const { data: session } = useSession();
-  const isBranch = isBranchOnly(session?.user?.roles);
+  const isBranch = isBranchOnly({ roles: session?.user?.roles ?? [], areas: session?.user?.areas ?? [] });
 
   const query = useQuery<ChatConversation[]>({
     queryKey: chatQueryKeys.conversations(),

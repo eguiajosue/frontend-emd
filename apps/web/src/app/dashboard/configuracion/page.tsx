@@ -51,21 +51,16 @@ import {
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/push";
+import { getAreaLabel } from "@/lib/areas";
 
-/** Roles operativos de producción, con su etiqueta legible. */
-const OPERATIONAL_ROLE_LABELS: { role: string; label: string }[] = [
-  { role: "taller", label: "Taller" },
-  { role: "dtf", label: "DTF" },
-  { role: "bordado", label: "Bordado" },
-  { role: "diseno", label: "Diseño" },
-  { role: "laser", label: "Láser" },
-  { role: "impresiones", label: "Impresiones" },
-];
-
+/** Fila de `GET /area-visibility`: `role` es el slug del área (ver `Area`). */
 interface AreaVisibility {
   role: string;
   generalViewEnabled: boolean;
 }
+
+/** Filas de esqueleto mientras carga la visibilidad por área. */
+const AREA_VISIBILITY_SKELETON_ROWS = 6;
 
 const THEME_OPTIONS = [
   { id: "light", label: "Claro", icon: Sun },
@@ -571,15 +566,13 @@ function AreaVisibilitySection() {
   );
   const [savingRole, setSavingRole] = useState<string | null>(null);
 
-  const rowsByRole = new Map(rows.map((r) => [r.role, r]));
-
   const handleToggle = async (role: string, next: boolean) => {
     setSavingRole(role);
     try {
       await update(role, { generalViewEnabled: next });
       playSuccessSound();
       toast.success(
-        `Visibilidad de "${OPERATIONAL_ROLE_LABELS.find((r) => r.role === role)?.label ?? role}" actualizada.`
+        `Visibilidad de "${getAreaLabel(role)}" actualizada.`
       );
     } catch (error) {
       toast.error(getErrorMessage(error, "No se pudo actualizar la visibilidad del área."));
@@ -602,8 +595,8 @@ function AreaVisibilitySection() {
       <CardContent>
         {isPending ? (
           <div className="space-y-3">
-            {OPERATIONAL_ROLE_LABELS.map((r) => (
-              <Skeleton key={r.role} className="h-10 w-full" />
+            {Array.from({ length: AREA_VISIBILITY_SKELETON_ROWS }, (_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
         ) : isError ? (
@@ -612,12 +605,10 @@ function AreaVisibilitySection() {
           </p>
         ) : (
           <div className="divide-y divide-border/60">
-            {OPERATIONAL_ROLE_LABELS.map(({ role, label }) => {
-              const row = rowsByRole.get(role);
-              const enabled = row?.generalViewEnabled ?? true;
+            {rows.map(({ role, generalViewEnabled: enabled }) => {
               return (
                 <div key={role} className="flex items-center justify-between py-3">
-                  <Label htmlFor={`area-visibility-${role}`}>{label}</Label>
+                  <Label htmlFor={`area-visibility-${role}`}>{getAreaLabel(role)}</Label>
                   <Switch
                     id={`area-visibility-${role}`}
                     checked={enabled}

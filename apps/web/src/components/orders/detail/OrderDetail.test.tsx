@@ -38,8 +38,8 @@ const order = (statusId: number, name: string, extra: Partial<Order> = {}): Orde
     ...extra,
   }) as unknown as Order;
 
-const recepcion: OrderDetailViewer = { roles: ["recepcion"], isAdmin: false, canManageOperations: true };
-const dtf: OrderDetailViewer = { roles: ["dtf"], isAdmin: false, canManageOperations: false };
+const recepcion: OrderDetailViewer = { roles: ["recepcion"], areas: [], isAdmin: false, canManageOperations: true };
+const dtf: OrderDetailViewer = { roles: [], areas: ["dtf"], isAdmin: false, canManageOperations: false };
 
 function renderPanel(o: Order, viewer: OrderDetailViewer, onGoToSection = vi.fn()) {
   render(

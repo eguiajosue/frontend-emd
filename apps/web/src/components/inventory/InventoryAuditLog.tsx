@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ErrorState, TableSkeleton } from "@/components/feedback/states";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useInventoryMovements } from "@/hooks/useInventory";
-import { INVENTORY_AREA_OPTIONS } from "@/lib/inventory";
+import { inventoryAreaLabel } from "@/lib/inventory";
 import type { InventoryArea, InventoryMovementType } from "@/types";
 import { InventoryMovementsList } from "./InventoryMovementsList";
 
@@ -54,9 +54,9 @@ export function InventoryAuditLog({ areas }: { areas: InventoryArea[] }) {
       <div className="flex flex-wrap items-center gap-2">
         <select aria-label="Departamento" className={SELECT} value={area} onChange={(e) => setArea(e.target.value as InventoryArea | "")}>
           <option value="">Todos los departamentos</option>
-          {INVENTORY_AREA_OPTIONS.filter((o) => areas.includes(o.value)).map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          {areas.map((slug) => (
+            <option key={slug} value={slug}>
+              {inventoryAreaLabel(slug)}
             </option>
           ))}
         </select>

@@ -1,6 +1,6 @@
+import type { SessionAccess } from "@emd/business/src/areas";
 import { isAdminRole } from "@/lib/roleTaskMapping";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
-import { formatRoleList } from "@/lib/roles";
+import { formatAreaList, productionAreasOf } from "@/lib/areas";
 
 /**
  * Cómo se llama la pantalla de pedidos según quién la mira.
@@ -18,15 +18,13 @@ export interface OrdersScreenCopy {
   description: string;
 }
 
-/** Áreas de producción propias del usuario (vacío para recepción/admin). */
-export function ownProductionAreas(roles: string[]): string[] {
-  return roles.filter((role) =>
-    PRODUCTION_AREA_OPTIONS.some((area) => area.value === role),
-  );
+/** Áreas de producción propias del usuario (vacío para recepción/admin sin áreas). */
+export function ownProductionAreas(areas: string[]): string[] {
+  return productionAreasOf(areas);
 }
 
 export function ordersScreenCopy(
-  roles: string[],
+  { roles, areas }: SessionAccess,
   options: { canManageOperations: boolean; pendingCount?: number } = {
     canManageOperations: false,
   },
@@ -41,19 +39,19 @@ export function ordersScreenCopy(
   const pending = options.pendingCount;
   const description =
     pending === undefined
-      ? `El trabajo asignado a tu área: ${formatRoleList(roles)}.`
+      ? `El trabajo asignado a tu área: ${formatAreaList(areas)}.`
       : pending === 0
         ? "Sin pendientes por ahora."
         : `${pending} pendiente${pending === 1 ? "" : "s"} en tu${
-            roles.length > 1 ? "s áreas" : " área"
-          }: ${formatRoleList(roles)}.`;
+            areas.length > 1 ? "s áreas" : " área"
+          }: ${formatAreaList(areas)}.`;
 
   return { title: "Tareas asignadas", description };
 }
 
 /** Sólo el nombre, para el menú lateral. */
-export function ordersScreenTitle(roles: string[]): string {
-  return ordersScreenCopy(roles, {
-    canManageOperations: roles.includes("recepcion"),
+export function ordersScreenTitle(access: SessionAccess): string {
+  return ordersScreenCopy(access, {
+    canManageOperations: access.roles.includes("recepcion"),
   }).title;
 }

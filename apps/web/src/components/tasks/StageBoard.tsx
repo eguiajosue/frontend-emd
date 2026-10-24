@@ -11,22 +11,25 @@ import { LayoutGroup } from "framer-motion";
 import { MovingItem } from "@/components/motion/MovingItem";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import {
-  EMBROIDERY_COLUMNS,
-  type EmbroideryBoard as Board,
-  type EmbroideryColumnId,
-} from "@/lib/embroideryBoard";
+  stageColumns,
+  type StageBoard as Board,
+  type StageColumnKind,
+} from "@/lib/stageBoard";
 import { taskDeadline } from "@/lib/myTasks";
 import type { TimeFormatPreference } from "@/lib/format";
 import type { AreaTaskStatus, MyTask } from "@/types";
 
-export const EMBROIDERY_COLUMN_ICON: Record<EmbroideryColumnId, LucideIcon> = {
-  digitalizado: PenTool,
-  en_pruebas: FlaskConical,
-  produccion: Hammer,
-  terminado: CheckCircle2,
+/** Ícono de cada tipo de columna: trabajo, revisión, producción y terminado. */
+export const STAGE_COLUMN_ICON: Record<StageColumnKind, LucideIcon> = {
+  work: PenTool,
+  review: FlaskConical,
+  production: Hammer,
+  done: CheckCircle2,
 };
 
-interface EmbroideryBoardProps {
+interface StageBoardProps {
+  /** Área del tablero (de ella salen las columnas). */
+  area: string;
   board: Board;
   now: number;
   timeFormat: TimeFormatPreference;
@@ -37,11 +40,12 @@ interface EmbroideryBoardProps {
 }
 
 /**
- * "Tareas asignadas" de Bordado en cuatro columnas (Digitalizado, En pruebas,
- * En producción, Terminado): cada tarjeta se ve en la etapa en la que está y
- * trae el botón del siguiente paso.
+ * "Tareas asignadas" de un área con etapas (en Bordado: Digitalizado, En
+ * pruebas, En producción, Terminado): cada tarjeta se ve en la etapa en la que
+ * está y trae el botón del siguiente paso.
  */
-export function EmbroideryTasksBoard({
+export function StageTasksBoard({
+  area,
   board,
   now,
   timeFormat,
@@ -49,14 +53,18 @@ export function EmbroideryTasksBoard({
   onAdvance,
   pendingKey,
   canMovePrep,
-}: EmbroideryBoardProps) {
+}: StageBoardProps) {
+  const columns = stageColumns(area);
   return (
-    <LayoutGroup id="tablero-bordado">
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {EMBROIDERY_COLUMNS.map((column) => {
-          const Icon = EMBROIDERY_COLUMN_ICON[column.id];
-          const list = board[column.id];
-          const headingId = `bordado-${column.id}`;
+    <LayoutGroup id={`tablero-${area}`}>
+      <div
+        className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:[grid-template-columns:repeat(var(--stage-columns),minmax(0,1fr))]"
+        style={{ "--stage-columns": columns.length } as React.CSSProperties}
+      >
+        {columns.map((column) => {
+          const Icon = STAGE_COLUMN_ICON[column.kind];
+          const list = board[column.id] ?? [];
+          const headingId = `${area}-${column.id.replace(":", "-")}`;
           return (
             <section
               key={column.id}
@@ -87,7 +95,7 @@ export function EmbroideryTasksBoard({
                   {list.map((task) => (
                     <MovingItem
                       key={task.key}
-                      id={`bordado-${task.key}`}
+                      id={`${area}-${task.key}`}
                       className="min-w-0"
                     >
                       <TaskCard

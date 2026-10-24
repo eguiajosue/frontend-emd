@@ -10,7 +10,7 @@ import { useAuthToken } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
 import { invalidateSupplyData } from "@/hooks/useAreaSupplies";
 import { writeOrderStatus } from "@/hooks/useOrders";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { productionAreasOf } from "@/lib/areas";
 import { AREA_TASK_STATUS_BY_ORDER_STATUS, areaTasksToMove } from "@/lib/orderMove";
 import { getOrderNextStep, type NextStepViewer, type OrderNextStep } from "@/lib/orderNextStep";
 import { statusMap } from "@/lib/orderStatus";
@@ -46,8 +46,6 @@ interface OrderStepContextValue {
 
 const OrderStepContext = createContext<OrderStepContextValue | null>(null);
 
-const PRODUCTION_ROLES = new Set<string>(PRODUCTION_AREA_OPTIONS.map((a) => a.value));
-
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError && error.message ? error.message : fallback;
 }
@@ -55,15 +53,15 @@ function errorMessage(error: unknown, fallback: string) {
 export function OrderStepProvider({ children }: { children: ReactNode }) {
   const token = useAuthToken();
   const queryClient = useQueryClient();
-  const { roles, isAdmin, canManageOperations } = usePermissions();
+  const { roles, areas: myAreas, isAdmin, canManageOperations } = usePermissions();
   const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
   const [last, setLast] = useState<{ snapshot: Snapshot; at: number } | null>(null);
   const lastRef = useRef(last);
   lastRef.current = last;
 
   const viewer = useMemo<NextStepViewer>(
-    () => ({ roles, isAdmin, isManager: canManageOperations }),
-    [roles, isAdmin, canManageOperations]
+    () => ({ roles, areas: myAreas, isAdmin, isManager: canManageOperations }),
+    [roles, myAreas, isAdmin, canManageOperations]
   );
   const stepFor = useCallback((order: Order) => getOrderNextStep(order, viewer), [viewer]);
 
@@ -117,7 +115,7 @@ export function OrderStepProvider({ children }: { children: ReactNode }) {
       if (step.action?.kind !== "move") return false;
       const target = step.action.statusId;
       const areaStatus = AREA_TASK_STATUS_BY_ORDER_STATUS[target];
-      const areas = viewer.roles.filter((r) => PRODUCTION_ROLES.has(r));
+      const areas = productionAreasOf(viewer.areas);
       const tasks = areaStatus
         ? areaTasksToMove(order, { areas, isManager: viewer.isManager }).filter((t) => t.status !== areaStatus)
         : [];

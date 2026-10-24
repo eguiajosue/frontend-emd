@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/feedback/states";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { MovingItem } from "@/components/motion/MovingItem";
-import { EmbroideryTasksBoard } from "@/components/tasks/EmbroideryBoard";
+import { StageTasksBoard } from "@/components/tasks/StageBoard";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { TasksTvMode } from "@/components/tasks/tv/TasksTvMode";
 import { useAreaBoardTasks } from "@/hooks/useAreaBoardTasks";
@@ -19,16 +19,9 @@ import { useAdvanceMyTask, useMyTasks } from "@/hooks/useMyTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
-import { PRODUCTION_AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
-import {
-  buildEmbroideryBoard,
-  canMoveEmbroideryPrep,
-  isEmbroideryTask,
-  isEmbroideryView,
-  EMBROIDERY_AREA,
-} from "@/lib/embroideryBoard";
+import { formatAreaList, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { buildStageBoard, canMoveStages, stageBoardArea } from "@/lib/stageBoard";
 import { buildTvBoard } from "@/lib/tvBoard";
-import { formatRoleList } from "@/lib/roles";
 import { groupMyTasks, taskAreas, taskDeadline } from "@/lib/myTasks";
 import { cn } from "@/lib/utils";
 import type { MyTask } from "@/types";
@@ -81,7 +74,8 @@ function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: Luci
  * tomar; la gestión de pedidos completa queda en "Pedidos" (Recepción).
  */
 export default function TareasPage() {
-  const { roles, session } = usePermissions();
+  const { roles, areas: myAreas, session } = usePermissions();
+  const access = useMemo(() => ({ roles, areas: myAreas }), [roles, myAreas]);
   const { tasks, isLoading, isError, refetch } = useMyTasks();
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
@@ -99,33 +93,29 @@ export default function TareasPage() {
     clearUrlParams("tv", "demo");
   }, []);
 
-  const areas = useMemo(() => taskAreas(tasks, roles), [tasks, roles]);
+  const areas = useMemo(() => taskAreas(tasks, myAreas), [tasks, myAreas]);
   const activeArea = area !== ALL && areas.includes(area) ? area : null;
   const { mine, free } = useMemo(() => groupMyTasks(tasks, now, activeArea), [tasks, now, activeArea]);
 
-  // Bordado va en un tablero de cuatro columnas (Digitalizado → En pruebas →
-  // En producción → Terminado) cuando es lo único que se está viendo.
-  const productionRoles = useMemo(
-    () => roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
-    [roles]
-  );
-  const embroideryView = isEmbroideryView(activeArea, productionRoles, roles);
+  // Un área con etapas (en Bordado: Digitalizado → En pruebas → En producción
+  // → Terminado) va en un tablero por etapas cuando es lo único que se ve.
+  const stageArea = stageBoardArea(activeArea, access);
   const userId = session?.user?.id ? Number(session.user.id) : null;
   // Lo terminado ya no está en "mis tareas": se pide aparte (últimas horas).
-  const { areaTasks, isLoading: areaLoading } = useAreaBoardTasks(roles, embroideryView);
-  const embroideryBoard = useMemo(() => {
-    if (!embroideryView) return null;
-    const { terminado } = buildTvBoard({ myTasks: tasks, areaTasks, userId, now, area: EMBROIDERY_AREA });
-    return buildEmbroideryBoard([...tasks.filter(isEmbroideryTask), ...terminado], now);
-  }, [embroideryView, tasks, areaTasks, userId, now]);
+  const { areaTasks, isLoading: areaLoading } = useAreaBoardTasks(access, stageArea !== null);
+  const stageBoard = useMemo(() => {
+    if (!stageArea) return null;
+    const { terminado } = buildTvBoard({ myTasks: tasks, areaTasks, userId, now, area: stageArea });
+    return buildStageBoard(stageArea, [...tasks.filter((task) => task.area === stageArea), ...terminado], now);
+  }, [stageArea, tasks, areaTasks, userId, now]);
 
-  const description = embroideryView
-    ? "El camino de cada bordado: se digitaliza, se prueba y entra a producción."
+  const description = stageArea
+    ? `El camino de cada pedido en ${getAreaLabel(stageArea)}: pasa por sus etapas antes de entrar a producción.`
     : tasks.length === 0
-      ? `Tus tareas asignadas en ${formatRoleList(roles)}.`
+      ? `Tus tareas asignadas en ${formatAreaList(myAreas)}.`
       : `Tus tareas asignadas: ${mine.length} tuya${mine.length === 1 ? "" : "s"} · ${free.length} libre${
           free.length === 1 ? "" : "s"
-        } para tomar en ${formatRoleList(roles)}.`;
+        } para tomar en ${formatAreaList(myAreas)}.`;
 
   const renderList = (list: MyTask[]) => (
     <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -138,7 +128,7 @@ export default function TareasPage() {
             onOpen={setOpenOrderId}
             onAdvance={advance}
             busy={pendingKey === task.key}
-            canMovePrep={canMoveEmbroideryPrep(roles)}
+            canMovePrep={canMoveStages(access)}
           />
         </MovingItem>
       ))}
@@ -194,18 +184,19 @@ export default function TareasPage() {
           <Skeleton className="h-52 w-full rounded-2xl" />
           <Skeleton className="h-52 w-full rounded-2xl" />
         </div>
-      ) : embroideryBoard ? (
+      ) : stageBoard && stageArea ? (
         areaLoading ? (
           <Skeleton className="h-52 w-full rounded-2xl" />
         ) : (
-          <EmbroideryTasksBoard
-            board={embroideryBoard}
+          <StageTasksBoard
+            area={stageArea}
+            board={stageBoard}
             now={now}
             timeFormat={timeFormat}
             onOpen={setOpenOrderId}
             onAdvance={advance}
             pendingKey={pendingKey}
-            canMovePrep={canMoveEmbroideryPrep(roles)}
+            canMovePrep={canMoveStages(access)}
           />
         )
       ) : mine.length === 0 && free.length === 0 ? (

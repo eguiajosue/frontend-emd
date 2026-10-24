@@ -1,6 +1,6 @@
 import { addDays, format, isValid, parse } from "date-fns";
 import { es } from "date-fns/locale";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { productionAreaSlugs } from "@/lib/areas";
 
 /**
  * Lógica pura del alta de pedido (ver `CreateOrderDialog`): defaults
@@ -24,7 +24,8 @@ export interface LastOrderDefaults {
   area?: string;
 }
 
-const PRODUCTION_AREA_VALUES: readonly string[] = PRODUCTION_AREA_OPTIONS.map((a) => a.value);
+/** Áreas de producción activas del catálogo (se leen en cada uso: el catálogo puede cambiar). */
+const isProductionArea = (area: string) => productionAreaSlugs().includes(area);
 
 export function readRecentClientIds(): number[] {
   if (typeof window === "undefined") return [];
@@ -66,7 +67,7 @@ export function readLastOrderDefaults(): LastOrderDefaults | null {
     return {
       requiresDesign: parsed.requiresDesign,
       area:
-        typeof parsed.area === "string" && PRODUCTION_AREA_VALUES.includes(parsed.area)
+        typeof parsed.area === "string" && isProductionArea(parsed.area)
           ? parsed.area
           : undefined,
     };
@@ -250,7 +251,7 @@ export function buildRepeatPrefill(order: RepeatSource): RepeatPrefill {
   ];
   const areas = candidates.filter(
     (a, i): a is string =>
-      typeof a === "string" && PRODUCTION_AREA_VALUES.includes(a) && candidates.indexOf(a) === i
+      typeof a === "string" && isProductionArea(a) && candidates.indexOf(a) === i
   );
 
   return {
@@ -299,7 +300,7 @@ export interface TemplateSource {
  */
 export function buildTemplatePrefill(template: TemplateSource) {
   const areas = template.productionAreas.filter(
-    (a, i) => PRODUCTION_AREA_VALUES.includes(a) && template.productionAreas.indexOf(a) === i
+    (a, i) => isProductionArea(a) && template.productionAreas.indexOf(a) === i
   );
   return {
     requiresDesign: template.requiresDesign,

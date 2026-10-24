@@ -7,6 +7,8 @@ import type {
   DesignWorkItem,
   ProductionWorkItem,
 } from "@/types";
+import type { SessionAccess } from "@emd/business/src/areas";
+import { DESIGN_AREA, productionAreasOf } from "@/lib/areas";
 
 /**
  * Lógica pura de los Inicio (Recepción, Diseño, Producción): en qué orden se
@@ -195,12 +197,10 @@ export const HEALTH_META: Record<AreaHealth, { label: string; dot: string; text:
 /** Qué Inicio le toca a cada quien: Recepción/admin ven el control general; las áreas, el suyo. */
 export type HomeKind = "reception" | "design" | "production";
 
-const PRODUCTION_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
-
-export function homeKindsFor(roles: string[]): HomeKind[] {
+export function homeKindsFor({ roles, areas }: SessionAccess): HomeKind[] {
   if (roles.some((r) => r === "admin" || r === "superuser" || r === "recepcion")) return ["reception"];
   const kinds: HomeKind[] = [];
-  if (roles.includes("diseno")) kinds.push("design");
-  if (roles.some((r) => PRODUCTION_ROLES.includes(r))) kinds.push("production");
+  if (areas.includes(DESIGN_AREA)) kinds.push("design");
+  if (productionAreasOf(areas).length > 0) kinds.push("production");
   return kinds;
 }

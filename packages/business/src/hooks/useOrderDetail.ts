@@ -17,7 +17,7 @@ import { ENDPOINTS, queryKeys } from "../queryKeys";
  * generales, avanzar el estado) — NO el movimiento por tareas de área del
  * tablero de producción (`useMoveOrderStatus` en la Web), que sigue siendo
  * exclusivo de la Web por ahora: esa lógica está atada al tablero kanban y
- * a los roles de área, no a una pantalla de detalle.
+ * a las áreas del usuario, no a una pantalla de detalle.
  */
 
 export function useOrder(

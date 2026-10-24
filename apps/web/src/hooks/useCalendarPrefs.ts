@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AREA_OPTIONS } from "@/lib/areas";
 import type { CalendarEventCategory } from "@/types";
 
 export type CategoryFilter = "todos" | CalendarEventCategory;
-export type AreaFilter = "todas" | (typeof AREA_OPTIONS)[number]["value"];
+/** "todas" o el slug de un área (ver `Area`). */
+export type AreaFilter = "todas" | string;
 
 const CATEGORY_FILTER_KEY = "calendar-category-filter";
 const AREA_FILTER_KEY = "calendar-area-filter";
@@ -20,14 +20,15 @@ const VALID_CATEGORIES: CategoryFilter[] = [
   "otro",
 ];
 
-const VALID_AREAS: AreaFilter[] = ["todas", ...AREA_OPTIONS.map((o) => o.value)];
+/** Slug de área guardado: un área que ya no existe simplemente no filtra nada. */
+const AREA_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isCategoryFilter(value: string | null): value is CategoryFilter {
   return value !== null && (VALID_CATEGORIES as string[]).includes(value);
 }
 
 function isAreaFilter(value: string | null): value is AreaFilter {
-  return value !== null && (VALID_AREAS as string[]).includes(value);
+  return value !== null && (value === "todas" || AREA_SLUG.test(value));
 }
 
 /**

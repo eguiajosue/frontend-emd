@@ -15,6 +15,8 @@ export const ENDPOINTS = {
   roles: "roles",
   orderHistories: "order-histories",
   areaVisibility: "area-visibility",
+  // Catálogo de áreas de trabajo (nombre, ícono, color, comportamiento).
+  areas: "areas",
   orderProductPresets: "order-product-presets",
   performanceSummary: "performance/summary",
   settings: "settings",

@@ -1,6 +1,7 @@
 import {
   Package,
   UserRound,
+  Shapes,
   LayoutDashboard,
   HelpCircle,
   TrendingUp,
@@ -20,6 +21,8 @@ import {
   type LucideIcon,
   Radar,
 } from "lucide-react";
+import type { SessionAccess } from "@emd/business/src/areas";
+import { DESIGN_AREA, productionAreasOf } from "@/lib/areas";
 import { isBranchOnly } from "@/lib/roles";
 
 export const COORDINATION_URL = "/dashboard/coordinacion";
@@ -28,11 +31,18 @@ export interface NavItem {
   title: string;
   url: string;
   icon: LucideIcon;
-  /** Roles que pueden ver el ítem; ausente = visible para cualquiera. */
+  /** Roles que pueden ver el ítem; sin `roles` ni `areas` = visible para cualquiera. */
   roles?: string[];
-  /** Sólo esos roles, sin la excepción de admin (ej. una bandeja de trabajo propia). */
+  /**
+   * Además de `roles`, quién lo ve por el área en la que trabaja: `any`
+   * (cualquier área), `production` (cualquiera menos Diseño) o `design`.
+   */
+  areas?: NavAreaAccess;
+  /** Sólo esos roles/áreas, sin la excepción de admin (ej. una bandeja de trabajo propia). */
   strictRoles?: boolean;
 }
+
+export type NavAreaAccess = "any" | "production" | "design";
 
 export interface NavGroup {
   groupLabel: string;
@@ -72,27 +82,12 @@ export const BRANCH_HISTORY_URL = "/dashboard/mi-historial";
 /** Cotizaciones de Recepción: por enviar / enviadas (docs/plans/cotizaciones.md). */
 export const QUOTES_URL = "/dashboard/cotizaciones";
 
-/** Roles que ejecutan trabajo (Diseño + áreas de producción). */
-const WORK_AREA_ROLES = ["diseno", "taller", "dtf", "bordado", "laser", "impresiones"];
-
-/** Áreas de producción con acceso a SU inventario (Diseño no lleva insumos aquí). */
-const INVENTORY_AREA_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
-
-const ALL_ROLES = [
-  "admin",
-  "superuser",
-  "recepcion",
-  "taller",
-  "dtf",
-  "bordado",
-  "diseno",
-  "laser",
-  "impresiones",
-];
+/** Roles de la matriz (las áreas se piden aparte, con `areas`). */
+const STAFF_ROLES = ["admin", "superuser", "recepcion"];
 
 /**
- * Menú reducido para roles puramente operativos (dtf, bordado, diseno, laser,
- * taller, impresiones): sólo necesitan ver el estatus de sus pedidos y Ayuda,
+ * Menú reducido para quien sólo trabaja en áreas (Diseño y producción, sin
+ * rol de gestión): sólo necesitan ver el estatus de sus pedidos y Ayuda,
  * nada de métricas ni gestión editable. Fuente única para `app-sidebar.tsx`
  * (rail de escritorio) y `MobileTabBar.tsx` (barra flotante móvil), vía
  * `useVisibleNavItems`.
@@ -115,7 +110,7 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         title: "Mockups",
         url: MOCKUPS_URL,
         icon: Shirt,
-        roles: ["diseno"],
+        areas: "design",
         strictRoles: true,
       },
     ],
@@ -138,7 +133,7 @@ export const OPERATIONAL_MENU: NavGroup[] = [
         title: "Inventario",
         url: INVENTORY_URL,
         icon: Warehouse,
-        roles: INVENTORY_AREA_ROLES,
+        areas: "production",
         strictRoles: true,
       },
     ],
@@ -209,7 +204,8 @@ export function buildMenuItems(): NavGroup[] {
           title: "Mockups",
           url: MOCKUPS_URL,
           icon: Shirt,
-          roles: ["admin", "recepcion", "superuser", "diseno"],
+          roles: ["admin", "recepcion", "superuser"],
+          areas: "design",
         },
         {
           // Cotizaciones por enviar y enviadas: Recepción y administración.
@@ -224,7 +220,7 @@ export function buildMenuItems(): NavGroup[] {
           title: "Tareas asignadas",
           url: TASKS_URL,
           icon: ListChecks,
-          roles: WORK_AREA_ROLES,
+          areas: "any",
           strictRoles: true,
         },
         {
@@ -296,19 +292,22 @@ export function buildMenuItems(): NavGroup[] {
           url: "/dashboard/chat",
           icon: MessagesSquare,
           // Canales de área y DMs visibles los resuelve el backend.
-          roles: ALL_ROLES,
+          roles: STAFF_ROLES,
+          areas: "any",
         },
         {
           title: "Notificaciones",
           url: "/dashboard/notificaciones",
           icon: Bell,
-          roles: ALL_ROLES,
+          roles: STAFF_ROLES,
+          areas: "any",
         },
         {
           title: "Ayuda",
           url: "/dashboard/ayuda",
           icon: HelpCircle,
-          roles: ALL_ROLES,
+          roles: STAFF_ROLES,
+          areas: "any",
         },
       ],
     },
@@ -325,6 +324,13 @@ export function buildMenuItems(): NavGroup[] {
           title: "Usuarios",
           url: "/dashboard/usuarios",
           icon: UserRound,
+          roles: ["admin", "superuser"],
+        },
+        {
+          // Alta, edición y desactivación de áreas (wizard).
+          title: "Áreas",
+          url: "/dashboard/areas",
+          icon: Shapes,
           roles: ["admin", "superuser"],
         },
       ],
@@ -359,28 +365,40 @@ export const TAB_PRIORITY_URLS = [
   INVENTORY_URL,
   "/dashboard/calendario",
   "/dashboard/usuarios",
+  "/dashboard/areas",
   "/dashboard/ayuda",
 ];
 
 export const MAX_PRIMARY_TABS = 4;
 
+function hasNavAreaAccess(areas: string[], access: NavAreaAccess): boolean {
+  if (access === "design") return areas.includes(DESIGN_AREA);
+  if (access === "production") return productionAreasOf(areas).length > 0;
+  return areas.length > 0;
+}
+
+/** Si el ítem pide algo (roles o áreas) que la sesión tiene. */
+function matchesNavItem(item: NavItem, access: SessionAccess): boolean {
+  if (!item.roles && !item.areas) return true;
+  return (
+    (item.roles ?? []).some((r) => access.roles.includes(r)) ||
+    (item.areas !== undefined && hasNavAreaAccess(access.areas, item.areas))
+  );
+}
+
 /**
  * El menú operativo ya viene pre-filtrado (sin `roles`); el menú completo se
- * filtra por rol, con "admin" viendo todo.
+ * filtra por rol y área, con "admin" viendo todo.
  */
 export function isNavItemVisible(
   item: NavItem,
-  userRoles: string[],
+  access: SessionAccess,
   operationalOnly: boolean
 ): boolean {
-  if (item.strictRoles && item.roles) {
-    return userRoles.some((r) => item.roles!.includes(r));
+  if (item.strictRoles && (item.roles || item.areas)) {
+    return matchesNavItem(item, access);
   }
-  return (
-    operationalOnly ||
-    userRoles.includes("admin") ||
-    userRoles.some((r) => (item.roles ? item.roles.includes(r) : true))
-  );
+  return operationalOnly || access.roles.includes("admin") || matchesNavItem(item, access);
 }
 
 /**
@@ -401,10 +419,11 @@ export function findActiveNavUrl(urls: string[], pathname: string | null): strin
 }
 
 /** Inicio de cada rol: admin al panel general; Recepción, Diseño y Producción a su tablero en vivo. */
-export function homePathForRoles(roles: string[]): string {
-  if (isBranchOnly(roles)) return ORDERS_URL;
+export function homePathFor(access: SessionAccess): string {
+  const { roles, areas } = access;
+  if (isBranchOnly(access)) return ORDERS_URL;
   if (roles.includes("admin") || roles.includes("superuser")) return "/dashboard/admin";
-  if (roles.includes("recepcion") || roles.some((r) => WORK_AREA_ROLES.includes(r))) return HOME_URL;
+  if (roles.includes("recepcion") || areas.length > 0) return HOME_URL;
   return "/dashboard/orders";
 }
 

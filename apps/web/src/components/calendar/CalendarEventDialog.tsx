@@ -28,7 +28,8 @@ import { useCalendarEventMutations } from "@/hooks/useCalendarEvents";
 import { useOrders } from "@/hooks/useOrders";
 import { getErrorMessage } from "@/lib/api";
 import { CATEGORY_OPTIONS } from "./eventCategories";
-import { AREA_OPTIONS, AREA_ICONS } from "@/lib/areas";
+import { getAreaIcon } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import type { CalendarEvent, CalendarEventCategory, Client } from "@/types";
 import { CalendarClock, Loader2, MapPin, Package, Tag, Type, UserRound } from "lucide-react";
 
@@ -86,6 +87,7 @@ export function CalendarEventDialog({
   const { data: clients } = useEntityList<Client>("clients", { enabled: open });
   const { data: orders } = useOrders({ enabled: open });
   const { create, update } = useCalendarEventMutations();
+  const areaOptions = useAreaOptions();
   const isEditing = Boolean(event);
 
   const [title, setTitle] = useState("");
@@ -250,12 +252,12 @@ export function CalendarEventDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ninguna">Sin área</SelectItem>
-                {AREA_OPTIONS.map((option) => {
-                  const Icon = AREA_ICONS[option.value];
+                {areaOptions.map((option) => {
+                  const Icon = getAreaIcon(option.value);
                   return (
                     <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5" aria-hidden />
+                        {Icon && <Icon className="h-3.5 w-3.5" aria-hidden />}
                         {option.label}
                       </span>
                     </SelectItem>

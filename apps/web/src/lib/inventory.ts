@@ -1,5 +1,6 @@
 import { Briefcase, type LucideIcon } from "lucide-react";
-import { AREA_ICONS, AREA_OPTIONS } from "@/lib/areas";
+import { findArea, getAreaIcon } from "@/lib/areas";
+import { inventoryAreaSlugs } from "@emd/business/src/areas";
 import type {
   RestockRequestStatus,
   RestockRequestUrgency,
@@ -9,24 +10,29 @@ import type {
   InventoryStockStatus,
 } from "@/types";
 
-/**
- * Departamentos con inventario propio: las 6 áreas operativas más Recepción
- * (papelería, empaques, consumibles de oficina). Mismo orden y valores que
- * `INVENTORY_AREAS` en el backend.
- */
-export const INVENTORY_AREA_OPTIONS: { value: InventoryArea; label: string }[] = [
-  ...AREA_OPTIONS.map((a) => ({ value: a.value, label: a.label })),
-  { value: "recepcion", label: "Recepción" },
-];
+/** Inventario propio de Recepción (papelería, empaques); no es un área. */
+export const RECEPTION_INVENTORY_AREA = "recepcion";
 
-const LABELS = Object.fromEntries(INVENTORY_AREA_OPTIONS.map((a) => [a.value, a.label]));
+/**
+ * Departamentos con inventario propio: las áreas del catálogo con
+ * `hasInventory` más Recepción. Mismo criterio que `InventoryService.areasFor`
+ * en el backend.
+ */
+export function inventoryAreaOptions(): { value: InventoryArea; label: string }[] {
+  return [
+    ...inventoryAreaSlugs().map((slug) => ({ value: slug, label: inventoryAreaLabel(slug) })),
+    { value: RECEPTION_INVENTORY_AREA, label: "Recepción" },
+  ];
+}
 
 export function inventoryAreaLabel(area: string): string {
-  return LABELS[area] ?? area;
+  if (area === RECEPTION_INVENTORY_AREA) return "Recepción";
+  return findArea(area)?.name ?? area;
 }
 
 export function inventoryAreaIcon(area: string): LucideIcon {
-  return area === "recepcion" ? Briefcase : (AREA_ICONS[area as keyof typeof AREA_ICONS] ?? Briefcase);
+  if (area === RECEPTION_INVENTORY_AREA) return Briefcase;
+  return getAreaIcon(area) ?? Briefcase;
 }
 
 /** Pill semántica de cada estado de stock (design system: sólo pills tintadas). */

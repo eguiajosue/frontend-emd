@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { homePathForRoles } from "@/lib/navMenu";
+import { homePathFor } from "@/lib/navMenu";
 
 /**
  * `/dashboard` no es una pantalla: es el "inicio" y depende del rol (admin →
@@ -11,5 +11,5 @@ import { homePathForRoles } from "@/lib/navMenu";
 export default async function DashboardHome() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
-  redirect(homePathForRoles(session.user?.roles ?? []));
+  redirect(homePathFor({ roles: session.user?.roles ?? [], areas: session.user?.areas ?? [] }));
 }

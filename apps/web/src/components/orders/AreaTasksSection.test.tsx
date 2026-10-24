@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AreaTasksSection } from "./AreaTasksSection";
 
-vi.mock("@/components/orders/EmbroideryPrepControls", () => ({
-  PREP_STAGE_META: {},
-  EmbroideryPrepControls: () => <div data-testid="prep-controls" />,
+vi.mock("@/components/orders/StageControls", () => ({
+  stageChip: (stage: { name: string }) => ({ label: stage.name, classes: "" }),
+  StageControls: () => <div data-testid="prep-controls" />,
 }));
 import type { Order, OrderAreaTask } from "@/types";
 
@@ -27,7 +27,7 @@ vi.mock("@/hooks/useAreaTasks", () => ({
 
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
-    roles: ["admin"],
+    roles: ["admin"], areas: [],
     session: { user: { id: "1" } },
   }),
 }));
@@ -97,8 +97,8 @@ describe("AreaTasksSection - duración de una tarea terminada", () => {
   });
 });
 
-describe("AreaTasksSection - pruebas de bordado", () => {
-  const bordado = { id: 2, orderId: 7, area: "bordado", status: "pendiente", assignedUserId: null, prepStage: "digitalizado" } as OrderAreaTask;
+describe("AreaTasksSection - etapas previas a producción (Bordado)", () => {
+  const bordado = { id: 2, orderId: 7, area: "bordado", status: "pendiente", assignedUserId: null, stage: { id: 301, key: "digitalizado", name: "Digitalizado", kind: "work" } } as OrderAreaTask;
 
   it("no aparecen mientras el pedido sigue en diseño", () => {
     tasks = [bordado];

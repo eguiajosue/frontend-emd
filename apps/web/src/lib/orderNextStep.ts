@@ -1,4 +1,4 @@
-import { getAreaLabel, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { DESIGN_AREA, getAreaLabel, isDesignArea, productionAreasOf } from "@/lib/areas";
 import { getDesignStep } from "@/lib/designStep";
 import { effectiveProductionStatusId } from "@/lib/kanbanColumns";
 import { canApplyOrderMove } from "@/lib/orderMove";
@@ -10,7 +10,7 @@ import {
   isDesignFlowStatusName,
   statusMap,
 } from "@/lib/orderStatus";
-import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { statusIdsFor } from "@/lib/roleTaskMapping";
 import type { Order } from "@/types";
 
 /**
@@ -19,13 +19,15 @@ import type { Order } from "@/types";
  * tarjetas de la vista Lista, la Cuadrícula y el Modo TV.
  *
  * El botón sólo aparece si esta persona puede dar el paso (mismas reglas que
- * el tablero y el detalle: `statusIdsForRoles` + `canApplyOrderMove`), así no
+ * el tablero y el detalle: `statusIdsFor` + `canApplyOrderMove`), así no
  * se ofrecen acciones que el backend rechaza. Si no le toca, la tarjeta dice
  * a quién sí.
  */
 
 export interface NextStepViewer {
   roles: string[];
+  /** Áreas en las que trabaja (ver `Area`). */
+  areas: string[];
   isAdmin: boolean;
   /** Recepción/admin/superuser: siguen y mueven todo el circuito. */
   isManager: boolean;
@@ -75,15 +77,13 @@ export const MOVE_VERB: Record<number, string> = {
 
 const NEXT_STATUS: Record<number, number> = { 1: 3, 3: 4, 4: 5 };
 
-const PRODUCTION_ROLES = new Set<string>(PRODUCTION_AREA_OPTIONS.map((a) => a.value));
-
 function listAreas(areas: string[]): string {
   const labels = areas.map(getAreaLabel);
   return labels.length <= 1 ? labels.join("") : `${labels.slice(0, -1).join(", ")} y ${labels[labels.length - 1]}`;
 }
 
 export function getOrderNextStep(order: Order, viewer: NextStepViewer): OrderNextStep {
-  const viewerAreas = viewer.roles.filter((r) => PRODUCTION_ROLES.has(r));
+  const viewerAreas = productionAreasOf(viewer.areas);
   const stages: OrderStage[] = (
     [...(order.requiresDesign ? ["diseno"] : []), "pendiente", "en_proceso", "terminado", "entregado"] as OrderStage["key"][]
   ).map((key) => ({ key, label: STAGE_LABEL[key] }));
@@ -97,7 +97,7 @@ export function getOrderNextStep(order: Order, viewer: NextStepViewer): OrderNex
   const statusName = (order.status?.name ?? "").toLowerCase();
   if (order.requiresDesign && isDesignFlowStatusName(statusName) && statusName !== DESIGN_FLOW_STATUS_NAMES.AUTORIZADO) {
     const step = getDesignStep(order, viewer);
-    const designer = viewer.roles.includes("diseno");
+    const designer = viewer.areas.includes(DESIGN_AREA);
     const reception = viewer.isManager;
     let action: OrderStepAction | null = null;
     if (statusName === DESIGN_FLOW_STATUS_NAMES.ESPERANDO_AUTORIZACION) {
@@ -132,27 +132,28 @@ export function getOrderNextStep(order: Order, viewer: NextStepViewer): OrderNex
   if (productionDone) {
     turn = viewer.isManager ? { label: "Te toca: entregar", mine: true } : { label: "Turno de: Recepción (entregar)", mine: false };
   } else if (myOpen.length > 0) {
-    const inPrep = myOpen.find((t) => t.prepStage);
+    const inPrep = myOpen.find((t) => t.stage);
     turn = inPrep
-      ? { label: `Te toca: ${inPrep.prepStage === "en_pruebas" ? "prueba de bordado" : "digitalizar"}`, mine: true }
+      ? { label: `Te toca: ${inPrep.stage?.name.toLowerCase()}`, mine: true }
       : { label: "Te toca", mine: true };
   } else if (openTasks.length > 0) {
     turn = { label: `Turno de: ${listAreas(Array.from(new Set(openTasks.map((t) => t.area))))}`, mine: false };
   } else {
     // Sin tareas por área: lo produce el área del pedido.
-    const area = order.area && order.area !== "diseno" ? order.area : null;
+    const area = order.area && !isDesignArea(order.area) ? order.area : null;
     const mine = viewer.isManager || (!!area && viewerAreas.includes(area));
     turn = { label: mine ? "Te toca" : `Turno de: ${area ? getAreaLabel(area) : "Producción"}`, mine };
   }
 
-  // Bordado en digitalización / pruebas: el paso se da en el detalle.
-  if (myOpen.some((t) => t.prepStage)) {
-    return { stages, current, turn, action: { kind: "open", label: "Ver pruebas" } };
+  // Una tarea en una etapa previa a producción (en Bordado, digitalizado /
+  // pruebas): el paso se da en el detalle.
+  if (myOpen.some((t) => t.stage)) {
+    return { stages, current, turn, action: { kind: "open", label: "Ver etapas" } };
   }
 
   const next = NEXT_STATUS[effective];
   if (!next) return { stages, current, turn, action: null };
-  const allowedIds = statusIdsForRoles(viewer.roles);
+  const allowedIds = statusIdsFor(viewer);
   // Recepción/admin mueven todo; un área, sólo lo que le toca a ella.
   const allowed = viewer.isManager || (allowedIds.includes(next) && turn?.mine === true);
   const actor = { areas: viewerAreas, isManager: viewer.isManager };

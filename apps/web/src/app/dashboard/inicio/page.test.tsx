@@ -6,6 +6,7 @@ import type { DesignDashboard, ProductionDashboard, ReceptionDashboard } from "@
 
 const mocks = vi.hoisted(() => ({
   roles: [] as string[],
+  areas: [] as string[],
   reception: undefined as unknown,
   design: undefined as unknown,
   production: undefined as unknown,
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
     roles: mocks.roles,
+    areas: mocks.areas,
     session: { user: { first_name: "Rita" } },
     isSessionLoading: false,
   }),
@@ -132,6 +134,8 @@ const DESIGN: DesignDashboard = {
 
 beforeEach(() => {
   mocks.roles = [];
+  mocks.areas = [];
+  mocks.areas = [];
   mocks.reception = RECEPTION;
   mocks.design = DESIGN;
   mocks.production = PRODUCTION;
@@ -142,6 +146,7 @@ beforeEach(() => {
 describe("Inicio de Recepción", () => {
   it("números clave con acceso a sus listas, atención con la acción sugerida y áreas en vivo", async () => {
     mocks.roles = ["recepcion"];
+    mocks.areas = [];
     render(<InicioPage />);
 
     expect(screen.getByText(/12 pedidos activos · 2 vencidos · 3 por vencer · 1 listo para entregar/)).toBeInTheDocument();
@@ -172,6 +177,7 @@ describe("Inicio de Recepción", () => {
 
   it("sin pendientes: lo dice en vez de mostrar una lista vacía", () => {
     mocks.roles = ["admin"];
+    mocks.areas = [];
     mocks.reception = { ...RECEPTION, attention: [], attentionTotal: 0, clientsDue: [] };
     render(<InicioPage />);
     expect(screen.getByText(/Todo en orden/)).toBeInTheDocument();
@@ -180,7 +186,8 @@ describe("Inicio de Recepción", () => {
 
 describe("Inicio de Producción", () => {
   it("ordena por prioridad (vencido, sin empezar, en curso) y la acción avanza la tarea", async () => {
-    mocks.roles = ["taller"];
+    mocks.roles = [];
+    mocks.areas = ["taller"];
     render(<InicioPage />);
 
     const next = screen.getByRole("region", { name: /Siguiente trabajo/ });
@@ -205,7 +212,8 @@ describe("Inicio de Producción", () => {
 
 describe("Inicio de Diseño", () => {
   it("cambios del cliente antes que lo nuevo; esperando al cliente y equipo al costado", () => {
-    mocks.roles = ["diseno"];
+    mocks.roles = [];
+    mocks.areas = ["diseno"];
     render(<InicioPage />);
 
     const next = screen.getByRole("region", { name: /Siguiente diseño/ });
@@ -225,7 +233,8 @@ describe("Inicio de Diseño", () => {
 
 describe("Inicio con Diseño y Producción", () => {
   it("permite elegir cuál ver y lo recuerda", async () => {
-    mocks.roles = ["diseno", "bordado"];
+    mocks.roles = [];
+    mocks.areas = ["diseno", "bordado"];
     const { unmount } = render(<InicioPage />);
     expect(screen.getByRole("region", { name: /Siguiente diseño/ })).toBeInTheDocument();
 

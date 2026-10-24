@@ -55,13 +55,13 @@ import { getErrorMessage } from "@/lib/api";
 import { itemBarcode } from "@/lib/barcode/codes";
 import { formatCurrencyMXN } from "@/lib/format";
 import {
-  INVENTORY_AREA_OPTIONS,
   STOCK_STATUS_META,
   inventoryAreaLabel,
   sortByUrgency,
   summarizeInventory,
 } from "@/lib/inventory";
 import { cn } from "@/lib/utils";
+import { productionAreasOf } from "@/lib/areas";
 import type {
   InventoryArea,
   InventoryItem,
@@ -72,8 +72,6 @@ import { getInventoryColumns } from "./components/inventoryColumns";
 
 const ALL = "__all__";
 
-/** Roles de producción con inventario propio (Diseño no lleva insumos aquí). */
-const AREA_INVENTORY_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
 
 function StatTile({
   icon: Icon,
@@ -143,9 +141,9 @@ export default function InventarioPage() {
   const token = useAuthToken();
   // Recepción y administración gestionan todo; las áreas de producción
   // entran a lo suyo (el backend lo hace cumplir igual); Diseño no entra.
-  const { canManageOperations: canManage, isSessionLoading, roles } = usePermissions();
-  const isArea = !canManage && roles.some((role) => AREA_INVENTORY_ROLES.includes(role));
-  const noAccess = !isSessionLoading && roles.length > 0 && !canManage && !isArea;
+  const { canManageOperations: canManage, isSessionLoading, roles, areas: myAreas } = usePermissions();
+  const isArea = !canManage && productionAreasOf(myAreas).length > 0;
+  const noAccess = !isSessionLoading && (roles.length > 0 || myAreas.length > 0) && !canManage && !isArea;
 
   const { data: areas = [], isPending: areasPending } = useInventoryAreas();
   const [area, setArea] = useState<InventoryArea | typeof ALL>(ALL);
@@ -327,9 +325,9 @@ export default function InventarioPage() {
             <TabsTrigger value={ALL} className="rounded-full px-4">
               Todos
             </TabsTrigger>
-            {INVENTORY_AREA_OPTIONS.filter((opt) => areas.includes(opt.value)).map((opt) => (
-              <TabsTrigger key={opt.value} value={opt.value} className="rounded-full px-4">
-                {opt.label}
+            {areas.map((slug) => (
+              <TabsTrigger key={slug} value={slug} className="rounded-full px-4">
+                {inventoryAreaLabel(slug)}
               </TabsTrigger>
             ))}
           </TabsList>

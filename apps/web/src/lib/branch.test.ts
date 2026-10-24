@@ -23,9 +23,9 @@ describe("sucursal en pedidos", () => {
   });
 
   it("isBranchOnly sólo es cierto si todos los roles son sucursal", () => {
-    expect(isBranchOnly(["sucursal"])).toBe(true);
-    expect(isBranchOnly(["sucursal", "recepcion"])).toBe(false);
-    expect(isBranchOnly([])).toBe(false);
+    expect(isBranchOnly({ roles: ["sucursal"], areas: [] })).toBe(true);
+    expect(isBranchOnly({ roles: ["sucursal", "recepcion"], areas: [] })).toBe(false);
+    expect(isBranchOnly({ roles: [], areas: [] })).toBe(false);
     expect(isBranchOnly(undefined)).toBe(false);
     expect(getRoleLabel("sucursal")).toBe("Sucursal");
   });

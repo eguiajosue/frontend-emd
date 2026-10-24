@@ -123,7 +123,7 @@ describe("applyNavPreferences", () => {
     expect(applyNavPreferences(GROUPS, p)).toEqual({ favorites: [], groups: GROUPS });
     for (const roles of [["superuser"], ["recepcion"], ["admin"]]) {
       const groups = buildMenuItems()
-        .map((g) => ({ ...g, items: g.items.filter((i) => isNavItemVisible(i, roles, false)) }))
+        .map((g) => ({ ...g, items: g.items.filter((i) => isNavItemVisible(i, { roles, areas: [] }, false)) }))
         .filter((g) => g.items.length > 0);
       expect(applyNavPreferences(groups, p)).toEqual({ favorites: [], groups });
     }
@@ -227,7 +227,7 @@ describe("applyNavPreferences", () => {
 
   it("funciona con el menú real filtrado por rol (recepción no ve Usuarios)", () => {
     const groups = buildMenuItems()
-      .map((g) => ({ ...g, items: g.items.filter((i) => isNavItemVisible(i, ["recepcion"], false)) }))
+      .map((g) => ({ ...g, items: g.items.filter((i) => isNavItemVisible(i, { roles: ["recepcion"], areas: [] }, false)) }))
       .filter((g) => g.items.length > 0);
     const r = applyNavPreferences(groups, prefs({ favorites: ["/dashboard/usuarios", "/dashboard/clientes"] }));
     expect(urls(r.favorites)).toEqual(["/dashboard/clientes"]);
@@ -311,10 +311,14 @@ describe("pickPrimaryTabUrls", () => {
   const priority = ["/a", "/b", "/c", "/d", "/e", "/f"];
 
   it("R16: con preferencias por defecto los tabs son los de siempre (TAB_PRIORITY_URLS)", () => {
-    for (const roles of [["superuser"], ["recepcion"], ["taller"]]) {
+    for (const access of [
+      { roles: ["superuser"], areas: [] },
+      { roles: ["recepcion"], areas: [] },
+      { roles: [], areas: ["taller"] },
+    ]) {
       const visibleUrls = buildMenuItems()
         .flatMap((g) => g.items)
-        .filter((i) => isNavItemVisible(i, roles, false))
+        .filter((i) => isNavItemVisible(i, access, false))
         .map((i) => i.url);
       const today = TAB_PRIORITY_URLS.filter((url) => visibleUrls.includes(url)).slice(0, MAX_PRIMARY_TABS);
       expect(pickPrimaryTabUrls(visibleUrls, DEFAULT_NAV_PREFERENCES, TAB_PRIORITY_URLS, MAX_PRIMARY_TABS)).toEqual(today);
@@ -343,7 +347,7 @@ describe("pickPrimaryTabUrls", () => {
   it("con el menú real: un favorito de recepción entra primero", () => {
     const visibleUrls = buildMenuItems()
       .flatMap((g) => g.items)
-      .filter((i) => isNavItemVisible(i, ["recepcion"], false))
+      .filter((i) => isNavItemVisible(i, { roles: ["recepcion"], areas: [] }, false))
       .map((i) => i.url);
     const picked = pickPrimaryTabUrls(
       visibleUrls,

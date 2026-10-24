@@ -82,7 +82,8 @@ import {
   readFileAsUploadInput,
   UPLOAD_FILE_MAX_BYTES,
 } from "@/lib/fileInput";
-import { AREA_ICONS, PRODUCTION_AREA_OPTIONS, getAreaLabel, type AreaValue } from "@/lib/areas";
+import { DESIGN_AREA, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import { DEFAULT_DELIVERY_TIME, combineDateAndTime } from "@/lib/format";
 import { orderCreatedMessage } from "@/lib/copy";
 import { getErrorMessage, request } from "@/lib/api";
@@ -214,9 +215,6 @@ const FIELD_LABELS: Record<FieldKey, string> = {
   orderProducts: "Productos",
   description: "Descripción",
 };
-
-/** Rol del área de Diseño; los pedidos con montaje arrancan siempre aquí. */
-const DESIGN_ROLE = "diseno";
 
 /** Radix Select no admite `value=""`: centinela para "Sin asignar" / "Sin hora". */
 const NONE = "__none__";
@@ -424,6 +422,7 @@ export function CreateOrderDialog({
   const token = useAuthToken();
   const queryClient = useQueryClient();
   const { session, isBranch } = usePermissions();
+  const productionOptions = useAreaOptions("production");
   // Cuenta de sucursal: empleados activos de SU sucursal (obligatorio elegir uno).
   const { branch: myBranch } = useMyBranch(open && isBranch);
   const [branchEmployeeId, setBranchEmployeeId] = useState<number | undefined>(undefined);
@@ -656,11 +655,11 @@ export function CreateOrderDialog({
   const primaryArea = areas[0];
   // Área que decide a quién se le puede asignar el pedido (ver WORKFLOW.md §1):
   // con montaje siempre es Diseño, sin montaje es el área principal elegida.
-  const assignmentArea = requiresDesign ? DESIGN_ROLE : primaryArea;
+  const assignmentArea = requiresDesign ? DESIGN_AREA : primaryArea;
 
   const usersInAssignmentArea = useMemo(
     () =>
-      assignmentArea ? users.filter((u) => u.roles?.some((r) => r.name === assignmentArea)) : [],
+      assignmentArea ? users.filter((u) => u.areas?.some((a) => a.slug === assignmentArea)) : [],
     [users, assignmentArea]
   );
 
@@ -985,7 +984,7 @@ export function CreateOrderDialog({
       { kind: "suggestion", id: clientId, name: selectedClientLabel || "el cliente" },
       {
         requiresDesign: suggestion.requiresDesign,
-        areas: suggestion.areas.filter((a) => PRODUCTION_AREA_OPTIONS.some((o) => o.value === a)),
+        areas: suggestion.areas.filter((a) => productionOptions.some((o) => o.value === a)),
         assignedUserId: undefined,
         description,
         products: suggestion.products,
@@ -1888,8 +1887,8 @@ export function CreateOrderDialog({
                         onValueChange={changeAreas}
                         className="flex flex-wrap justify-start gap-2"
                       >
-                        {PRODUCTION_AREA_OPTIONS.map((option) => {
-                          const Icon = AREA_ICONS[option.value as AreaValue];
+                        {productionOptions.map((option) => {
+                          const Icon = getAreaIcon(option.value);
                           const isPrimary = areas.length > 1 && primaryArea === option.value;
                           return (
                             <ToggleGroupItem
@@ -1898,7 +1897,7 @@ export function CreateOrderDialog({
                               aria-invalid={Boolean(errors.area)}
                               className={CHIP_CLASS}
                             >
-                              <Icon aria-hidden />
+                              {Icon && <Icon aria-hidden />}
                               {option.label}
                               {isPrimary && (
                                 <span className="rounded-full bg-ink-foreground/20 px-1.5 text-[11px] leading-4">

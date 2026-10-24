@@ -144,7 +144,7 @@ const DESIGN_SHARED = {
   username: "diseno",
   firstName: "Diseño",
   isSharedAccount: true,
-  roles: [{ id: 1, name: "diseno" }],
+  roles: [], areas: [{ id: 4, slug: "diseno", name: "Diseño" }],
 };
 
 beforeEach(() => {

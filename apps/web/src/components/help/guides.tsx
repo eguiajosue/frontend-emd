@@ -20,6 +20,8 @@ import {
   UploadMontageScene,
   UsersScene,
 } from "./HelpScenes";
+import type { SessionAccess } from "@emd/business/src/areas";
+import { DESIGN_AREA, productionAreasOf } from "@/lib/areas";
 
 export type GuideKey = "admin" | "recepcion" | "diseno" | "produccion";
 
@@ -36,22 +38,21 @@ export interface Guide {
   steps: GuideStep[];
 }
 
-const PRODUCTION_ROLES = ["taller", "dtf", "bordado", "laser", "impresiones"];
 const ADMIN_ROLES = ["admin", "superuser"];
 
 /**
- * Qué guías ve un usuario. Una por cada forma distinta de usar la app: las
- * cinco áreas de producción trabajan igual, así que alguien de Taller y DTF
+ * Qué guías ve un usuario. Una por cada forma distinta de usar la app: todas
+ * las áreas de producción trabajan igual, así que alguien de Taller y DTF
  * ve una sola guía de Producción; alguien de Taller y Diseño ve las dos.
  * Administración incluye la de Recepción porque también carga y entrega pedidos.
  */
-export function resolveGuideKeys(roles: string[], isAdmin: boolean): GuideKey[] {
+export function resolveGuideKeys({ roles, areas }: SessionAccess, isAdmin: boolean): GuideKey[] {
   const keys: GuideKey[] = [];
   const admin = isAdmin || roles.some((r) => ADMIN_ROLES.includes(r));
   if (admin) keys.push("admin");
   if (admin || roles.includes("recepcion")) keys.push("recepcion");
-  if (roles.includes("diseno")) keys.push("diseno");
-  if (roles.some((r) => PRODUCTION_ROLES.includes(r))) keys.push("produccion");
+  if (areas.includes(DESIGN_AREA)) keys.push("diseno");
+  if (productionAreasOf(areas).length > 0) keys.push("produccion");
   return keys;
 }
 

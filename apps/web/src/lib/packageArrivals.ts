@@ -1,5 +1,6 @@
 import { getDeadlineState } from "@/lib/orderDeadline";
 import type { Order } from "@/types";
+import { isDesignArea } from "@/lib/areas";
 
 /**
  * "Llegada de paquetes" del Modo TV de Tareas: cada trabajo nuevo del área (o
@@ -77,7 +78,7 @@ export function arrivalFromNewOrder(payload: NewOrderPayload, now = Date.now()):
     description,
     deliveryDate: payload.deliveryDate ?? null,
     source: "area",
-    changes: payload.area === "diseno" && CHANGES_RE.test(description ?? ""),
+    changes: isDesignArea(payload.area) && CHANGES_RE.test(description ?? ""),
     receivedAt: now,
   };
 }
@@ -96,7 +97,7 @@ export function arrivalFromAssigned(payload: AssignedOrderPayload, now = Date.no
     description,
     deliveryDate: payload.deliveryDate ?? null,
     source: "assigned",
-    changes: payload.area === "diseno" && CHANGES_RE.test(description ?? ""),
+    changes: isDesignArea(payload.area) && CHANGES_RE.test(description ?? ""),
     receivedAt: now,
   };
 }

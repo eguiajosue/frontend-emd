@@ -13,24 +13,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  EmbroideryPrepDialog,
-  type PrepDialogMode,
-} from "@/components/orders/EmbroideryPrepDialog";
+  StageDialog,
+  type StageDialogMode,
+} from "@/components/orders/StageDialog";
+import { advanceLabel, stageNeighbors } from "@/lib/stageBoard";
 import { useSampleTestPhoto } from "@/hooks/useAreaTasks";
 import { cn } from "@/lib/utils";
-import type { AreaTaskSampleTest, OrderAreaTask } from "@/types";
+import type { AreaStage, AreaTaskSampleTest, OrderAreaTask } from "@/types";
 
-/** Etiqueta y color del chip de una tarea de Bordado en digitalización/pruebas. */
-export const PREP_STAGE_META = {
-  digitalizado: {
-    label: "Digitalizado",
-    classes: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  },
-  en_pruebas: {
-    label: "En pruebas",
-    classes: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  },
-} as const;
+/** Etiqueta y color del chip de una tarea en una etapa previa a producción. */
+export function stageChip(stage: AreaStage) {
+  return {
+    label: stage.name,
+    classes:
+      stage.kind === "review"
+        ? "bg-sky-500/10 text-sky-700 dark:text-sky-300"
+        : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  };
+}
 
 function personName(
   p?: { firstName?: string | null; lastName?: string | null } | null,
@@ -73,7 +73,7 @@ function SampleTestPhoto({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Foto de la prueba {test.round}</DialogTitle>
+            <DialogTitle>Foto de la revisión {test.round}</DialogTitle>
             <DialogDescription>{test.photoName}</DialogDescription>
           </DialogHeader>
           {query.isLoading && (
@@ -88,7 +88,7 @@ function SampleTestPhoto({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={query.data.dataUrl}
-              alt={`Prueba ${test.round}`}
+              alt={`Revisión ${test.round}`}
               className="max-h-[70vh] w-full rounded-lg object-contain"
             />
           )}
@@ -98,39 +98,40 @@ function SampleTestPhoto({
   );
 }
 
-interface EmbroideryPrepControlsProps {
+interface StageControlsProps {
   orderId: number;
   task: OrderAreaTask;
-  /** Quien trabaja Bordado (o Recepción/admin) puede mover las etapas. */
+  /** Quien trabaja el área (o Recepción/admin) puede mover las etapas. */
   canAct: boolean;
 }
 
 /**
- * Acciones de las etapas previas a producción de Bordado (digitalizado →
- * pruebas → producción) y el registro de las rondas de prueba.
+ * Acciones de las etapas previas a producción de una tarea (en Bordado:
+ * digitalizado → pruebas → producción) y el registro de las rondas de
+ * revisión.
  */
-export function EmbroideryPrepControls({
-  orderId,
-  task,
-  canAct,
-}: EmbroideryPrepControlsProps) {
-  const [mode, setMode] = useState<PrepDialogMode | null>(null);
+export function StageControls({ orderId, task, canAct }: StageControlsProps) {
+  const [mode, setMode] = useState<StageDialogMode | null>(null);
   const tests: AreaTaskSampleTest[] = task.sampleTests ?? [];
-  if (!task.prepStage && tests.length === 0) return null;
+  const stage = task.stage ?? null;
+  if (!stage && tests.length === 0) return null;
+  const { next } = stage
+    ? stageNeighbors(task.area, stage)
+    : { next: null };
 
   return (
     <div className="order-last basis-full space-y-2">
-      {canAct && task.prepStage === "digitalizado" && (
+      {canAct && stage?.kind === "work" && (
         <Button
           type="button"
           size="sm"
           className="text-xs"
-          onClick={() => setMode("send")}
+          onClick={() => setMode("advance")}
         >
-          Mandar a pruebas
+          {advanceLabel(next)}
         </Button>
       )}
-      {canAct && task.prepStage === "en_pruebas" && (
+      {canAct && stage?.kind === "review" && (
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -138,7 +139,7 @@ export function EmbroideryPrepControls({
             className="text-xs"
             onClick={() => setMode("approve")}
           >
-            Aprobar prueba
+            Aprobar
           </Button>
           <Button
             type="button"
@@ -147,20 +148,20 @@ export function EmbroideryPrepControls({
             className="text-xs"
             onClick={() => setMode("reject")}
           >
-            Rechazar prueba
+            Rechazar
           </Button>
         </div>
       )}
 
       {tests.length > 0 && (
-        <ol aria-label="Registro de pruebas" className="space-y-1.5 text-xs">
+        <ol aria-label="Registro de revisiones" className="space-y-1.5 text-xs">
           {tests.map((test) => (
             <li
               key={test.id}
               className="rounded-lg bg-card px-3 py-2 shadow-soft"
             >
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="font-semibold">Prueba {test.round}</span>
+                <span className="font-semibold">Revisión {test.round}</span>
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 font-medium",
@@ -205,12 +206,16 @@ export function EmbroideryPrepControls({
         </ol>
       )}
 
-      <EmbroideryPrepDialog
-        orderId={orderId}
-        taskId={task.id}
-        mode={mode}
-        onClose={() => setMode(null)}
-      />
+      {stage && (
+        <StageDialog
+          orderId={orderId}
+          taskId={task.id}
+          area={task.area}
+          stage={stage}
+          mode={mode}
+          onClose={() => setMode(null)}
+        />
+      )}
     </div>
   );
 }

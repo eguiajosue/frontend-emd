@@ -50,7 +50,7 @@ vi.mock("@/hooks/useOrders", () => ({
   useStartOrderDesign: () => ({ startDesign, isStartingDesign: false }),
 }));
 
-let permissions = { roles: ["admin"], isAdmin: true };
+let permissions: { roles: string[]; areas: string[]; isAdmin: boolean } = { roles: ["admin"], areas: [], isAdmin: true };
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => permissions,
 }));
@@ -223,7 +223,7 @@ describe("DesignFlowSection - Empezar diseño", () => {
 
   it("desde la cuenta compartida pide el nombre antes de empezar", async () => {
     revisions = [];
-    permissions = { roles: ["diseno"], isAdmin: false };
+    permissions = { roles: [], areas: ["diseno"], isAdmin: false };
     render(<DesignFlowSection order={fresh} />);
 
     const button = screen.getByRole("button", { name: /Empezar diseño/ });
@@ -231,12 +231,12 @@ describe("DesignFlowSection - Empezar diseño", () => {
     await userEvent.type(screen.getByLabelText("Tu nombre"), "Dani");
     await userEvent.click(button);
     expect(startDesign).toHaveBeenCalledWith(fresh.id, "Dani");
-    permissions = { roles: ["admin"], isAdmin: true };
+    permissions = { roles: ["admin"], areas: [], isAdmin: true };
   });
 
   it("Recepción ve que todavía nadie lo empezó, y quién cuando ya arrancó", () => {
     revisions = [];
-    permissions = { roles: ["recepcion"], isAdmin: false };
+    permissions = { roles: ["recepcion"], areas: [], isAdmin: false };
     const { rerender } = render(<DesignFlowSection order={fresh} />);
     expect(screen.getByText("Diseño todavía no lo empezó.")).toBeInTheDocument();
 
@@ -246,7 +246,7 @@ describe("DesignFlowSection - Empezar diseño", () => {
       />
     );
     expect(screen.getByText("Dani")).toBeInTheDocument();
-    permissions = { roles: ["admin"], isAdmin: true };
+    permissions = { roles: ["admin"], areas: [], isAdmin: true };
   });
 });
 

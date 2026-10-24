@@ -25,13 +25,16 @@ import {
 } from "@/components/ui/select";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
-import { EmbroideryPrepControls, PREP_STAGE_META } from "@/components/orders/EmbroideryPrepControls";
+import { StageControls, stageChip } from "@/components/orders/StageControls";
+import { AreaTaskExtras } from "@/components/orders/AreaTaskExtras";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useEntityList } from "@/hooks/useEntity";
 import { useMotionPreset } from "@/lib/motion";
-import { getAreaIcon, getAreaLabel, PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { hasStages } from "@/lib/stageBoard";
+import { useAreaOptions } from "@/hooks/useAreas";
 import {
   DESIGN_FLOW_STATUS_NAMES,
   isDesignFlowStatusName,
@@ -136,7 +139,8 @@ interface AreaTasksSectionProps {
  */
 export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionProps) {
   const orderId = order.id;
-  const { roles, session } = usePermissions();
+  const { roles, areas: myAreas, session } = usePermissions();
+  const productionOptions = useAreaOptions("production");
   const { data: users } = useEntityList<User>("users");
   const { staggerItemVariants } = useMotionPreset();
   const {
@@ -156,14 +160,14 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
   /** Coordinar quién hace qué es trabajo de Recepción/admin, no del área. */
   const canAssign = isManager;
 
-  /** Quién puede quedar a cargo de cada área: los usuarios con ese rol. */
+  /** Quién puede quedar a cargo de cada área: los usuarios que trabajan en ella. */
   const usersByArea = useMemo(() => {
     const map = new Map<string, User[]>();
     users.forEach((user) => {
-      (user.roles ?? []).forEach((role) => {
-        const list = map.get(role.name) ?? [];
+      (user.areas ?? []).forEach((area) => {
+        const list = map.get(area.slug) ?? [];
         list.push(user);
-        map.set(role.name, list);
+        map.set(area.slug, list);
       });
     });
     // La cuenta compartida del área primero: es el responsable por defecto.
@@ -177,7 +181,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
   }, [users]);
 
   const usedAreas = useMemo(() => new Set(tasks.map((t) => t.area)), [tasks]);
-  const availableAreas = PRODUCTION_AREA_OPTIONS.filter(
+  const availableAreas = productionOptions.filter(
     (option) => !usedAreas.has(option.value)
   );
 
@@ -191,7 +195,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
    * pertenece al área dtf`. Un botón que sólo puede fallar. Recepción conserva
    * lo suyo: agregar y quitar áreas, y ver quién tiene cada parte.
    */
-  const canWork = (area: string) => roles.includes(area);
+  const canWork = (area: string) => myAreas.includes(area);
 
   const handleAdvance = async (task: OrderAreaTask) => {
     const next = nextStatus(task.status);
@@ -352,13 +356,13 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
         <ul className="space-y-2">
           <AnimatePresence initial={false}>
             {tasks.map((task) => {
-              // Bordado en digitalización/pruebas: la etapa manda sobre "Pendiente".
-              const prep = task.prepStage ? PREP_STAGE_META[task.prepStage] : null;
+              // En una etapa previa a producción (en Bordado: digitalizado/pruebas): la etapa manda sobre "Pendiente".
+              const prep = task.stage ? stageChip(task.stage) : null;
               const meta = prep ? { ...STATUS_META[task.status], ...prep } : STATUS_META[task.status];
               const StatusIcon = meta.icon;
               const AreaIcon = getAreaIcon(task.area);
-              // Sin producción hasta que la prueba se apruebe.
-              const next = task.prepStage ? null : nextStatus(task.status);
+              // Sin producción hasta que pase por todas las etapas.
+              const next = task.stage ? null : nextStatus(task.status);
               const editable = canWork(task.area);
               const isMine = task.assignedUserId === userId;
               const timing = taskTiming(task);
@@ -441,14 +445,16 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                     {timing && <span className="pl-[1.125rem]">{timing}</span>}
                   </span>
 
-                  {/* Digitalizado y pruebas empiezan cuando el cliente autoriza. */}
-                  {task.area === "bordado" && !designPending && (
-                    <EmbroideryPrepControls
+                  {/* Las etapas previas (en Bordado, digitalizado y pruebas) empiezan cuando el cliente autoriza. */}
+                  {hasStages(task.area) && !designPending && (
+                    <StageControls
                       orderId={orderId}
                       task={task}
                       canAct={editable || isManager}
                     />
                   )}
+
+                  <AreaTaskExtras orderId={orderId} task={task} canEdit={editable || isManager} />
 
                   <AreaSupplySummary supply={task.supply} clamp={false} className="order-last basis-full" />
 

@@ -4,24 +4,26 @@ import userEvent from "@testing-library/user-event";
 import AyudaPage from "./page";
 
 let mockRoles: string[] = [];
+let mockAreas: string[] = [];
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ roles: mockRoles, isAdmin: false }),
+  usePermissions: () => ({ roles: mockRoles, areas: mockAreas, isAdmin: false }),
 }));
 
 beforeEach(() => {
   mockRoles = [];
+  mockAreas = [];
 });
 
 describe("AyudaPage", () => {
   it("con dos áreas de producción muestra una sola guía, sin pestañas", () => {
-    mockRoles = ["bordado", "dtf"];
+    mockAreas = ["bordado", "dtf"];
     render(<AyudaPage />);
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
     expect(screen.getByText("Paso 1 de 6")).toBeInTheDocument();
   });
 
   it("con Taller y Diseño muestra una pestaña por cada forma de trabajar", () => {
-    mockRoles = ["taller", "diseno"];
+    mockAreas = ["taller", "diseno"];
     render(<AyudaPage />);
     expect(screen.getByRole("tab", { name: "Diseño" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Producción" })).toBeInTheDocument();

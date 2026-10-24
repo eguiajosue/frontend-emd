@@ -38,7 +38,7 @@ export default function App() {
   };
 
   const authValue = useMemo(
-    () => ({ token: session?.token, roles: session?.roles ?? [] }),
+    () => ({ token: session?.token, roles: session?.roles ?? [], areas: session?.areas ?? [] }),
     [session]
   );
 

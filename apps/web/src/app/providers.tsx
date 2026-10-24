@@ -22,6 +22,7 @@ import { useTimeFormat } from "@/hooks/useTimeFormat";
 import type { TimeFormatPreference } from "@/lib/format";
 import { LANGUAGE_STORAGE_KEY } from "@/lib/language";
 import { registerOnlineDrainFallback } from "@/lib/backgroundSync";
+import { AreaCatalogSync } from "@/hooks/useAreas";
 
 /**
  * Providers globales de la app (sesión + cache de datos + toasts).
@@ -227,6 +228,7 @@ export default function Providers({
             <OfflineSyncWatcher />
             <ServiceWorkerRegistrar />
             <ThemeColorSync />
+            <AreaCatalogSync />
             {children}
             {isDev && <ReactQueryDevtools initialIsOpen={false} />}
             </TooltipProvider>

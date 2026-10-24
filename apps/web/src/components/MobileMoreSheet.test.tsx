@@ -5,13 +5,14 @@ import { MobileMoreSheet } from "./MobileMoreSheet";
 
 const mocks = vi.hoisted(() => ({
   roles: ["superuser"] as string[],
+  areas: [] as string[],
   pathname: "/dashboard/orders",
 }));
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {
-      user: { roles: mocks.roles, first_name: "Ana", last_name: "Gómez", username: "ana" },
+      user: { roles: mocks.roles, areas: mocks.areas, first_name: "Ana", last_name: "Gómez", username: "ana" },
     },
   }),
 }));
@@ -60,6 +61,7 @@ function renderSheet() {
 describe("MobileMoreSheet", () => {
   it("muestra la tarjeta de identidad: avatar, nombre completo, rol y username", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     renderSheet();
 
     expect(screen.getByText("Ana Gómez")).toBeInTheDocument();
@@ -71,6 +73,7 @@ describe("MobileMoreSheet", () => {
 
   it("para superuser: no duplica un tab principal (Chat interno) y sí incluye lo que queda fuera de los 4 principales (Rendimiento, Historial)", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     renderSheet();
 
     // Panel General, Inicio, Pedidos y Chat interno son los 4 tabs
@@ -92,7 +95,8 @@ describe("MobileMoreSheet", () => {
   it("para rol operativo (taller): los 4 tabs principales no se repiten aquí; Ayuda queda en el sheet y Inventario aparece sólo para sus áreas", () => {
     // Menú operativo: Inicio, Tareas asignadas, Chat interno, Notificaciones,
     // Ayuda. El taller (área de producción) ve Inventario con sólo su área.
-    mocks.roles = ["taller"];
+    mocks.roles = [];
+    mocks.areas = ["taller"];
     renderSheet();
 
     expect(screen.queryByRole("link", { name: "Inicio" })).not.toBeInTheDocument();
@@ -105,13 +109,15 @@ describe("MobileMoreSheet", () => {
   });
 
   it("Diseño (sin inventario propio) no ve Inventario", () => {
-    mocks.roles = ["diseno"];
+    mocks.roles = [];
+    mocks.areas = ["diseno"];
     renderSheet();
     expect(screen.queryByRole("link", { name: "Inventario" })).not.toBeInTheDocument();
   });
 
   it("incluye Configuración, tema y Cerrar sesión", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     renderSheet();
 
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeInTheDocument();

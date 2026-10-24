@@ -8,6 +8,7 @@ let areas: InventoryArea[] = [];
 let items: InventoryItem[] = [];
 const requestedAreas: (InventoryArea | undefined)[] = [];
 let roles: string[] = ["admin"];
+let sessionAreas: string[] = [];
 
 const createRestock = vi.hoisted(() => vi.fn().mockResolvedValue({}));
 
@@ -44,6 +45,7 @@ vi.mock("@/hooks/usePermissions", () => ({
     canManageOperations: roles.includes("admin") || roles.includes("recepcion"),
     isSessionLoading: false,
     roles,
+    areas: sessionAreas,
   }),
 }));
 
@@ -67,6 +69,7 @@ function buildItem(overrides: Partial<InventoryItem>): InventoryItem {
 
 beforeEach(() => {
   roles = ["admin"];
+  sessionAreas = [];
   areas = ["bordado", "impresiones"];
   requestedAreas.length = 0;
   items = [
@@ -116,6 +119,7 @@ describe("InventarioPage", () => {
   it("admin y recepción pueden crear y mover stock", () => {
     for (const r of [["admin"], ["recepcion"]]) {
       roles = r;
+      sessionAreas = [];
       const { unmount } = render(<InventarioPage />);
       expect(screen.getByRole("button", { name: /Nuevo artículo/ })).toBeInTheDocument();
       expect(screen.getAllByRole("button", { name: /Registrar entrada de Hilo rojo/ }).length).toBeGreaterThan(0);
@@ -125,7 +129,8 @@ describe("InventarioPage", () => {
   });
 
   it("Diseño no tiene acceso al inventario", () => {
-    roles = ["diseno"];
+    roles = [];
+    sessionAreas = ["diseno"];
     areas = [];
     render(<InventarioPage />);
     expect(screen.getByText("Sin acceso al inventario")).toBeInTheDocument();
@@ -133,7 +138,8 @@ describe("InventarioPage", () => {
   });
 
   it("un área de producción ve sólo lo suyo con acciones simples (sin gestión, valor ni exportar)", () => {
-    roles = ["bordado"];
+    roles = [];
+    sessionAreas = ["bordado"];
     // `items` conserva también el inventario de Impresiones: el mock sólo filtra
     // por el departamento que la página PIDE, así que si la página no se acota
     // a su único departamento, "Tinta cyan" aparecería.
@@ -156,7 +162,8 @@ describe("InventarioPage", () => {
   });
 
   it("el área avisa reabasto de un artículo y el aviso se envía", async () => {
-    roles = ["bordado"];
+    roles = [];
+    sessionAreas = ["bordado"];
     areas = ["bordado"];
     render(<InventarioPage />);
     await userEvent.click(screen.getAllByRole("button", { name: /Avisar reabasto de Hilo rojo/ })[0]);
@@ -169,6 +176,7 @@ describe("InventarioPage", () => {
 
   it("Recepción ve la pestaña de solicitudes con badge de pendientes y la bitácora", () => {
     roles = ["recepcion"];
+    sessionAreas = [];
     render(<InventarioPage />);
     expect(screen.getByRole("tab", { name: /Solicitudes de reabasto/ })).toBeInTheDocument();
     expect(screen.getByLabelText("2 pendientes")).toBeInTheDocument();
@@ -177,6 +185,7 @@ describe("InventarioPage", () => {
 
   it("sin departamentos asignados avisa en vez de mostrar una tabla vacía", () => {
     roles = ["recepcion"];
+    sessionAreas = [];
     areas = [];
     render(<InventarioPage />);
     expect(screen.getByText("No tienes un departamento con inventario")).toBeInTheDocument();

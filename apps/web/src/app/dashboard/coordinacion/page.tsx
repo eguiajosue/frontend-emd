@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { AlarmClock, CalendarClock, Clock3, Hourglass, RefreshCw, UserX, Users } from "lucide-react";
+import { AlarmClock, CalendarClock, Clock3, Cpu, Hourglass, RefreshCw, UserX, Users } from "lucide-react";
 import Title from "@/components/Title";
 import { AreaChip } from "@/components/AreaChip";
 import { Card } from "@/components/ui/card";
@@ -158,7 +158,9 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
     <Card data-area={load.area} className="space-y-4 overflow-hidden p-0">
       <div className="area-band flex items-center justify-between px-4 py-3">
         <span className="font-semibold">{getAreaLabel(load.area)}</span>
-        <span className="text-sm tabular-nums text-muted-foreground">{open} abiertas</span>
+        <span className="text-sm tabular-nums text-muted-foreground">
+          {open} abiertas{load.capacity != null && ` de ${load.capacity}`}
+        </span>
       </div>
       <div className="space-y-4 px-4 pb-4">
         <div className="grid grid-cols-4 gap-2">
@@ -171,6 +173,30 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
         <div className="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
           <div className="h-full rounded-full bg-[hsl(var(--tone))]" style={{ width: `${max ? (open / max) * 100 : 0}%` }} />
         </div>
+        {(load.overloaded || load.queueHours != null) && (
+          <p
+            className={cn(
+              "flex flex-wrap items-center gap-x-2 text-sm",
+              load.overloaded ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"
+            )}
+          >
+            {load.overloaded && <span>Sobrecargada ({load.loadPct}% de su capacidad)</span>}
+            {load.queueHours != null && <span>≈ {formatHours(load.queueHours)} de trabajo en cola</span>}
+          </p>
+        )}
+        {load.machines.length > 0 && (
+          <ul className="space-y-1.5 text-sm" aria-label={`Carga por máquina en ${getAreaLabel(load.area)}`}>
+            {load.machines.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 truncate">
+                  <Cpu className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  {m.name}
+                </span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">{m.tasks}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {load.people.length > 0 || load.sinPersona > 0 ? (
           <ul className="space-y-1.5 text-sm" aria-label={`Carga por persona en ${getAreaLabel(load.area)}`}>
             {load.people.map((p) => (

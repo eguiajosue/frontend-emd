@@ -26,10 +26,12 @@ import type { AreaTaskStatus, OrderAreaTask, SampleTestResult } from "@/types";
  * - `POST   /orders/:id/area-tasks`               (sumar áreas)
  * - `PATCH  /orders/:id/area-tasks/:taskId/status`
  * - `PATCH  /orders/:id/area-tasks/:taskId/assign`
+ * - `PATCH  /orders/:id/area-tasks/:taskId/machine` (máquina del área)
+ * - `PATCH  /orders/:id/area-tasks/:taskId/fields` (datos propios del área)
  * - `DELETE /orders/:id/area-tasks/:taskId`
- * - `POST   /orders/:id/area-tasks/:taskId/send-to-test`  (Bordado: digitalizado → pruebas)
- * - `POST   /orders/:id/area-tasks/:taskId/test-result`   (Bordado: aprobada | rechazada)
- * - `GET    /orders/:id/area-tasks/:taskId/tests/:testId/photo` (foto de la prueba)
+ * - `POST   /orders/:id/area-tasks/:taskId/advance-stage` (pasa a la siguiente etapa; si es revisión, abre una ronda)
+ * - `POST   /orders/:id/area-tasks/:taskId/stage-result`   (revisión: aprobada | rechazada)
+ * - `GET    /orders/:id/area-tasks/:taskId/tests/:testId/photo` (foto de una ronda de revisión)
  *
  * Mientras el backend no esté desplegado, un 404 se absorbe (cae a "sin
  * tareas") en vez de romper el detalle del pedido.
@@ -97,7 +99,7 @@ export function useAreaTasks(orderId: number | null) {
     meta: { ownErrorToast: true },
   });
 
-  const sendToTest = useMutation({
+  const advanceStage = useMutation({
     mutationFn: ({
       taskId,
       notes,
@@ -109,13 +111,13 @@ export function useAreaTasks(orderId: number | null) {
       photo?: UploadFileInput;
     }) =>
       request<OrderAreaTask>(
-        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/send-to-test`,
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/advance-stage`,
         { token, method: "POST", body: { notes, photo } },
       ),
     onSuccess: invalidate,
   });
 
-  const decideTest = useMutation({
+  const decideStage = useMutation({
     mutationFn: ({
       taskId,
       result,
@@ -126,7 +128,7 @@ export function useAreaTasks(orderId: number | null) {
       notes?: string;
     }) =>
       request<OrderAreaTask>(
-        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/test-result`,
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/stage-result`,
         { token, method: "POST", body: { result, notes } },
       ),
     onSuccess: invalidate,
@@ -143,6 +145,31 @@ export function useAreaTasks(orderId: number | null) {
       request<OrderAreaTask>(
         `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/assign`,
         { token, method: "PATCH", body: { assignedUserId } },
+      ),
+    onSuccess: invalidate,
+  });
+
+  const setMachine = useMutation({
+    mutationFn: ({ taskId, machineId }: { taskId: number; machineId: number | null }) =>
+      request<OrderAreaTask>(
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/machine`,
+        { token, method: "PATCH", body: { machineId } },
+      ),
+    onSuccess: invalidate,
+  });
+
+  const setFieldValues = useMutation({
+    mutationFn: ({
+      taskId,
+      values,
+    }: {
+      taskId: number;
+      /** Clave → valor; null borra el dato. */
+      values: Record<string, string | number | boolean | null>;
+    }) =>
+      request<OrderAreaTask>(
+        `${ENDPOINTS.orders}/${orderId}/area-tasks/${taskId}/fields`,
+        { token, method: "PATCH", body: { values } },
       ),
     onSuccess: invalidate,
   });
@@ -173,15 +200,17 @@ export function useAreaTasks(orderId: number | null) {
     isUnavailable: isNotFound(query.error),
     refetch: query.refetch,
     setStatus,
-    sendToTest,
-    decideTest,
+    advanceStage,
+    decideStage,
     assign,
+    setMachine,
+    setFieldValues,
     addAreas,
     removeArea,
   };
 }
 
-/** Foto de una prueba de bordado (data URL), que se baja solo cuando se pide. */
+/** Foto de una ronda de revisión (data URL), que se baja solo cuando se pide. */
 export function useSampleTestPhoto(
   orderId: number,
   taskId: number,

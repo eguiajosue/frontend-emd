@@ -35,6 +35,7 @@ import {
 } from "@/lib/barcode/codes";
 import { BarcodeSvg } from "@/components/inventory/BarcodeSvg";
 import type { InventoryArea, InventoryItem, Material, Supplier } from "@/types";
+import { findArea } from "@/lib/areas";
 
 /** Unidades frecuentes en el taller; se puede escribir cualquier otra. */
 const COMMON_UNITS = [
@@ -184,16 +185,23 @@ export function InventoryItemDialog({
   const autoBarcode =
     form.barcode.trim() === "" || (isEditing && form.barcode.trim() === defaultBarcode(item!.id));
 
+  // Las sugerencias que se capturaron al dar de alta el área (p. ej. filamento
+  // y kg en Impresión 3D) se suman a las ya conocidas del departamento.
+  const areaSuggestions = findArea(form.area);
   const categoryOptions = useMemo(
     () =>
-      [...new Set([...knownCategories, ...COMMON_CATEGORIES])]
+      [...new Set([...(areaSuggestions?.inventoryCategories ?? []), ...knownCategories, ...COMMON_CATEGORIES])]
         .sort((a, b) => a.localeCompare(b, "es"))
         .map((c) => ({ id: c, label: c })),
-    [knownCategories]
+    [knownCategories, areaSuggestions]
   );
   const unitOptions = useMemo(
-    () => [...new Set([...knownUnits, ...COMMON_UNITS])].map((u) => ({ id: u, label: u })),
-    [knownUnits]
+    () =>
+      [...new Set([...(areaSuggestions?.inventoryUnits ?? []), ...knownUnits, ...COMMON_UNITS])].map((u) => ({
+        id: u,
+        label: u,
+      })),
+    [knownUnits, areaSuggestions]
   );
 
   /** Al vincular un material, completa lo que todavía esté vacío. */

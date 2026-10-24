@@ -23,10 +23,10 @@ const order = (statusId: number, name: string, extra: Partial<Order> = {}): Orde
 const task = (status: OrderAreaTask["status"]): OrderAreaTask =>
   ({ id: 1, orderId: 1, area: "dtf", status, createdAt: "" }) as unknown as OrderAreaTask;
 
-const recepcion: OrderDetailViewer = { roles: ["recepcion"], isAdmin: false, canManageOperations: true };
-const admin: OrderDetailViewer = { roles: ["admin"], isAdmin: true, canManageOperations: true };
-const dtf: OrderDetailViewer = { roles: ["dtf"], isAdmin: false, canManageOperations: false };
-const diseno: OrderDetailViewer = { roles: ["diseno"], isAdmin: false, canManageOperations: false };
+const recepcion: OrderDetailViewer = { roles: ["recepcion"], areas: [], isAdmin: false, canManageOperations: true };
+const admin: OrderDetailViewer = { roles: ["admin"], areas: [], isAdmin: true, canManageOperations: true };
+const dtf: OrderDetailViewer = { roles: [], areas: ["dtf"], isAdmin: false, canManageOperations: false };
+const diseno: OrderDetailViewer = { roles: [], areas: ["diseno"], isAdmin: false, canManageOperations: false };
 
 function next(o: Order, viewer: OrderDetailViewer, tasks: OrderAreaTask[] = []) {
   const permissions = getOrderDetailPermissions(o, viewer);
