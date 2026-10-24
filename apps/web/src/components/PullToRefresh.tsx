@@ -50,9 +50,14 @@ export function PullToRefresh() {
 
   useEffect(() => {
     if (!enabled) return;
-    const blocked = () => window.scrollY > 0 || !!document.querySelector("[role='dialog'][data-state='open']");
+    // Dentro de una zona con scroll propio (`data-no-pull-refresh`, ej. el hilo
+    // del chat a pantalla completa) jalar hacia abajo desplaza esa zona.
+    const blocked = (target: EventTarget | null) =>
+      window.scrollY > 0 ||
+      !!document.querySelector("[role='dialog'][data-state='open']") ||
+      (target instanceof Element && !!target.closest("[data-no-pull-refresh]"));
     const onStart = (e: TouchEvent) => {
-      start.current = blocked() || e.touches.length > 1 ? null : e.touches[0].clientY;
+      start.current = blocked(e.target) || e.touches.length > 1 ? null : e.touches[0].clientY;
       armed.current = false;
     };
     const onMove = (e: TouchEvent) => {

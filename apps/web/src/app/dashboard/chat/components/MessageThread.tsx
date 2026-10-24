@@ -23,7 +23,6 @@ import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -63,6 +62,10 @@ const CHAT_ATTACHMENT_ACCEPT =
 // escribir (ver ChatService.handleTyping en el backend).
 const TYPING_STOP_DELAY_MS = 3000;
 
+// Mensajes seguidos de la misma persona con menos de esto entre uno y otro
+// se muestran como un solo bloque.
+const GROUP_GAP_MS = 5 * 60 * 1000;
+
 /** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
 function readFileAsChatAttachment(file: File): Promise<ChatAttachmentInput> {
   return new Promise((resolve, reject) => {
@@ -95,7 +98,13 @@ interface MessageThreadProps {
 }
 
 function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-AR", {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Hoy";
+  if (date.toDateString() === yesterday.toDateString()) return "Ayer";
+  return date.toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -334,14 +343,27 @@ export function MessageThread({
   // Precalcula el separador de día por mensaje una sola vez (antes se hacía
   // con una variable mutable `lastDay` durante el .map, lo cual no es
   // compatible con el acceso por índice del virtualizador).
+  //
+  // También marca los grupos: mensajes seguidos de la misma persona, el mismo
+  // día y con menos de GROUP_GAP_MS entre uno y otro se apilan juntos (como en
+  // WhatsApp o iMessage), con el nombre sólo en el primero y el avatar sólo
+  // en el último.
   const messagesWithDay = useMemo(() => {
-    let lastDay = "";
-    return messages.map((message) => {
-      const day = formatDay(message.createdAt);
-      const showDay = day !== lastDay;
-      lastDay = day;
-      return { message, day, showDay };
-    });
+    const days = messages.map((message) => formatDay(message.createdAt));
+    const sameGroup = (a: number, b: number) =>
+      days[a] === days[b] &&
+      messages[a].senderId === messages[b].senderId &&
+      Math.abs(
+        new Date(messages[b].createdAt).getTime() -
+          new Date(messages[a].createdAt).getTime()
+      ) < GROUP_GAP_MS;
+    return messages.map((message, i) => ({
+      message,
+      day: days[i],
+      showDay: i === 0 || days[i] !== days[i - 1],
+      firstOfGroup: i === 0 || !sameGroup(i - 1, i),
+      lastOfGroup: i === messages.length - 1 || !sameGroup(i, i + 1),
+    }));
   }, [messages]);
 
   const virtualizer = useVirtualizer({
@@ -541,8 +563,34 @@ export function MessageThread({
     setAttachedFile(null);
   };
 
-  const renderBubble = (message: ChatMessage, day: string, showDay: boolean) => {
+  const renderBubble = ({
+    message,
+    day,
+    showDay,
+    firstOfGroup,
+    lastOfGroup,
+  }: (typeof messagesWithDay)[number]) => {
     const mine = message.senderId === currentUserId;
+    // En un mensaje directo el nombre del otro ya está en el encabezado.
+    const showName = !mine && firstOfGroup && conversation.type === "area";
+    const textOnly = Boolean(message.body) && !message.attachment?.dataUrl && !message.order;
+    const meta = (className: string) => (
+      <span
+        className={cn(
+          "flex items-center gap-1 text-[10px] leading-none",
+          mine ? "text-ink-foreground/65" : "text-muted-foreground",
+          className
+        )}
+      >
+        {formatTime(new Date(message.createdAt))}
+        {mine ? (
+          <MessageCheck
+            state={computeCheckState(message, members, currentUserId)}
+            messageId={message.id}
+          />
+        ) : null}
+      </span>
+    );
     const author = message.sender ?? {
       id: message.senderId,
       username: message.senderUsername ?? "",
@@ -553,54 +601,67 @@ export function MessageThread({
     return (
       <>
         {showDay ? (
-          <div className="flex items-center gap-2 py-3">
-            <Separator className="flex-1 bg-border/60" />
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize text-muted-foreground">{day}</span>
-            <Separator className="flex-1 bg-border/60" />
+          <div className="flex justify-center pb-2 pt-4">
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium first-letter:uppercase text-muted-foreground">{day}</span>
           </div>
         ) : null}
-        <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
+        {/* Poco aire dentro de un grupo, más entre grupos: así se lee quién
+            habló sin repetir avatar y nombre en cada burbuja. */}
+        <div
+          className={cn(
+            "flex items-end gap-2",
+            mine ? "justify-end" : "justify-start",
+            showDay ? "" : firstOfGroup ? "pt-3" : "pt-0.5"
+          )}
+        >
           {!mine ? (
-            <UserAvatar seed={author.username} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-semibold">
-              {chatInitials(author)}
-            </UserAvatar>
+            lastOfGroup ? (
+              <UserAvatar seed={author.username} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-semibold">
+                {chatInitials(author)}
+              </UserAvatar>
+            ) : (
+              <span aria-hidden className="w-7 shrink-0" />
+            )
           ) : null}
           <div
             className={cn(
-              "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow sm:max-w-[75%]",
+              "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm transition-shadow sm:max-w-[75%]",
               // Propias en tinta (negro en claro / blanco en oscuro), ajenas en
               // gris suave: contraste alto en los dos temas sin bloques magenta.
+              // La esquina de la "colita" se marca sólo en la última burbuja
+              // del grupo; las del medio quedan rectas de ese lado.
               mine
-                ? "rounded-br-md bg-ink text-ink-foreground"
-                : "rounded-bl-md bg-muted text-foreground"
+                ? cn(
+                    "bg-ink text-ink-foreground",
+                    !firstOfGroup && "rounded-tr-md",
+                    lastOfGroup ? "rounded-br-sm" : "rounded-br-md"
+                  )
+                : cn(
+                    "bg-muted text-foreground",
+                    !firstOfGroup && "rounded-tl-md",
+                    lastOfGroup ? "rounded-bl-sm" : "rounded-bl-md"
+                  )
             )}
           >
-            {!mine ? (
+            {showName ? (
               <p className="pb-0.5 text-xs font-bold text-primary">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML aquí. */}
             {message.body ? (
-              <p className="whitespace-pre-wrap break-words">{message.body}</p>
+              <p className="whitespace-pre-wrap break-words">
+                {message.body}
+                {/* Sólo texto: la hora flota al final de la última línea
+                    (como WhatsApp) en vez de ocupar una línea propia. Si no
+                    entra, el float la baja sola a la línea siguiente. */}
+                {textOnly ? meta("float-right ml-3 mt-1.5") : null}
+              </p>
             ) : null}
             <MessageAttachment message={message} mine={mine} />
             {message.order ? (
               <OrderRefChip order={message.order} mine={mine} onOpen={setOpenOrderId} />
             ) : null}
-            <p
-              className={cn(
-                "flex items-center justify-end gap-1 pt-1 text-[10px]",
-                mine ? "text-ink-foreground/65" : "text-muted-foreground"
-              )}
-            >
-              {formatTime(new Date(message.createdAt))}
-              {mine ? (
-                <MessageCheck
-                  state={computeCheckState(message, members, currentUserId)}
-                  messageId={message.id}
-                />
-              ) : null}
-            </p>
+            {textOnly ? null : meta("justify-end pt-1")}
           </div>
         </div>
       </>
@@ -614,7 +675,7 @@ export function MessageThread({
         className
       )}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3 max-md:px-2 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex min-w-0 items-center gap-2.5">
           {onBack ? (
             <Button
@@ -660,27 +721,24 @@ export function MessageThread({
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-section-title">{conversation.title}</h2>
-            <p className="truncate text-xs text-muted-foreground">
+            {/* Una sola línea bajo el nombre (como WhatsApp): la presencia
+                cuando la hay, si no qué tipo de conversación es. */}
+            <p
+              className={cn(
+                "truncate text-xs",
+                otherIsTyping ? "text-primary" : "text-muted-foreground"
+              )}
+            >
               {conversation.type === "area"
-                ? "Canal entre Recepción y el área"
-                : "Mensaje directo"}
+                ? "Canal de área"
+                : (presenceLabel ?? "Mensaje directo")}
             </p>
-            {presenceLabel ? (
-              <p
-                className={cn(
-                  "truncate text-xs",
-                  otherIsTyping ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {presenceLabel}
-              </p>
-            ) : null}
           </div>
         </div>
         <Button
           size="sm"
-          variant="secondary"
-          className="shrink-0 gap-1 px-2.5 sm:px-3"
+          variant={showMembers ? "secondary" : "ghost"}
+          className="shrink-0 gap-1 rounded-full px-2.5 text-muted-foreground sm:px-3"
           onClick={() => setShowMembers((v) => !v)}
           title={`Participantes (${members.length})`}
           aria-label={`Participantes (${members.length})`}
@@ -718,7 +776,10 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-4 sm:px-5">
+      <div ref={scrollRef} data-no-pull-refresh className="flex flex-1 flex-col overflow-y-auto overscroll-contain p-4 sm:px-5">
+        {/* Con pocos mensajes, el hilo arranca abajo (pegado al compositor)
+            y no arriba de todo: el espacio libre queda sobre el primero. */}
+        <div aria-hidden className="mt-auto" />
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
@@ -728,7 +789,8 @@ export function MessageThread({
         ) : shouldVirtualize ? (
           <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
-              const { message, day, showDay } = messagesWithDay[virtualRow.index];
+              const item = messagesWithDay[virtualRow.index];
+              const { message } = item;
               // La virtualización monta/desmonta ítems al hacer scroll, así
               // que no puede depender de AnimatePresence (que animaría cada
               // vez que un mensaje viejo vuelve a montarse). En su lugar se
@@ -760,18 +822,18 @@ export function MessageThread({
                       : { type: "spring", bounce: 0.25, duration: 0.35 }
                   }
                 >
-                  {renderBubble(message, day, showDay)}
+                  {renderBubble(item)}
                 </motion.div>
               );
             })}
           </div>
         ) : (
           <AnimatePresence initial={false}>
-            {messagesWithDay.map(({ message, day, showDay }) => (
+            {messagesWithDay.map((item) => (
               <motion.div
-                key={message.id}
+                key={item.message.id}
                 initial={
-                  !newMessageIds.has(message.id)
+                  !newMessageIds.has(item.message.id)
                     ? false
                     : reduced
                       ? { opacity: 0 }
@@ -784,7 +846,7 @@ export function MessageThread({
                     : { type: "spring", bounce: 0.25, duration: 0.35 }
                 }
               >
-                {renderBubble(message, day, showDay)}
+                {renderBubble(item)}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -792,7 +854,7 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-3 pt-1 sm:px-4 sm:pb-4">
+      <div className="p-3 pt-1 sm:px-4 sm:pb-4 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {attachedOrder ? (
           <div className="mb-2 flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
@@ -839,8 +901,11 @@ export function MessageThread({
           </div>
         ) : null}
         {/* Compositor en píldora: adjuntos, campo y enviar dentro de una sola
-            superficie gris; el foco se marca en el contenedor. */}
-        <div className="flex items-end gap-0.5 rounded-[1.75rem] border border-border/60 bg-muted/60 p-1.5 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/25">
+            superficie gris; el foco se marca en el contenedor. En pantallas
+            angostas el campo va en su propia fila de ancho completo y los
+            adjuntos + enviar debajo (como Slack): los tres iconos en la misma
+            fila dejaban el texto en un tercio del ancho. */}
+        <div className="flex flex-wrap items-end gap-0.5 rounded-3xl border sm:flex-nowrap sm:rounded-[1.75rem] border-border/60 bg-muted/60 p-1.5 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/25">
           <OrderPicker selected={attachedOrder} onSelect={setAttachedOrder} />
           <Input
             ref={fileInputRef}
@@ -897,13 +962,13 @@ export function MessageThread({
             }}
             placeholder="Escribir un mensaje…"
             rows={1}
-            className="min-h-[40px] min-w-0 max-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-2 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0"
+            className="order-first min-h-[40px] min-w-0 max-h-40 flex-1 basis-full resize-none rounded-none border-0 bg-transparent px-3 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0 sm:order-none sm:basis-auto sm:px-2"
             maxLength={2000}
           />
           <Button
             onClick={() => void handleSend()}
             disabled={isSending || (!draft.trim() && !attachedFile)}
-            className="shrink-0 rounded-full px-3 sm:px-4"
+            className="ml-auto shrink-0 rounded-full px-3 sm:ml-0 sm:px-4"
             aria-label="Enviar"
           >
             <Send className="h-4 w-4 sm:mr-1" />

@@ -346,3 +346,56 @@ describe("MessageThread - navegación mobile (volver a la lista)", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("MessageThread - grupos de mensajes", () => {
+  const areaConversation: ChatConversation = {
+    ...conversation,
+    type: "area",
+    area: "bordado",
+    title: "Recepción ↔ Bordado",
+    otherUser: null,
+  };
+  const ana = { id: 20, username: "ana", firstName: "Ana", lastName: "Gómez" };
+  const luis = { id: 30, username: "luis", firstName: "Luis", lastName: null };
+
+  function renderMessages(messages: ChatMessage[], conv = areaConversation) {
+    renderThread(
+      <MessageThread
+        conversation={conv}
+        messages={messages}
+        members={[makeMember({})]}
+        isLoading={false}
+        isSending={false}
+        currentUserId={10}
+        onSend={async () => {}}
+      />
+    );
+  }
+
+  it("en un canal muestra el nombre una sola vez por grupo de mensajes seguidos", () => {
+    renderMessages([
+      makeMessage({ id: 1, senderId: 20, sender: ana, body: "uno", createdAt: "2026-01-01T10:00:00.000Z" }),
+      makeMessage({ id: 2, senderId: 20, sender: ana, body: "dos", createdAt: "2026-01-01T10:01:00.000Z" }),
+      makeMessage({ id: 3, senderId: 30, sender: luis, body: "tres", createdAt: "2026-01-01T10:02:00.000Z" }),
+    ]);
+    expect(screen.getAllByText("Ana Gómez")).toHaveLength(1);
+    expect(screen.getAllByText("Luis")).toHaveLength(1);
+  });
+
+  it("corta el grupo si pasaron más de 5 minutos entre mensajes", () => {
+    renderMessages([
+      makeMessage({ id: 1, senderId: 20, sender: ana, body: "uno", createdAt: "2026-01-01T10:00:00.000Z" }),
+      makeMessage({ id: 2, senderId: 20, sender: ana, body: "dos", createdAt: "2026-01-01T10:06:00.000Z" }),
+    ]);
+    expect(screen.getAllByText("Ana Gómez")).toHaveLength(2);
+  });
+
+  it("en un mensaje directo no repite el nombre del otro dentro de las burbujas", () => {
+    renderMessages(
+      [makeMessage({ id: 1, senderId: 20, sender: ana, body: "uno" })],
+      conversation
+    );
+    // Sólo el título del encabezado.
+    expect(screen.getAllByText("Ana Gómez")).toHaveLength(1);
+  });
+});

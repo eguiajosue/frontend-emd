@@ -32,6 +32,7 @@ interface ConversationRowProps {
 function ConversationRow({ conversation, active, onSelect }: ConversationRowProps) {
   const typingUserIds = useChatTyping(conversation.id);
   const isTyping = typingUserIds.length > 0;
+  const unread = conversation.unreadCount > 0;
   const { formatTime } = useTimeFormat();
 
   return (
@@ -42,7 +43,9 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
         size="bare"
         onClick={() => onSelect(conversation)}
         className={cn(
-          "group relative flex w-full items-center justify-start gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors",
+          // En mobile filas más altas y avatar más grande (como WhatsApp o
+          // Telegram): se tocan con el dedo y se leen de un vistazo.
+          "group relative flex w-full items-center justify-start gap-3 rounded-xl px-2.5 py-2.5 text-left text-sm transition-colors md:gap-2.5 md:py-2",
           active
             ? "text-foreground"
             : "text-foreground/90 hover:bg-muted/70"
@@ -59,18 +62,18 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
           {conversation.type === "area" ? (
             <span
               className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-full",
+                "flex h-11 w-11 items-center justify-center rounded-full md:h-9 md:w-9",
                 active
                   ? "bg-ink text-ink-foreground"
                   : "bg-muted text-muted-foreground"
               )}
             >
-              <Hash className="h-4 w-4" />
+              <Hash className="h-5 w-5 md:h-4 md:w-4" />
             </span>
           ) : (
             <UserAvatar
               seed={conversation.otherUser?.username}
-              className="h-9 w-9"
+              className="h-11 w-11 md:h-9 md:w-9"
               fallbackClassName={cn(
                 "text-xs font-semibold",
                 active && "bg-ink text-ink-foreground"
@@ -98,33 +101,43 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
           <span className="flex items-center gap-2">
             <span
               className={cn(
-                "block min-w-0 flex-1 truncate font-medium",
-                active && "font-semibold"
+                "block min-w-0 flex-1 truncate font-medium max-md:text-[0.95rem]",
+                (active || unread) && "font-semibold"
               )}
             >
               {conversation.title}
             </span>
             {conversation.lastMessageAt ? (
-              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  "shrink-0 text-xs tabular-nums",
+                  unread ? "font-medium text-primary" : "text-muted-foreground"
+                )}
+              >
                 {formatTime(new Date(conversation.lastMessageAt))}
               </span>
             ) : null}
           </span>
           {isTyping ? (
-            <span className="block truncate text-xs italic text-primary">
+            <span className="block truncate text-xs italic text-primary max-md:text-[0.8125rem]">
               escribiendo…
             </span>
           ) : conversation.lastMessage ? (
-            <span className="block truncate text-xs text-muted-foreground">
+            <span
+              className={cn(
+                "block truncate text-xs max-md:text-[0.8125rem]",
+                unread ? "text-foreground/80" : "text-muted-foreground"
+              )}
+            >
               {conversation.lastMessage.body}
             </span>
           ) : (
-            <span className="block truncate text-xs text-muted-foreground/70">
+            <span className="block truncate text-xs text-muted-foreground/70 max-md:text-[0.8125rem]">
               {conversation.type === "area" ? "Canal de área" : "Mensaje directo"}
             </span>
           )}
         </span>
-        {conversation.unreadCount > 0 ? (
+        {unread ? (
           <Badge className="relative z-10 ml-auto h-5 min-w-5 shrink-0 justify-center px-1.5 tabular-nums hover:bg-primary">
             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
           </Badge>
@@ -163,7 +176,7 @@ export function ConversationList({
           {search.trim() ? "Sin resultados." : "No hay conversaciones."}
         </p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-0.5">
           {items.map((conversation) => (
             <ConversationRow
               key={conversation.id}
@@ -188,23 +201,35 @@ export function ConversationList({
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
+      {/* En mobile el título de la página ya dice "Chat interno": no se
+          repite "Conversaciones" y "Nuevo" va como botón redondo junto al
+          buscador, en una sola fila. */}
+      <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4 max-md:hidden">
         <h2 className="text-section-title">Conversaciones</h2>
         <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>
           <MessageSquarePlus className="h-3.5 w-3.5" />
           Nuevo
         </Button>
       </div>
-      <div className="px-3 pb-2">
-        <div className="relative">
+      <div className="flex items-center gap-2 px-3 pb-2 max-md:pt-3">
+        <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar…"
-            className="h-9 rounded-full border-transparent bg-muted pl-8 text-sm"
+            className="h-10 rounded-full border-transparent bg-muted pl-8 text-sm md:h-9"
           />
         </div>
+        <Button
+          size="icon"
+          className="h-10 w-10 shrink-0 rounded-full md:hidden"
+          onClick={onNewDirect}
+          aria-label="Nuevo mensaje directo"
+          title="Nuevo mensaje directo"
+        >
+          <MessageSquarePlus className="h-4 w-4" />
+        </Button>
       </div>
       <div className="flex-1 overflow-y-auto px-2.5 pb-2.5 pt-2">
         {isLoading && conversations.length === 0 ? (

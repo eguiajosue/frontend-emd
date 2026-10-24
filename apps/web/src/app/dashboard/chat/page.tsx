@@ -16,6 +16,7 @@ import {
 import { ErrorState } from "@/components/feedback/states";
 import { getErrorMessage, isSessionExpiredError } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useVisualViewport } from "@/hooks/useVisualViewport";
 import {
   chatDisplayName,
   useChatConversations,
@@ -42,6 +43,20 @@ export default function ChatPage() {
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [directOpen, setDirectOpen] = useState(false);
   const [userFilter, setUserFilter] = useState("");
+
+  // Hilo abierto en mobile = pantalla completa (ver `className` del hilo):
+  // sigue el área visible para que el teclado de iOS no tape el compositor,
+  // y la página de atrás no se desplaza mientras tanto.
+  const threadOpen = mobileView === "thread";
+  const viewport = useVisualViewport(threadOpen);
+  useEffect(() => {
+    if (!threadOpen || !window.matchMedia("(max-width: 767px)").matches) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [threadOpen]);
 
   const { messages, isLoading: loadingMessages } = useChatMessages(selectedId);
   const { members } = useChatMembers(selectedId);
@@ -144,13 +159,23 @@ export default function ChatPage() {
     <div>
       <Title title="Chat interno" />
 
-      {/* En móvil se descuentan otros 5.5rem: lo mismo que gana de padding
-          extra el contenedor del layout por la barra de tabs flotante
-          (`MobileTabBar`), para que el composer del hilo no quede detrás. En
-          `md+` la barra no existe y la altura vuelve a ser la de siempre. */}
       {/* Lista, hilo y archivos son tres tarjetas blancas separadas (en
-          mobile se ve una sola a la vez, ver `mobileView`). */}
-      <div className="flex h-[calc(100dvh-16.5rem)] min-h-[280px] flex-col md:h-[calc(100dvh-11rem)] md:flex-row md:gap-4">
+          mobile se ve una sola a la vez, ver `mobileView`). En mobile no hay
+          alto fijo: la lista crece con su contenido y el hilo se abre en
+          pantalla completa por encima de la barra superior y de la de tabs,
+          como en WhatsApp o iMessage. `--chat-vvh`/`--chat-vvt` son el área
+          visible (ver `useVisualViewport`). */}
+      <div
+        className="flex flex-col md:h-[calc(100dvh-11rem)] md:min-h-[280px] md:flex-row md:gap-4"
+        style={
+          viewport
+            ? ({
+                "--chat-vvh": `${viewport.height}px`,
+                "--chat-vvt": `${viewport.offsetTop}px`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
         <ConversationList
           conversations={conversations}
           isLoading={isLoading}
@@ -171,7 +196,11 @@ export default function ChatPage() {
           currentUserId={currentUserId}
           onSend={handleSend}
           onBack={() => setMobileView("list")}
-          className={cn(mobileView === "list" && "hidden md:flex")}
+          className={cn(
+            mobileView === "list"
+              ? "hidden md:flex"
+              : "max-md:fixed max-md:inset-x-0 max-md:top-[var(--chat-vvt,0px)] max-md:z-40 max-md:h-[var(--chat-vvh,100dvh)] max-md:rounded-none max-md:border-0"
+          )}
         />
         {selected ? <MediaPanel messages={messages} /> : null}
       </div>
