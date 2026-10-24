@@ -17,10 +17,10 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     <div
       ref={ref}
       className={cn(
-        "rounded-2xl border border-border/60 bg-card text-card-foreground transition-shadow duration-200 dark:border-border",
-        // Sobre el lienzo gris la tarjeta blanca ya se separa sola: el borde
-        // queda apenas insinuado. Sólo la elevada (flotantes) suma sombra.
-        elevation === 2 && "elevation-2 shadow-soft-md",
+        "rounded-2xl border border-border/70 bg-card text-card-foreground shadow-soft-xs transition-shadow duration-200 ease-out-expo dark:border-border dark:shadow-none",
+        // Sobre el lienzo claro la tarjeta blanca se separa por borde fino +
+        // sombra mínima. Sólo la elevada (flotantes) suma sombra marcada.
+        elevation === 2 && "elevation-2 shadow-soft-md dark:shadow-soft-md",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-col gap-1 p-5", className)}
+    className={cn("flex flex-col gap-1.5 p-5", className)}
     {...props}
   />
 ))
