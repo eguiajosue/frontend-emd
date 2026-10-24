@@ -23,7 +23,6 @@ import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -99,7 +98,13 @@ interface MessageThreadProps {
 }
 
 function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-AR", {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Hoy";
+  if (date.toDateString() === yesterday.toDateString()) return "Ayer";
+  return date.toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -568,6 +573,24 @@ export function MessageThread({
     const mine = message.senderId === currentUserId;
     // En un mensaje directo el nombre del otro ya está en el encabezado.
     const showName = !mine && firstOfGroup && conversation.type === "area";
+    const textOnly = Boolean(message.body) && !message.attachment?.dataUrl && !message.order;
+    const meta = (className: string) => (
+      <span
+        className={cn(
+          "flex items-center gap-1 text-[10px] leading-none",
+          mine ? "text-ink-foreground/65" : "text-muted-foreground",
+          className
+        )}
+      >
+        {formatTime(new Date(message.createdAt))}
+        {mine ? (
+          <MessageCheck
+            state={computeCheckState(message, members, currentUserId)}
+            messageId={message.id}
+          />
+        ) : null}
+      </span>
+    );
     const author = message.sender ?? {
       id: message.senderId,
       username: message.senderUsername ?? "",
@@ -578,10 +601,8 @@ export function MessageThread({
     return (
       <>
         {showDay ? (
-          <div className="flex items-center gap-2 py-3">
-            <Separator className="flex-1 bg-border/60" />
-            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium capitalize text-muted-foreground">{day}</span>
-            <Separator className="flex-1 bg-border/60" />
+          <div className="flex justify-center pb-2 pt-4">
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium first-letter:uppercase text-muted-foreground">{day}</span>
           </div>
         ) : null}
         {/* Poco aire dentro de un grupo, más entre grupos: así se lee quién
@@ -628,26 +649,19 @@ export function MessageThread({
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML aquí. */}
             {message.body ? (
-              <p className="whitespace-pre-wrap break-words">{message.body}</p>
+              <p className="whitespace-pre-wrap break-words">
+                {message.body}
+                {/* Sólo texto: la hora flota al final de la última línea
+                    (como WhatsApp) en vez de ocupar una línea propia. Si no
+                    entra, el float la baja sola a la línea siguiente. */}
+                {textOnly ? meta("float-right ml-3 mt-1.5") : null}
+              </p>
             ) : null}
             <MessageAttachment message={message} mine={mine} />
             {message.order ? (
               <OrderRefChip order={message.order} mine={mine} onOpen={setOpenOrderId} />
             ) : null}
-            <p
-              className={cn(
-                "flex items-center justify-end gap-1 pt-1 text-[10px]",
-                mine ? "text-ink-foreground/65" : "text-muted-foreground"
-              )}
-            >
-              {formatTime(new Date(message.createdAt))}
-              {mine ? (
-                <MessageCheck
-                  state={computeCheckState(message, members, currentUserId)}
-                  messageId={message.id}
-                />
-              ) : null}
-            </p>
+            {textOnly ? null : meta("justify-end pt-1")}
           </div>
         </div>
       </>
