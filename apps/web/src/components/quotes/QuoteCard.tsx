@@ -96,12 +96,12 @@ export function QuoteCard({
     <article
       aria-label={quote.clientName}
       data-testid="quote-card"
-      className="rounded-2xl border border-border/60 bg-card p-3.5 shadow-soft sm:p-4"
+      className="group/card h-full rounded-2xl border border-border/60 bg-card p-3.5 shadow-soft transition-[box-shadow,border-color] duration-base ease-out-expo hover:border-primary/25 hover:shadow-soft-md sm:p-4"
     >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="min-w-0 break-words font-semibold leading-tight">{quote.clientName}</h3>
+            <h3 className="min-w-0 break-words font-heading font-semibold leading-tight tracking-tight">{quote.clientName}</h3>
             {quote.clientId !== null && (
               <UserCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Cliente registrado" />
             )}
@@ -174,13 +174,13 @@ export function QuoteCard({
         {quote.orderId !== null ? (
           <Link
             href={`/dashboard/orders/${quote.orderId}`}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20 transition-colors hover:bg-primary/15"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-semibold text-primary ring-1 ring-inset ring-primary/20 transition-colors duration-fast hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Package className="h-3.5 w-3.5" aria-hidden /> Pedido #{quote.orderId}
           </Link>
         ) : (
           quote.status === "aceptada" && (
-            <Button size="sm" className="h-8 gap-1.5 rounded-full" onClick={() => onConvert(quote)}>
+            <Button size="sm" variant="brand" className="h-8 gap-1.5 rounded-full" onClick={() => onConvert(quote)}>
               <PackagePlus className="h-3.5 w-3.5" aria-hidden /> Convertir en pedido
             </Button>
           )

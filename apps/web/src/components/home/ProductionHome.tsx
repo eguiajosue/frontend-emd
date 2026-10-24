@@ -36,7 +36,7 @@ import {
 } from "@/lib/homeDashboard";
 import { cn } from "@/lib/utils";
 import type { AreaTaskStatus, MyTask, ProductionWorkItem } from "@/types";
-import { HomeSection, LiveStatus, Panel, PriorityPill, RecentNotices, StatTile, productsLine } from "./HomeShared";
+import { StatGrid, HomeSection, LiveStatus, Panel, PriorityPill, RecentNotices, StatTile, productsLine } from "./HomeShared";
 
 /** La bandeja avanza tareas con el mismo hook que "Tareas asignadas". */
 function toMyTask(item: ProductionWorkItem): MyTask {
@@ -95,7 +95,7 @@ function NextUp({
   const ActionIcon = action.icon;
   const AreaIcon = getAreaIcon(item.area);
   return (
-    <Panel className="space-y-4 p-5">
+    <Panel className="space-y-4 border-l-[3px] border-l-magenta p-5">
       <div className="flex flex-wrap items-center gap-2">
         <PriorityPill priority={priority} />
         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-foreground/80">
@@ -200,14 +200,14 @@ export function ProductionHome({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <StatGrid>
             <StatTile icon={Flame} label="Vencidos" value={data.counters.overdue} tone="danger" />
             <StatTile icon={Hourglass} label="Por vencer" value={data.counters.atRisk} tone="warn" hint="en las próximas 48 h" />
             <StatTile icon={Inbox} label="Sin empezar" value={data.counters.notStarted} tone="warn" hint="tuyos y libres" />
             <StatTile icon={Timer} label="En curso" value={data.counters.inProgress} tone="info" />
             <StatTile icon={CircleCheckBig} label="Terminadas hoy" value={data.counters.doneToday} tone="good" hint="en tu área" />
             <StatTile icon={Workflow} label="Llegan de Diseño" value={data.counters.upcoming} hint="planificados para tu área" />
-          </div>
+          </StatGrid>
 
           <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
             <div className="min-w-0 space-y-8 lg:col-span-2">
@@ -333,7 +333,7 @@ export function ProductionHome({
                         <button
                           type="button"
                           onClick={() => setOpenOrderId(order.id)}
-                          className="block w-full px-4 py-2.5 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                          className="block w-full px-4 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
                         >
                           <span className="block truncate text-sm font-medium">{productsLine(order.products)}</span>
                           <span className="block truncate text-meta">

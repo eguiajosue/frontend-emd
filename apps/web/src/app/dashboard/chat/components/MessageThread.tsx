@@ -10,6 +10,7 @@ import {
   File as FileIcon,
   FileUp,
   Hash,
+  MessageSquare,
   Paperclip,
   Send,
   Users,
@@ -37,7 +38,7 @@ import { MessageThreadSkeleton } from "@/components/feedback/states";
 import { chatDisplayName, chatInitials } from "@/hooks/useChat";
 import { useChatTyping } from "@/hooks/useChatTyping";
 import { ChatSocketContext } from "@/hooks/useSocket";
-import { useMotionPreset } from "@/lib/motion";
+import { EASE_OUT, useMotionPreset } from "@/lib/motion";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useOrders } from "@/hooks/useOrders";
 import { isFinishedStatus } from "@/lib/orderStatus";
@@ -427,10 +428,13 @@ export function MessageThread({
     return (
       <div
         className={cn(
-          "flex flex-1 items-center justify-center rounded-2xl border border-border/60 bg-card p-6 text-sm text-muted-foreground",
+          "flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-6 text-center text-sm text-muted-foreground",
           className
         )}
       >
+        <span aria-hidden className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <MessageSquare className="size-5" strokeWidth={1.75} />
+        </span>
         Seleccionar una conversación para empezar a chatear.
       </div>
     );
@@ -571,12 +575,12 @@ export function MessageThread({
               // Propias en tinta (negro en claro / blanco en oscuro), ajenas en
               // gris suave: contraste alto en los dos temas sin bloques magenta.
               mine
-                ? "rounded-br-md bg-ink text-ink-foreground"
-                : "rounded-bl-md bg-muted text-foreground"
+                ? "rounded-br-md bg-ink text-ink-foreground shadow-soft-xs"
+                : "rounded-bl-md bg-muted/80 text-foreground ring-1 ring-border/40"
             )}
           >
             {!mine ? (
-              <p className="pb-0.5 text-xs font-bold text-primary">{chatDisplayName(author)}</p>
+              <p className="pb-0.5 text-xs font-semibold text-magenta-ink">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
                 nunca vía dangerouslySetInnerHTML: no hace falta sanitizar HTML aquí. */}
@@ -610,7 +614,7 @@ export function MessageThread({
   return (
     <section
       className={cn(
-        "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card",
+        "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft-xs",
         className
       )}
     >
@@ -720,7 +724,7 @@ export function MessageThread({
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="py-10 text-center text-sm text-muted-foreground">
             Todavía no hay mensajes en esta conversación.
           </p>
         ) : shouldVirtualize ? (
@@ -755,7 +759,7 @@ export function MessageThread({
                   transition={
                     reduced
                       ? { duration: 0.15 }
-                      : { type: "spring", bounce: 0.25, duration: 0.35 }
+                      : { duration: 0.2, ease: EASE_OUT }
                   }
                 >
                   {renderBubble(message, day, showDay)}
@@ -779,7 +783,7 @@ export function MessageThread({
                 transition={
                   reduced
                     ? { duration: 0.15 }
-                    : { type: "spring", bounce: 0.25, duration: 0.35 }
+                    : { duration: 0.2, ease: EASE_OUT }
                 }
               >
                 {renderBubble(message, day, showDay)}

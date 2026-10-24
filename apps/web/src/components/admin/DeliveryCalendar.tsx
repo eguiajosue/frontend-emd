@@ -71,12 +71,12 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
         <CardTitle className="flex min-w-0 items-center gap-2.5 whitespace-nowrap">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-cyan-soft text-cyan-ink" aria-hidden>
+            <CalendarDays className="h-4 w-4" />
           </span>
           Calendario de entregas
         </CardTitle>
-        <div className="flex items-center gap-0.5 rounded-full bg-muted p-0.5">
+        <div className="flex items-center gap-0.5 rounded-full bg-secondary p-0.5">
           <Button
             variant="ghost"
             size="icon"
@@ -127,10 +127,10 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
             const cell = (
               <div
                 className={cn(
-                  "relative flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-xl text-sm tabular-nums transition-colors",
+                  "relative flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-xl text-sm tabular-nums transition-colors duration-150",
                   inMonth ? "text-foreground" : "text-muted-foreground/40",
-                  hasOrders && !today && "bg-primary/10 font-semibold hover:bg-primary/15",
-                  today && "bg-ink font-semibold text-ink-foreground",
+                  hasOrders && !today && "bg-magenta-soft font-semibold hover:bg-magenta/20",
+                  today && "bg-ink font-semibold text-ink-foreground shadow-soft",
                   hasOrders && "cursor-pointer",
                   !hasOrders && !today && "hover:bg-muted"
                 )}
@@ -140,7 +140,7 @@ export function DeliveryCalendar({ orders, onSelectOrder }: DeliveryCalendarProp
                   <span
                     className={cn(
                       "text-[0.6875rem] font-semibold leading-none",
-                      today ? "text-ink-foreground/80" : "text-primary"
+                      today ? "text-ink-foreground/80" : "text-magenta-ink"
                     )}
                   >
                     {dayOrders.length}

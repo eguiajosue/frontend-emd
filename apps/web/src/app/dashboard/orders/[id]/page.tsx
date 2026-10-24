@@ -14,6 +14,7 @@ import {
   useOrderDetailAccess,
 } from "@/components/orders/detail/OrderDetailBody";
 import { useOrder } from "@/hooks/useOrders";
+import { FadeIn } from "@/components/motion";
 import { ApiError } from "@/lib/api";
 
 /**
@@ -39,11 +40,11 @@ const OrderDetailPage = () => {
     <Button
       variant="outline"
       size="sm"
-      className="gap-1.5 text-muted-foreground"
+      className="group gap-1.5 text-muted-foreground"
       asChild
     >
       <Link href="/dashboard/orders">
-        <ArrowLeft className="h-4 w-4" aria-hidden />
+        <ArrowLeft className="h-4 w-4 transition-transform duration-150 group-hover:-translate-x-0.5" aria-hidden />
         Pedidos
       </Link>
     </Button>
@@ -77,14 +78,14 @@ const OrderDetailPage = () => {
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-28 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-10 text-sm">
+    <FadeIn className="mx-auto max-w-3xl space-y-6 pb-10 text-sm">
       <div className="space-y-3">
         {back}
         <OrderDetailHeader
@@ -102,7 +103,7 @@ const OrderDetailPage = () => {
         editing={editing}
         onEditingChange={setEditing}
       />
-    </div>
+    </FadeIn>
   );
 };
 

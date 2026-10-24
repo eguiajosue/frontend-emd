@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/feedback/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,11 +50,11 @@ function BranchHistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number
         onClick={() => onOpen(order.id)}
         aria-label={`Ver pedido #${order.id} de ${client}`}
         className={cn(
-          "grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5 rounded-none px-5 py-4 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[3rem_minmax(0,1fr)_auto]",
+          "grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5 rounded-none px-5 py-4 text-left transition-colors duration-150 hover:bg-muted/60 active:bg-muted sm:grid-cols-[3rem_minmax(0,1fr)_auto]",
           DESKTOP_GRID
         )}
       >
-        <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
+        <span className="font-heading text-sm font-semibold tabular-nums text-primary dark:text-foreground">#{order.id}</span>
         <span className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 truncate text-sm font-medium">{client}</span>
           <BranchBadge order={order} size="md" />
@@ -118,10 +119,14 @@ const BranchHistoryPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <FadeIn className="space-y-6">
       <Title title="Historial de pedidos" />
 
-      <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filtros del historial">
+      <div
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-soft-xs"
+        role="group"
+        aria-label="Filtros del historial"
+      >
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
@@ -203,9 +208,9 @@ const BranchHistoryPage = () => {
         />
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden shadow-soft">
             <div
-              className={cn("hidden gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid", DESKTOP_GRID)}
+              className={cn("hidden gap-x-4 border-b border-border/60 bg-[hsl(var(--surface-sunken))] px-5 py-3 text-label lg:grid", DESKTOP_GRID)}
               aria-hidden
             >
               <span>#</span>
@@ -250,7 +255,7 @@ const BranchHistoryPage = () => {
       )}
 
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
-    </div>
+    </FadeIn>
   );
 };
 

@@ -68,9 +68,9 @@ function StockBar({ item }: { item: InventoryItem }) {
       <div
         className={cn(
           "h-full rounded-full",
-          item.stockStatus === "ok" && "bg-emerald-500/70",
-          item.stockStatus === "low" && "bg-amber-500/80",
-          item.stockStatus === "out" && "bg-rose-500/80"
+          item.stockStatus === "ok" && "bg-lime-strong/70",
+          item.stockStatus === "low" && "bg-warning",
+          item.stockStatus === "out" && "bg-destructive"
         )}
         style={{ width: `${pct}%` }}
       />

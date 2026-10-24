@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +37,10 @@ export function ConfirmDeleteDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <span aria-hidden className="mx-auto mb-1 flex size-11 items-center justify-center rounded-2xl bg-destructive/10 text-destructive sm:mx-0">
+            <Trash2 className="size-5" />
+          </span>
+          <AlertDialogTitle className="font-heading">{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

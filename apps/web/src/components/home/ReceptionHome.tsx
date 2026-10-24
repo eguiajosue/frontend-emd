@@ -27,7 +27,8 @@ import { orderViewHref } from "@/lib/orderViews";
 import { ATTENTION_META, HEALTH_META, attentionText, relativeTo } from "@/lib/homeDashboard";
 import { cn } from "@/lib/utils";
 import type { DashboardAreaLoad, ReceptionDashboard } from "@/types";
-import { HomeSection, LiveStatus, Panel, StatTile, productsLine } from "./HomeShared";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { StatGrid, HomeSection, LiveStatus, Panel, StatTile, productsLine } from "./HomeShared";
 
 const ThroughputChart = dynamic(() => import("./ThroughputChart"), {
   ssr: false,
@@ -42,10 +43,10 @@ function AreaCard({ load, now }: { load: DashboardAreaLoad; now: number }) {
   const health = HEALTH_META[load.health];
   const isDesign = isDesignArea(load.area);
   return (
-    <article className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft dark:border-border">
+    <article className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft transition-shadow duration-200 hover:shadow-soft-md dark:border-border">
       <header className="flex items-center justify-between gap-2">
         <h3 className="flex min-w-0 items-center gap-2 font-medium">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-cyan/15 dark:text-cyan">
             {Icon && <Icon className="h-4 w-4" aria-hidden />}
           </span>
           <span className="truncate">{getAreaLabel(load.area)}</span>
@@ -116,7 +117,7 @@ function AlertRow({ icon: Icon, href, children }: { icon: typeof Package; href: 
     <li>
       <Link
         href={href}
-        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+        className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
       >
         <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
         <span className="min-w-0 flex-1">{children}</span>
@@ -177,7 +178,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
         <ReceptionSkeleton />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <StatGrid>
             <StatTile
               icon={Package}
               label="Pedidos activos"
@@ -221,7 +222,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
               value={data.today.delivered}
               hint={`${plural(data.today.created, "creado", "creados")} · ${plural(data.today.tasksCompleted, "tarea hecha", "tareas hechas")}`}
             />
-          </div>
+          </StatGrid>
 
           <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
             <div className="min-w-0 space-y-8 lg:col-span-2">
@@ -233,7 +234,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
               >
                 {data.attention.length === 0 ? (
                   <Panel className="flex items-center gap-3 px-4 py-5 text-sm text-muted-foreground">
-                    <CircleCheckBig className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                    <CircleCheckBig className="h-5 w-5 text-lime-ink dark:text-lime" aria-hidden />
                     Todo en orden: ningún pedido vencido, trabado ni esperando de más.
                   </Panel>
                 ) : (
@@ -273,11 +274,13 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
               </HomeSection>
 
               <HomeSection id="home-areas" title="Áreas en vivo">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <Stagger inView className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {data.areas.map((load) => (
-                    <AreaCard key={load.area} load={load} now={now} />
+                    <StaggerItem key={load.area} className="min-w-0 [&>*]:h-full">
+                      <AreaCard load={load} now={now} />
+                    </StaggerItem>
                   ))}
-                </div>
+                </Stagger>
               </HomeSection>
             </div>
 

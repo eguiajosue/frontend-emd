@@ -55,15 +55,23 @@ const GROUP_ICONS: Record<NotificationGroup, LucideIcon> = {
   otras: Bell,
 };
 
+/** Tinte del círculo por categoría: los colores de marca, con texto legible en claro y oscuro. */
+const GROUP_TONES: Record<NotificationGroup, string> = {
+  pedidos: "bg-primary/10 text-primary",
+  diseno: "bg-magenta-soft text-magenta-ink",
+  produccion: "bg-cyan-soft text-cyan-ink",
+  inventario: "bg-lime-soft text-lime-ink",
+  otras: "bg-muted text-muted-foreground",
+};
+
 function NotificationIcon({ notification }: { notification: Notification }) {
-  const Icon =
-    notification.type === "chat_message"
-      ? MessageCircle
-      : GROUP_ICONS[notificationGroup(notification.type)];
+  const group = notificationGroup(notification.type);
+  const Icon = notification.type === "chat_message" ? MessageCircle : GROUP_ICONS[group];
+  const tone = notification.type === "chat_message" ? GROUP_TONES.pedidos : GROUP_TONES[group];
   return (
     <span
       aria-hidden
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70"
+      className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", tone)}
     >
       <Icon className="h-[18px] w-[18px]" />
     </span>
@@ -219,7 +227,7 @@ export default function NotificacionesPage() {
         <div className="space-y-8">
           {dayGroups.map((dayGroup) => (
             <section key={dayGroup.key} className="space-y-2">
-              <h2 className="sticky top-0 z-10 bg-background/95 py-1.5 text-section-title backdrop-blur first-letter:uppercase">
+              <h2 className="sticky top-0 z-10 bg-background/90 py-1.5 text-label uppercase tracking-wider backdrop-blur first-letter:uppercase">
                 {dayGroup.label}
               </h2>
               <ul className="space-y-2">
@@ -241,7 +249,10 @@ export default function NotificacionesPage() {
                     <Button
                       variant="outline"
                       onClick={() => handleSelect(notification)}
-                      className="h-auto w-full items-start justify-start gap-3.5 whitespace-normal rounded-2xl border-border/60 bg-card px-4 py-3.5 text-left font-normal hover:bg-card hover:shadow-soft sm:px-5"
+                      className={cn(
+                        "interactive-lift h-auto w-full items-start justify-start gap-3.5 whitespace-normal rounded-2xl border-border/60 bg-card px-4 py-3.5 text-left font-normal shadow-soft-xs hover:bg-card sm:px-5",
+                        !notification.read && "border-primary/25"
+                      )}
                     >
                       <NotificationIcon notification={notification} />
                       <span className="min-w-0 flex-1">
@@ -257,7 +268,7 @@ export default function NotificacionesPage() {
                           {/* Punto magenta = no leída (el texto accesible va en sr-only). */}
                           {!notification.read && (
                             <>
-                              <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                              <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-magenta-strong ring-4 ring-magenta-strong/15" />
                               <span className="sr-only">No leída</span>
                             </>
                           )}

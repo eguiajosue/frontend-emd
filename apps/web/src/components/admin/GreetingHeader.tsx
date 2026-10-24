@@ -45,7 +45,8 @@ export function GreetingHeader({
   return (
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 space-y-2">
-        <h1 className="text-balance font-heading text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl">
+        <span className="brand-bar block w-12" aria-hidden />
+        <h1 className="text-balance font-heading text-3xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-[2.5rem]">
           {greeting}
           {firstName ? `, ${firstName}` : ""}
         </h1>
@@ -53,8 +54,9 @@ export function GreetingHeader({
           <p className="max-w-prose text-[0.95rem] text-muted-foreground">{subtitle}</p>
         )}
       </div>
-      <p className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-card px-3.5 py-1.5 text-sm text-muted-foreground">
-        <Clock className="h-4 w-4" aria-hidden />
+      <p className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-border/70 bg-card px-3.5 py-1.5 text-sm text-muted-foreground shadow-soft-xs">
+        <span className="sr-only">Hora actual: </span>
+        <Clock className="h-4 w-4 text-[hsl(var(--cyan-ink))]" aria-hidden />
         <span className="font-semibold tabular-nums text-foreground">{timeLabel}</span>
         <span aria-hidden>·</span>
         <span className="first-letter:uppercase">{dateLabel}</span>

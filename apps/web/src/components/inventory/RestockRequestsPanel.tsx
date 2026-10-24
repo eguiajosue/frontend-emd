@@ -76,7 +76,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
           {request.statusNote && <p className="text-sm">Recepción: {request.statusNote}</p>}
         </div>
         {request.urgency === "URGENTE" && (
-          <Badge className="border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300">
+          <Badge className="border-transparent bg-destructive/10 text-destructive">
             Urgente
           </Badge>
         )}

@@ -80,7 +80,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
     <article
       data-area={task.area}
       className={cn(
-        "area-stripe group relative flex h-full flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 transition-[border-color,box-shadow] duration-150 hover:border-border hover:shadow-soft-md dark:border-border",
+        "area-stripe interactive-lift group relative flex h-full flex-col gap-4 rounded-2xl border border-border/60 bg-card p-5 pl-6 shadow-soft-xs hover:border-border dark:border-border",
         returned && "border-orange-300/70 dark:border-orange-900"
       )}
     >
@@ -113,7 +113,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           {inProgress && (
             <Badge
               variant="muted"
-              className="bg-sky-500/10 px-2.5 py-1 text-sky-700 dark:bg-sky-400/10 dark:text-sky-300"
+              className="bg-cyan-soft px-2.5 py-1 text-cyan-ink"
             >
               <Timer className="h-3.5 w-3.5" aria-hidden />
               En curso
@@ -152,7 +152,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
               "mt-auto inline-flex w-fit max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
               state.tone === "overdue"
                 ? "bg-rose-500/10 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300"
-                : "bg-muted text-muted-foreground"
+                : "bg-[hsl(var(--surface-sunken))] text-muted-foreground"
             )}
           >
             <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />

@@ -60,6 +60,7 @@ import {
   Plus,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FadeIn } from "@/components/motion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -680,7 +681,7 @@ const OrdersPage = () => {
   return (
     // El "siguiente paso" de las tarjetas (Lista, Cuadrícula y Modo TV) con su "Deshacer".
     <OrderStepProvider>
-    <div className="space-y-6">
+    <FadeIn className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4 max-sm:flex-nowrap max-sm:items-center">
         <div>
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
@@ -932,7 +933,7 @@ const OrdersPage = () => {
           setCreateOpen(true);
         }}
       />
-    </div>
+    </FadeIn>
     </OrderStepProvider>
   );
 };

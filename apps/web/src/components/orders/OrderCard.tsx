@@ -76,7 +76,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             if (e.key === "Enter" || e.key === " ") onOpen(order.id);
           }}
           className={cn(
-            "cursor-pointer shadow-soft transition-[box-shadow,border-color] duration-200 hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "cursor-pointer shadow-soft transition-[box-shadow,border-color] duration-200 hover:border-primary/25 hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             isCritical && "border-rose-500/40 dark:border-rose-400/40"
           )}
         >

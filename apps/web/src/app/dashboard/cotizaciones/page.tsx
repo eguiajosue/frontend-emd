@@ -11,7 +11,8 @@ import {
   Search,
   X,
 } from "lucide-react";
-import Title from "@/components/Title";
+import { PageContainer, PageHeader } from "@/components/layout";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -266,9 +267,11 @@ function QuotesBoard() {
   const allForCopy = [...quotes.filter((q) => q.stage === "por_enviar"), ...quotes.filter((q) => q.stage === "enviada")];
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <Title title="Cotizaciones" />
+    <PageContainer className="space-y-5">
+      <PageHeader
+        title="Cotizaciones"
+        icon={ReceiptText}
+        actions={
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
           <Button variant="outline" className="flex-1 gap-2 sm:flex-none" aria-label="Pegar de WhatsApp" onClick={() => setPasteOpen(true)}>
             <ClipboardPaste className="h-4 w-4" aria-hidden />
@@ -295,6 +298,7 @@ function QuotesBoard() {
             </DropdownMenuContent>
           </DropdownMenu>
           <Button
+            variant="brand"
             className="w-full gap-2 sm:w-auto"
             onClick={() => {
               setEditing(null);
@@ -307,7 +311,8 @@ function QuotesBoard() {
             </kbd>
           </Button>
         </div>
-      </div>
+        }
+      />
 
       <Tabs value={stage} onValueChange={(v) => setStage(v as QuoteStage)}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -317,7 +322,7 @@ function QuotesBoard() {
                 {QUOTE_STAGE_LABELS[s]}
                 <span
                   data-testid={`count-${s}`}
-                  className="rounded-full bg-foreground/10 px-1.5 text-xs tabular-nums"
+                  className="rounded-full bg-primary/10 px-1.5 text-xs tabular-nums text-primary dark:bg-primary/20"
                 >
                   {byStage[s].length}
                 </span>
@@ -332,7 +337,7 @@ function QuotesBoard() {
               placeholder="Buscar cliente o descripción…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-11 pl-9 pr-9 sm:h-9"
+              className="h-11 rounded-full bg-card pl-9 pr-9 sm:h-10"
             />
             {search && (
               <button
@@ -407,9 +412,9 @@ function QuotesBoard() {
                   />
                 )
               ) : (
-                <ul className="grid gap-3 xl:grid-cols-2" aria-label={`Cotizaciones ${QUOTE_STAGE_LABELS[s].toLowerCase()}`}>
+                <Stagger as="ul" className="grid gap-3 xl:grid-cols-2" aria-label={`Cotizaciones ${QUOTE_STAGE_LABELS[s].toLowerCase()}`}>
                   {visible.map((quote) => (
-                    <li key={quote.id}>
+                    <StaggerItem as="li" key={quote.id}>
                       <QuoteCard
                         quote={quote}
                         onStatusChange={changeStatus}
@@ -425,9 +430,9 @@ function QuotesBoard() {
                         editCommentOnMount={commentEditId === quote.id}
                         onCommentEditorOpened={() => setCommentEditId(null)}
                       />
-                    </li>
+                    </StaggerItem>
                   ))}
-                </ul>
+                </Stagger>
               )}
             </TabsContent>
           );
@@ -483,7 +488,7 @@ function QuotesBoard() {
           setConverting(null);
         }}
       />
-    </div>
+    </PageContainer>
   );
 }
 
@@ -506,11 +511,11 @@ function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors sm:h-8",
+        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm transition-[color,background-color,border-color,box-shadow] duration-fast active:scale-[0.97] motion-reduce:active:scale-100 sm:h-8",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border/70 bg-card text-foreground hover:bg-muted",
+          ? "border-primary bg-primary text-primary-foreground shadow-soft-xs"
+          : "border-border/70 bg-card text-foreground hover:border-primary/30 hover:bg-accent",
         count === 0 && !active && "text-muted-foreground"
       )}
     >

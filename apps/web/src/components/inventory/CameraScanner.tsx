@@ -66,7 +66,7 @@ export function CameraScanner({ onCode, onClose }: CameraScannerProps) {
       {status === "running" && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
           <div className="relative h-[38%] w-[78%] rounded-xl border-2 border-white/80 shadow-[0_0_0_100vmax_rgba(0,0,0,0.35)]">
-            <div className="absolute inset-x-3 top-1/2 h-0.5 -translate-y-1/2 animate-pulse bg-rose-500/90" />
+            <div className="absolute inset-x-3 top-1/2 h-0.5 -translate-y-1/2 animate-pulse bg-magenta/90" />
           </div>
         </div>
       )}

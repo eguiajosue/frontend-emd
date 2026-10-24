@@ -7,19 +7,42 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import React, { Suspense, useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { Loader2, User, Lock } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useMotionPreset } from '@/lib/motion'
-import Image from 'next/image'
+import { DUR, EASE_OUT } from '@/lib/motion'
+import { Stagger, StaggerItem } from '@/components/motion/Stagger'
 import { BrandLogo } from '@/components/BrandLogo'
 
 /** Los tres cuadros de color del logo EMD, usados como motivo decorativo. */
 const BrandSquares = ({ className = '' }: { className?: string }) => (
   <div aria-hidden className={`flex gap-2 ${className}`}>
-    <span className="h-3 w-3 rounded-[3px] bg-[hsl(var(--brand-cyan))]" />
-    <span className="h-3 w-3 rounded-[3px] bg-[hsl(var(--brand-lime))]" />
-    <span className="h-3 w-3 rounded-[3px] bg-[hsl(var(--brand-magenta))]" />
+    <span className="h-3 w-3 rounded-[3px] bg-cyan" />
+    <span className="h-3 w-3 rounded-[3px] bg-lime" />
+    <span className="h-3 w-3 rounded-[3px] bg-magenta" />
   </div>
 )
+
+/** Cuadros grandes translúcidos que flotan despacio en el panel de marca. */
+const FloatingSquares = () => {
+  const reduced = useReducedMotion()
+  const squares = [
+    { c: 'bg-cyan/25', pos: 'right-16 top-24 size-24', dy: 10, d: 7 },
+    { c: 'bg-lime/20', pos: 'right-40 top-[46%] size-14', dy: -8, d: 6 },
+    { c: 'bg-magenta/30', pos: 'bottom-28 right-14 size-32', dy: 12, d: 8 },
+  ]
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      {squares.map((q, i) => (
+        <motion.span
+          key={i}
+          className={`absolute rounded-3xl ${q.c} ${q.pos}`}
+          animate={reduced ? undefined : { y: [0, q.dy, 0], rotate: [0, 4, 0] }}
+          transition={{ duration: q.d, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+    </div>
+  )
+}
 
 const LoginForm = () => {
   const [errors, setErrors] = useState<string[]>([])
@@ -70,65 +93,70 @@ const LoginForm = () => {
   };
 
   return (
-    // Lienzo gris + tarjetas blancas, el mismo lenguaje que el panel. Sigue el
-    // tema guardado (claro por defecto): el oscuro usa los mismos tokens.
-    <div className="grid min-h-dvh w-full grid-cols-1 gap-4 bg-background p-4 sm:p-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      {/* Panel de marca: sólo escritorio. Fondo azul marino del logo (siempre
-          oscuro, por eso usa la variante blanca) con resplandores de los tres
-          colores de marca. */}
+    // Lienzo claro + panel marino de marca a la izquierda (sólo escritorio) y
+    // tarjeta de acceso a la derecha. Sigue el tema guardado: el oscuro usa
+    // los mismos tokens. Entrada escalonada (fade-up 250ms, 45ms entre pasos).
+    <div className="grid min-h-dvh w-full grid-cols-1 gap-4 bg-background p-4 sm:p-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="relative hidden flex-col justify-between overflow-hidden rounded-[2rem] bg-[hsl(var(--brand-navy))] p-10 text-white shadow-soft lg:flex xl:p-14"
+        transition={{ duration: DUR.slow, ease: EASE_OUT }}
+        className="surface-brand relative hidden flex-col justify-between rounded-[1.75rem] p-10 shadow-soft-md lg:flex xl:p-14"
       >
-        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-[hsl(var(--brand-cyan))] opacity-20 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 right-0 h-96 w-96 rounded-full bg-[hsl(var(--brand-magenta))] opacity-25 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute right-10 top-1/3 h-48 w-48 rounded-full bg-[hsl(var(--brand-lime))] opacity-10 blur-3xl" />
+        {/* Trama sutil + cuadros del logo flotando (quietos con reducir movimiento). */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:22px_22px]" />
+        <FloatingSquares />
 
-        <Image
-          src="/brand/emd-logo-dark.png"
-          alt="EMD marketing & design"
-          width={546}
-          height={118}
-          priority
-          className="relative h-14 w-auto self-start xl:h-16"
-        />
-        <div className="relative">
-          <BrandSquares className="mb-6" />
-          <h1 className="font-heading text-5xl font-semibold leading-[1] tracking-tight xl:text-6xl">
-            Todo tu equipo creativo, en un solo lugar.
-          </h1>
-          <p className="mt-6 max-w-md text-lg text-white/75">
-            Imprenta, bordado y marketing: de la idea a la entrega, sin perder ningún pedido en el camino.
-          </p>
-        </div>
+        <BrandLogo onDark priority className="relative h-12 self-start xl:h-14" />
+
+        <Stagger className="relative" step={0.06} delay={0.1}>
+          <StaggerItem>
+            <div className="brand-bar mb-7 w-24" aria-hidden />
+          </StaggerItem>
+          <StaggerItem>
+            <h1 className="text-display max-w-xl xl:text-6xl">
+              Todo tu equipo creativo, <span className="text-gradient-accent">en un solo lugar.</span>
+            </h1>
+          </StaggerItem>
+          <StaggerItem>
+            <p className="mt-6 max-w-md text-lg text-white/80">
+              Imprenta, bordado y marketing: de la idea a la entrega, sin perder ningún pedido en el camino.
+            </p>
+          </StaggerItem>
+        </Stagger>
+
         <ul aria-label="Áreas" className="relative flex flex-wrap gap-2">
-          {['Imprenta', 'Bordado', 'Marketing'].map((area) => (
+          {[
+            { name: "Imprenta", dot: "bg-cyan" },
+            { name: "Bordado", dot: "bg-lime" },
+            { name: "Marketing", dot: "bg-magenta" },
+          ].map((area) => (
             <li
-              key={area}
-              className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/85 backdrop-blur-sm"
+              key={area.name}
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-sm"
             >
-              {area}
+              <span aria-hidden className={`size-2 rounded-[3px] ${area.dot}`} />
+              {area.name}
             </li>
           ))}
         </ul>
       </motion.section>
 
-      {/* Formulario: tarjeta blanca centrada sobre el lienzo. */}
+      {/* Formulario: tarjeta centrada sobre el lienzo. */}
       <div className="flex flex-col items-center justify-center py-6">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+          transition={{ duration: DUR.slow, ease: EASE_OUT, delay: 0.05 }}
           className="w-full max-w-md"
         >
           <div className="mb-8 flex justify-center lg:hidden">
             <BrandLogo className="h-12" priority />
           </div>
 
-          <div className="rounded-[1.75rem] border border-border/60 bg-card p-6 shadow-soft sm:p-9">
-          <BrandSquares className="mb-5" />
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card p-6 shadow-soft-md sm:p-9">
+          <div aria-hidden className="brand-bar absolute inset-x-0 top-0 h-1 rounded-none" />
+          <BrandSquares className="mb-5 mt-1" />
           <div className="space-y-2">
             <h2 className="font-heading text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-4xl">
               Bienvenido de vuelta
@@ -139,7 +167,7 @@ const LoginForm = () => {
           </div>
 
           {sessionMessage && (
-            <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/10 px-4 py-3 text-center text-sm text-foreground">
+            <div className="mt-6 rounded-xl border border-info/30 bg-info-soft px-4 py-3 text-center text-sm text-foreground">
               {sessionMessage}
             </div>
           )}
@@ -152,7 +180,7 @@ const LoginForm = () => {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-                className="h-12 w-full rounded-full border border-transparent bg-muted px-5 transition-colors focus-visible:border-ring focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/20"
+                className="h-12 w-full rounded-xl px-4"
               />
             </FormField>
 
@@ -164,7 +192,7 @@ const LoginForm = () => {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-                className="h-12 w-full rounded-full border border-transparent bg-muted px-5 transition-colors focus-visible:border-ring focus-visible:bg-card focus-visible:ring-2 focus-visible:ring-ring/20"
+                className="h-12 w-full rounded-xl px-4"
               />
             </FormField>
 
@@ -172,7 +200,7 @@ const LoginForm = () => {
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-1 rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
               >
                 <ul>
                   {errors.map((error, index) => (
@@ -198,6 +226,7 @@ const LoginForm = () => {
                 type="submit"
                 disabled={submitting}
                 size="lg"
+                variant="brand"
                 className="h-12 w-full"
               >
                 {submitting ? (

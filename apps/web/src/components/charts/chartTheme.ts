@@ -30,7 +30,7 @@ export const TOOLTIP_CONTENT_STYLE: CSSProperties = {
   border: "1px solid hsl(var(--border))",
   borderRadius: 12,
   fontSize: 12,
-  boxShadow: "0 8px 24px -12px rgb(0 0 0 / 0.25)",
+  boxShadow: "0 12px 28px -10px hsl(var(--shadow-color) / 0.28)",
 };
 
 export const TOOLTIP_CURSOR = { fill: "hsl(var(--muted))", opacity: 0.6, radius: 8 } as const;

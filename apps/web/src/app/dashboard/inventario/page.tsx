@@ -105,8 +105,8 @@ function StatTile({
       <span
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70",
-          tone === "warn" && "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
-          tone === "danger" && "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300"
+          tone === "warn" && "bg-warning-soft text-warning",
+          tone === "danger" && "bg-destructive/10 text-destructive"
         )}
         aria-hidden
       >
@@ -398,7 +398,7 @@ export default function InventarioPage() {
                 {canManage && (restockCount.data?.pending ?? 0) > 0 && (
                   <Badge
                     aria-label={`${restockCount.data?.pending} pendientes`}
-                    className="ml-2 border-transparent bg-rose-500 px-1.5 py-0 text-[11px] text-white"
+                    className="ml-2 border-transparent bg-magenta-strong px-1.5 py-0 text-[11px] text-white"
                   >
                     {restockCount.data?.pending}
                   </Badge>

@@ -71,18 +71,20 @@ export function StageTasksBoard({
               aria-labelledby={headingId}
               className="min-w-0 space-y-3"
             >
-              <div className="rounded-2xl border border-border/60 bg-card px-3 py-2.5 dark:border-border">
+              <div className="rounded-2xl border border-border/60 bg-[hsl(var(--surface-sunken))] px-3.5 py-3 dark:border-border">
                 <h2
                   id={headingId}
-                  className="inline-flex items-center gap-2 rounded-full bg-muted py-1 pl-2.5 pr-1 text-sm font-medium"
+                  className="flex items-center gap-2 font-heading text-sm font-semibold tracking-tight"
                 >
-                  <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  <span aria-hidden className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="size-4" />
+                  </span>
                   {column.label}
-                  <span className="rounded-full bg-card px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                  <span className="ml-auto rounded-full bg-card px-2 py-0.5 font-sans text-xs font-medium tabular-nums text-muted-foreground shadow-soft-xs">
                     {list.length}
                   </span>
                 </h2>
-                <p className="mt-1.5 px-1 text-xs text-muted-foreground">
+                <p className="mt-1.5 text-xs text-muted-foreground">
                   {column.hint}
                 </p>
               </div>

@@ -10,6 +10,7 @@ import {
   clearSession,
   type StoredSession,
 } from './src/lib/session';
+import { colors } from './src/theme';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { OrdersScreen } from './src/screens/OrdersScreen';
 import { OrderDetailScreen } from './src/screens/OrderDetailScreen';
@@ -44,8 +45,8 @@ export default function App() {
 
   if (session === undefined) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.navy }}>
+        <ActivityIndicator size="large" color={colors.cyan} />
       </View>
     );
   }
@@ -56,7 +57,11 @@ export default function App() {
         {!session ? (
           <LoginScreen onLoggedIn={handleLoggedIn} />
         ) : openOrderId ? (
-          <OrderDetailScreen orderId={openOrderId} onBack={() => setOpenOrderId(null)} />
+          <OrderDetailScreen
+            orderId={openOrderId}
+            onBack={() => setOpenOrderId(null)}
+            onSessionExpired={handleLogout}
+          />
         ) : (
           <OrdersScreen
             token={session.token}
@@ -64,7 +69,7 @@ export default function App() {
             onOpenOrder={setOpenOrderId}
           />
         )}
-        <StatusBar style="auto" />
+        <StatusBar style="light" />
       </AuthSessionProvider>
     </QueryClientProvider>
   );

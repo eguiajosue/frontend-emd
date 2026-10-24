@@ -26,6 +26,7 @@ import { SizeSummary } from "@/components/sizes/SizeSummary";
 import { ApiError, getErrorMessage, request } from "@/lib/api";
 import { STAGE_COPY, type ClientResponseKind, type PortalView } from "@/lib/clientPortal";
 import { GARMENT_LABELS } from "@/lib/mockups/types";
+import { DUR, EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { ReadyNotice } from "./ReadyNotice";
 
@@ -42,9 +43,9 @@ function formatLongDate(value: string | null) {
 function BrandSquares({ className }: { className?: string }) {
   return (
     <div aria-hidden className={cn("flex gap-1.5", className)}>
-      <span className="h-2.5 w-2.5 rounded-[3px] bg-[hsl(var(--brand-cyan))]" />
-      <span className="h-2.5 w-2.5 rounded-[3px] bg-[hsl(var(--brand-lime))]" />
-      <span className="h-2.5 w-2.5 rounded-[3px] bg-[hsl(var(--brand-magenta))]" />
+      <span className="h-2.5 w-2.5 rounded-[3px] bg-cyan" />
+      <span className="h-2.5 w-2.5 rounded-[3px] bg-lime" />
+      <span className="h-2.5 w-2.5 rounded-[3px] bg-magenta" />
     </div>
   );
 }
@@ -55,11 +56,11 @@ function Section({ title, children, delay = 0 }: { title: string; children: Reac
     <motion.section
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: DUR.slow, delay, ease: EASE_OUT }}
       aria-label={title}
-      className="rounded-3xl border border-border/60 bg-card p-5 shadow-soft sm:p-6"
+      className="rounded-2xl border border-border/70 bg-card p-5 shadow-soft-xs sm:p-6"
     >
-      <h2 className="mb-4 font-heading text-lg font-semibold">{title}</h2>
+      <h2 className="text-section-title mb-4 text-base">{title}</h2>
       {children}
     </motion.section>
   );
@@ -79,15 +80,15 @@ function StageTimeline({ view }: { view: PortalView }) {
             {!last && (
               <span
                 aria-hidden
-                className={cn("absolute left-[0.6875rem] top-6 h-[calc(100%-1.25rem)] w-0.5", done ? "bg-foreground/70" : "bg-border")}
+                className={cn("absolute left-[0.6875rem] top-6 h-[calc(100%-1.25rem)] w-0.5", done ? "bg-primary/70" : "bg-border")}
               />
             )}
             <span
               aria-hidden
               className={cn(
                 "relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
-                done && "border-foreground bg-foreground text-background",
-                active && "border-[hsl(var(--brand-magenta))] bg-[hsl(var(--brand-magenta))] text-white",
+                done && "border-primary bg-primary text-primary-foreground",
+                active && "border-magenta-strong bg-magenta-strong text-white ring-4 ring-magenta/20",
                 !done && !active && "border-border bg-card"
               )}
             >
@@ -195,7 +196,7 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
     return (
       <div role="status" className="space-y-3 rounded-2xl bg-muted/60 p-4">
         <p className="flex items-center gap-2 text-sm font-semibold">
-          <PartyPopper className="h-5 w-5 shrink-0 text-[hsl(var(--brand-magenta))]" aria-hidden />
+          <PartyPopper className="h-5 w-5 shrink-0 text-magenta-ink" aria-hidden />
           ¡Gracias! Recibimos tu respuesta.
         </p>
         <p className="text-sm text-muted-foreground">
@@ -218,11 +219,11 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Button size="lg" className="h-12 gap-2 rounded-2xl text-base" onClick={() => setMode("aprobar")}>
+        <Button size="lg" variant="brand" className="h-12 gap-2 text-base" onClick={() => setMode("aprobar")}>
           <ThumbsUp className="h-5 w-5" aria-hidden />
           Aprobar diseño
         </Button>
-        <Button size="lg" variant="outline" className="h-12 gap-2 rounded-2xl text-base" onClick={() => setMode("cambios")}>
+        <Button size="lg" variant="outline" className="h-12 gap-2 text-base" onClick={() => setMode("cambios")}>
           <MessageSquareText className="h-5 w-5" aria-hidden />
           Pedir cambios
         </Button>
@@ -266,7 +267,8 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
 function Shell({ children, branch }: { children: React.ReactNode; branch?: PortalView["order"]["branch"] }) {
   return (
     <div className="min-h-dvh bg-background">
-      <header className="border-b border-border/60 bg-card/80 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-border/70 bg-card/85 backdrop-blur">
+        <div aria-hidden className="brand-bar rounded-none" />
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <BrandLogo className="h-7" priority />
           {branch && (
@@ -313,7 +315,7 @@ export function ClientPortalPage({ token }: { token: string }) {
     const status = query.error instanceof ApiError ? query.error.status : 0;
     return (
       <Shell>
-        <div className="rounded-3xl border border-border/60 bg-card p-8 text-center shadow-soft">
+        <div className="rounded-2xl border border-border/70 bg-card p-8 text-center shadow-soft-xs">
           <BrandSquares className="mb-4 justify-center" />
           <h1 className="font-heading text-xl font-semibold">
             {status === 410 ? "Este enlace ya venció" : status === 404 ? "No encontramos este pedido" : "No pudimos cargar tu pedido"}
@@ -342,24 +344,25 @@ export function ClientPortalPage({ token }: { token: string }) {
       <motion.div
         initial={reduced ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden rounded-3xl bg-ink p-6 text-ink-foreground shadow-soft-md dark:border dark:border-border/60 dark:bg-card dark:text-foreground"
+        transition={{ duration: DUR.slow, ease: EASE_OUT }}
+        className="surface-brand rounded-3xl p-6 shadow-soft-md sm:p-8"
       >
-        <BrandSquares className="mb-4" />
-        <p className="text-sm opacity-80">{view.order.clientName ? `Hola, ${view.order.clientName}` : "Hola"}</p>
-        <h1 className="mt-1 font-heading text-2xl font-bold leading-tight sm:text-3xl">{view.order.description}</h1>
-        <p className="mt-1 text-sm tabular-nums opacity-80">Pedido #{view.order.id}</p>
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-3xl bg-cyan/20 blur-2xl" />
+        <div aria-hidden className="brand-bar mb-5 w-16" />
+        <p className="relative text-sm text-white/80">{view.order.clientName ? `Hola, ${view.order.clientName}` : "Hola"}</p>
+        <h1 className="relative mt-1 font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">{view.order.description}</h1>
+        <p className="relative mt-1 text-sm tabular-nums text-white/75">Pedido #{view.order.id}</p>
+        <div className="relative mt-5 flex flex-wrap items-center gap-2">
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold",
-              view.stage.key === "cancelado" ? "bg-white/15" : "bg-[hsl(var(--brand-lime))] text-ink"
+              view.stage.key === "cancelado" ? "bg-white/15 text-white" : "bg-lime text-lime-foreground"
             )}
           >
             {view.stage.label}
           </span>
           {delivery && view.stage.key !== "entregado" && view.stage.key !== "cancelado" && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm dark:bg-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-sm text-white">
               <CalendarDays className="h-4 w-4" aria-hidden />
               Entrega: {delivery}
             </span>

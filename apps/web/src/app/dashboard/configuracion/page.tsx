@@ -5,6 +5,11 @@ import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import {
   AlertTriangle,
+  Archive,
+  Eye,
+  Languages,
+  Palette,
+  Rows3,
   AtSign,
   BellOff,
   BellRing,
@@ -20,6 +25,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import Title from "@/components/Title";
+import { FadeIn } from "@/components/motion";
 import { SidebarPreferencesSection } from "@/components/SidebarPreferencesSection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -62,6 +68,26 @@ interface AreaVisibility {
 /** Filas de esqueleto mientras carga la visibilidad por área. */
 const AREA_VISIBILITY_SKELETON_ROWS = 6;
 
+type Tint = "navy" | "magenta" | "cyan" | "lime";
+const TINT_CLASS: Record<Tint, string> = {
+  navy: "bg-navy-50 text-navy-700 dark:bg-secondary dark:text-primary",
+  magenta: "bg-magenta-soft text-magenta-ink",
+  cyan: "bg-cyan-soft text-cyan-ink",
+  lime: "bg-lime-soft text-lime-ink",
+};
+
+/** Título de tarjeta de ajustes con ficha de ícono tintada con la paleta de marca. */
+function SettingsTitle({ icon: Icon, tint, children }: { icon: ComponentType<{ className?: string }>; tint: Tint; children: React.ReactNode }) {
+  return (
+    <CardTitle className="flex items-center gap-2.5">
+      <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full", TINT_CLASS[tint])} aria-hidden>
+        <Icon className="h-4 w-4" />
+      </span>
+      {children}
+    </CardTitle>
+  );
+}
+
 const THEME_OPTIONS = [
   { id: "light", label: "Claro", icon: Sun },
   { id: "dark", label: "Oscuro", icon: Moon },
@@ -94,7 +120,7 @@ function AppearanceSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Apariencia</CardTitle>
+        <SettingsTitle icon={Palette} tint="magenta">Apariencia</SettingsTitle>
         <CardDescription>Personalizar cómo se ve la app.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-7">
@@ -110,7 +136,7 @@ function AppearanceSection() {
             onValueChange={(v) => v && handleThemeSelect(v)}
             aria-labelledby="theme-label"
             aria-describedby="theme-hint"
-            className="w-fit flex-wrap justify-start rounded-full border bg-card p-1"
+            className="w-fit flex-wrap justify-start rounded-full border bg-sunken p-1"
           >
             {THEME_OPTIONS.map((opt) => {
               const Icon = opt.icon;
@@ -216,7 +242,7 @@ function LanguageSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Idioma</CardTitle>
+        <SettingsTitle icon={Languages} tint="cyan">Idioma</SettingsTitle>
         <CardDescription>
           Idioma de la interfaz. Por ahora sólo español está disponible.
         </CardDescription>
@@ -231,7 +257,7 @@ function LanguageSection() {
             if (opt) handleSelect(opt.id, opt.available);
           }}
           aria-label="Idioma"
-          className="w-fit flex-wrap justify-start rounded-full border bg-card p-1"
+          className="w-fit flex-wrap justify-start rounded-full border bg-sunken p-1"
         >
           {LANGUAGE_OPTIONS.map((opt) => (
             <ToggleGroupItem
@@ -262,14 +288,14 @@ function DensitySection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Vista compacta</CardTitle>
+        <SettingsTitle icon={Rows3} tint="lime">Vista compacta</SettingsTitle>
         <CardDescription>
           Reduce el espaciado de las tarjetas y listas de pedidos para ver más
           contenido en pantalla.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-sunken px-4 py-3">
           <Label htmlFor="pref-compact">Usar vista compacta</Label>
           <Switch
             id="pref-compact"
@@ -299,7 +325,7 @@ function TimeFormatSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Formato de hora</CardTitle>
+        <SettingsTitle icon={Clock} tint="cyan">Formato de hora</SettingsTitle>
         <CardDescription>
           Cómo se muestran las horas en toda la app (calendario, pedidos, chat).
         </CardDescription>
@@ -317,7 +343,7 @@ function TimeFormatSection() {
             <ToggleGroupItem
               key={opt.id}
               value={opt.id}
-              className="h-auto min-w-[8rem] flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 data-[state=on]:border-foreground/60 data-[state=on]:bg-muted"
+              className="h-auto min-w-[8rem] flex-col items-start gap-0.5 rounded-xl px-4 py-2.5 transition-colors duration-150 data-[state=on]:border-primary data-[state=on]:bg-accent"
             >
               {opt.label}
               <span className="text-xs font-normal text-muted-foreground">{opt.example}</span>
@@ -342,14 +368,14 @@ function SoundSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sonido</CardTitle>
+        <SettingsTitle icon={Volume2} tint="magenta">Sonido</SettingsTitle>
         <CardDescription>
           Un tono breve al llegar un pedido nuevo o asignado, y otro más
           sutil al guardar cambios. Se puede silenciar en cualquier momento.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-sunken px-4 py-3">
           <Label htmlFor="pref-sound" className="flex items-center gap-2">
             {mounted && soundEnabled ? (
               <Volume2 className="h-4 w-4 text-muted-foreground" />
@@ -386,7 +412,7 @@ function NotificationToggleRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 py-3 transition-opacity",
+        "flex items-center justify-between gap-4 py-3 transition-opacity duration-200",
         disabled && "opacity-40"
       )}
     >
@@ -463,20 +489,11 @@ function NotificationsSection() {
       <CardHeader>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <CardTitle>Notificaciones</CardTitle>
+            <SettingsTitle icon={muted ? BellOff : BellRing} tint="navy">Notificaciones</SettingsTitle>
             <CardDescription>
               Qué te avisa EMD y cómo, en la app y por push.
             </CardDescription>
           </div>
-          <span
-            aria-hidden
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-              muted ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
-            )}
-          >
-            {muted ? <BellOff className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
-          </span>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -489,7 +506,7 @@ function NotificationsSection() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4 rounded-xl bg-muted/60 px-4 py-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-sunken px-4 py-3">
               <div>
                 <Label htmlFor="notify-muted">Modo silencio</Label>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -584,7 +601,7 @@ function AreaVisibilitySection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Visibilidad por área</CardTitle>
+        <SettingsTitle icon={Eye} tint="navy">Visibilidad por área</SettingsTitle>
         <CardDescription>
           Cuando está activado, todos los usuarios de esa área ven todos los pedidos
           asignados a esa etapa. Cuando está desactivado, cada usuario sólo ve los
@@ -607,7 +624,7 @@ function AreaVisibilitySection() {
           <div className="divide-y divide-border/60">
             {rows.map(({ role, generalViewEnabled: enabled }) => {
               return (
-                <div key={role} className="flex items-center justify-between py-3">
+                <div key={role} className="flex items-center justify-between rounded-lg px-1 py-3 transition-colors duration-150 hover:bg-sunken/60">
                   <Label htmlFor={`area-visibility-${role}`}>{getAreaLabel(role)}</Label>
                   <Switch
                     id={`area-visibility-${role}`}
@@ -652,7 +669,7 @@ function DeliveredRetentionSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Retención de pedidos entregados</CardTitle>
+        <SettingsTitle icon={Archive} tint="lime">Retención de pedidos entregados</SettingsTitle>
         <CardDescription>
           Los pedidos entregados dejarán de mostrarse en el tablero después de
           este tiempo. Siguen disponibles en el Historial.
@@ -662,7 +679,7 @@ function DeliveredRetentionSection() {
         {isPending ? (
           <Skeleton className="h-10 w-full max-w-xs" />
         ) : (
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <FormField
               label="Horas de retención"
               htmlFor="delivered-retention-hours"
@@ -699,7 +716,7 @@ export default function ConfiguracionPage() {
   const canManageAreaVisibility = isAdmin || roles.includes("recepcion");
 
   return (
-    <div className="space-y-6">
+    <FadeIn className="space-y-6">
       <Title title="Configuración" />
       {/* Dos columnas en pantallas anchas (flujo tipo masonry con `columns`,
           así tarjetas de alto distinto no dejan huecos); una sola en el resto. */}
@@ -714,6 +731,6 @@ export default function ConfiguracionPage() {
         {canManageAreaVisibility && <AreaVisibilitySection />}
         {isAdmin && <DeliveredRetentionSection />}
       </div>
-    </div>
+    </FadeIn>
   );
 }

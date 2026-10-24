@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { z } from "zod";
 import { UserCog } from "lucide-react";
+import { FadeIn } from "@/components/motion";
 import Title from "@/components/Title";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudPage } from "@/components/crud/CrudPage";
@@ -210,7 +211,7 @@ const UsuariosPage = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <FadeIn className="space-y-4">
       <Title title="Usuarios" />
       <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
@@ -277,7 +278,7 @@ const UsuariosPage = () => {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </FadeIn>
   );
 };
 

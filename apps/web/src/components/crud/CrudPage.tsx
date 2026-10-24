@@ -27,6 +27,7 @@ import { CATALOG_STALE_TIME, useEntityList, useEntityMutations } from "@/hooks/u
 import type { EntityKey } from "@/lib/queryKeys";
 import type { BaseEntity } from "@/types";
 import { cn } from "@/lib/utils";
+import { FadeIn } from "@/components/motion/FadeIn";
 
 /**
  * Matcher de búsqueda genérico por defecto: compara el texto tipeado contra
@@ -245,18 +246,18 @@ export function CrudPage<T extends BaseEntity>({
       {/* Barra de herramientas sobre el lienzo: buscador y filtros en píldora a
           la izquierda, la acción principal ("Nuevo …", en tinta) a la derecha. */}
       {(showToolbarFilters || canEdit) && (
-        <div className={cn("flex flex-wrap items-center gap-2", !hideTitle && "mt-2")}>
+        <div className={cn("flex flex-wrap items-center gap-2.5", !hideTitle && "mt-2")}>
           {showToolbarFilters && (
             <>
               {hasSearch && (
                 <div className="relative w-full sm:w-72">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={searchConfig?.placeholder ?? "Buscar..."}
                     aria-label={searchConfig?.placeholder ?? "Buscar"}
-                    className="h-10 rounded-full border-border/60 pl-10 text-sm shadow-soft"
+                    className="h-10 rounded-full border-border/70 bg-card pl-10 text-sm shadow-soft-xs transition-shadow duration-base focus-visible:shadow-soft"
                   />
                 </div>
               )}
@@ -269,7 +270,7 @@ export function CrudPage<T extends BaseEntity>({
                   }
                 >
                   <SelectTrigger
-                    className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
+                    className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/70 bg-card px-4 text-sm shadow-soft-xs"
                     aria-label={filter.label}
                   >
                     <SelectValue placeholder={filter.allLabel} />
@@ -292,7 +293,7 @@ export function CrudPage<T extends BaseEntity>({
             </>
           )}
           {canEdit && (
-            <Button onClick={handleCreate} className="h-10 px-5 sm:ml-auto">
+            <Button onClick={handleCreate} className="h-10 px-5 sm:ml-auto" variant="brand">
               <Plus className="h-4 w-4" /> {createLabel}
             </Button>
           )}
@@ -317,9 +318,14 @@ export function CrudPage<T extends BaseEntity>({
           secondaryAction={{ label: "Limpiar filtros", onClick: clearFilters }}
         />
       ) : (
-        <div className="mt-4 w-full">
+        <FadeIn className="mt-4 w-full" duration={0.2}>
           <DataTable columns={tableColumns} data={filteredData} className="shadow-soft" />
-        </div>
+          <p className="mt-2 px-1 text-meta" aria-live="polite">
+            {activeFilterCount > 0
+              ? `${filteredData.length} de ${data.length} registros`
+              : `${data.length} ${data.length === 1 ? "registro" : "registros"}`}
+          </p>
+        </FadeIn>
       )}
 
       <ConfirmDeleteDialog

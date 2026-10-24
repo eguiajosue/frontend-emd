@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, CalendarDays, GripVertical, Search } from "lucide-react";
+import { ArrowLeft, CalendarDays, ClipboardList, GripVertical, Search } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -24,11 +24,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import Title from "@/components/Title";
+import { PageContainer, PageHeader } from "@/components/layout";
+import { EmptyState as RichEmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/StatusBadge";
-import { ErrorState, EmptyState } from "@/components/feedback/states";
+import { ErrorState } from "@/components/feedback/states";
 import {
   Accordion,
   AccordionContent,
@@ -166,7 +167,7 @@ export default function HojaMaterialesPage() {
   const draggedOrder = activeDragId != null ? activeOrders.find((o) => o.id === activeDragId) : null;
 
   return (
-    <div className="space-y-4">
+    <PageContainer className="space-y-4">
       <Suspense fallback={null}>
         <OrderParamListener onOrder={focusOrder} />
       </Suspense>
@@ -178,28 +179,31 @@ export default function HojaMaterialesPage() {
           </Link>
         </Button>
       )}
-      <div>
-        <Title title="Hoja de Materiales" />
-        <p className="max-w-prose text-sm text-muted-foreground">
-          Elige un pedido para ver y marcar los materiales que hay que comprar.
-          {canManageOperations && (
-            <>
-              {" "}
-              Arrastra <GripVertical className="mb-0.5 inline h-3.5 w-3.5" aria-hidden /> para
-              definir el orden de prioridad de compra.
-            </>
-          )}
-        </p>
-      </div>
+      <PageHeader
+        title="Hoja de Materiales"
+        icon={ClipboardList}
+        description={
+          <>
+            Elige un pedido para ver y marcar los materiales que hay que comprar.
+            {canManageOperations && (
+              <>
+                {" "}
+                Arrastra <GripVertical className="mb-0.5 inline h-3.5 w-3.5" aria-hidden /> para
+                definir el orden de prioridad de compra.
+              </>
+            )}
+          </>
+        }
+      />
 
       <div className="relative w-full sm:w-80">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar por pedido o cliente..."
           aria-label="Buscar por pedido o cliente"
-          className="h-10 rounded-full border-border/60 pl-10 shadow-soft"
+          className="h-10 rounded-full border-border/70 bg-card pl-10 shadow-soft-xs"
         />
       </div>
       {canManageOperations && query && activeOrders.length > 1 && (
@@ -212,16 +216,22 @@ export default function HojaMaterialesPage() {
         <ErrorState onRetry={() => refetch()} />
       ) : isPending ? (
         <div className="space-y-3" role="status" aria-busy="true" aria-label="Cargando">
-          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
-          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
-          <Skeleton className="bg-muted h-16 w-full rounded-2xl" />
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="bg-muted h-16 w-full rounded-2xl" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
         </div>
       ) : filteredOrders.length === 0 ? (
-        <EmptyState
-          message={
+        <RichEmptyState
+          icon={ClipboardList}
+          title={
             activeOrders.length === 0
               ? "No hay pedidos activos en este momento."
               : "Ningún pedido coincide con la búsqueda."
+          }
+          description={
+            activeOrders.length === 0
+              ? "Cuando haya pedidos en curso, aquí aparece su lista de materiales."
+              : "Prueba con otro número de pedido o nombre de cliente."
           }
         />
       ) : (
@@ -261,7 +271,7 @@ export default function HojaMaterialesPage() {
           </DragOverlay>
         </DndContext>
       )}
-    </div>
+    </PageContainer>
   );
 }
 
@@ -290,7 +300,7 @@ function SortableOrderRow({
       value={String(order.id)}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "scroll-mt-24 rounded-2xl border border-border/60 bg-card px-3 shadow-soft transition-shadow sm:px-4",
+        "scroll-mt-24 rounded-2xl border border-border/60 bg-card px-3 shadow-soft transition-[box-shadow,border-color] duration-base ease-out-expo hover:border-primary/25 hover:shadow-soft-md data-[state=open]:border-primary/30 sm:px-4",
         isDragging && "opacity-40",
         isBeingDragged && "opacity-40"
       )}
@@ -313,7 +323,7 @@ function SortableOrderRow({
         )}
         {draggable && (
           <span
-            className="mr-1 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold tabular-nums text-muted-foreground"
+            className="mr-1 inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 px-1.5 text-xs font-semibold tabular-nums text-primary"
             aria-hidden
           >
             {priorityRank}
@@ -344,7 +354,7 @@ function OrderRowSummary({
   return (
     <span className="flex flex-1 flex-wrap items-center justify-between gap-2 pr-2 text-left">
       <span className="min-w-0">
-        <span className="font-semibold">Pedido #{order.id}</span>
+        <span className="font-heading font-semibold">Pedido #{order.id}</span>
         <span className="text-muted-foreground"> · {getOrderClientName(order)}</span>
         <BranchBadge order={order} className="ml-2 align-middle" />
       </span>

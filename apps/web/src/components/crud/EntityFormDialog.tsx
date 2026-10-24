@@ -130,7 +130,7 @@ export function EntityFormDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-h-[90vh] sm:overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+          <DialogTitle className="font-heading text-lg font-semibold tracking-tight">{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-1">
           {visibleFields.map((field) => {
@@ -139,7 +139,7 @@ export function EntityFormDialog({
               return (
                 <div
                   key={field.name}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3.5 py-3"
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/40 px-3.5 py-3 transition-colors duration-fast hover:bg-muted/70"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-medium leading-none">{field.label}</p>
@@ -164,7 +164,7 @@ export function EntityFormDialog({
                 hint={!error ? field.helpText : undefined}
               >
                 {field.type === "multiselect" ? (
-                  <div className="grid grid-cols-1 gap-2 rounded-lg border border-input p-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-1.5 rounded-xl border border-input bg-card p-2 sm:grid-cols-3">
                     {field.options?.map((opt) => {
                       const selected: (string | number)[] = Array.isArray(values[field.name])
                         ? values[field.name]
@@ -173,7 +173,7 @@ export function EntityFormDialog({
                       return (
                         <Label
                           key={opt.value}
-                          className="flex cursor-pointer items-center gap-2 font-normal"
+                          className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 font-normal transition-colors duration-fast hover:bg-muted"
                         >
                           <Checkbox
                             checked={checked}

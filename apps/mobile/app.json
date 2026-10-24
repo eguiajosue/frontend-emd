@@ -6,6 +6,8 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "backgroundColor": "#1B1B3A",
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#1B1B3A" },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.emdbordados.mobile"
@@ -13,7 +15,7 @@
     "android": {
       "package": "com.emdbordados.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1B1B3A",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

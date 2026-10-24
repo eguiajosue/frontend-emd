@@ -234,8 +234,8 @@ export function InventoryMovementDialog({ item, areaMode = false, initialType = 
                   projected !== null &&
                     item.minStock != null &&
                     projected <= item.minStock &&
-                    "text-amber-700 dark:text-amber-300",
-                  projected === 0 && "text-rose-700 dark:text-rose-300"
+                    "text-warning",
+                  projected === 0 && "text-destructive"
                 )}
               >
                 {projected === null ? "—" : formatQuantity(projected, item.unit)}

@@ -129,11 +129,11 @@ function BranchCard({ branch }: { branch: Branch }) {
 
   return (
     <section
-      className="space-y-3 rounded-2xl border border-border/60 bg-card p-4"
+      className="space-y-4 rounded-2xl border border-border/70 bg-card p-4 shadow-soft-xs sm:p-5"
       aria-label={`Sucursal ${branch.name}`}
     >
       <div className="flex items-center gap-3">
-        <Store className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-50 text-navy-700 dark:bg-secondary dark:text-primary" aria-hidden><Store className="h-4 w-4" /></span>
         <h3 className="font-heading text-base font-semibold">{branch.name}</h3>
         <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
           {branch.active ? "Sucursal activa" : "Sucursal inactiva"}
@@ -188,7 +188,7 @@ function BranchCard({ branch }: { branch: Branch }) {
       </div>
 
       <form
-        className="flex gap-2"
+        className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void add();
@@ -235,7 +235,7 @@ export function BranchesPanel() {
   return (
     <div className="space-y-4">
       {isPending ? (
-        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
       ) : branches.length === 0 ? (
         <EmptyState
           icon={Store}
@@ -247,7 +247,7 @@ export function BranchesPanel() {
       )}
 
       <form
-        className="flex gap-2"
+        className="flex flex-wrap gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           void addBranch();
