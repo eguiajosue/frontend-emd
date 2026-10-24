@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import type { AreaOverview } from "@emd/types";
 import { DEFAULT_AREAS } from "@emd/business/src/areas";
 import {
   EMPTY_DRAFT,
   MAX_SUGGESTIONS,
   addSuggestion,
+  deactivationBlocker,
   draftToPayload,
   removeSuggestion,
   slugPreview,
@@ -131,5 +133,23 @@ describe("summaryLines", () => {
     expect(lines).toMatch(/1 persona pasará/);
     expect(lines).toMatch(/no se ofrece al crear pedidos/);
     expect(lines).not.toMatch(/cuenta compartida/);
+  });
+});
+
+const overview = (slug: string, over: Partial<AreaOverview> = {}): AreaOverview => ({
+  ...DEFAULT_AREAS.find((a) => a.slug === slug)!,
+  users: 1,
+  hasSharedAccount: true,
+  openOrders: 0,
+  openTasks: 0,
+  ...over,
+});
+
+describe("deactivationBlocker", () => {
+  it("dice por qué no se puede, con singular y plural", () => {
+    expect(deactivationBlocker(overview("taller"))).toBeNull();
+    expect(deactivationBlocker(overview("dtf", { openOrders: 1, openTasks: 0 }))).toBe("Tiene 1 pedido abierto.");
+    expect(deactivationBlocker(overview("dtf", { openOrders: 2, openTasks: 1 }))).toBe("Tiene 2 pedidos abiertos y 1 tarea sin terminar.");
+    expect(deactivationBlocker(overview("diseno"))).toMatch(/no se desactiva/);
   });
 });

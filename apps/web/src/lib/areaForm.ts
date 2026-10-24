@@ -1,4 +1,4 @@
-import type { Area, CreateAreaPayload } from "@emd/types";
+import type { Area, AreaOverview, CreateAreaPayload } from "@emd/types";
 
 /**
  * Lógica pura del wizard de áreas (ver `AreaWizard`): borrador, pasos,
@@ -157,6 +157,16 @@ export function draftToPayload(draft: AreaDraft): CreateAreaPayload {
     createSharedAccount: draft.createSharedAccount,
     userIds: draft.userIds,
   };
+}
+
+/** Por qué un área no se puede desactivar todavía, o `null` si ya se puede. */
+export function deactivationBlocker(area: AreaOverview): string | null {
+  if (area.isDesign) return "Diseño es la fase previa de los pedidos: no se desactiva.";
+  const parts = [
+    area.openOrders > 0 && `${area.openOrders} pedido${area.openOrders === 1 ? "" : "s"} abierto${area.openOrders === 1 ? "" : "s"}`,
+    area.openTasks > 0 && `${area.openTasks} tarea${area.openTasks === 1 ? "" : "s"} sin terminar`,
+  ].filter(Boolean);
+  return parts.length > 0 ? `Tiene ${parts.join(" y ")}.` : null;
 }
 
 /** Frases del resumen: qué hará el área una vez creada. */
