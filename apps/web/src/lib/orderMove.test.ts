@@ -78,8 +78,13 @@ describe("canApplyOrderMove", () => {
 });
 
 describe("Bordado en digitalización o pruebas", () => {
-  const enPrep = (id: number, prepStage: "digitalizado" | "en_pruebas"): OrderAreaTask =>
-    ({ ...task(id, "bordado", "pendiente"), prepStage }) as OrderAreaTask;
+  const enPrep = (id: number, key: "digitalizado" | "en_pruebas"): OrderAreaTask =>
+    ({
+      ...task(id, "bordado", "pendiente"),
+      stage: key === "digitalizado"
+        ? { id: 301, key, name: "Digitalizado", kind: "work" }
+        : { id: 302, key, name: "En pruebas", kind: "review" },
+    }) as OrderAreaTask;
 
   it("no se mueve desde el tablero: el backend no deja empezarla sin prueba aprobada", () => {
     const o = order([enPrep(1, "digitalizado"), task(2, "dtf", "pendiente")]);
@@ -93,7 +98,7 @@ describe("Bordado en digitalización o pruebas", () => {
   });
 
   it("con la prueba aprobada (sin etapa) se mueve normal", () => {
-    const o = order([{ ...task(1, "bordado", "pendiente"), prepStage: null } as OrderAreaTask]);
+    const o = order([{ ...task(1, "bordado", "pendiente"), stage: null } as OrderAreaTask]);
     expect(areaTasksToMove(o, worker("bordado")).map((t) => t.id)).toEqual([1]);
   });
 });

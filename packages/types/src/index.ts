@@ -55,6 +55,31 @@ export interface UserAreaRef {
  * Impresiones y las que se den de alta. Separada de los roles: el rol dice
  * qué puede hacer alguien, el área dónde trabaja.
  */
+/** Máquina o equipo de un área; una tarea puede asignarse a una. */
+export interface AreaMachine {
+  id: number;
+  name: string;
+}
+
+export type AreaFieldType = "text" | "number" | "select" | "boolean";
+
+/** Dato propio de un área que se captura en cada una de sus tareas. */
+export interface AreaField {
+  id: number;
+  /** Clave estable: es la que usa `OrderAreaTask.fieldValues`. */
+  key: string;
+  label: string;
+  type: AreaFieldType;
+  required: boolean;
+  /** Sólo `select`. */
+  options: string[];
+  /** Sólo `number` ("cm"). */
+  unit: string | null;
+}
+
+/** Valores capturados de los datos propios de una tarea, por clave. */
+export type AreaFieldValues = Record<string, string | number | boolean>;
+
 export interface Area {
   id: number;
   /** Identificador estable: es lo que viaja en `Order.area`, `OrderAreaTask.area`, etc. */
@@ -74,6 +99,14 @@ export interface Area {
   inventoryUnits: string[];
   sortOrder: number;
   active: boolean;
+  /** Etapas previas a producción (activas, en orden); vacío = las tareas nacen listas para producir. */
+  stages: AreaStage[];
+  /** Tareas abiertas que el área puede llevar a la vez (null = sin tope). */
+  capacity: number | null;
+  /** Horas típicas de producción por tarea (null = sin dato). */
+  turnaroundHours: number | null;
+  machines: AreaMachine[];
+  fields: AreaField[];
 }
 
 /** Un área en el panel de administración (`GET /areas/overview`). */
@@ -83,6 +116,34 @@ export interface AreaOverview extends Area {
   /** Pedidos y tareas sin cerrar: mientras haya, el área no se puede desactivar. */
   openOrders: number;
   openTasks: number;
+}
+
+/** Una etapa tal como se captura: sin `id` es nueva; con `id`, una existente (el orden es el de la lista). */
+export interface AreaStageInput {
+  id?: number;
+  name: string;
+  kind: AreaStageKind;
+}
+
+/** Reemplaza las etapas de un área (`PUT /areas/:id/stages`). */
+export interface SetAreaStagesPayload {
+  stages: AreaStageInput[];
+}
+
+/** Una máquina como se captura: sin `id` es nueva. */
+export interface AreaMachineInput {
+  id?: number;
+  name: string;
+}
+
+/** Un dato propio como se captura: sin `id` es nuevo; el tipo no cambia después. */
+export interface AreaFieldInput {
+  id?: number;
+  label: string;
+  type: AreaFieldType;
+  required?: boolean;
+  options?: string[];
+  unit?: string;
 }
 
 /** Alta de un área desde el wizard (`POST /areas`). */
@@ -97,6 +158,22 @@ export interface CreateAreaPayload {
   inventoryUnits: string[];
   createSharedAccount: boolean;
   userIds: number[];
+  /** Etapas previas a producción, en orden (opcional). */
+  stages?: AreaStageInput[];
+  capacity?: number | null;
+  turnaroundHours?: number | null;
+  machines?: AreaMachineInput[];
+  fields?: AreaFieldInput[];
+}
+
+/** Reemplaza las máquinas de un área (`PUT /areas/:id/machines`). */
+export interface SetAreaMachinesPayload {
+  machines: AreaMachineInput[];
+}
+
+/** Reemplaza los datos propios de un área (`PUT /areas/:id/fields`). */
+export interface SetAreaFieldsPayload {
+  fields: AreaFieldInput[];
 }
 
 /** Edición de un área (`PATCH /areas/:id`). El slug no cambia. */
@@ -112,6 +189,8 @@ export type UpdateAreaPayload = Partial<
     | "inventoryCategories"
     | "inventoryUnits"
     | "active"
+    | "capacity"
+    | "turnaroundHours"
   >
 >;
 
@@ -300,15 +379,25 @@ export interface UploadedFileInput {
 export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
 
 /**
- * Etapa previa a producción de una tarea de Bordado: se digitaliza, se manda a
- * pruebas y sólo con la prueba aprobada pasa a producción (`prepStage` null).
+ * Tipo de una etapa previa a producción: `work` es un paso de trabajo y
+ * `review` una revisión que se aprueba (sigue) o se rechaza (regresa a la
+ * etapa anterior). En Bordado: Digitalizado (work) → En pruebas (review).
  */
-export type EmbroideryPrepStage = "digitalizado" | "en_pruebas";
+export type AreaStageKind = "work" | "review";
 
-/** Resultado de una prueba de bordado; una prueba en curso no tiene resultado. */
+/** Etapa previa a producción de un área; una tarea la recorre antes de producir. */
+export interface AreaStage {
+  id: number;
+  /** Clave estable dentro del área ("digitalizado"); no cambia al renombrar. */
+  key: string;
+  name: string;
+  kind: AreaStageKind;
+}
+
+/** Resultado de una revisión; una revisión en curso no tiene resultado. */
 export type SampleTestResult = "aprobada" | "rechazada";
 
-/** Ronda del registro de pruebas de una tarea de Bordado. */
+/** Ronda del registro de revisiones de una tarea (en Bordado, las pruebas). */
 export interface AreaTaskSampleTest {
   id: number;
   round: number;
@@ -401,8 +490,12 @@ export interface OrderAreaTask {
   /** Slug de un área de producción del catálogo (nunca Diseño, ver `Area`). */
   area: string;
   status: AreaTaskStatus;
-  /** Sólo Bordado: etapa previa a producción; null/ausente = ya puede producir. */
-  prepStage?: EmbroideryPrepStage | null;
+  /** Etapa previa a producción en la que está; null/ausente = ya puede producir. */
+  stage?: AreaStage | null;
+  /** Máquina del área asignada; null/ausente = sin asignar. */
+  machine?: AreaMachine | null;
+  /** Datos propios del área capturados en la tarea. */
+  fieldValues?: AreaFieldValues | null;
   assignedUserId?: number | null;
   createdAt: string;
   startedAt?: string | null;
@@ -1199,9 +1292,9 @@ export interface MyTask {
   taskId: number | null;
   /** Estado de la tarea de área, o nombre del estado de diseño del pedido. */
   status: string;
-  /** Sólo Bordado: etapa previa a producción (digitalizado | en_pruebas); null/ausente = ya puede producir. */
-  prepStage?: EmbroideryPrepStage | null;
-  /** Sólo Bordado: la última ronda de pruebas (para mostrar por qué se rechazó). */
+  /** Etapa previa a producción en la que está; null/ausente = ya puede producir. */
+  stage?: AreaStage | null;
+  /** La última ronda de revisión (para mostrar por qué se rechazó). */
   lastTest?: {
     round: number;
     result: SampleTestResult | null;

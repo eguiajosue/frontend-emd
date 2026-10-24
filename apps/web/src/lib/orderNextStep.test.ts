@@ -47,10 +47,10 @@ describe("siguiente paso de un pedido", () => {
     expect(labels(o, { roles: [], areas: ["taller"], isAdmin: false, isManager: false }).turn).toBe("Turno de: Bordado, DTF y Láser");
   });
 
-  it("Bordado en digitalización o pruebas: el paso se da en el detalle", () => {
-    const o = order({ areaTasks: [task(1, "bordado", "pendiente", { prepStage: "en_pruebas" })] });
-    expect(labels(o, bordado)).toMatchObject({ turn: "Te toca: prueba de bordado", action: "Ver pruebas" });
-    expect(getOrderNextStep(o, bordado).action).toEqual({ kind: "open", label: "Ver pruebas" });
+  it("una tarea en una etapa previa (Bordado: pruebas): el paso se da en el detalle", () => {
+    const o = order({ areaTasks: [task(1, "bordado", "pendiente", { stage: { id: 302, key: "en_pruebas", name: "En pruebas", kind: "review" } })] });
+    expect(labels(o, bordado)).toMatchObject({ turn: "Te toca: en pruebas", action: "Ver etapas" });
+    expect(getOrderNextStep(o, bordado).action).toEqual({ kind: "open", label: "Ver etapas" });
   });
 
   it("circuito de Diseño: Diseño abre su montaje y Recepción registra la respuesta", () => {

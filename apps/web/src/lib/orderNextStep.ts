@@ -132,9 +132,9 @@ export function getOrderNextStep(order: Order, viewer: NextStepViewer): OrderNex
   if (productionDone) {
     turn = viewer.isManager ? { label: "Te toca: entregar", mine: true } : { label: "Turno de: Recepción (entregar)", mine: false };
   } else if (myOpen.length > 0) {
-    const inPrep = myOpen.find((t) => t.prepStage);
+    const inPrep = myOpen.find((t) => t.stage);
     turn = inPrep
-      ? { label: `Te toca: ${inPrep.prepStage === "en_pruebas" ? "prueba de bordado" : "digitalizar"}`, mine: true }
+      ? { label: `Te toca: ${inPrep.stage?.name.toLowerCase()}`, mine: true }
       : { label: "Te toca", mine: true };
   } else if (openTasks.length > 0) {
     turn = { label: `Turno de: ${listAreas(Array.from(new Set(openTasks.map((t) => t.area))))}`, mine: false };
@@ -145,9 +145,10 @@ export function getOrderNextStep(order: Order, viewer: NextStepViewer): OrderNex
     turn = { label: mine ? "Te toca" : `Turno de: ${area ? getAreaLabel(area) : "Producción"}`, mine };
   }
 
-  // Bordado en digitalización / pruebas: el paso se da en el detalle.
-  if (myOpen.some((t) => t.prepStage)) {
-    return { stages, current, turn, action: { kind: "open", label: "Ver pruebas" } };
+  // Una tarea en una etapa previa a producción (en Bordado, digitalizado /
+  // pruebas): el paso se da en el detalle.
+  if (myOpen.some((t) => t.stage)) {
+    return { stages, current, turn, action: { kind: "open", label: "Ver etapas" } };
   }
 
   const next = NEXT_STATUS[effective];

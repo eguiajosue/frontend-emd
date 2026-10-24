@@ -6,13 +6,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Loader2, Play, RotateCcw, UserRound } from "lucide-react";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
-import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
+import { StageActions, StageStepper, RejectionNote } from "@/components/tasks/StageCardParts";
 import { Button } from "@/components/ui/button";
 import { TONE_META } from "@/components/orders/OrderJobCard";
 import { getAreaLabel } from "@/lib/areas";
 import { formatCountdown, formatElapsed, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
-import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
+import { isStageTask, taskStage } from "@/lib/stageBoard";
 import { isReturnedDesign } from "@/lib/myTasks";
 import { PRIORITY_STYLE, type ArrivalPriority } from "@/lib/packageArrivals";
 import { assigneeLabel, tvColumnOf, type TvTask } from "@/lib/tvBoard";
@@ -42,7 +42,7 @@ export function tvAction(task: TvTask): TvAction {
   const column = tvColumnOf(task);
   if (column === "terminado") return null;
   // Digitalizado / en pruebas todavía no se puede empezar: sus botones son los de la etapa.
-  if (isEmbroideryTask(task) && prepStageOf(task)) return null;
+  if (isStageTask(task) && taskStage(task)) return null;
   if (column === "en_proceso") return { label: "Terminar", next: "terminado", icon: CheckCircle2 };
   if (task.mine) return { label: "Empezar", next: "en_proceso", icon: Play };
   if (task.assignee == null) return { label: "Tomar y empezar", next: "en_proceso", icon: Play };
@@ -87,8 +87,8 @@ export const TvTaskCard = memo(function TvTaskCard({
   const ActionIcon = action?.icon;
   const column = tvColumnOf(task);
   const done = column === "terminado";
-  const embroidery = isEmbroideryTask(task);
-  const stage = embroidery ? prepStageOf(task) : null;
+  const staged = isStageTask(task);
+  const stage = staged ? taskStage(task) : null;
   const tone = TONE_META[state.tone];
   const glow = highlight ? PRIORITY_STYLE[highlight] : null;
   const completedAgo = task.completedAt ? now - new Date(task.completedAt).getTime() : null;
@@ -145,8 +145,8 @@ export const TvTaskCard = memo(function TvTaskCard({
           <OrderSizesList products={task.order.orderProducts} className="[&_li]:text-base" summaryClassName="text-base" />
         </div>
 
-        {embroidery && <EmbroideryStepper task={task} tv />}
-        {embroidery && <RejectionNote task={task} tv />}
+        {staged && <StageStepper task={task} tv />}
+        {staged && <RejectionNote task={task} tv />}
 
         <div className="flex flex-wrap items-center gap-2">
           {done ? (
@@ -185,7 +185,7 @@ export const TvTaskCard = memo(function TvTaskCard({
           </p>
         )}
 
-        {stage && <EmbroideryPrepActions task={task} canAct={canMovePrep} tv className="relative z-10" />}
+        {stage && <StageActions task={task} canAct={canMovePrep} tv className="relative z-10" />}
 
         {action && ActionIcon && (
           <Button

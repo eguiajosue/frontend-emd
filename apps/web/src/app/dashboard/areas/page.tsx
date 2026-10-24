@@ -48,6 +48,11 @@ function AreaCard({
           {area.isDesign && <Badge variant="secondary">Fase previa</Badge>}
           {area.isProductionDestination && <Badge variant="secondary">Producción</Badge>}
           {area.hasInventory && <Badge variant="secondary">Inventario</Badge>}
+          {area.stages.length > 0 && (
+            <Badge variant="secondary" title={area.stages.map((stage) => stage.name).join(" → ")}>
+              {area.stages.length} etapa{area.stages.length === 1 ? "" : "s"}
+            </Badge>
+          )}
           {!area.generalViewEnabled && <Badge variant="secondary">Vista por persona</Badge>}
           {(area.openOrders > 0 || area.openTasks > 0) && (
             <Badge variant="outline">

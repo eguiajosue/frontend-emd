@@ -1,6 +1,6 @@
 import { compareByUrgency } from "@/lib/orderDeadline";
 import { taskDeadline } from "@/lib/myTasks";
-import type { AreaSupply, AreaTaskStatus, AreaTaskSampleTest, EmbroideryPrepStage, MyTask } from "@/types";
+import type { AreaSupply, AreaTaskStatus, AreaStage, AreaTaskSampleTest, MyTask } from "@/types";
 
 /**
  * Tablero del Modo TV de "Tareas asignadas": TODO el trabajo de las áreas del
@@ -13,9 +13,9 @@ export interface AreaBoardTask {
   orderId: number;
   area: string;
   status: AreaTaskStatus;
-  /** Sólo Bordado: etapa previa a producción. */
-  prepStage?: EmbroideryPrepStage | null;
-  /** Sólo Bordado: registro de pruebas, de la más vieja a la más nueva. */
+  /** Etapa previa a producción en la que está (null = ya produce). */
+  stage?: AreaStage | null;
+  /** Registro de rondas de revisión (en Bordado, las pruebas), de la más vieja a la más nueva. */
   sampleTests?: AreaTaskSampleTest[];
   assignedUserId?: number | null;
   createdAt: string;
@@ -71,7 +71,7 @@ export function tvColumnOf(task: TvTask): TvColumnId {
   return "pendiente";
 }
 
-/** Última ronda de pruebas (la de `my-tasks` ya viene resumida). */
+/** Última ronda de revisión (la de `my-tasks` ya viene resumida). */
 function lastTestOf(tests?: AreaTaskSampleTest[]): MyTask["lastTest"] {
   const last = tests?.[tests.length - 1];
   return last
@@ -90,7 +90,7 @@ export function areaTaskToTvTask(task: AreaBoardTask, userId: number | null): Tv
     area: task.area,
     taskId: task.id,
     status: task.status,
-    prepStage: task.prepStage ?? null,
+    stage: task.stage ?? null,
     lastTest: lastTestOf(task.sampleTests),
     mine: !shared && assigned != null && assigned === userId,
     assignee:
@@ -160,7 +160,7 @@ export function buildTvBoard({
         ? {
             ...fromMine,
             status: fromArea.status,
-            prepStage: fromArea.prepStage ?? fromMine.prepStage ?? null,
+            stage: fromArea.stage ?? fromMine.stage ?? null,
             lastTest: fromArea.lastTest ?? fromMine.lastTest ?? null,
             completedAt: fromArea.completedAt,
             startedAt: fromArea.startedAt,

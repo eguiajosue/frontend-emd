@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ArrowRight,
   CheckCircle2,
   FlaskConical,
   Hourglass,
@@ -10,55 +11,58 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  EmbroideryPrepDialog,
-  type PrepDialogMode,
-} from "@/components/orders/EmbroideryPrepDialog";
+  StageDialog,
+  type StageDialogMode,
+} from "@/components/orders/StageDialog";
 import {
-  embroideryColumnOf,
+  DONE_COLUMN,
+  advanceLabel,
+  columnOf,
+  stageColumns,
+  stageNeighbors,
+  taskStage,
   wasRejected,
-  type EmbroideryColumnId,
-} from "@/lib/embroideryBoard";
+} from "@/lib/stageBoard";
 import type { TvTask } from "@/lib/tvBoard";
 import { cn } from "@/lib/utils";
+import { getAreaLabel } from "@/lib/areas";
 
 /**
- * Piezas de las tarjetas de Bordado compartidas por "Tareas asignadas" y el
- * Modo TV: la barrita de avance (Digitalizado → Pruebas → Producción →
- * Terminado), el motivo del rechazo y los botones de cada etapa previa.
+ * Piezas de las tarjetas de un área con etapas compartidas por "Tareas
+ * asignadas" y el Modo TV: la barrita de avance (en Bordado: Digitalizado →
+ * En pruebas → Producción → Listo), el motivo del rechazo y los botones de
+ * cada etapa previa.
  */
 
-const STEPS: { column: EmbroideryColumnId; label: string }[] = [
-  { column: "digitalizado", label: "Digitalizado" },
-  { column: "en_pruebas", label: "Pruebas" },
-  { column: "produccion", label: "Producción" },
-  { column: "terminado", label: "Listo" },
-];
-
-/** Dónde va el pedido en el camino de Bordado: lo hecho en tinta, lo actual resaltado. */
-export function EmbroideryStepper({
+/** Dónde va el pedido en el camino del área: lo hecho en tinta, lo actual resaltado. */
+export function StageStepper({
   task,
   tv = false,
 }: {
   task: TvTask;
   tv?: boolean;
 }) {
-  const current = STEPS.findIndex((s) => s.column === embroideryColumnOf(task));
+  const steps = stageColumns(task.area).map((column) => ({
+    column: column.id,
+    label: column.kind === "done" ? "Listo" : column.label,
+  }));
+  const current = steps.findIndex((s) => s.column === columnOf(task));
   return (
     <ol
-      aria-label="Etapas de Bordado"
-      className={cn(
-        "grid grid-cols-4 gap-1",
-        tv ? "text-sm" : "text-[0.6875rem]",
-      )}
+      aria-label={`Etapas de ${getAreaLabel(task.area)}`}
+      className={cn("grid gap-1", tv ? "text-sm" : "text-[0.6875rem]")}
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
     >
-      {STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const done =
-          index < current || (index === current && step.column === "terminado");
+          index < current ||
+          (index === current && step.column === DONE_COLUMN);
         const active = index === current && !done;
         return (
           <li
             key={step.column}
             aria-current={active ? "step" : undefined}
+            title={step.label}
             className="min-w-0 space-y-1"
           >
             <span
@@ -94,7 +98,7 @@ export function EmbroideryStepper({
   );
 }
 
-/** Por qué se rechazó la prueba anterior: lo primero que Bordado necesita leer al volver a digitalizar. */
+/** Por qué se rechazó la revisión anterior: lo primero que el área necesita leer al volver a la etapa de trabajo. */
 export function RejectionNote({
   task,
   tv = false,
@@ -117,16 +121,16 @@ export function RejectionNote({
         aria-hidden
       />
       <span className="min-w-0">
-        <span className="font-semibold">Prueba {test?.round} rechazada</span>
+        <span className="font-semibold">Revisión {test?.round} rechazada</span>
         {test?.resultNotes ? `: ${test.resultNotes}` : ""}
       </span>
     </p>
   );
 }
 
-interface PrepActionsProps {
+interface StageActionsProps {
   task: TvTask;
-  /** Quien trabaja Bordado (o Recepción/admin) puede mover las etapas. */
+  /** Quien trabaja el área (o Recepción/admin) puede mover las etapas. */
   canAct: boolean;
   tv?: boolean;
   className?: string;
@@ -134,22 +138,20 @@ interface PrepActionsProps {
 
 /**
  * El siguiente paso de una tarea que todavía no produce, en un botón con el
- * verbo de lo que toca: digitalizado → "Mandar a pruebas"; en pruebas →
- * "Aprobar" / "Rechazar". Sin permiso, un aviso de en qué va.
+ * verbo de lo que toca: una etapa de trabajo → "Pasar a «En pruebas»" (o
+ * "Listo para producir" si es la última); una revisión → "Aprobar" /
+ * "Rechazar". Sin permiso, un aviso de en qué va.
  */
-export function EmbroideryPrepActions({
+export function StageActions({
   task,
   canAct,
   tv = false,
   className,
-}: PrepActionsProps) {
-  const [mode, setMode] = useState<PrepDialogMode | null>(null);
-  const stage = embroideryColumnOf(task);
-  if (
-    (stage !== "digitalizado" && stage !== "en_pruebas") ||
-    task.taskId == null
-  )
-    return null;
+}: StageActionsProps) {
+  const [mode, setMode] = useState<StageDialogMode | null>(null);
+  const stage = taskStage(task);
+  if (!stage || task.taskId == null) return null;
+  const { next } = stageNeighbors(task.area, stage);
 
   const size = tv ? "lg" : "sm";
   const btn = tv
@@ -158,21 +160,28 @@ export function EmbroideryPrepActions({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      {stage === "digitalizado" &&
+      {stage.kind === "work" &&
         (canAct ? (
           <Button
             type="button"
             size={size}
             className={cn("relative z-10", btn, !tv && "ml-auto")}
-            onClick={() => setMode("send")}
+            onClick={() => setMode("advance")}
           >
-            <FlaskConical className={tv ? undefined : "h-4 w-4"} aria-hidden />
-            Mandar a pruebas
+            {next?.kind === "review" ? (
+              <FlaskConical className={tv ? undefined : "h-4 w-4"} aria-hidden />
+            ) : (
+              <ArrowRight className={tv ? undefined : "h-4 w-4"} aria-hidden />
+            )}
+            {advanceLabel(next)}
           </Button>
         ) : (
-          <Waiting tv={tv} label="Pendiente de mandar a pruebas" />
+          <Waiting
+            tv={tv}
+            label={next ? `Pendiente de pasar a «${next.name}»` : `Pendiente de completar «${stage.name}»`}
+          />
         ))}
-      {stage === "en_pruebas" &&
+      {stage.kind === "review" &&
         (canAct ? (
           <>
             <Button
@@ -201,16 +210,15 @@ export function EmbroideryPrepActions({
         ) : (
           <Waiting
             tv={tv}
-            label={`Prueba ${task.lastTest?.round ?? ""} en revisión`.replace(
-              "  ",
-              " ",
-            )}
+            label={`${stage.name}${task.lastTest?.round ? ` (revisión ${task.lastTest.round})` : ""} en revisión`}
           />
         ))}
       {mode && task.taskId != null && (
-        <EmbroideryPrepDialog
+        <StageDialog
           orderId={task.order.id}
           taskId={task.taskId}
+          area={task.area}
+          stage={stage}
           mode={mode}
           onClose={() => setMode(null)}
         />

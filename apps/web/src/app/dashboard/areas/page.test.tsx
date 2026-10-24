@@ -94,4 +94,10 @@ describe("AreasPage", () => {
 
     await waitFor(() => expect(update).toHaveBeenCalledWith(5, { active: true }));
   });
+
+  it("indica cuántas etapas previas tiene un área", () => {
+    overview = [...overview, row("bordado")];
+    render(<AreasPage />);
+    expect(screen.getByText("2 etapas")).toHaveAttribute("title", "Digitalizado → En pruebas");
+  });
 });

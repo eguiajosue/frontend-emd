@@ -38,6 +38,11 @@ const impresion3d: Area = {
   inventoryUnits: [],
   sortOrder: 70,
   active: true,
+  stages: [],
+  capacity: null,
+  turnaroundHours: null,
+  machines: [],
+  fields: [],
 };
 
 afterEach(() => resetAreaCatalog());

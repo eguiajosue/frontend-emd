@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AreaOverview, CreateAreaPayload, CreatedArea, UpdateAreaPayload, Area } from "@emd/types";
+import type { AreaOverview, CreateAreaPayload, CreatedArea, SetAreaFieldsPayload, SetAreaMachinesPayload, SetAreaStagesPayload, UpdateAreaPayload, Area } from "@emd/types";
 import { ApiError, request } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
@@ -40,10 +40,31 @@ export function useAreaAdminMutations() {
     onSuccess: invalidate,
   });
 
+  const stages = useMutation<Area, ApiError, { id: number; payload: SetAreaStagesPayload }>({
+    mutationFn: ({ id, payload }) =>
+      request<Area>(`${ENDPOINTS.areas}/${id}/stages`, { method: "PUT", token, body: payload }),
+    onSuccess: invalidate,
+  });
+
+  const machines = useMutation<Area, ApiError, { id: number; payload: SetAreaMachinesPayload }>({
+    mutationFn: ({ id, payload }) =>
+      request<Area>(`${ENDPOINTS.areas}/${id}/machines`, { method: "PUT", token, body: payload }),
+    onSuccess: invalidate,
+  });
+
+  const fields = useMutation<Area, ApiError, { id: number; payload: SetAreaFieldsPayload }>({
+    mutationFn: ({ id, payload }) =>
+      request<Area>(`${ENDPOINTS.areas}/${id}/fields`, { method: "PUT", token, body: payload }),
+    onSuccess: invalidate,
+  });
+
   return {
     create: (payload: CreateAreaPayload) => create.mutateAsync(payload),
+    setMachines: (id: number, payload: SetAreaMachinesPayload) => machines.mutateAsync({ id, payload }),
+    setFields: (id: number, payload: SetAreaFieldsPayload) => fields.mutateAsync({ id, payload }),
+    setStages: (id: number, payload: SetAreaStagesPayload) => stages.mutateAsync({ id, payload }),
     update: (id: number, payload: UpdateAreaPayload) => update.mutateAsync({ id, payload }),
     isCreating: create.isPending,
-    isUpdating: update.isPending,
+    isUpdating: update.isPending || stages.isPending || machines.isPending || fields.isPending,
   };
 }
