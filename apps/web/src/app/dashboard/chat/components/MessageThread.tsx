@@ -839,8 +839,11 @@ export function MessageThread({
           </div>
         ) : null}
         {/* Compositor en píldora: adjuntos, campo y enviar dentro de una sola
-            superficie gris; el foco se marca en el contenedor. */}
-        <div className="flex items-end gap-0.5 rounded-[1.75rem] border border-border/60 bg-muted/60 p-1.5 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/25">
+            superficie gris; el foco se marca en el contenedor. En pantallas
+            angostas el campo va en su propia fila de ancho completo y los
+            adjuntos + enviar debajo (como Slack): los tres iconos en la misma
+            fila dejaban el texto en un tercio del ancho. */}
+        <div className="flex flex-wrap items-end gap-0.5 rounded-3xl border sm:flex-nowrap sm:rounded-[1.75rem] border-border/60 bg-muted/60 p-1.5 transition-colors focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-ring/25">
           <OrderPicker selected={attachedOrder} onSelect={setAttachedOrder} />
           <Input
             ref={fileInputRef}
@@ -897,13 +900,13 @@ export function MessageThread({
             }}
             placeholder="Escribir un mensaje…"
             rows={1}
-            className="min-h-[40px] min-w-0 max-h-40 flex-1 resize-none rounded-none border-0 bg-transparent px-2 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0"
+            className="order-first min-h-[40px] min-w-0 max-h-40 flex-1 basis-full resize-none rounded-none border-0 bg-transparent px-3 py-2.5 shadow-none focus-visible:border-0 focus-visible:ring-0 sm:order-none sm:basis-auto sm:px-2"
             maxLength={2000}
           />
           <Button
             onClick={() => void handleSend()}
             disabled={isSending || (!draft.trim() && !attachedFile)}
-            className="shrink-0 rounded-full px-3 sm:px-4"
+            className="ml-auto shrink-0 rounded-full px-3 sm:ml-0 sm:px-4"
             aria-label="Enviar"
           >
             <Send className="h-4 w-4 sm:mr-1" />
