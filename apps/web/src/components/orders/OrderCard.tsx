@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { DeliveryProgressBar } from "@/components/orders/DeliveryProgressBar";
@@ -151,11 +151,14 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
                 </span>
               )}
               {assignedName && (
-                <Avatar className="h-7 w-7 border-2 border-card" title={`Asignado a ${assignedName}`}>
-                  <AvatarFallback className="text-[0.6875rem] font-semibold">
-                    {chatInitials(order.assignedUser)}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  seed={order.assignedUser?.username}
+                  className="h-7 w-7 border-2 border-card"
+                  fallbackClassName="text-[0.6875rem] font-semibold"
+                  title={`Asignado a ${assignedName}`}
+                >
+                  {chatInitials(order.assignedUser)}
+                </UserAvatar>
               )}
             </div>
           </div>

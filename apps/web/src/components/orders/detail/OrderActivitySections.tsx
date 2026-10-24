@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -153,11 +153,13 @@ export function OrderActivitySection({ orderId }: { orderId: number }) {
             <ul className="space-y-3">
               {auditLines.map((line) => (
                 <li key={line.key} className="flex items-start gap-3">
-                  <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                      {line.actorInitials}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    seed={line.actorUsername}
+                    className="h-7 w-7 shrink-0"
+                    fallbackClassName="bg-primary/10 text-xs font-semibold text-primary"
+                  >
+                    {line.actorInitials}
+                  </UserAvatar>
                   <div className="min-w-0 leading-relaxed">
                     <p className="break-words text-sm">
                       <span className="font-medium">{line.actorName}</span> {line.action}
