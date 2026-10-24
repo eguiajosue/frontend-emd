@@ -40,6 +40,8 @@ const defaults = (
   isProductionDestination: !isDesign,
   hasInventory: true,
   generalViewEnabled: true,
+  inventoryCategories: [],
+  inventoryUnits: [],
   sortOrder,
   active: true,
 });

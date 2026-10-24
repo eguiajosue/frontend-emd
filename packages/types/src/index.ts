@@ -69,8 +69,56 @@ export interface Area {
   isProductionDestination: boolean;
   hasInventory: boolean;
   generalViewEnabled: boolean;
+  /** Sugerencias de categoría/unidad al dar de alta artículos de inventario del área. */
+  inventoryCategories: string[];
+  inventoryUnits: string[];
   sortOrder: number;
   active: boolean;
+}
+
+/** Un área en el panel de administración (`GET /areas/overview`). */
+export interface AreaOverview extends Area {
+  users: number;
+  hasSharedAccount: boolean;
+  /** Pedidos y tareas sin cerrar: mientras haya, el área no se puede desactivar. */
+  openOrders: number;
+  openTasks: number;
+}
+
+/** Alta de un área desde el wizard (`POST /areas`). */
+export interface CreateAreaPayload {
+  name: string;
+  icon: string;
+  color: string;
+  isProductionDestination: boolean;
+  hasInventory: boolean;
+  generalViewEnabled: boolean;
+  inventoryCategories: string[];
+  inventoryUnits: string[];
+  createSharedAccount: boolean;
+  userIds: number[];
+}
+
+/** Edición de un área (`PATCH /areas/:id`). El slug no cambia. */
+export type UpdateAreaPayload = Partial<
+  Pick<
+    Area,
+    | "name"
+    | "icon"
+    | "color"
+    | "isProductionDestination"
+    | "hasInventory"
+    | "generalViewEnabled"
+    | "inventoryCategories"
+    | "inventoryUnits"
+    | "active"
+  >
+>;
+
+/** Respuesta del alta: el área, más lo que se creó con ella. */
+export interface CreatedArea extends Area {
+  sharedAccountId: number | null;
+  userCount: number;
 }
 
 export interface User extends BaseEntity {

@@ -1,6 +1,7 @@
 import {
   Package,
   UserRound,
+  Shapes,
   LayoutDashboard,
   HelpCircle,
   TrendingUp,
@@ -325,6 +326,13 @@ export function buildMenuItems(): NavGroup[] {
           icon: UserRound,
           roles: ["admin", "superuser"],
         },
+        {
+          // Alta, edición y desactivación de áreas (wizard).
+          title: "Áreas",
+          url: "/dashboard/areas",
+          icon: Shapes,
+          roles: ["admin", "superuser"],
+        },
       ],
     },
   ];
@@ -357,6 +365,7 @@ export const TAB_PRIORITY_URLS = [
   INVENTORY_URL,
   "/dashboard/calendario",
   "/dashboard/usuarios",
+  "/dashboard/areas",
   "/dashboard/ayuda",
 ];
 
