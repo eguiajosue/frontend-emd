@@ -62,6 +62,7 @@ export function StageStepper({
           <li
             key={step.column}
             aria-current={active ? "step" : undefined}
+            title={step.label}
             className="min-w-0 space-y-1"
           >
             <span
