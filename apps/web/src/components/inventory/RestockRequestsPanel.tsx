@@ -56,7 +56,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
   };
 
   return (
-    <li className="space-y-2 py-4" data-testid="restock-row">
+    <li className="space-y-2 py-4 transition-colors duration-fast" data-testid="restock-row">
       <div className="flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium leading-snug">

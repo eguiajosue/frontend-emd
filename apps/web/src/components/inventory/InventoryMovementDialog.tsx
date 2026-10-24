@@ -126,7 +126,7 @@ export function InventoryMovementDialog({ item, areaMode = false, initialType = 
     <Dialog open onOpenChange={(next) => !next && !submitting && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{verb}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{verb}</DialogTitle>
           <DialogDescription>
             {item.name} · hay {formatQuantity(item.quantity, item.unit)}
           </DialogDescription>

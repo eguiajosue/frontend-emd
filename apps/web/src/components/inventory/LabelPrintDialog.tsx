@@ -158,7 +158,7 @@ export function LabelPrintDialog({ items, onClose }: LabelPrintDialogProps) {
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isBatch ? `Imprimir ${items!.length} etiquetas` : "Imprimir etiqueta"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{isBatch ? `Imprimir ${items!.length} etiquetas` : "Imprimir etiqueta"}</DialogTitle>
           <DialogDescription>
             Etiqueta de 80 × 35 mm para impresora térmica, una por hoja.
           </DialogDescription>

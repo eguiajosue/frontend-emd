@@ -147,7 +147,7 @@ export function PasteWhatsAppDialog({ open, onOpenChange, clients, onSubmit }: P
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{rows ? "Revisa antes de crear" : "Pegar de WhatsApp"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{rows ? "Revisa antes de crear" : "Pegar de WhatsApp"}</DialogTitle>
           <DialogDescription>
             {rows
               ? "Corrige lo que haga falta: cada fila es una cotización."

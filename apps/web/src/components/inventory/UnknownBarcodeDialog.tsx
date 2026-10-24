@@ -88,7 +88,7 @@ export function UnknownBarcodeDialog({ scan, onClose, onLinked, onCreate }: Unkn
     <Dialog open onOpenChange={(next) => !next && !update.isPending && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Código sin artículo</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">Código sin artículo</DialogTitle>
           <DialogDescription>
             Ningún artículo tiene el código{" "}
             <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">{scan.code}</span>. Lígalo a

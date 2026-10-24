@@ -110,7 +110,7 @@ describe("BranchesPanel · logos de la sucursal", () => {
     render(<BranchesPanel />);
     expect(screen.getByTestId("logo-preview-onLight")).toHaveClass("bg-white");
     expect(screen.getByTestId("logo-preview-onLight").querySelector("img")).toHaveAttribute("src", "data:image/png;base64,NEGRO");
-    expect(screen.getByTestId("logo-preview-onDark")).toHaveClass("bg-neutral-900");
+    expect(screen.getByTestId("logo-preview-onDark")).toHaveClass("bg-navy-900");
     expect(screen.getByTestId("logo-preview-onDark").querySelector("img")).toHaveAttribute("src", "data:image/png;base64,BLANCO");
   });
 

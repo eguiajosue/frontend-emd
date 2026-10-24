@@ -288,7 +288,7 @@ export function InventoryItemDialog({
     <Dialog open={open} onOpenChange={(next) => !next && !submitting && onClose()}>
       <DialogContent className="sm:max-h-[90vh] sm:max-w-2xl sm:overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar artículo" : "Nuevo artículo de inventario"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{isEditing ? "Editar artículo" : "Nuevo artículo de inventario"}</DialogTitle>
           <DialogDescription>
             Existencias físicas del departamento. Vincularlo al catálogo de Materiales es opcional.
           </DialogDescription>

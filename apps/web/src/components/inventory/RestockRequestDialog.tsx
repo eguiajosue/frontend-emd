@@ -92,7 +92,7 @@ export function RestockRequestDialog({ open, item, areas, onClose }: RestockRequ
     <Dialog open onOpenChange={(next) => !next && !submitting && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Avisar reabasto</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">Avisar reabasto</DialogTitle>
           <DialogDescription>
             {item
               ? `${item.name} · hay ${item.quantity} ${item.unit}`

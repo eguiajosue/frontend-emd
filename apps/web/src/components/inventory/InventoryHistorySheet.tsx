@@ -31,7 +31,7 @@ export function InventoryHistorySheet({ item, onClose }: InventoryHistorySheetPr
     <Sheet open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>Movimientos</SheetTitle>
+          <SheetTitle className="font-heading tracking-tight">Movimientos</SheetTitle>
           {item && (
             <SheetDescription>
               {item.name} · {inventoryAreaLabel(item.area)} · hay {formatQuantity(item.quantity, item.unit)}
