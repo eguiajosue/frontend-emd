@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
  * mucho aire (login, hero del dashboard, estados vacíos) para dar
  * profundidad tipo "AI wellness" sin volverse ruidoso.
  *
- * - Usa los tokens de color de marca (`--primary` / `--accent2-*`), NUNCA
+ * - Usa los tokens de color de marca (`magenta` / `cyan`), NUNCA
  *   colores fijos, para respetar el acento elegido por el usuario y
  *   light/dark mode.
  * - Opacidad baja en claro, aún más baja en oscuro (evita "manchas" sobre
@@ -21,17 +21,17 @@ type BlobVariant = "login" | "hero" | "subtle";
 const VARIANT_BLOBS: Record<BlobVariant, string[]> = {
   // Pantalla de login: fondo oscuro fijo, blobs más presentes.
   login: [
-    "absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/25 blur-3xl",
-    "absolute bottom-0 right-0 h-96 w-96 rounded-full bg-accent2-500/15 blur-3xl",
+    "absolute -top-24 -left-24 h-72 w-72 rounded-full bg-magenta/25 blur-3xl",
+    "absolute bottom-0 right-0 h-96 w-96 rounded-full bg-cyan/20 blur-3xl",
   ],
   // Hero de dashboard / paneles admin: sutil, adaptado a light/dark.
   hero: [
-    "absolute -top-32 right-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl dark:bg-primary/[0.06]",
-    "absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-accent2-500/10 blur-3xl dark:bg-accent2-500/[0.05]",
+    "absolute -top-32 right-0 h-80 w-80 rounded-full bg-magenta/10 blur-3xl dark:bg-magenta/[0.07]",
+    "absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-cyan/15 blur-3xl dark:bg-cyan/[0.06]",
   ],
   // Estados vacíos / superficies chicas: una sola forma discreta.
   subtle: [
-    "absolute top-0 right-0 h-64 w-64 rounded-full bg-primary/10 blur-3xl dark:bg-primary/[0.05]",
+    "absolute top-0 right-0 h-64 w-64 rounded-full bg-cyan/15 blur-3xl dark:bg-cyan/[0.06]",
   ],
 };
 

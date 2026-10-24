@@ -81,8 +81,8 @@ export function ReadyNotice({ token, stage }: { token: string; stage: PortalStag
 
   if (state === "on") {
     return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-muted/60 px-4 py-3 text-sm" role="status">
-        <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-sunken px-4 py-3 text-sm" role="status">
+        <Check className="h-4 w-4 text-success" aria-hidden />
         <span className="flex-1">Te avisaremos en este dispositivo cuando tu pedido esté listo.</span>
         <Button variant="link" size="sm" className="h-auto p-0 text-muted-foreground" onClick={() => void disable()}>
           No avisarme

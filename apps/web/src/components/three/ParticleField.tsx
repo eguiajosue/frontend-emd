@@ -87,9 +87,9 @@ export function ParticleField({ className }: { className?: string }) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
-      // Color de marca (brand-400 aprox.: hsl(330, 84%, 64%)).
+      // Cian del logo (hsl 189 62% 70%): partículas frías sobre fondo marino.
       const color = new THREE.Color();
-      color.setHSL(330 / 360, 0.84, 0.64);
+      color.setHSL(189 / 360, 0.62, 0.7);
 
       const material = new THREE.PointsMaterial({
         color,

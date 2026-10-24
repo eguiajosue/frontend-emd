@@ -26,14 +26,14 @@ export const CATEGORY_META: Record<CalendarEventCategory, CategoryMeta> = {
   },
   visita: {
     label: "Visita a cliente",
-    pillClasses: "bg-blue-500/10 text-blue-700 dark:bg-blue-400/15 dark:text-blue-300",
-    swatchClass: "bg-blue-400",
+    pillClasses: "bg-cyan-soft text-cyan-ink",
+    swatchClass: "bg-cyan",
     tracksStatus: true,
   },
   entrega: {
     label: "Entrega",
-    pillClasses: "bg-teal-500/10 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300",
-    swatchClass: "bg-teal-400",
+    pillClasses: "bg-lime-soft text-lime-ink",
+    swatchClass: "bg-lime",
     tracksStatus: true,
   },
   junta: {

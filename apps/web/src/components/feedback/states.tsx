@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { DUR, EASE_OUT } from "@/lib/motion";
 import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,14 +83,15 @@ export function MessageThreadSkeleton() {
 }
 
 export function EmptyState({ message }: { message: string }) {
+  const reduced = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: DUR.slow, ease: EASE_OUT }}
       className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground shadow-soft"
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-navy-50 text-navy-600 dark:bg-secondary dark:text-primary">
         <Inbox className="h-5 w-5" aria-hidden />
       </span>
       <p className="max-w-sm">{message}</p>
@@ -108,11 +110,12 @@ export function ErrorState({
   description = "Ocurrió un problema al comunicarse con el servidor.",
   onRetry,
 }: ErrorStateProps) {
+  const reduced = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: DUR.slow, ease: EASE_OUT }}
       role="alert"
       className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center shadow-soft"
     >

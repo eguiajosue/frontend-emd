@@ -114,11 +114,11 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
   return (
     <Card className="overflow-hidden">
       <CardHeader className="flex flex-col items-start gap-3 space-y-0 p-5 pb-4 sm:flex-row sm:items-center sm:justify-between sm:p-6 sm:pb-4">
-        <CardTitle className="text-xl capitalize">
+        <CardTitle className="font-heading text-xl capitalize tracking-tight">
           <span className="sr-only">Calendario de equipo: </span>
           {format(currentMonth, "MMMM yyyy", { locale: es })}
         </CardTitle>
-        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card p-1">
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card p-1 shadow-soft-xs">
           <Button
             variant="ghost"
             size="icon"
@@ -157,10 +157,11 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
         </div>
         <motion.div
           // `gap-px` sobre fondo `border`: líneas de grilla de 1px sin dobles bordes.
+          key={format(currentMonth, "yyyy-MM")}
           className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/60"
           initial="hidden"
           animate="show"
-          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.01 } } }}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.006 } } }}
         >
           {days.map((day) => {
             const key = format(day, "yyyy-MM-dd");
@@ -183,7 +184,7 @@ export function TeamCalendar({ events, orders, onAddForDay, onEdit, onSelectOrde
                 <span
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                    today && "bg-ink text-ink-foreground"
+                    today && "bg-magenta-strong text-white shadow-glow-magenta"
                   )}
                 >
                   {format(day, "d")}

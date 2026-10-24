@@ -278,7 +278,7 @@ export function ClientReplyScene() {
           <motion.div key="a" {...pop} className="space-y-1.5">
             <Row>
               <span>Material cargado</span>
-              <Check className="h-3 w-3 text-emerald-600" />
+              <Check className="h-3 w-3 text-success" />
             </Row>
             <FakeButton pressed={p === 4}>Pasar a producción</FakeButton>
           </motion.div>
@@ -389,7 +389,7 @@ export function RoundsScene() {
         </Row>
         <AnimatePresence>
           {p >= 1 && (
-            <motion.div key="fb" {...pop} className="rounded-lg bg-amber-500/10 px-2 py-1.5 text-[11px]">
+            <motion.div key="fb" {...pop} className="rounded-lg bg-warning-soft px-2 py-1.5 text-[11px]">
               El cliente pidió estos cambios: “Logo más grande y en azul”
             </motion.div>
           )}
@@ -402,7 +402,7 @@ export function RoundsScene() {
             </motion.div>
           )}
           {p >= 3 && (
-            <motion.p key="ok" {...pop} className="text-[11px] text-emerald-700 dark:text-emerald-300">
+            <motion.p key="ok" {...pop} className="text-[11px] text-success">
               El cliente autorizó el diseño: el pedido pasa a producción.
             </motion.p>
           )}
@@ -478,7 +478,7 @@ export function AreasProgressScene() {
         ))}
         <AnimatePresence>
           {p >= 4 && (
-            <motion.p key="ready" {...pop} className="rounded-lg bg-emerald-500/10 px-2 py-1.5 text-[11px] text-emerald-700 dark:text-emerald-300">
+            <motion.p key="ready" {...pop} className="rounded-lg bg-success-soft px-2 py-1.5 text-[11px] text-success">
               Todas las áreas terminaron: el pedido está listo para entregar.
             </motion.p>
           )}
@@ -604,10 +604,10 @@ export function CalendarScene() {
         {days.map((d) => (
           <div key={d} className="h-9 rounded-md bg-card p-0.5 ring-1 ring-border/60 text-[9px] text-muted-foreground">
             {d}
-            {d === 4 && <div className="mt-0.5 truncate rounded bg-emerald-500/20 px-0.5 text-emerald-700 dark:text-emerald-300">#131</div>}
+            {d === 4 && <div className="mt-0.5 truncate rounded bg-success-soft px-0.5 text-success">#131</div>}
             <AnimatePresence>
               {d === 9 && p >= 2 && (
-                <motion.div key="ev" {...pop} className="mt-0.5 truncate rounded bg-violet-500/20 px-0.5 text-violet-700 dark:text-violet-300">
+                <motion.div key="ev" {...pop} className="mt-0.5 truncate rounded bg-magenta-soft px-0.5 text-magenta-ink">
                   Instalación
                 </motion.div>
               )}

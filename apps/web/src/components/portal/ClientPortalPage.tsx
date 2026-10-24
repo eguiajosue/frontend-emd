@@ -184,7 +184,7 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
 
   if (design.approved || response?.status === "aplicada") {
     return (
-      <p className="flex items-center gap-2 rounded-2xl bg-emerald-500/10 p-4 text-sm font-medium text-emerald-800 dark:text-emerald-300">
+      <p className="flex items-center gap-2 rounded-2xl bg-success-soft p-4 text-sm font-medium text-success">
         <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden />
         {design.approved ? "Diseño aprobado. ¡Ya está en producción!" : "Recibimos tus cambios: Diseño ya está trabajando en ellos."}
       </p>
@@ -194,7 +194,7 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
 
   if (response?.status === "pendiente" && !editing) {
     return (
-      <div role="status" className="space-y-3 rounded-2xl bg-muted/60 p-4">
+      <div role="status" className="space-y-3 rounded-2xl bg-sunken p-4">
         <p className="flex items-center gap-2 text-sm font-semibold">
           <PartyPopper className="h-5 w-5 shrink-0 text-magenta-ink" aria-hidden />
           ¡Gracias! Recibimos tu respuesta.
@@ -402,14 +402,14 @@ export function ClientPortalPage({ token }: { token: string }) {
           <ul className="divide-y divide-border/60">
             {view.products.map((p, i) => (
               <li key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground" aria-hidden>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-soft text-cyan-ink" aria-hidden>
                   <Shirt className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{p.name}</p>
                   <SizeSummary sizes={p.sizes} className="text-sm text-muted-foreground" />
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold tabular-nums">
+                <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-sm font-semibold tabular-nums text-secondary-foreground">
                   {p.quantity} pza{p.quantity === 1 ? "" : "s"}
                 </span>
               </li>

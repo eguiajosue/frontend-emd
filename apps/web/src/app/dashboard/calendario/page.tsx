@@ -28,6 +28,8 @@ import { CategoryFilterBar } from "@/components/calendar/CategoryFilterBar";
 import { AreaFilterBar } from "@/components/calendar/AreaFilterBar";
 import { CalendarTasksList } from "@/components/calendar/CalendarTasksList";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
+import { AnimatePresence, motion } from "framer-motion";
+import { EASE_OUT, useMotionPreset } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types";
 
@@ -45,6 +47,7 @@ type MobileView = "mes" | "diaSemana";
 export default function CalendarioPage() {
   const { canManageOperations, isSessionLoading } = usePermissions();
   const isMobile = useIsMobile();
+  const { reduced } = useMotionPreset();
   const { data: events, isPending, isError, refetch } = useCalendarEvents({
     enabled: canManageOperations,
   });
@@ -227,25 +230,34 @@ export default function CalendarioPage() {
               <ErrorState onRetry={() => refetch()} />
             ) : loading ? (
               <Skeleton className="h-[32rem] w-full rounded-2xl" />
-            ) : view === "mes" ? (
-              <TeamCalendar
-                events={filteredEvents}
-                orders={ordersWithDelivery}
-                onAddForDay={openCreate}
-                onEdit={openEdit}
-                onSelectOrder={setOpenOrderId}
-              />
             ) : (
-              <Card className="p-4 sm:p-6">
-                <TimeGridCalendar
-                  view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
-                  events={filteredEvents}
-                  orders={ordersWithDelivery}
-                  onAddAt={openCreateAt}
-                  onEdit={openEdit}
-                  onSelectOrder={setOpenOrderId}
-                />
-              </Card>
+              <motion.div
+                key={view === "mes" ? "mes" : "timegrid"}
+                initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: reduced ? 0.15 : 0.2, ease: EASE_OUT }}
+              >
+                {view === "mes" ? (
+                  <TeamCalendar
+                    events={filteredEvents}
+                    orders={ordersWithDelivery}
+                    onAddForDay={openCreate}
+                    onEdit={openEdit}
+                    onSelectOrder={setOpenOrderId}
+                  />
+                ) : (
+                  <Card className="p-4 sm:p-6">
+                    <TimeGridCalendar
+                      view={view === "semana" ? "timeGridWeek" : "timeGridDay"}
+                      events={filteredEvents}
+                      orders={ordersWithDelivery}
+                      onAddAt={openCreateAt}
+                      onEdit={openEdit}
+                      onSelectOrder={setOpenOrderId}
+                    />
+                  </Card>
+                )}
+              </motion.div>
             )}
 
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -255,9 +267,17 @@ export default function CalendarioPage() {
             </p>
           </div>
 
+          <AnimatePresence initial={false}>
           {tasksPanelOpen && (
-            <aside className="w-full shrink-0 xl:w-80">
-              <Card className="flex h-96 flex-col xl:sticky xl:top-4 xl:h-[36rem]">
+            <motion.aside
+              key="tasks-panel"
+              className="w-full shrink-0 xl:w-80"
+              initial={reduced ? { opacity: 0 } : { opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={reduced ? { opacity: 0 } : { opacity: 0, x: 12 }}
+              transition={{ duration: reduced ? 0.15 : 0.2, ease: EASE_OUT }}
+            >
+              <Card className="flex h-96 flex-col shadow-soft-xs xl:sticky xl:top-4 xl:h-[36rem]">
                 <CardHeader className="flex-row items-center justify-between space-y-0 p-5 pb-3">
                   <CardTitle className="flex items-center gap-2">
                     Tareas pendientes
@@ -283,8 +303,9 @@ export default function CalendarioPage() {
                   <CalendarTasksList />
                 </CardContent>
               </Card>
-            </aside>
+            </motion.aside>
           )}
+          </AnimatePresence>
         </div>
       )}
 

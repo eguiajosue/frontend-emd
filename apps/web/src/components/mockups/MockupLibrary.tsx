@@ -81,7 +81,7 @@ function LogoCard({
   const [renaming, setRenaming] = useState(false);
 
   return (
-    <li ref={ref} className="group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
+    <li ref={ref} className="group interactive-lift flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft-xs">
       <button
         type="button"
         onClick={onPick}
@@ -267,7 +267,7 @@ function LogosTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-ink/40 hover:bg-muted/60"
+          className="flex w-full flex-col items-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-primary/5"
         >
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-card shadow-soft" aria-hidden>
             <Upload className="h-5 w-5 text-foreground/70" />
