@@ -15,17 +15,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { useAreaAdminMutations, useAreaOverview } from "@/hooks/useAreaAdmin";
 import { usePermissions } from "@/hooks/usePermissions";
 import { getAreaIcon } from "@/lib/areas";
+import { deactivationBlocker } from "@/lib/areaForm";
 import { cn } from "@/lib/utils";
-
-/** Por qué un área no se puede desactivar todavía, o `null` si ya se puede. */
-export function deactivationBlocker(area: AreaOverview): string | null {
-  if (area.isDesign) return "Diseño es la fase previa de los pedidos: no se desactiva.";
-  const parts = [
-    area.openOrders > 0 && `${area.openOrders} pedido${area.openOrders === 1 ? "" : "s"} abierto${area.openOrders === 1 ? "" : "s"}`,
-    area.openTasks > 0 && `${area.openTasks} tarea${area.openTasks === 1 ? "" : "s"} sin terminar`,
-  ].filter(Boolean);
-  return parts.length > 0 ? `Tiene ${parts.join(" y ")}.` : null;
-}
 
 function AreaCard({
   area,
@@ -57,6 +48,11 @@ function AreaCard({
           {area.isDesign && <Badge variant="secondary">Fase previa</Badge>}
           {area.isProductionDestination && <Badge variant="secondary">Producción</Badge>}
           {area.hasInventory && <Badge variant="secondary">Inventario</Badge>}
+          {area.stages.length > 0 && (
+            <Badge variant="secondary" title={area.stages.map((stage) => stage.name).join(" → ")}>
+              {area.stages.length} etapa{area.stages.length === 1 ? "" : "s"}
+            </Badge>
+          )}
           {!area.generalViewEnabled && <Badge variant="secondary">Vista por persona</Badge>}
           {(area.openOrders > 0 || area.openTasks > 0) && (
             <Badge variant="outline">

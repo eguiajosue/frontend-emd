@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AreaOverview } from "@emd/types";
 import { DEFAULT_AREAS } from "@emd/business/src/areas";
-import AreasPage, { deactivationBlocker } from "./page";
+import AreasPage from "./page";
 
 const update = vi.fn();
 let overview: AreaOverview[] = [];
@@ -39,15 +39,6 @@ beforeEach(() => {
     row("diseno"),
     { ...row("laser"), active: false, users: 0, hasSharedAccount: false },
   ];
-});
-
-describe("deactivationBlocker", () => {
-  it("dice por qué no se puede, con singular y plural", () => {
-    expect(deactivationBlocker(row("taller"))).toBeNull();
-    expect(deactivationBlocker(row("dtf", { openOrders: 1, openTasks: 0 }))).toBe("Tiene 1 pedido abierto.");
-    expect(deactivationBlocker(row("dtf", { openOrders: 2, openTasks: 1 }))).toBe("Tiene 2 pedidos abiertos y 1 tarea sin terminar.");
-    expect(deactivationBlocker(row("diseno"))).toMatch(/no se desactiva/);
-  });
 });
 
 describe("AreasPage", () => {
@@ -102,5 +93,11 @@ describe("AreasPage", () => {
     await user.click(screen.getByRole("button", { name: "Activar Láser" }));
 
     await waitFor(() => expect(update).toHaveBeenCalledWith(5, { active: true }));
+  });
+
+  it("indica cuántas etapas previas tiene un área", () => {
+    overview = [...overview, row("bordado")];
+    render(<AreasPage />);
+    expect(screen.getByText("2 etapas")).toHaveAttribute("title", "Digitalizado → En pruebas");
   });
 });
