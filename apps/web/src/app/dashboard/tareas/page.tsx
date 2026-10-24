@@ -75,7 +75,7 @@ function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: Luci
 export default function TareasPage() {
   const { roles, areas: myAreas, session } = usePermissions();
   const access = useMemo(() => ({ roles, areas: myAreas }), [roles, myAreas]);
-  const { tasks, isLoading, isError, refetch } = useMyTasks();
+  const { tasks, isLoading, isError, error, refetch } = useMyTasks();
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
   const now = useNow(60_000);
@@ -176,7 +176,7 @@ export default function TareasPage() {
       </div>
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Skeleton className="h-56 w-full rounded-2xl" />

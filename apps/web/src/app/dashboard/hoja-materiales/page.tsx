@@ -94,7 +94,7 @@ function sortByMaterialsPriority(orders: Order[]): Order[] {
  * (PATCH /orders/materials-priority) y se comparte con todo el equipo.
  */
 export default function HojaMaterialesPage() {
-  const { data: orders, isPending, isError, refetch } = useOrders();
+  const { data: orders, isPending, isError, error, refetch } = useOrders();
   const { canManageOperations } = usePermissions();
   const { reorder } = useReorderMaterialsPriority();
   const { timeFormat } = useTimeFormat();
@@ -213,7 +213,7 @@ export default function HojaMaterialesPage() {
       )}
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending ? (
         <div className="space-y-3" role="status" aria-busy="true" aria-label="Cargando">
           {[0, 1, 2].map((i) => (

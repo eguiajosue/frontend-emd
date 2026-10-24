@@ -36,6 +36,7 @@ function useDashboardQuery<T>(kind: "reception" | "design" | "production", enabl
     data: query.data,
     isLoading: query.isPending,
     isError: query.isError,
+    error: query.error,
     isFetching: query.isFetching,
     updatedAt: query.dataUpdatedAt,
     refetch: query.refetch,

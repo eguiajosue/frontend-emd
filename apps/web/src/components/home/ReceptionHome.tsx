@@ -73,12 +73,12 @@ function AreaCard({ load, now }: { load: DashboardAreaLoad; now: number }) {
       {(load.overdue > 0 || load.atRisk > 0 || load.upcoming > 0 || (load.changesRequested ?? 0) > 0 || (load.waitingClient ?? 0) > 0) && (
         <div className="flex flex-wrap gap-1.5">
           {load.overdue > 0 && (
-            <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:bg-rose-400/15 dark:text-rose-300">
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
               {plural(load.overdue, "vencido", "vencidos")}
             </span>
           )}
           {load.atRisk > 0 && (
-            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+            <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
               {plural(load.atRisk, "por vencer", "por vencer")}
             </span>
           )}
@@ -88,7 +88,7 @@ function AreaCard({ load, now }: { load: DashboardAreaLoad; now: number }) {
             </span>
           )}
           {(load.waitingClient ?? 0) > 0 && (
-            <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-700 dark:bg-violet-400/15 dark:text-violet-300">
+            <span className="rounded-full bg-magenta-soft px-2 py-0.5 text-xs font-medium text-magenta-ink">
               {plural(load.waitingClient!, "esperando cliente", "esperando cliente")}
             </span>
           )}
@@ -158,7 +158,7 @@ function subtitleFor(data: ReceptionDashboard | undefined): string {
  * clientes que por su costumbre deberían estar por pedir y las alertas.
  */
 export function ReceptionHome({ firstName, switcher }: { firstName?: string | null; switcher?: ReactNode }) {
-  const { data, isLoading, isError, isFetching, updatedAt, refetch } = useReceptionDashboard();
+  const { data, isLoading, isError, error, isFetching, updatedAt, refetch } = useReceptionDashboard();
   const now = useNow(60_000);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
 
@@ -173,7 +173,7 @@ export function ReceptionHome({ firstName, switcher }: { firstName?: string | nu
       </div>
 
       {isError && !data ? (
-        <ErrorState onRetry={() => void refetch()} />
+        <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isLoading || !data ? (
         <ReceptionSkeleton />
       ) : (

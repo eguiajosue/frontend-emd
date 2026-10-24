@@ -115,7 +115,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
  */
 export function RestockRequestsPanel({ canManage }: { canManage: boolean }) {
   const [status, setStatus] = useState<RestockRequestStatus | "open" | "all">("open");
-  const { data, isPending, isError, refetch } = useRestockRequests(
+  const { data, isPending, isError, error, refetch } = useRestockRequests(
     status === "open" ? { open: true } : status === "all" ? {} : { status }
   );
 
@@ -141,7 +141,7 @@ export function RestockRequestsPanel({ canManage }: { canManage: boolean }) {
       {isPending ? (
         <TableSkeleton rows={4} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : (data ?? []).length === 0 ? (
         <EmptyState
           icon={PackageCheck}

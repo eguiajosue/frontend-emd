@@ -48,7 +48,7 @@ export default function CalendarioPage() {
   const { canManageOperations, isSessionLoading } = usePermissions();
   const isMobile = useIsMobile();
   const { reduced } = useMotionPreset();
-  const { data: events, isPending, isError, refetch } = useCalendarEvents({
+  const { data: events, isPending, isError, error, refetch } = useCalendarEvents({
     enabled: canManageOperations,
   });
   const { data: orders, isPending: isOrdersPending } = useOrders({
@@ -182,7 +182,7 @@ export default function CalendarioPage() {
           </div>
 
           {isError ? (
-            <ErrorState onRetry={() => refetch()} />
+            <ErrorState error={error} onRetry={() => refetch()} />
           ) : loading ? (
             <Skeleton className="h-[32rem] w-full rounded-2xl" />
           ) : mobileView === "mes" ? (
@@ -227,7 +227,7 @@ export default function CalendarioPage() {
             </div>
 
             {isError ? (
-              <ErrorState onRetry={() => refetch()} />
+              <ErrorState error={error} onRetry={() => refetch()} />
             ) : loading ? (
               <Skeleton className="h-[32rem] w-full rounded-2xl" />
             ) : (

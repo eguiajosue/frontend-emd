@@ -163,11 +163,7 @@ export function useChangeOrderStatus() {
     // se veía exactamente igual que no hacer nada. Era la razón por la que
     // "no me deja cambiar el estatus" no venía con ningún mensaje.
     onError: (error) => {
-      toast.error(
-        error instanceof ApiError && error.message
-          ? error.message
-          : "No se pudo cambiar el estado del pedido."
-      );
+      toast.error(getErrorMessage(error, "No se pudo cambiar el estado del pedido."));
     },
   });
 
@@ -232,11 +228,7 @@ export function useMoveOrderStatus(actor: MoveActor) {
       toast.success(orderStatusUpdatedMessage(orderId));
     },
     onError: (error) => {
-      toast.error(
-        error instanceof ApiError && error.message
-          ? error.message
-          : "No se pudo cambiar el estado del pedido."
-      );
+      toast.error(getErrorMessage(error, "No se pudo cambiar el estado del pedido."));
     },
   });
 
@@ -454,11 +446,7 @@ export function useDeleteOrder() {
       toast.success("Pedido eliminado correctamente");
     },
     onError: (error) => {
-      toast.error(
-        error instanceof ApiError && error.message
-          ? error.message
-          : "No se pudo eliminar el pedido."
-      );
+      toast.error(getErrorMessage(error, "No se pudo eliminar el pedido."));
     },
   });
 
@@ -617,9 +605,7 @@ export function useOrderNotes(orderId: number | null) {
 }
 
 function getNoteErrorMessage(error: unknown): string {
-  return error instanceof ApiError && error.message
-    ? error.message
-    : "No se pudo agregar la nota.";
+  return getErrorMessage(error, "No se pudo agregar la nota.");
 }
 
 /**

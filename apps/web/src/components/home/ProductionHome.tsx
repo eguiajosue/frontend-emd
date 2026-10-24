@@ -114,7 +114,7 @@ function NextUp({
       <p
         className={cn(
           "text-sm font-medium",
-          priority === "overdue" ? "text-rose-600 dark:text-rose-400" : priority === "due_soon" ? "text-amber-700 dark:text-amber-300" : "text-foreground/80"
+          priority === "overdue" ? "text-destructive" : priority === "due_soon" ? "text-warning" : "text-foreground/80"
         )}
       >
         {dueText(item.deliveryDate, now)}
@@ -159,7 +159,7 @@ export function ProductionHome({
   areas: string[];
   switcher?: ReactNode;
 }) {
-  const { data, isLoading, isError, isFetching, updatedAt, refetch } = useProductionDashboard();
+  const { data, isLoading, isError, error, isFetching, updatedAt, refetch } = useProductionDashboard();
   const { advance, pendingKey } = useAdvanceMyTask();
   const now = useNow(60_000);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
@@ -188,7 +188,7 @@ export function ProductionHome({
       </div>
 
       {isError && !data ? (
-        <ErrorState onRetry={() => void refetch()} />
+        <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isLoading || !data ? (
         <div className="space-y-6" aria-hidden>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">

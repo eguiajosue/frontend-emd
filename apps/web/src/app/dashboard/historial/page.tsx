@@ -43,6 +43,7 @@ import {
 import type { Client, Order } from "@/types";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getAppErrorMessage } from "@/lib/errorMessages";
 
 const PAGE_SIZE = 20;
 const ALL = "all";
@@ -189,7 +190,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
           )}
           {pendingTasks > 0 && (
             <span
-              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
+              className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-xs text-warning"
               title={`${pendingTasks} tarea${pendingTasks === 1 ? "" : "s"} de área pendiente${pendingTasks === 1 ? "" : "s"}`}
             >
               <ListChecks className="h-3 w-3" aria-hidden />
@@ -208,7 +209,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
             className={cn(
               "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
               isCritical
-                ? "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300"
+                ? "bg-destructive/10 text-destructive"
                 : "bg-muted text-muted-foreground"
             )}
           >
@@ -234,7 +235,7 @@ const HistorialPage = () => {
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [filters, setFilters] = useState<HistoryFilterState>(EMPTY_FILTERS);
   const query = useMemo(() => toHistoryQuery(filters), [filters]);
-  const { orders: fetched, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
+  const { orders: fetched, meta, isPending, isError, error, refetch, isFetching } = useOrderHistoryList(
     page,
     PAGE_SIZE,
     query
@@ -273,9 +274,7 @@ const HistorialPage = () => {
     try {
       await downloadOrdersExport(token, {});
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "No se pudo exportar el CSV."
-      );
+      toast.error(getAppErrorMessage(error, "No se pudo exportar el CSV."));
     } finally {
       setIsExportingCsv(false);
     }
@@ -355,7 +354,7 @@ const HistorialPage = () => {
           ))}
         </Card>
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : orders.length === 0 && hasFilters ? (
         <EmptyState
           icon={SearchX}

@@ -97,7 +97,7 @@ function AreaCard({
  */
 export default function AreasPage() {
   const { canManageUsers, isSessionLoading } = usePermissions();
-  const { areas, isPending, isError, refetch } = useAreaOverview(canManageUsers);
+  const { areas, isPending, isError, error, refetch } = useAreaOverview(canManageUsers);
   const { update } = useAreaAdminMutations();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editing, setEditing] = useState<AreaOverview | null>(null);
@@ -138,7 +138,7 @@ export default function AreasPage() {
       {isPending ? (
         <TableSkeleton rows={6} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : areas.length === 0 ? (
         <EmptyState icon={Boxes} title="Todavía no hay áreas" description="Crea la primera con “Nueva área”." />
       ) : (

@@ -59,8 +59,8 @@ export const TONE_META: Record<
     block: "bg-rose-600 text-white dark:bg-rose-600/90",
     caption: "text-rose-50/85",
     dot: "bg-rose-500",
-    pill: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
-    text: "text-rose-600 dark:text-rose-400",
+    pill: "bg-destructive/10 text-destructive",
+    text: "text-destructive",
     icon: Flame,
   },
   at_risk: {
@@ -68,8 +68,8 @@ export const TONE_META: Record<
     block: "bg-amber-400 text-amber-950 dark:bg-amber-400/90",
     caption: "text-amber-950/70",
     dot: "bg-amber-400",
-    pill: "bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
-    text: "text-amber-700 dark:text-amber-300",
+    pill: "bg-warning-soft text-warning",
+    text: "text-warning",
     icon: Hourglass,
   },
   on_time: {
@@ -77,8 +77,8 @@ export const TONE_META: Record<
     block: "bg-emerald-600 text-white dark:bg-emerald-600/85",
     caption: "text-emerald-50/85",
     dot: "bg-emerald-500",
-    pill: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
-    text: "text-emerald-700 dark:text-emerald-400",
+    pill: "bg-success-soft text-success",
+    text: "text-success",
     icon: Timer,
   },
   no_date: {
@@ -95,8 +95,8 @@ export const TONE_META: Record<
     block: "bg-sky-600 text-white dark:bg-sky-600/85",
     caption: "text-sky-50/85",
     dot: "bg-sky-500",
-    pill: "bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
-    text: "text-sky-700 dark:text-sky-300",
+    pill: "bg-info-soft text-info",
+    text: "text-info",
     icon: PackageCheck,
   },
   delivered: {
@@ -198,7 +198,7 @@ export const OrderJobCard = memo(function OrderJobCard({
         "group relative flex w-full min-w-0 flex-col rounded-2xl outline-none border border-border/60 bg-card shadow-soft transition-[box-shadow,border-color] duration-150 hover:border-border hover:shadow-soft-md",
         // Vencido: el borde se tiñe apenas; la píldora y la cuenta en rojo ya
         // lo dicen sin pintar la tarjeta entera.
-        state.tone === "overdue" && "border-rose-500/35 dark:border-rose-400/35",
+        state.tone === "overdue" && "border-destructive/35",
         selected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
         keyboardActive && "ring-4 ring-primary/70 ring-offset-2 ring-offset-background"
       )}

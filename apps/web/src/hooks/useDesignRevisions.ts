@@ -20,7 +20,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiError, request } from "@/lib/api";
+import { ApiError, getErrorMessage, request } from "@/lib/api";
 import { authFetch, authHeaders } from "@/lib/authFetch";
 import { apiUrl } from "@/lib/config";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
@@ -40,9 +40,7 @@ function getDesignErrorMessage(error: unknown): string {
   if (isNotFound(error)) {
     return "El flujo de diseño todavía no está disponible en el servidor.";
   }
-  return error instanceof ApiError && error.message
-    ? error.message
-    : "No se pudo completar la acción.";
+  return getErrorMessage(error, "No se pudo completar la acción.");
 }
 
 function designRevisionsPath(orderId: number) {

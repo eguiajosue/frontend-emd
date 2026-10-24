@@ -78,7 +78,7 @@ export function AreaSuppliesPanel({ orderId }: { orderId: number }) {
                       <span className="flex items-center gap-2 text-xs text-muted-foreground">
                         {line.pendingDiscount ? (
                           <span
-                            className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-800 dark:text-amber-300"
+                            className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 font-medium text-warning"
                             data-testid="supply-pending"
                           >
                             <AlertTriangle className="h-3 w-3" aria-hidden />

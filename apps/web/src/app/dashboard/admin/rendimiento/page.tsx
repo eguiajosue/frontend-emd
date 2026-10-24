@@ -48,7 +48,7 @@ function employeeName(e: EmployeePerformance): string {
 
 const RendimientoPage = () => {
   const { isAdmin, isSessionLoading } = usePermissions();
-  const { data, isPending, isError, refetch } = usePerformanceSummary({
+  const { data, isPending, isError, error, refetch } = usePerformanceSummary({
     enabled: isAdmin,
   });
   // Se usa sólo para el desglose de drill-down (pedidos de un área agrupados
@@ -135,7 +135,7 @@ const RendimientoPage = () => {
       <Title title="Rendimiento" />
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending || isSessionLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-64 w-full rounded-2xl" />

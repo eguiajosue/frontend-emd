@@ -120,8 +120,8 @@
 
     /* Gráficas (orden de uso: 1 magenta, 2 cian, 3 lima, 4 marino, 5 violeta). */
     --chart-1: 330 74% 52%;
-    --chart-2: 189 75% 42%;
-    --chart-3: 66 65% 45%;
+    --chart-2: 189 80% 36%;
+    --chart-3: 66 70% 36%;
     --chart-4: 240 30% 35%;
     --chart-5: 262 60% 58%;
 
@@ -214,8 +214,8 @@
     --muted-foreground: 240 12% 69%;
     --accent: 240 22% 17%;
     --accent-foreground: 240 14% 92%;
-    --destructive: 0 68% 52%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 68% 62%;
+    --destructive-foreground: 240 34% 9%;
     --border: 240 20% 19%;
     --input: 240 18% 28%;
     --ring: 189 62% 70%;

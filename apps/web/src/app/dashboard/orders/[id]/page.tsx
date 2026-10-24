@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/states";
-import { EmptyState } from "@/components/ui/empty-state";
+import { ForbiddenScreen, NotFoundScreen } from "@/components/feedback/ErrorScreen";
 import { OrderDetailHeader } from "@/components/orders/detail/OrderDetailHeader";
 import {
   OrderDetailBody,
@@ -51,22 +51,28 @@ const OrderDetailPage = () => {
   );
 
   if (isError) {
-    const forbidden =
-      error instanceof ApiError &&
-      (error.status === 403 || error.status === 404);
+    const status = error instanceof ApiError ? error.status : undefined;
     return (
       <div className="mx-auto max-w-3xl space-y-4">
         {back}
-        {forbidden ? (
-          <EmptyState
-            icon={Lock}
+        {status === 404 ? (
+          <NotFoundScreen
+            layout="inline"
+            title="No encontramos este pedido"
+            description="Puede que el número esté mal o que lo hayan eliminado."
+            primary={{ label: "Ver pedidos", href: "/dashboard/orders", icon: ArrowLeft }}
+          />
+        ) : status === 403 ? (
+          <ForbiddenScreen
+            layout="inline"
             title="No tienes acceso a este pedido"
-            description="Puede que no esté asignado a tu área o que ya no exista."
+            description="Puede que no esté asignado a tu área. Si lo necesitas, pídele a un administrador que te lo comparta."
+            primary={{ label: "Ver pedidos", href: "/dashboard/orders", icon: ArrowLeft }}
           />
         ) : (
           <ErrorState
+            error={error}
             title="No se pudo cargar el pedido"
-            description="Revisa tu conexión e intenta nuevamente."
             onRetry={() => refetch()}
           />
         )}

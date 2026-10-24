@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ApiError } from "@/lib/api";
+import { getErrorMessage } from "@/lib/api";
 import { patchStatusChange } from "@/lib/offlineMutation";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
@@ -47,7 +47,7 @@ interface OrderStepContextValue {
 const OrderStepContext = createContext<OrderStepContextValue | null>(null);
 
 function errorMessage(error: unknown, fallback: string) {
-  return error instanceof ApiError && error.message ? error.message : fallback;
+  return getErrorMessage(error, fallback);
 }
 
 export function OrderStepProvider({ children }: { children: ReactNode }) {

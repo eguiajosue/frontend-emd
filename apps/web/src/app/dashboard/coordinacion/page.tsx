@@ -112,7 +112,7 @@ function OverdueList({ orders, onOpen }: { orders: OverdueOrder[]; onOpen: (id: 
             <Card className="flex flex-col gap-3 border-l-4 border-l-destructive/70 p-4 lg:flex-row lg:items-center">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-red-700 dark:bg-red-400/15 dark:text-red-300">
+                  <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-destructive">
                     {o.daysLate} día{o.daysLate === 1 ? "" : "s"} tarde
                   </span>
                   <button
@@ -172,8 +172,8 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
         <div className="grid grid-cols-4 gap-2">
           <Stat value={load.pendiente} label="Sin empezar" />
           <Stat value={load.enProceso} label="En proceso" />
-          <Stat value={load.atrasadas} label="Atrasadas" tone="text-red-600 dark:text-red-400" />
-          <Stat value={load.pronto} label="Hoy / mañana" tone="text-amber-600 dark:text-amber-400" />
+          <Stat value={load.atrasadas} label="Atrasadas" tone="text-destructive" />
+          <Stat value={load.pronto} label="Hoy / mañana" tone="text-warning" />
         </div>
         {/* Barra relativa a la más cargada: de un vistazo, quién está saturado. */}
         <div className="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
@@ -183,7 +183,7 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
           <p
             className={cn(
               "flex flex-wrap items-center gap-x-2 text-sm",
-              load.overloaded ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"
+              load.overloaded ? "font-medium text-destructive" : "text-muted-foreground"
             )}
           >
             {load.overloaded && <span>Sobrecargada ({load.loadPct}% de su capacidad)</span>}
@@ -210,7 +210,7 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
                 <span className="truncate">{p.name}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {p.pendiente + p.enProceso}
-                  {p.atrasadas > 0 && <span className="ml-1.5 text-red-600 dark:text-red-400">· {p.atrasadas} tarde</span>}
+                  {p.atrasadas > 0 && <span className="ml-1.5 text-destructive">· {p.atrasadas} tarde</span>}
                 </span>
               </li>
             ))}
@@ -283,7 +283,7 @@ function StageTimes({ data }: { data: CoordinationOverview["stageTimes"] }) {
 export default function CoordinacionPage() {
   const router = useRouter();
   const { canManageOperations, isSessionLoading: sessionLoading } = usePermissions();
-  const { data, isPending, isError, refetch, isFetching } = useCoordination();
+  const { data, isPending, isError, error, refetch, isFetching } = useCoordination();
 
   if (!sessionLoading && !canManageOperations) {
     return <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">No tienes permiso para ver esta página.</Card>;
@@ -311,7 +311,7 @@ export default function CoordinacionPage() {
       </div>
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending || !data ? (
         <div className="space-y-4">
           <Skeleton className="h-40 w-full rounded-2xl" />

@@ -127,7 +127,7 @@ export function OrderProgressPanel({
         <HandoffStages stages={handoff.stages} />
         {pendingSync && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning"
             title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
           >
             <CloudOff className="h-3 w-3 shrink-0" aria-hidden />

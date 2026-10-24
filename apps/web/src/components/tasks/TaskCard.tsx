@@ -151,7 +151,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
             className={cn(
               "mt-auto inline-flex w-fit max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
               state.tone === "overdue"
-                ? "bg-rose-500/10 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300"
+                ? "bg-destructive/10 text-destructive"
                 : "bg-[hsl(var(--surface-sunken))] text-muted-foreground"
             )}
           >
@@ -169,7 +169,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
       <div className="relative flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-4">
         <p className="pointer-events-none flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className={cn("h-2 w-2 shrink-0 rounded-full", TONE_DOT[state.tone])} aria-hidden />
-          <span className={cn("truncate", state.tone === "overdue" && "font-medium text-rose-600 dark:text-rose-400")}>
+          <span className={cn("truncate", state.tone === "overdue" && "font-medium text-destructive")}>
             {dueLabel(state)}
           </span>
         </p>

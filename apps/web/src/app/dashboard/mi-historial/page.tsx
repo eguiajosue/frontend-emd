@@ -102,7 +102,7 @@ const BranchHistoryPage = () => {
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  const { orders, total, totalPages, isPending, isError, isFetching, refetch } = useBranchOrderHistory(
+  const { orders, total, totalPages, isPending, isError, error, isFetching, refetch } = useBranchOrderHistory(
     filters,
     page
   );
@@ -193,7 +193,7 @@ const BranchHistoryPage = () => {
           ))}
         </Card>
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : orders.length === 0 && hasFilters ? (
         <EmptyState
           icon={SearchX}

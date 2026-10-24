@@ -48,6 +48,7 @@ export function useQuotes(filters: QuoteFilters = {}, options: { enabled?: boole
     // también es "cargando", no "no hay cotizaciones".
     isLoading: query.isPending,
     isError: query.isError,
+    error: query.error,
     refetch: query.refetch,
   };
 }

@@ -22,7 +22,7 @@ interface InventoryHistorySheetProps {
 
 /** Kardex completo de un artículo (hasta los últimos 500 movimientos). */
 export function InventoryHistorySheet({ item, onClose }: InventoryHistorySheetProps) {
-  const { data = [], isPending, isError, refetch } = useInventoryMovements(
+  const { data = [], isPending, isError, error, refetch } = useInventoryMovements(
     { itemId: item?.id },
     { enabled: Boolean(item) }
   );
@@ -42,7 +42,7 @@ export function InventoryHistorySheet({ item, onClose }: InventoryHistorySheetPr
           {isPending ? (
             <TableSkeleton rows={5} />
           ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
+            <ErrorState error={error} onRetry={() => refetch()} />
           ) : data.length === 0 ? (
             <EmptyState
               icon={History}

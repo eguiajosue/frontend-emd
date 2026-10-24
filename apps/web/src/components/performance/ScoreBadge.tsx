@@ -24,8 +24,8 @@ export function scoreTier(score: number | null): "high" | "mid" | "low" | "unkno
 
 const TIER_STYLES: Record<ReturnType<typeof scoreTier>, string> = {
   high: "bg-lime/30 text-lime-ink dark:bg-lime/15 dark:text-lime",
-  mid: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
-  low: "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300",
+  mid: "bg-warning-soft text-warning",
+  low: "bg-destructive/10 text-destructive",
   unknown: "bg-muted text-muted-foreground",
 };
 

@@ -495,7 +495,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             )}
             <div className="ml-auto flex items-center gap-3">
               {!muted && !audioReady && (
-                <Button variant="outline" size="lg" className="gap-2 rounded-full" onClick={unlockAudio}>
+                <Button variant="outline" size="lg" className="gap-2" onClick={unlockAudio}>
                   <Volume2 className="h-5 w-5" />
                   Activar sonido
                 </Button>

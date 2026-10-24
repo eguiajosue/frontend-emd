@@ -190,7 +190,7 @@ export function ConversationList({
     >
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
         <h2 className="text-section-title">Conversaciones</h2>
-        <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>
+        <Button size="sm" className="gap-1.5" onClick={onNewDirect}>
           <MessageSquarePlus className="h-3.5 w-3.5" />
           Nuevo
         </Button>

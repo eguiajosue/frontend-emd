@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { SizeSummary } from "@/components/sizes/SizeSummary";
 import { ApiError, getErrorMessage, request } from "@/lib/api";
+import { PublicLinkState, publicLinkStateForError } from "./PublicLinkState";
 import { STAGE_COPY, type ClientResponseKind, type PortalView } from "@/lib/clientPortal";
 import { GARMENT_LABELS } from "@/lib/mockups/types";
 import { DUR, EASE_OUT } from "@/lib/motion";
@@ -312,25 +313,13 @@ export function ClientPortalPage({ token }: { token: string }) {
     );
   }
   if (query.isError || !query.data) {
-    const status = query.error instanceof ApiError ? query.error.status : 0;
     return (
       <Shell>
-        <div className="rounded-2xl border border-border/70 bg-card p-8 text-center shadow-soft-xs">
-          <BrandSquares className="mb-4 justify-center" />
-          <h1 className="font-heading text-xl font-semibold">
-            {status === 410 ? "Este enlace ya venció" : status === 404 ? "No encontramos este pedido" : "No pudimos cargar tu pedido"}
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {status === 410 || status === 404
-              ? "Pídenos un enlace nuevo y con gusto te lo mandamos."
-              : "Revisa tu conexión e inténtalo de nuevo."}
-          </p>
-          {status !== 410 && status !== 404 && (
-            <Button className="mt-5" onClick={() => query.refetch()}>
-              Reintentar
-            </Button>
-          )}
-        </div>
+        <PublicLinkState
+          withShell={false}
+          state={publicLinkStateForError(query.error)}
+          onRetry={() => query.refetch()}
+        />
       </Shell>
     );
   }

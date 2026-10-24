@@ -112,7 +112,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 const plural = (n: number) => `${n} ${n === 1 ? "cotización" : "cotizaciones"}`;
 
 function QuotesBoard() {
-  const { quotes, isLoading, isError, refetch } = useQuotes();
+  const { quotes, isLoading, isError, error, refetch } = useQuotes();
   const { data: clients } = useEntityList<Client>("clients");
   const { create, bulkCreate, update, remove, linkOrder } = useQuoteMutations();
 
@@ -383,7 +383,7 @@ function QuotesBoard() {
               {isLoading ? (
                 <CardsSkeleton count={4} />
               ) : isError ? (
-                <ErrorState onRetry={() => void refetch()} />
+                <ErrorState error={error} onRetry={() => void refetch()} />
               ) : visible.length === 0 ? (
                 quotes.length === 0 ? (
                   <EmptyState

@@ -1,5 +1,6 @@
 "use client"
 
+import { getErrorMessage, getLoginErrorMessage } from "@/lib/errorMessages"
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
@@ -80,11 +81,14 @@ const LoginForm = () => {
       });
 
       if (responseNextAuth?.error) {
-        setErrors(responseNextAuth.error.split(","));
+        setErrors([getLoginErrorMessage(responseNextAuth.error)]);
         return;
       }
 
       router.push("/dashboard");
+    } catch (error) {
+      // signIn() lanza si no hay red: se explica en vez de dejar el botón "mudo".
+      setErrors([getErrorMessage(error)]);
     } finally {
       clearTimeout(slowServerTimer);
       setSubmitting(false);

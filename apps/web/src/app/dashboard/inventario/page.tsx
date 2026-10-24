@@ -152,7 +152,7 @@ export default function InventarioPage() {
   const effectiveArea: InventoryArea | undefined =
     area !== ALL ? area : areas.length === 1 ? areas[0] : undefined;
 
-  const { data: items, isPending, isError, refetch } = useInventoryItems(effectiveArea);
+  const { data: items, isPending, isError, error, refetch } = useInventoryItems(effectiveArea);
   const restockCount = useRestockCount({ enabled: canManage || isArea });
   const { remove } = useInventoryMutations();
 
@@ -423,7 +423,7 @@ export default function InventarioPage() {
                 </Button>
               )}
               {isArea && (
-                <Button className="h-10 rounded-full px-4" onClick={() => setRestock({ item: null })}>
+                <Button className="h-10 px-4" onClick={() => setRestock({ item: null })}>
                   <PackagePlus className="h-4 w-4" /> Avisar reabasto
                 </Button>
               )}
@@ -493,7 +493,7 @@ export default function InventarioPage() {
                   </Select>
                 )}
                 {activeFilters > 0 && (
-                  <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
+                  <Button variant="ghost" size="sm" className="h-10 px-4" onClick={clearFilters}>
                     Limpiar filtros
                   </Button>
                 )}
@@ -503,7 +503,7 @@ export default function InventarioPage() {
             {isPending || areasPending ? (
               <TableSkeleton rows={5} />
             ) : isError ? (
-              <ErrorState onRetry={() => refetch()} />
+              <ErrorState error={error} onRetry={() => refetch()} />
             ) : items.length === 0 ? (
               <EmptyState
                 icon={Warehouse}

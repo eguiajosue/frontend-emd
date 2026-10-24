@@ -269,7 +269,7 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
             >
               {sound ? <Volume2 /> : <VolumeX />}
             </Button>
-            <Button variant="ghost" className="h-9 rounded-full px-3" onClick={onExit}>
+            <Button variant="ghost" className="h-9 px-3" onClick={onExit}>
               <X /> Salir
             </Button>
           </div>

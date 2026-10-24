@@ -67,8 +67,8 @@ export function LiveStatus({
 
 const TONE_CLASSES = {
   default: "text-muted-foreground",
-  danger: "text-rose-600 dark:text-rose-400",
-  warn: "text-amber-600 dark:text-amber-400",
+  danger: "text-destructive",
+  warn: "text-warning",
   info: "text-cyan-ink dark:text-cyan",
   good: "text-lime-ink dark:text-lime",
 } as const;
@@ -76,8 +76,8 @@ const TONE_CLASSES = {
 /** Fondo tintado del icono cuando la métrica "importa" (> 0). */
 const TONE_CHIP = {
   default: "bg-muted text-muted-foreground",
-  danger: "bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-300",
-  warn: "bg-amber-500/10 text-amber-600 dark:bg-amber-400/15 dark:text-amber-300",
+  danger: "bg-destructive/10 text-destructive",
+  warn: "bg-warning-soft text-warning",
   info: "bg-cyan/25 text-cyan-ink dark:bg-cyan/15 dark:text-cyan",
   good: "bg-lime/30 text-lime-ink dark:bg-lime/15 dark:text-lime",
 } as const;
@@ -223,11 +223,11 @@ export function productsLine(products: Array<{ customName?: string | null; quant
 }
 
 export const PRIORITY_PILL: Record<WorkPriority, string> = {
-  overdue: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+  overdue: "bg-destructive/10 text-destructive",
   changes: "bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
-  due_soon: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  due_soon: "bg-warning-soft text-warning",
   not_started: "bg-muted text-foreground/80",
-  in_progress: "bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  in_progress: "bg-info-soft text-info",
 };
 
 /** Etiqueta en singular de la prioridad, para la píldora de cada fila. */

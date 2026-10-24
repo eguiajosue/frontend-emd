@@ -151,7 +151,7 @@ export function CrudPage<T extends BaseEntity>({
   openCreateOnMount = false,
   onFormClose,
 }: CrudPageProps<T>) {
-  const { data, isPending, isError, refetch } = useEntityList<T>(entity, {
+  const { data, isPending, isError, error, refetch } = useEntityList<T>(entity, {
     staleTime: CATALOG_ENTITIES.has(entity) ? CATALOG_STALE_TIME : undefined,
   });
   const { create, update, remove } = useEntityMutations<T, EntityValues>(entity);
@@ -286,7 +286,7 @@ export function CrudPage<T extends BaseEntity>({
                 </Select>
               ))}
               {activeFilterCount > 0 && (
-                <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
+                <Button variant="ghost" size="sm" className="h-10 px-4" onClick={clearFilters}>
                   Limpiar filtros
                 </Button>
               )}
@@ -303,7 +303,7 @@ export function CrudPage<T extends BaseEntity>({
       {isPending ? (
         <TableSkeleton rows={4} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : data.length === 0 ? (
         <EmptyState
           icon={emptyIcon}

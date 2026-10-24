@@ -40,6 +40,7 @@ import {
 import { dataUrlBytes } from "@/lib/mockups/dataUrl";
 import { MAX_LOGO_BYTES, type MockupLogoSummary } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
+import { getAppErrorMessage } from "@/lib/errorMessages";
 
 export type LibraryTab = "logos" | "banderas";
 
@@ -378,7 +379,7 @@ function FlagsTab({ onPick }: { onPick: (design: ImportedDesign) => Promise<void
       const design = await importDesignFromUrl(flag.url, flagLayerName(flag));
       await onPick(design);
     } catch (err) {
-      setError(err instanceof Error ? err.message : `No se pudo agregar la bandera de ${flag.name}.`);
+      setError(getAppErrorMessage(err, `No se pudo agregar la bandera de ${flag.name}.`));
     } finally {
       setBusyCode(null);
     }

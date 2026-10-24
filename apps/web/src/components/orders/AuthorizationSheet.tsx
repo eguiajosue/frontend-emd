@@ -116,12 +116,12 @@ const STATE_COPY: Record<
 > = {
   approved: {
     pill: "Autorizada",
-    pillClass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    pillClass: "bg-success-soft text-success",
     icon: CheckCircle2,
   },
   pending: {
     pill: "Sin autorizar",
-    pillClass: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    pillClass: "bg-warning-soft text-warning",
     icon: Clock,
   },
   changes: {
@@ -213,7 +213,7 @@ export function AuthorizationSheet({
             role="note"
             className={cn(
               "flex gap-2 rounded-xl p-3 text-sm",
-              sheet.kind === "pending" ? "bg-amber-500/10" : "bg-orange-500/10"
+              sheet.kind === "pending" ? "bg-warning-soft" : "bg-orange-500/10"
             )}
           >
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />

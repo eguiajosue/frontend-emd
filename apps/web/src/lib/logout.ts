@@ -28,14 +28,19 @@ export async function clearPrivateCaches(): Promise<void> {
   );
 }
 
+/** Pantalla pública a la que se llega cuando el servidor invalida la sesión. */
+export const SESSION_EXPIRED_PATH = "/sesion-expirada";
+
 export async function logout(message?: string): Promise<void> {
   try {
     await signOut({ redirect: false });
   } finally {
     await clearPrivateCaches().catch(() => undefined);
     if (typeof window !== "undefined") {
-      const query = message ? `?message=${encodeURIComponent(message)}` : "";
-      window.location.href = `/login${query}`;
+      // Con mensaje = cierre forzado (401 / refresh vencido): pantalla propia
+      // "Tu sesión expiró" con el botón de iniciar sesión, en vez de un login
+      // frío. Sin mensaje = cierre voluntario, directo al login.
+      window.location.href = message ? SESSION_EXPIRED_PATH : "/login";
     }
   }
 }

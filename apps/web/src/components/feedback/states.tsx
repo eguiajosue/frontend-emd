@@ -6,6 +6,7 @@ import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { describeError } from "@/lib/errorMessages";
 
 /**
  * Estados compartidos de carga / vacío / error.
@@ -103,14 +104,28 @@ interface ErrorStateProps {
   title?: string;
   description?: string;
   onRetry?: () => void;
+  /**
+   * El error real: si se pasa, el catálogo (`lib/errorMessages`) decide el
+   * texto según el caso (sin conexión, sin permiso, servidor caído…) y oculta
+   * el reintento cuando no tiene sentido. `title`/`description` explícitos
+   * siguen ganando para conservar el contexto de cada pantalla.
+   */
+  error?: unknown;
 }
 
 export function ErrorState({
-  title = "No se pudo cargar la información",
-  description = "Ocurrió un problema al comunicarse con el servidor.",
+  title,
+  description,
   onRetry,
+  error,
 }: ErrorStateProps) {
   const reduced = useReducedMotion();
+  const info = error !== undefined ? describeError(error) : undefined;
+  title = title ?? (info && info.kind !== "unknown" ? info.title : "No se pudo cargar la información");
+  description =
+    description ??
+    (info && info.kind !== "unknown" ? info.description : "Ocurrió un problema al comunicarse con el servidor.");
+  if (info && !info.retryable && info.kind !== "unknown") onRetry = undefined;
   return (
     <motion.div
       initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}

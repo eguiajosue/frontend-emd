@@ -167,7 +167,7 @@ export function QuoteCard({
           onCloseAutoFocus={keepFocusIfCommenting}
         />
         {quote.stage === "por_enviar" && (
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-full" onClick={() => onMarkSent(quote)}>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={() => onMarkSent(quote)}>
             <Send className="h-3.5 w-3.5" aria-hidden /> Marcar como enviada
           </Button>
         )}
@@ -180,7 +180,7 @@ export function QuoteCard({
           </Link>
         ) : (
           quote.status === "aceptada" && (
-            <Button size="sm" variant="brand" className="h-8 gap-1.5 rounded-full" onClick={() => onConvert(quote)}>
+            <Button size="sm" variant="brand" className="h-8 gap-1.5" onClick={() => onConvert(quote)}>
               <PackagePlus className="h-3.5 w-3.5" aria-hidden /> Convertir en pedido
             </Button>
           )
