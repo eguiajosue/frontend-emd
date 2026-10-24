@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EmbroideryTasksBoard } from "./EmbroideryBoard";
-import { buildEmbroideryBoard } from "@/lib/embroideryBoard";
+import { StageTasksBoard } from "./StageBoard";
+import { buildStageBoard } from "@/lib/stageBoard";
 import type { TvTask } from "@/lib/tvBoard";
 
 vi.mock("@/hooks/useAreaTasks", () => ({
   useAreaTasks: () => ({
-    sendToTest: {
+    advanceStage: {
       mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     },
-    decideTest: {
+    decideStage: {
       mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     },
@@ -24,6 +24,9 @@ vi.mock("@/hooks/useAreaTasks", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const DIGITALIZADO = { id: 301, key: "digitalizado", name: "Digitalizado", kind: "work" } as const;
+const EN_PRUEBAS = { id: 302, key: "en_pruebas", name: "En pruebas", kind: "review" } as const;
+
 const NOW = new Date("2026-10-06T12:00:00Z").getTime();
 
 function task(id: number, extra: Partial<TvTask> = {}): TvTask {
@@ -33,7 +36,7 @@ function task(id: number, extra: Partial<TvTask> = {}): TvTask {
     area: "bordado",
     taskId: id,
     status: "pendiente",
-    prepStage: null,
+    stage: null,
     mine: true,
     assignee: null,
     startedAt: null,
@@ -55,14 +58,14 @@ function task(id: number, extra: Partial<TvTask> = {}): TvTask {
 
 const tasks: TvTask[] = [
   task(1, {
-    prepStage: "digitalizado",
+    stage: DIGITALIZADO,
     lastTest: {
       round: 1,
       result: "rechazada",
       resultNotes: "El hilo se frunce",
     },
   }),
-  task(2, { prepStage: "en_pruebas", lastTest: { round: 1, result: null } }),
+  task(2, { stage: EN_PRUEBAS, lastTest: { round: 1, result: null } }),
   task(3),
   task(4, { status: "en_proceso" }),
   task(5, {
@@ -74,8 +77,9 @@ const tasks: TvTask[] = [
 function setup(canMovePrep = true) {
   const onAdvance = vi.fn();
   render(
-    <EmbroideryTasksBoard
-      board={buildEmbroideryBoard(tasks, NOW)}
+    <StageTasksBoard
+      area="bordado"
+      board={buildStageBoard("bordado", tasks, NOW)}
       now={NOW}
       timeFormat="24h"
       onOpen={vi.fn()}
@@ -90,7 +94,7 @@ function setup(canMovePrep = true) {
 const column = (name: string) =>
   screen.getByRole("region", { name: new RegExp(`^${name}`) });
 
-describe("tablero de Bordado (Tareas asignadas)", () => {
+describe("tablero por etapas (Tareas asignadas)", () => {
   it("tiene las cuatro columnas del flujo con cada tarjeta en su etapa", () => {
     setup();
     expect(
@@ -113,11 +117,11 @@ describe("tablero de Bordado (Tareas asignadas)", () => {
     expect(within(column("Terminado")).getByText("Logo 5")).toBeInTheDocument();
   });
 
-  it("cada etapa ofrece su acción: mandar a pruebas, aprobar/rechazar, empezar, terminar", () => {
+  it("cada etapa ofrece su acción: pasar de etapa, aprobar/rechazar, empezar, terminar", () => {
     setup();
     expect(
       within(column("Digitalizado")).getByRole("button", {
-        name: "Mandar a pruebas",
+        name: "Pasar a «En pruebas»",
       }),
     ).toBeInTheDocument();
     const pruebas = column("En pruebas");
@@ -146,7 +150,7 @@ describe("tablero de Bordado (Tareas asignadas)", () => {
   it("la tarjeta rechazada muestra qué hay que corregir", () => {
     setup();
     const note = within(column("Digitalizado")).getByRole("note");
-    expect(note).toHaveTextContent("Prueba 1 rechazada");
+    expect(note).toHaveTextContent("Revisión 1 rechazada");
     expect(note).toHaveTextContent("El hilo se frunce");
   });
 
@@ -171,40 +175,38 @@ describe("tablero de Bordado (Tareas asignadas)", () => {
   it("Mandar a pruebas abre el diálogo con la foto opcional", async () => {
     setup();
     await userEvent.click(
-      screen.getByRole("button", { name: "Mandar a pruebas" }),
+      screen.getByRole("button", { name: "Pasar a «En pruebas»" }),
     );
     expect(
-      await screen.findByRole("heading", { name: "Mandar a pruebas" }),
+      await screen.findByRole("heading", { name: "Pasar a «En pruebas»" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Foto de la prueba (opcional)"),
+      screen.getByText("Foto para la revisión (opcional)"),
     ).toBeInTheDocument();
   });
 
   it("rechazar pide el motivo", async () => {
     setup();
     await userEvent.click(screen.getByRole("button", { name: "Rechazar" }));
-    expect(
-      await screen.findByRole("button", { name: "Rechazar prueba" }),
-    ).toBeDisabled();
+    await screen.findByRole("heading", { name: "Rechazar «En pruebas»" });
+    const confirm = () => screen.getAllByRole("button", { name: "Rechazar" }).at(-1)!;
+    expect(confirm()).toBeDisabled();
     await userEvent.type(
       screen.getByLabelText("Observaciones"),
       "Corrige el contorno",
     );
-    expect(
-      screen.getByRole("button", { name: "Rechazar prueba" }),
-    ).toBeEnabled();
+    expect(confirm()).toBeEnabled();
   });
 
   it("sin permiso sólo se ve en qué va la tarea, sin botones de etapa", () => {
     setup(false);
     expect(
-      screen.queryByRole("button", { name: "Mandar a pruebas" }),
+      screen.queryByRole("button", { name: "Pasar a «En pruebas»" }),
     ).toBeNull();
     expect(screen.queryByRole("button", { name: "Aprobar" })).toBeNull();
     expect(
-      screen.getByText("Pendiente de mandar a pruebas"),
+      screen.getByText("Pendiente de pasar a «En pruebas»"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Prueba 1 en revisión")).toBeInTheDocument();
+    expect(screen.getByText("En pruebas (revisión 1) en revisión")).toBeInTheDocument();
   });
 });

@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { InventoryItemDialog } from "./InventoryItemDialog";
+import { DEFAULT_AREAS, resetAreaCatalog, setAreaCatalog } from "@emd/business/src/areas";
 import type { InventoryItem } from "@/types";
 
 const updateMutate = vi.fn();
@@ -110,5 +111,31 @@ describe("InventoryItemDialog · código de barras", () => {
     await userEvent.type(screen.getByRole("combobox", { name: /Unidad/ }), "litro{Enter}");
     await userEvent.click(screen.getByRole("button", { name: "Agregar artículo" }));
     expect(createMutate).toHaveBeenCalledWith(expect.objectContaining({ barcode: "7501234567890", name: "Tinta magenta" }));
+  });
+});
+
+describe("InventoryItemDialog · sugerencias del área", () => {
+  afterEach(() => resetAreaCatalog());
+
+  it("sugiere las categorías y unidades que se capturaron al dar de alta el área", async () => {
+    setAreaCatalog([
+      ...DEFAULT_AREAS,
+      {
+        ...DEFAULT_AREAS[0],
+        id: 7,
+        slug: "impresion-3d",
+        name: "Impresión 3D",
+        inventoryCategories: ["Filamento PLA"],
+        inventoryUnits: ["bobina"],
+        sortOrder: 70,
+      },
+    ]);
+    renderDialog({ item: null, areas: ["impresion-3d"], defaultArea: "impresion-3d" });
+
+    await userEvent.click(screen.getByRole("combobox", { name: /Unidad/ }));
+    expect(await screen.findByText("bobina")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("combobox", { name: /Categoría/ }));
+    expect(await screen.findByText("Filamento PLA")).toBeInTheDocument();
   });
 });

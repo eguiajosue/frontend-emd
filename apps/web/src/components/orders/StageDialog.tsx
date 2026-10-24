@@ -17,69 +17,101 @@ import { CameraCaptureButton } from "@/components/ui/camera-capture-button";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { normalizeImageFile, readFileAsUploadInput } from "@/lib/fileInput";
 import { getErrorMessage } from "@/lib/api";
-import type { SampleTestResult } from "@/types";
+import { advanceLabel, stageNeighbors } from "@/lib/stageBoard";
+import type { AreaStage, SampleTestResult } from "@/types";
 
-export type PrepDialogMode = "send" | "approve" | "reject";
+export type StageDialogMode = "advance" | "approve" | "reject";
 
-const DIALOG_COPY: Record<
-  PrepDialogMode,
-  {
-    title: string;
-    description: string;
-    confirm: string;
-    required: boolean;
-    placeholder: string;
+interface DialogCopy {
+  title: string;
+  description: string;
+  confirm: string;
+  required: boolean;
+  placeholder: string;
+  /** Si pide observaciones (y foto, al abrir una revisión). */
+  askNotes: boolean;
+  askPhoto: boolean;
+}
+
+/** Textos del diálogo según la acción y las etapas vecinas de la tarea. */
+function dialogCopy(
+  mode: StageDialogMode,
+  stage: AreaStage,
+  next: AreaStage | null,
+  previous: AreaStage | null,
+): DialogCopy {
+  if (mode === "advance") {
+    const review = next?.kind === "review";
+    return {
+      title: advanceLabel(next),
+      description: review
+        ? "Se abre una ronda nueva en el registro de revisiones de este pedido."
+        : next
+          ? `La tarea pasa de «${stage.name}» a «${next.name}».`
+          : `Se completa «${stage.name}» y la tarea queda lista para que el área empiece la producción.`,
+      confirm: advanceLabel(next),
+      required: false,
+      placeholder: "Qué se corrigió o con qué parámetros se hace (opcional)",
+      askNotes: review,
+      askPhoto: review,
+    };
   }
-> = {
-  send: {
-    title: "Mandar a pruebas",
-    description:
-      "Se abre una ronda nueva en el registro de pruebas de este pedido.",
-    confirm: "Mandar a pruebas",
-    required: false,
-    placeholder:
-      "Qué se corrigió o con qué parámetros se hace la prueba (opcional)",
-  },
-  approve: {
-    title: "Aprobar la prueba",
-    description: "La tarea queda lista para que Bordado empiece la producción.",
-    confirm: "Aprobar prueba",
-    required: false,
-    placeholder: "Observaciones (opcional)",
-  },
-  reject: {
-    title: "Rechazar la prueba",
-    description:
-      "La tarea regresa a digitalizado para corregirse y volver a pruebas.",
-    confirm: "Rechazar prueba",
+  if (mode === "approve") {
+    return {
+      title: `Aprobar «${stage.name}»`,
+      description: next
+        ? `La tarea pasa a «${next.name}».`
+        : "La tarea queda lista para que el área empiece la producción.",
+      confirm: "Aprobar",
+      required: false,
+      placeholder: "Observaciones (opcional)",
+      askNotes: true,
+      askPhoto: false,
+    };
+  }
+  return {
+    title: `Rechazar «${stage.name}»`,
+    description: previous
+      ? `La tarea regresa a «${previous.name}» para corregirse y volver a revisión.`
+      : "La tarea regresa a la etapa anterior para corregirse.",
+    confirm: "Rechazar",
     required: true,
     placeholder: "Qué hay que corregir",
-  },
-};
+    askNotes: true,
+    askPhoto: false,
+  };
+}
 
-interface EmbroideryPrepDialogProps {
+interface StageDialogProps {
   orderId: number;
   taskId: number;
+  area: string;
+  /** Etapa en la que está la tarea. */
+  stage: AreaStage;
   /** null = cerrado. */
-  mode: PrepDialogMode | null;
+  mode: StageDialogMode | null;
   onClose: () => void;
 }
 
 /**
- * Diálogo de las tres acciones de las etapas previas de Bordado: mandar a
- * pruebas (con foto y notas), aprobar y rechazar (con el motivo obligatorio).
- * Lo comparten el detalle del pedido, las tarjetas de Tareas y el Modo TV.
+ * Diálogo de las acciones de las etapas previas: pasar a la siguiente (con
+ * foto y notas si es una revisión), aprobar y rechazar (con el motivo
+ * obligatorio). Lo comparten el detalle del pedido, las tarjetas de Tareas y
+ * el Modo TV.
  */
-export function EmbroideryPrepDialog({
+export function StageDialog({
   orderId,
   taskId,
+  area,
+  stage,
   mode,
   onClose,
-}: EmbroideryPrepDialogProps) {
-  const { sendToTest, decideTest } = useAreaTasks(orderId);
+}: StageDialogProps) {
+  const { advanceStage, decideStage } = useAreaTasks(orderId);
   const [notes, setNotes] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const { next, previous } = stageNeighbors(area, stage);
 
   // Vista previa local de la foto elegida; se libera al cambiarla o cerrar.
   useEffect(() => {
@@ -92,7 +124,7 @@ export function EmbroideryPrepDialog({
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  const pending = sendToTest.isPending || decideTest.isPending;
+  const pending = advanceStage.isPending || decideStage.isPending;
 
   const close = () => {
     setNotes("");
@@ -119,27 +151,33 @@ export function EmbroideryPrepDialog({
   const submit = async () => {
     if (!mode) return;
     const text = notes.trim();
-    if (DIALOG_COPY[mode].required && !text) return;
+    if (copy?.required && !text) return;
     try {
-      if (mode === "send") {
-        await sendToTest.mutateAsync({
+      if (mode === "advance") {
+        await advanceStage.mutateAsync({
           taskId,
           notes: text || undefined,
           photo: photo ? await readFileAsUploadInput(photo) : undefined,
         });
-        toast.success("Enviado a pruebas");
+        toast.success(
+          next ? `Pasó a «${next.name}»` : "Lista para producir",
+        );
       } else {
         const result: SampleTestResult =
           mode === "approve" ? "aprobada" : "rechazada";
-        await decideTest.mutateAsync({
+        await decideStage.mutateAsync({
           taskId,
           result,
           notes: text || undefined,
         });
         toast.success(
           mode === "approve"
-            ? "Prueba aprobada: ya puede producir"
-            : "Prueba rechazada: vuelve a digitalizado",
+            ? next
+              ? `«${stage.name}» aprobada: pasa a «${next.name}»`
+              : `«${stage.name}» aprobada: ya puede producir`
+            : previous
+              ? `«${stage.name}» rechazada: vuelve a «${previous.name}»`
+              : `«${stage.name}» rechazada`,
         );
       }
       close();
@@ -148,7 +186,7 @@ export function EmbroideryPrepDialog({
     }
   };
 
-  const copy = mode ? DIALOG_COPY[mode] : null;
+  const copy = mode ? dialogCopy(mode, stage, next, previous) : null;
 
   return (
     <Dialog open={mode !== null} onOpenChange={(open) => !open && close()}>
@@ -157,23 +195,25 @@ export function EmbroideryPrepDialog({
           <DialogTitle>{copy?.title}</DialogTitle>
           <DialogDescription>{copy?.description}</DialogDescription>
         </DialogHeader>
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          maxLength={1000}
-          rows={3}
-          placeholder={copy?.placeholder}
-          aria-label="Observaciones"
-        />
-        {mode === "send" && (
+        {copy?.askNotes && (
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={1000}
+            rows={3}
+            placeholder={copy.placeholder}
+            aria-label="Observaciones"
+          />
+        )}
+        {copy?.askPhoto && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Foto de la prueba (opcional)</p>
+            <p className="text-sm font-medium">Foto para la revisión (opcional)</p>
             {photoUrl && (
               <div className="relative w-fit">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={photoUrl}
-                  alt="Vista previa de la prueba"
+                  alt="Vista previa de la foto"
                   className="max-h-48 rounded-lg border"
                 />
                 <Button
@@ -211,7 +251,7 @@ export function EmbroideryPrepDialog({
             </div>
             <p className="text-xs text-muted-foreground">
               <Camera className="mr-1 inline h-3 w-3" aria-hidden />
-              Recepción la ve para revisar y autorizar la prueba.
+              Recepción la ve para revisar y autorizar.
             </p>
           </div>
         )}

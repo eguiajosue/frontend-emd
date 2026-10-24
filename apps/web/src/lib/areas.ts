@@ -1,6 +1,8 @@
 import {
   Box,
   Brush,
+  Cpu,
+  Cuboid,
   Flame,
   Hammer,
   Layers,
@@ -56,6 +58,8 @@ export const AREA_ICON_REGISTRY: Record<string, LucideIcon> = {
   Shirt,
   Stamp,
   Wrench,
+  Cuboid,
+  Cpu,
 };
 
 /** Ícono de un área; `null` si no se reconoce (área libre/legado). */

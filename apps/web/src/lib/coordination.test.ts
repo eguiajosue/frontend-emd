@@ -10,8 +10,8 @@ describe("coordinación", () => {
   });
 
   it("dice dónde está detenido cada área o el pedido", () => {
-    expect(areaStageLabel({ area: "bordado", status: "pendiente", prepStage: "en_pruebas", assignee: "Luis" })).toBe("en pruebas (Luis)");
-    expect(areaStageLabel({ area: "dtf", status: "en_proceso", prepStage: null, assignee: null })).toBe("en proceso");
+    expect(areaStageLabel({ area: "bordado", status: "pendiente", stage: { key: "en_pruebas", name: "En pruebas", kind: "review" }, assignee: "Luis" })).toBe("en «En pruebas» (Luis)");
+    expect(areaStageLabel({ area: "dtf", status: "en_proceso", stage: null, assignee: null })).toBe("en proceso");
     const o = { status: "esperando autorización" } as OverdueOrder;
     expect(stuckAt(o)).toBe("Esperando que el cliente autorice");
     expect(stuckAt({ ...o, status: "terminado" })).toBe("Listo, falta entregar");

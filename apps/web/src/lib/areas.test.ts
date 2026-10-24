@@ -34,8 +34,15 @@ const impresion3d: Area = {
   isProductionDestination: true,
   hasInventory: true,
   generalViewEnabled: true,
+  inventoryCategories: [],
+  inventoryUnits: [],
   sortOrder: 70,
   active: true,
+  stages: [],
+  capacity: null,
+  turnaroundHours: null,
+  machines: [],
+  fields: [],
 };
 
 afterEach(() => resetAreaCatalog());

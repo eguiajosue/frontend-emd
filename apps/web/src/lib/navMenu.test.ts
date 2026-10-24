@@ -235,3 +235,23 @@ describe("cuenta de sucursal (Punto Madero)", () => {
     expect(homePathFor({ roles: ["sucursal"], areas: [] })).toBe("/dashboard/orders");
   });
 });
+
+describe("menú: Áreas", () => {
+  const areasItem = () =>
+    buildMenuItems()
+      .flatMap((g) => g.items)
+      .find((i) => i.url === "/dashboard/areas")!;
+
+  it("sólo administración la ve, dentro de Administración", () => {
+    const group = buildMenuItems().find((g) => g.items.some((i) => i.url === "/dashboard/areas"));
+    expect(group?.groupLabel).toBe("Administración");
+    expect(isNavItemVisible(areasItem(), { roles: ["admin"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(areasItem(), { roles: ["superuser"], areas: [] }, false)).toBe(true);
+    expect(isNavItemVisible(areasItem(), { roles: ["recepcion"], areas: [] }, false)).toBe(false);
+    expect(isNavItemVisible(areasItem(), { roles: [], areas: ["taller"] }, false)).toBe(false);
+  });
+
+  it("las migas la nombran", () => {
+    expect(buildBreadcrumbs(buildMenuItems(), "/dashboard/areas").map((c) => c.label)).toEqual(["Administración", "Áreas"]);
+  });
+});
