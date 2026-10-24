@@ -661,7 +661,7 @@ export function MessageThread({
         className
       )}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3 max-md:px-2 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex min-w-0 items-center gap-2.5">
           {onBack ? (
             <Button
@@ -707,27 +707,24 @@ export function MessageThread({
           </span>
           <div className="min-w-0">
             <h2 className="truncate text-section-title">{conversation.title}</h2>
-            <p className="truncate text-xs text-muted-foreground">
+            {/* Una sola línea bajo el nombre (como WhatsApp): la presencia
+                cuando la hay, si no qué tipo de conversación es. */}
+            <p
+              className={cn(
+                "truncate text-xs",
+                otherIsTyping ? "text-primary" : "text-muted-foreground"
+              )}
+            >
               {conversation.type === "area"
-                ? "Canal entre Recepción y el área"
-                : "Mensaje directo"}
+                ? "Canal de área"
+                : (presenceLabel ?? "Mensaje directo")}
             </p>
-            {presenceLabel ? (
-              <p
-                className={cn(
-                  "truncate text-xs",
-                  otherIsTyping ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                {presenceLabel}
-              </p>
-            ) : null}
           </div>
         </div>
         <Button
           size="sm"
-          variant="secondary"
-          className="shrink-0 gap-1 px-2.5 sm:px-3"
+          variant={showMembers ? "secondary" : "ghost"}
+          className="shrink-0 gap-1 rounded-full px-2.5 text-muted-foreground sm:px-3"
           onClick={() => setShowMembers((v) => !v)}
           title={`Participantes (${members.length})`}
           aria-label={`Participantes (${members.length})`}
