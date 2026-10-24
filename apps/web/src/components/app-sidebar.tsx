@@ -34,7 +34,8 @@ import { useChatUnreadCount } from "@/hooks/useChat";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
 import { useNavLayout } from "@/hooks/useNavLayout";
-import { SPRING_STANDARD, useMotionPreset } from "@/lib/motion";
+import { SPRING_LAYOUT, SPRING_STANDARD, useMotionPreset } from "@/lib/motion";
+import { BrandLogo } from "./BrandLogo";
 import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/navMenu";
 import { useOrderViewCounts } from "./SidebarOrderViews";
@@ -46,11 +47,11 @@ export const SIDEBAR_SETTINGS_URL = "/dashboard/configuracion#barra-lateral";
 
 /**
  * Espacio que deja el contenido a la izquierda en escritorio: ancho del riel
- * (3.75rem angosto / 14.5rem con títulos) + 1rem de margen a cada lado. Lo usa
+ * marino anclado a la izquierda (4.5rem angosto / 16rem con títulos). Lo usa
  * `dashboard/layout.tsx` como variable CSS (`--rail-offset`).
  */
-export const RAIL_OFFSET_COLLAPSED = "5.75rem";
-export const RAIL_OFFSET_EXPANDED = "16.5rem";
+export const RAIL_OFFSET_COLLAPSED = "4.5rem";
+export const RAIL_OFFSET_EXPANDED = "16rem";
 
 /** Exportado también para `MobileMoreSheet.tsx`, que reutiliza este botón tal
  *  cual en vez de duplicar su JSX/lógica de "colapsado". */
@@ -107,9 +108,9 @@ export function InstallAppButton() {
 
 /** Transición de ancho del riel: mismo tempo que `DURATION_STANDARD` y `EASE_OUT` (lib/motion.ts). */
 const RAIL_TRANSITION =
-  "transition-[width,border-radius] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
+  "transition-[width] duration-200 ease-out-expo motion-reduce:transition-none";
 
-/** Segmento flotante del riel: píldora blanca vertical, como en la referencia. */
+/** Segmento del riel marino (sin píldora propia: el riel entero es el panel). */
 function RailSegment({
   className,
   expanded = false,
@@ -122,14 +123,37 @@ function RailSegment({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col items-center gap-1 rounded-[1.875rem] border border-border/60 bg-sidebar p-2 shadow-soft dark:border-border",
-        RAIL_TRANSITION,
-        expanded ? "w-[14.5rem] items-stretch" : "w-[3.75rem]",
+        "flex shrink-0 flex-col gap-1 px-3 py-2",
+        expanded ? "items-stretch" : "items-center",
         className
       )}
     >
       {children}
     </div>
+  );
+}
+
+/**
+ * Marca en la cabecera del riel: logo blanco con el riel expandido; con el
+ * riel angosto, los tres cuadros del logo (cian, lima, magenta).
+ */
+function RailBrand({ expanded }: { expanded: boolean }) {
+  return (
+    <Link
+      href="/dashboard"
+      aria-label="EMD, ir al inicio"
+      className="flex h-[4.75rem] shrink-0 items-center justify-center px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80"
+    >
+      {expanded ? (
+        <BrandLogo onDark className="h-8 animate-in fade-in-0 duration-200 motion-reduce:animate-none" />
+      ) : (
+        <span aria-hidden className="grid grid-cols-3 gap-1">
+          <span className="size-2.5 rounded-[3px] bg-cyan" />
+          <span className="size-2.5 rounded-[3px] bg-lime" />
+          <span className="size-2.5 rounded-[3px] bg-magenta" />
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -153,7 +177,7 @@ function RailCount({
         inline
           ? "relative transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0"
           : "absolute -right-0.5 -top-0.5 ring-2 ring-sidebar",
-        tone === "danger" ? "bg-rose-600 text-white" : "bg-primary text-primary-foreground"
+        tone === "danger" ? "bg-rose-600 text-white" : "bg-magenta-strong text-white"
       )}
     >
       {value > 99 ? "99+" : value}
@@ -231,22 +255,25 @@ function RailItem({
       aria-current={active ? "page" : undefined}
       data-tour={item.title === "Ayuda" ? "help-link" : undefined}
       className={cn(
-        "relative flex items-center rounded-full text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+        "relative flex items-center rounded-xl text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
         expanded ? "h-10 w-full gap-3 pl-3 pr-2" : "h-11 w-11 justify-center",
         active && "text-sidebar-primary-foreground hover:bg-transparent hover:text-sidebar-primary-foreground",
-        !active && unread > 0 && "text-primary"
+        !active && unread > 0 && "text-white"
       )}
     >
       {active && (
         <motion.span
           layoutId="rail-active-indicator"
-          className="pointer-events-none absolute inset-0 -z-0 rounded-full bg-sidebar-primary"
-          transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
-        />
+          className="pointer-events-none absolute inset-0 -z-0 rounded-xl bg-sidebar-primary ring-1 ring-white/10"
+          transition={reducedMotion ? { duration: 0 } : SPRING_LAYOUT}
+        >
+          {/* Marca magenta pegada al borde del riel: dónde estoy. */}
+          <span aria-hidden className="absolute -left-3 bottom-2.5 top-2.5 w-1 rounded-r-full bg-magenta" />
+        </motion.span>
       )}
       <motion.span
         aria-hidden
-        className="relative flex shrink-0"
+        className="relative flex shrink-0 transition-colors duration-150"
         animate={unread > 0 && !reducedMotion ? { rotate: [0, -10, 8, -5, 0] } : { rotate: 0 }}
         transition={{ duration: 0.6, ease: "easeInOut" }}
       >
@@ -293,7 +320,7 @@ function RailItem({
             className={cn(
               "absolute inset-y-0 right-1 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
               menuOpen && "opacity-100",
-              active ? "text-sidebar-primary-foreground" : "text-muted-foreground"
+              active ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/70"
             )}
           >
             <button
@@ -302,8 +329,8 @@ function RailItem({
               aria-pressed={favorite}
               onClick={onToggleFavorite}
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                active ? "hover:bg-white/15" : "hover:bg-sidebar hover:text-foreground",
+                "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
+                active ? "hover:bg-white/15" : "hover:bg-white/10 hover:text-white",
                 favorite && !active && "text-amber-500 hover:text-amber-500"
               )}
             >
@@ -314,8 +341,8 @@ function RailItem({
                 type="button"
                 aria-label={`Opciones de ${item.title}`}
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                  active ? "hover:bg-white/15" : "hover:bg-sidebar hover:text-foreground"
+                  "flex h-7 w-7 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
+                  active ? "hover:bg-white/15" : "hover:bg-white/10 hover:text-white"
                 )}
               >
                 <MoreHorizontal className="h-4 w-4" aria-hidden />
@@ -411,7 +438,7 @@ function RailSection({
         aria-expanded={open}
         aria-controls={listId}
         onClick={onToggleFold}
-        className="group/section flex h-8 w-full items-center gap-2 rounded-full pl-3 pr-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        className="group/section flex h-8 w-full items-center gap-2 rounded-full pl-3 pr-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80"
       >
         {Icon && <Icon className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
         <span className="truncate">{label}</span>
@@ -528,7 +555,7 @@ export function AppSidebar() {
       aria-label={expanded ? undefined : "Configuración"}
       aria-current={settingsActive ? "page" : undefined}
       className={cn(
-        "flex h-10 items-center rounded-full text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+        "flex h-10 items-center rounded-xl text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
         expanded ? "w-full gap-3 pl-3 pr-2 text-sm font-medium" : "w-10 justify-center",
         settingsActive && "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
       )}
@@ -544,25 +571,31 @@ export function AppSidebar() {
     <aside
       aria-label="Navegación principal"
       data-expanded={expanded ? "true" : "false"}
-      className="fixed bottom-4 left-4 top-[5.25rem] z-30 hidden flex-col items-start gap-3 md:flex"
+      className={cn(
+        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex",
+        RAIL_TRANSITION,
+        expanded ? "w-64" : "w-[4.5rem]"
+      )}
     >
+      <RailBrand expanded={expanded} />
+
       <RailSegment
         expanded={expanded}
-        className={cn(expanded && "flex-row justify-center rounded-full py-1.5")}
+        className={cn(expanded && "flex-row justify-center")}
       >
         <span data-tour="theme-toggle">
-          <ThemeRailSwitch orientation={expanded ? "horizontal" : "vertical"} />
+          <ThemeRailSwitch tone="sidebar" orientation={expanded ? "horizontal" : "vertical"} />
         </span>
       </RailSegment>
 
-      <RailSegment expanded={expanded} className="min-h-0 shrink overflow-hidden px-0 py-0">
+      <RailSegment expanded={expanded} className="min-h-0 flex-1 overflow-hidden px-0 py-0">
         <nav
           id="rail-nav"
           ref={navScrollRef}
           data-tour="sidebar-nav"
           aria-label="Secciones"
           className={cn(
-            "flex min-h-0 w-full flex-col gap-1 overflow-y-auto overflow-x-hidden px-2 py-2 [scrollbar-width:none]",
+            "flex min-h-0 w-full flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 py-2 [scrollbar-width:none]",
             // Se desvanece al pie: si la lista no cabe, se nota que sigue.
             "[mask-image:linear-gradient(to_bottom,black_calc(100%-1rem),transparent)]",
             expanded ? "items-stretch" : "items-center"
@@ -574,7 +607,7 @@ export function AppSidebar() {
                 (expanded ? (
                   <span aria-hidden className="h-1 shrink-0" />
                 ) : (
-                  <span aria-hidden className="my-1 h-px w-6 shrink-0 bg-border" />
+                  <span aria-hidden className="my-1 h-px w-6 shrink-0 bg-sidebar-border" />
                 ))}
               <RailSection
                 label={section.label}
@@ -592,9 +625,7 @@ export function AppSidebar() {
         </nav>
       </RailSegment>
 
-      <div className="flex-1" aria-hidden />
-
-      <RailSegment expanded={expanded}>
+      <RailSegment expanded={expanded} className="border-t border-sidebar-border">
         <FooterButton
           expanded={expanded}
           label={expanded ? "Contraer" : "Expandir"}
@@ -616,7 +647,7 @@ export function AppSidebar() {
           ariaLabel="Cerrar sesión"
           icon={LogOut}
           onClick={() => void logout()}
-          className="hover:bg-destructive/10 hover:text-destructive"
+          className="hover:bg-red-500/15 hover:text-red-300"
         />
       </RailSegment>
     </aside>
@@ -650,7 +681,7 @@ function FooterButton({
       onClick={onClick}
       {...extraProps}
       className={cn(
-        "h-10 rounded-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "h-10 rounded-xl text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         expanded ? "w-full justify-start gap-3 pl-3 pr-2 text-sm font-medium" : "w-10 p-0",
         className
       )}
