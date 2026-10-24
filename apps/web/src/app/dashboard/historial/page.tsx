@@ -21,7 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { formatDeliveryDate, getAssignedUserName, getClientName, getOrderClientName } from "@/lib/format";
-import { AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import { orderAreaTags } from "@/lib/orderAreas";
 import { useDeliveryProgress } from "@/lib/deliveryProgress";
 import { isDeliveredStatus } from "@/lib/orderStatus";
@@ -226,6 +227,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
  * lista sobre una tarjeta blanca; el detalle abre el mismo `OrderDetailDialog`.
  */
 const HistorialPage = () => {
+  const areaOptions = useAreaOptions();
   const [page, setPage] = useState(1);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
   const [isExportingCsv, setIsExportingCsv] = useState(false);
@@ -302,7 +304,7 @@ const HistorialPage = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todas las áreas</SelectItem>
-            {AREA_OPTIONS.map((a) => (
+            {areaOptions.map((a) => (
               <SelectItem key={a.value} value={a.value}>
                 {a.label}
               </SelectItem>

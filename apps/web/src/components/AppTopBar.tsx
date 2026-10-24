@@ -23,7 +23,7 @@ import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { findActiveNavUrl } from "@/lib/navMenu";
 import { orderGroupItems } from "@/lib/navPreferences";
 import { useNavPreferences } from "@/hooks/useNavPreferences";
-import { formatRoleList } from "@/lib/roles";
+import { formatAccessList } from "@/lib/roles";
 import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
@@ -128,7 +128,7 @@ function UserMenu() {
               {user?.first_name} {user?.last_name}
             </span>
             <span className="block truncate text-xs text-muted-foreground">
-              {formatRoleList(user?.roles ?? [])} · @{user?.username}
+              {formatAccessList({ roles: user?.roles, areas: user?.areas })} · @{user?.username}
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

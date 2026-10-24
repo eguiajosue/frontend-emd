@@ -16,6 +16,7 @@ import { ADMIN_ROLES as ADMIN_ROLE_NAMES } from "@/lib/roleTaskMapping";
 import { getRoleLabel } from "@/lib/roles";
 import { useBranches } from "@/hooks/useBranches";
 import { BranchesPanel } from "./components/BranchesPanel";
+import { useAreaCatalog } from "@/hooks/useAreas";
 
 // Debe coincidir exactamente con la política de contraseñas del backend
 // (POST/PATCH /users): mínimo 8 caracteres, al menos una mayúscula y un número.
@@ -38,7 +39,9 @@ const baseUserFields = z.object({
   lastName: z.string().optional().or(z.literal("")),
   isSharedAccount: z.boolean().optional(),
   username: z.string().optional().or(z.literal("")),
-  roleIds: z.array(z.number()).min(1, "Selecciona al menos un rol"),
+  roleIds: z.array(z.number()),
+  // Áreas de trabajo (ver `Area`): separadas de los roles.
+  areaIds: z.array(z.number()),
   // Cuenta de sucursal (rol "Sucursal"): a qué sucursal pertenece.
   branchId: z.number().nullable().optional(),
 });
@@ -58,6 +61,17 @@ function requireBranchForBranchRole(branchRoleId: number | undefined) {
   };
 }
 
+/** Nadie queda sin acceso: hace falta al menos un rol o un área (igual que el backend). */
+function requireRoleOrArea(values: z.infer<typeof baseUserFields>, ctx: z.RefinementCtx) {
+  if (values.roleIds.length === 0 && values.areaIds.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Selecciona al menos un rol o un área",
+      path: ["roleIds"],
+    });
+  }
+}
+
 function requireUsernameWhenShared(
   values: z.infer<typeof baseUserFields>,
   ctx: z.RefinementCtx
@@ -75,6 +89,7 @@ const createSchemaFor = (branchRoleId: number | undefined) =>
   baseUserFields
     .extend({ password: passwordSchema })
     .superRefine(requireUsernameWhenShared)
+    .superRefine(requireRoleOrArea)
     .superRefine(requireBranchForBranchRole(branchRoleId));
 
 // Al editar, la contraseña es opcional (solo se envía si se quiere cambiar),
@@ -91,6 +106,7 @@ const editSchemaFor = (branchRoleId: number | undefined) =>
         }),
     })
     .superRefine(requireUsernameWhenShared)
+    .superRefine(requireRoleOrArea)
     .superRefine(requireBranchForBranchRole(branchRoleId));
 
 type UsersTab = "usuarios" | "roles" | "sucursales";
@@ -108,6 +124,7 @@ function initialTabFromUrl(): UsersTab {
 const UsuariosPage = () => {
   const { canManageUsers, isAdmin } = usePermissions();
   const { data: roles } = useEntityList<Role>("roles", { staleTime: CATALOG_STALE_TIME });
+  const areaCatalog = useAreaCatalog();
   const [tab, setTab] = useState<UsersTab>(initialTabFromUrl);
   const { data: branches } = useBranches();
   const branchRoleId = roles.find((r) => r.name === BRANCH_ROLE_NAME)?.id;
@@ -126,7 +143,7 @@ const UsuariosPage = () => {
       name: "isSharedAccount",
       label: "Cuenta de área (compartida)",
       type: "switch",
-      helpText: "Úsala para cuentas de todo un equipo (ej. taller, dtf, diseño), no de una persona.",
+      helpText: "Úsala para cuentas de todo un equipo (ej. taller, dtf, diseño), no de una persona. Asígnale el área que representa.",
     },
     {
       name: "firstName",
@@ -161,6 +178,16 @@ const UsuariosPage = () => {
       label: "Roles",
       type: "multiselect",
       options: selectableRoles.map((r) => ({ value: r.id, label: getRoleLabel(r.name) })),
+    },
+    {
+      name: "areaIds",
+      label: "Áreas",
+      type: "multiselect",
+      // Las activas, más las que ya tenga aunque se hayan desactivado (para poder quitarlas).
+      options: areaCatalog
+        .filter((a) => a.active || editing?.areas?.some((ua) => ua.id === a.id))
+        .map((a) => ({ value: a.id, label: a.name })),
+      helpText: "Dónde trabaja: define su bandeja de tareas, su inventario y su canal de chat.",
     },
     {
       name: "branchId",
@@ -214,9 +241,10 @@ const UsuariosPage = () => {
                     lastName: editing.lastName ?? "",
                     password: "",
                     roleIds: editing.roles?.map((r) => r.id) ?? [],
+                    areaIds: editing.areas?.map((a) => a.id) ?? [],
                     branchId: editing.branchId ?? undefined,
                   }
-                : { roleIds: [] }
+                : { roleIds: [], areaIds: [] }
             }
             toPayload={(values, editing) => {
               // No enviar password vacío al editar (el backend lo trata como PartialType).

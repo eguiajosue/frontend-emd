@@ -52,7 +52,8 @@ import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { usePermissions } from "@/hooks/usePermissions";
-import { PRODUCTION_AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { DESIGN_AREA, getAreaLabel } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import { DESIGN_FLOW_STATUS_NAMES } from "@/lib/orderStatus";
 import { formatDateTime } from "@/lib/format";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
@@ -107,7 +108,7 @@ function revisionStateLabel(revision: import("@/types").DesignRevision): string 
 }
 
 export function DesignFlowSection({ order, embedded = false }: DesignFlowSectionProps) {
-  const { roles, isAdmin } = usePermissions();
+  const { roles, areas: myAreas, isAdmin } = usePermissions();
   const { data: session } = useSession();
   const { timeFormat } = useTimeFormat();
   const { takeDesign, isTakingDesign } = useTakeOrderDesign();
@@ -146,7 +147,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
 
   if (!order.requiresDesign) return null;
 
-  const canDesign = isAdmin || roles.includes("diseno");
+  const canDesign = isAdmin || myAreas.includes(DESIGN_AREA);
   const canReception = isAdmin || roles.includes("recepcion");
 
   const currentStatus = (order.status?.name ?? "").toLowerCase();
@@ -174,7 +175,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
    * Si ya lo tiene una persona real, el botón no aparece (y el backend igual
    * responde 400, cuyo mensaje se muestra tal cual).
    *
-   * `roles.includes("diseno") || roles.includes("superuser")`, NO `canDesign`
+   * Trabajar en Diseño o ser superuser, NO `canDesign`
    * (que también deja pasar a admin): tomar el pedido es asignárselo, y el
    * backend exige pertenecer al área Diseño — salvo superuser, el único rol
    * que hace de todo. A un admin puro el endpoint le responde 403 aunque la
@@ -184,7 +185,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
   const currentUserId = session?.user?.id ? Number(session.user.id) : null;
   const isInSharedPool =
     order.assignedUserId == null || order.assignedUser?.isSharedAccount === true;
-  const isDesignerRole = roles.includes("diseno") || roles.includes("superuser");
+  const isDesignerRole = myAreas.includes(DESIGN_AREA) || roles.includes("superuser");
   const canTakeDesign =
     isDesignerRole &&
     currentUserId !== null &&
@@ -1424,6 +1425,7 @@ function ApproveDialog({
   plannedAreas: string[];
 }) {
   const { formButtonMotion } = useMotionPreset();
+  const productionOptions = useAreaOptions("production");
   const [areas, setAreas] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<SupplyDrafts>({});
 
@@ -1474,7 +1476,7 @@ function ApproveDialog({
                     aria-labelledby="approve-areas-label"
                     className="flex-wrap justify-start"
                   >
-                    {PRODUCTION_AREA_OPTIONS.map((a) => (
+                    {productionOptions.map((a) => (
                       <ToggleGroupItem key={a.value} value={a.value} className="rounded-full px-3">
                         {a.label}
                       </ToggleGroupItem>

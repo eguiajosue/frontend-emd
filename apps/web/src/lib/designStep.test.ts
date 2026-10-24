@@ -5,8 +5,8 @@ import type { Order } from "@/types";
 const order = (name: string, requiresDesign = true, extra: Partial<Order> = {}) =>
   ({ requiresDesign, status: { id: 1, name }, ...extra }) as unknown as Order;
 
-const diseno = { roles: ["diseno"], isAdmin: false };
-const recepcion = { roles: ["recepcion"], isAdmin: false };
+const diseno = { roles: [], areas: ["diseno"], isAdmin: false };
+const recepcion = { roles: ["recepcion"], areas: [], isAdmin: false };
 
 describe("getDesignStep", () => {
   it("en diseño: le toca a Diseño, Recepción ve dónde está", () => {

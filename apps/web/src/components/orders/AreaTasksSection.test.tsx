@@ -27,7 +27,7 @@ vi.mock("@/hooks/useAreaTasks", () => ({
 
 vi.mock("@/hooks/usePermissions", () => ({
   usePermissions: () => ({
-    roles: ["admin"],
+    roles: ["admin"], areas: [],
     session: { user: { id: "1" } },
   }),
 }));

@@ -1,3 +1,4 @@
+export * from "./areas";
 export * from "./orderAreas";
 export * from "./orderMove";
 export * from "./orderStatus";

@@ -25,8 +25,7 @@ import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { useProductionDashboard } from "@/hooks/useDashboard";
 import { useAdvanceMyTask } from "@/hooks/useMyTasks";
 import { useNow } from "@/hooks/useNow";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
-import { formatRoleList } from "@/lib/roles";
+import { formatAreaList, getAreaIcon, getAreaLabel, productionAreasOf } from "@/lib/areas";
 import {
   PRIORITY_LABEL,
   dueText,
@@ -152,11 +151,12 @@ function SideList({ children }: { children: ReactNode }) {
  */
 export function ProductionHome({
   firstName,
-  roles,
+  areas,
   switcher,
 }: {
   firstName?: string | null;
-  roles: string[];
+  /** Áreas de la sesión (mientras carga el tablero). */
+  areas: string[];
   switcher?: ReactNode;
 }) {
   const { data, isLoading, isError, isFetching, updatedAt, refetch } = useProductionDashboard();
@@ -167,7 +167,7 @@ export function ProductionHome({
   const prioritized = useMemo(() => (data ? prioritizeProduction(data.items, now) : []), [data, now]);
   const groups = useMemo(() => groupByPriority(prioritized), [prioritized]);
   const next = prioritized[0];
-  const areasLabel = data ? formatRoleList(data.areas) : formatRoleList(roles);
+  const areasLabel = formatAreaList(data ? data.areas : productionAreasOf(areas));
 
   const subtitle = data
     ? `${areasLabel}: ${data.counters.notStarted} sin empezar · ${data.counters.inProgress} en curso${

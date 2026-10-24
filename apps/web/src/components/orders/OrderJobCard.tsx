@@ -23,7 +23,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { OrderStageLine, OrderStepButton, OrderTurnLabel } from "@/components/orders/OrderNextStep";
 import { useOrderStep } from "@/hooks/useOrderStep";
-import { getAreaLabel } from "@/lib/areas";
+import { getAreaLabel, DESIGN_AREA, isDesignArea } from "@/lib/areas";
 import { formatDate, formatDeliveryDate, getOrderClientName, type TimeFormatPreference } from "@/lib/format";
 import {
   formatCountdown,
@@ -176,7 +176,7 @@ export const OrderJobCard = memo(function OrderJobCard({
     isDesignFlowStatusName(order.status?.name) &&
     !isOrderInDesignStatus(order.status?.name, DESIGN_FLOW_STATUS_NAMES.AUTORIZADO);
   const allAreas = inDesign
-    ? ["diseno", ...getOrderAreas(order).filter((a) => a !== "diseno")]
+    ? [DESIGN_AREA, ...getOrderAreas(order).filter((a) => !isDesignArea(a))]
     : getOrderAreas(order);
   // Más de dos chips empujan el encabezado; el resto se resume en "+N".
   const areas = allAreas.slice(0, 2);

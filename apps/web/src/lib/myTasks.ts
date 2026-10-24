@@ -38,8 +38,8 @@ export function isReturnedDesign(task: MyTask): boolean {
   return task.kind === "design" && task.status.toLowerCase() === "cambios solicitados";
 }
 
-/** Áreas presentes en la bandeja, en el orden del usuario. */
-export function taskAreas(tasks: MyTask[], userRoles: string[]): string[] {
+/** Áreas presentes en la bandeja, en el orden de las áreas del usuario. */
+export function taskAreas(tasks: MyTask[], userAreas: string[]): string[] {
   const present = new Set(tasks.map((t) => t.area));
-  return userRoles.filter((role) => present.has(role));
+  return userAreas.filter((area) => present.has(area));
 }

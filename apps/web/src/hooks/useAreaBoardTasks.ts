@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { ApiError, request } from "@/lib/api";
 import { ENDPOINTS, queryKeys } from "@/lib/queryKeys";
 import { useAuthToken } from "@/hooks/useEntity";
-import { PRODUCTION_AREA_OPTIONS } from "@/lib/areas";
+import { productionAreasOf } from "@/lib/areas";
+import type { SessionAccess } from "@emd/business/src/areas";
 import type { AreaBoardTask } from "@/lib/tvBoard";
 
 /** Dentro de "orders": los avisos en vivo de pedidos ya la invalidan solos. */
 export const AREA_BOARD_KEY = [...queryKeys.all("orders"), "my-area-tasks"] as const;
 
-const PRODUCTION_ROLES = new Set<string>(PRODUCTION_AREA_OPTIONS.map((a) => a.value));
 const MANAGER_ROLES = new Set(["admin", "superuser", "recepcion"]);
 
 /**
@@ -22,9 +22,9 @@ const MANAGER_ROLES = new Set(["admin", "superuser", "recepcion"]);
  * Un 403/404 (backend viejo o rol sin acceso) devuelve `null`: el tablero
  * cae a "mis tareas" en vez de mostrar un error.
  */
-export function useAreaBoardTasks(roles: string[], enabled = true) {
+export function useAreaBoardTasks({ roles, areas }: SessionAccess, enabled = true) {
   const token = useAuthToken();
-  const canAsk = roles.some((r) => PRODUCTION_ROLES.has(r) || MANAGER_ROLES.has(r));
+  const canAsk = productionAreasOf(areas).length > 0 || roles.some((r) => MANAGER_ROLES.has(r));
   const query = useQuery<AreaBoardTask[] | null>({
     queryKey: AREA_BOARD_KEY,
     enabled: enabled && Boolean(token) && canAsk,

@@ -203,11 +203,11 @@ export function buildTvBoard({
   return board;
 }
 
-/** Áreas presentes en el tablero, en el orden de los roles del usuario. */
-export function tvBoardAreas(tasks: TvTask[], roles: string[]): string[] {
+/** Áreas presentes en el tablero, en el orden de las áreas del usuario. */
+export function tvBoardAreas(tasks: TvTask[], userAreas: string[]): string[] {
   const present = new Set(tasks.map((t) => t.area));
-  const ordered = roles.filter((role) => present.has(role));
-  // Gerencia (admin) ve áreas que no son roles suyos: también van.
+  const ordered = userAreas.filter((area) => present.has(area));
+  // Gerencia (admin) ve áreas que no son suyas: también van.
   for (const a of Array.from(present)) if (!ordered.includes(a)) ordered.push(a);
   return ordered;
 }

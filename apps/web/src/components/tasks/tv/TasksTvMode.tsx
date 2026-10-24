@@ -22,7 +22,7 @@ import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { EMBROIDERY_COLUMN_ICON } from "@/components/tasks/EmbroideryBoard";
-import { PRODUCTION_AREA_OPTIONS, getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { getAreaIcon, getAreaLabel, isDesignArea, productionAreaSlugs } from "@/lib/areas";
 import {
   buildEmbroideryBoard,
   canMoveEmbroideryPrep,
@@ -124,10 +124,11 @@ interface TasksTvModeProps {
  * entra como un paquete que cae y se abre.
  */
 export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
-  const { roles, session } = usePermissions();
+  const { roles, areas: myAreas, session } = usePermissions();
+  const access = useMemo(() => ({ roles, areas: myAreas }), [roles, myAreas]);
   const userId = session?.user?.id ? Number(session.user.id) : null;
   const { tasks: myTasks, isLoading, isError, refetch } = useMyTasks();
-  const { areaTasks, isLoading: areaLoading, refetch: refetchArea } = useAreaBoardTasks(roles);
+  const { areaTasks, isLoading: areaLoading, refetch: refetchArea } = useAreaBoardTasks(access);
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
   const now = useNow(30_000);
@@ -146,7 +147,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
     () => [...fullBoard.pendiente, ...fullBoard.en_proceso, ...fullBoard.terminado],
     [fullBoard]
   );
-  const areas = useMemo(() => tvBoardAreas(allTasks, roles), [allTasks, roles]);
+  const areas = useMemo(() => tvBoardAreas(allTasks, myAreas), [allTasks, myAreas]);
   const activeArea = area && areas.includes(area) ? area : null;
   const board = useMemo<TvBoard>(
     () =>
@@ -161,11 +162,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
   );
   // Bordado se ve en cuatro columnas (Digitalizado → En pruebas → En
   // producción → Terminado) cuando es lo único que se está viendo.
-  const productionRoles = useMemo(
-    () => roles.filter((r) => PRODUCTION_AREA_OPTIONS.some((a) => a.value === r)),
-    [roles]
-  );
-  const embroideryView = isEmbroideryView(activeArea, productionRoles, roles);
+  const embroideryView = isEmbroideryView(activeArea, access);
   const columns = useMemo(() => {
     if (!embroideryView) {
       return TV_COLUMNS.map((c) => ({ ...c, hint: null as string | null, Icon: COLUMN_ICON[c.id], list: board[c.id] }));
@@ -182,7 +179,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
       list: eb[c.id],
     }));
   }, [embroideryView, board, now]);
-  const canMovePrep = canMoveEmbroideryPrep(roles);
+  const canMovePrep = canMoveEmbroideryPrep(access);
   const boardRef = useRef(fullBoard);
   boardRef.current = fullBoard;
 
@@ -363,7 +360,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
             : k === "at_risk"
               ? new Date(t + 20 * 3600_000).toISOString()
               : new Date(t + 5 * 24 * 3600_000).toISOString();
-        const taskArea = activeArea ?? areas.find((a) => a !== "diseno") ?? areas[0] ?? roles[0] ?? "taller";
+        const taskArea = activeArea ?? areas.find((a) => !isDesignArea(a)) ?? areas[0] ?? myAreas[0] ?? productionAreaSlugs()[0] ?? "taller";
         const clients = ["Colegio Miraflores", "Taller Ruiz", "Club Deportivo Norte", "Hotel Las Palmas", "Café Central"];
         const task: TvTask = {
           key: `demo-${orderId}`,
@@ -407,7 +404,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
       setDemoTasks((prev) => [...prev, ...made.map((m) => m.task)]);
       setQueue((q) => made.reduce((acc, m) => enqueueArrival(acc, m.arrival), q));
     },
-    [activeArea, areas, roles, demoBranch]
+    [activeArea, areas, myAreas, demoBranch]
   );
 
   useEffect(() => {
@@ -464,7 +461,7 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
 
   const loading = (isLoading || areaLoading) && allTasks.length === 0;
   const { data: scoreboard } = useAreaScoreboard(activeArea);
-  const areaTitle = activeArea ? getAreaLabel(activeArea) : areas.filter((a) => roles.includes(a)).map(getAreaLabel).join(" · ");
+  const areaTitle = activeArea ? getAreaLabel(activeArea) : areas.filter((a) => myAreas.includes(a)).map(getAreaLabel).join(" · ");
 
   return (
     // Siempre oscuro, como el muro de pedidos: se mira de lejos y con luz de taller.

@@ -37,23 +37,37 @@ export const getUserColumns = ({
   { accessorKey: "username", header: "Usuario" },
   {
     id: "roles",
-    header: "Roles",
-    cell: ({ row }) => (
-      <div className="flex flex-wrap gap-1">
-        {row.original.roles && row.original.roles.length > 0 ? (
-          row.original.roles.map((r) => (
-            <span
-              key={r.id}
-              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-            >
-              {getRoleLabel(r.name)}
-            </span>
-          ))
-        ) : (
-          <span className="text-xs text-muted-foreground">Sin rol</span>
-        )}
-      </div>
-    ),
+    header: "Roles y áreas",
+    cell: ({ row }) => {
+      const roles = row.original.roles ?? [];
+      const areas = row.original.areas ?? [];
+      return (
+        <div className="flex flex-wrap gap-1">
+          {roles.length + areas.length > 0 ? (
+            <>
+              {roles.map((r) => (
+                <span
+                  key={`role-${r.id}`}
+                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  {getRoleLabel(r.name)}
+                </span>
+              ))}
+              {areas.map((a) => (
+                <span
+                  key={`area-${a.id}`}
+                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                >
+                  {a.name}
+                </span>
+              ))}
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">Sin rol</span>
+          )}
+        </div>
+      );
+    },
   },
   {
     id: "actions",

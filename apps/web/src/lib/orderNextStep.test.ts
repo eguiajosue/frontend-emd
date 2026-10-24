@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getOrderNextStep, type NextStepViewer } from "./orderNextStep";
 import type { Order, OrderAreaTask } from "@/types";
 
-const bordado: NextStepViewer = { roles: ["bordado"], isAdmin: false, isManager: false };
-const dtf: NextStepViewer = { roles: ["dtf"], isAdmin: false, isManager: false };
-const recepcion: NextStepViewer = { roles: ["recepcion"], isAdmin: false, isManager: true };
-const diseno: NextStepViewer = { roles: ["diseno"], isAdmin: false, isManager: false };
+const bordado: NextStepViewer = { roles: [], areas: ["bordado"], isAdmin: false, isManager: false };
+const dtf: NextStepViewer = { roles: [], areas: ["dtf"], isAdmin: false, isManager: false };
+const recepcion: NextStepViewer = { roles: ["recepcion"], areas: [], isAdmin: false, isManager: true };
+const diseno: NextStepViewer = { roles: [], areas: ["diseno"], isAdmin: false, isManager: false };
 
 function task(id: number, area: string, status: OrderAreaTask["status"], extra: Partial<OrderAreaTask> = {}): OrderAreaTask {
   return { id, orderId: 1, area, status, createdAt: "", ...extra };
@@ -44,7 +44,7 @@ describe("siguiente paso de un pedido", () => {
 
   it("varias áreas pendientes se nombran juntas", () => {
     const o = order({ areaTasks: [task(1, "bordado", "pendiente"), task(2, "dtf", "pendiente"), task(3, "laser", "pendiente")] });
-    expect(labels(o, { roles: ["taller"], isAdmin: false, isManager: false }).turn).toBe("Turno de: Bordado, DTF y Láser");
+    expect(labels(o, { roles: [], areas: ["taller"], isAdmin: false, isManager: false }).turn).toBe("Turno de: Bordado, DTF y Láser");
   });
 
   it("Bordado en digitalización o pruebas: el paso se da en el detalle", () => {

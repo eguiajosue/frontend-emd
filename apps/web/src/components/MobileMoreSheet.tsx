@@ -16,7 +16,7 @@ import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
 import { haptic } from "@/lib/haptics";
 import { isIOSInstallRequired } from "@/lib/push";
-import { formatRoleList } from "@/lib/roles";
+import { formatAccessList } from "@/lib/roles";
 import { useVisibleNavItems } from "@/hooks/useVisibleNavItems";
 import { useNavLayout } from "@/hooks/useNavLayout";
 
@@ -60,7 +60,7 @@ function IosInstallHint() {
 export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const userRoles = session?.user?.roles || [];
+  const userAccess = { roles: session?.user?.roles, areas: session?.user?.areas };
   const visibleItems = useVisibleNavItems();
 
   // Mismos tabs principales que `MobileTabBar` (fuente única `useNavLayout`:
@@ -125,7 +125,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                 {session?.user?.first_name} {session?.user?.last_name}
               </span>
               <span className="truncate text-xs text-muted-foreground">
-                {formatRoleList(userRoles)}
+                {formatAccessList(userAccess)}
                 {session?.user?.username ? ` · @${session.user.username}` : ""}
               </span>
             </div>

@@ -2,6 +2,8 @@ import { compareByUrgency } from "@/lib/orderDeadline";
 import { taskDeadline } from "@/lib/myTasks";
 import type { TvTask } from "@/lib/tvBoard";
 import type { EmbroideryPrepStage } from "@/types";
+import type { SessionAccess } from "@emd/business/src/areas";
+import { DESIGN_AREA, EMBROIDERY_AREA, productionAreasOf } from "@/lib/areas";
 
 /**
  * Tablero de Bordado (Tareas asignadas y Modo TV). Bordado no arranca directo
@@ -14,7 +16,7 @@ import type { EmbroideryPrepStage } from "@/types";
  * dice cuál de los dos es).
  */
 
-export const EMBROIDERY_AREA = "bordado";
+export { EMBROIDERY_AREA };
 
 export type EmbroideryColumnId =
   | "digitalizado"
@@ -81,13 +83,10 @@ export function wasRejected(
 }
 
 /** Quien trabaja Bordado (o Recepción/admin) puede mover las etapas (mismo criterio que el backend). */
-export function canMoveEmbroideryPrep(roles: string[]): boolean {
-  return roles.some(
-    (r) =>
-      r === EMBROIDERY_AREA ||
-      r === "recepcion" ||
-      r === "admin" ||
-      r === "superuser",
+export function canMoveEmbroideryPrep({ roles, areas }: SessionAccess): boolean {
+  return (
+    areas.includes(EMBROIDERY_AREA) ||
+    roles.some((r) => r === "recepcion" || r === "admin" || r === "superuser")
   );
 }
 
@@ -98,21 +97,15 @@ export function canMoveEmbroideryPrep(roles: string[]): boolean {
  */
 export function isEmbroideryView(
   activeArea: string | null,
-  productionRoles: string[],
-  allRoles: string[],
+  { roles, areas }: SessionAccess,
 ): boolean {
   if (activeArea) return activeArea === EMBROIDERY_AREA;
-  const areas = productionRoles.filter((r) => r !== "diseno");
+  const production = productionAreasOf(areas);
   return (
-    areas.length === 1 &&
-    areas[0] === EMBROIDERY_AREA &&
-    !allRoles.some(
-      (r) =>
-        r === "diseno" ||
-        r === "admin" ||
-        r === "superuser" ||
-        r === "recepcion",
-    )
+    production.length === 1 &&
+    production[0] === EMBROIDERY_AREA &&
+    !areas.includes(DESIGN_AREA) &&
+    !roles.some((r) => r === "admin" || r === "superuser" || r === "recepcion")
   );
 }
 

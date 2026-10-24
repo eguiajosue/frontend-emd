@@ -8,13 +8,14 @@ import { MobileTabBar } from "./MobileTabBar";
 // `vi.hoisted` sube esta inicialización con el mock.
 const mocks = vi.hoisted(() => ({
   roles: ["admin"] as string[],
+  areas: [] as string[],
   pathname: "/dashboard/orders",
 }));
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
     data: {
-      user: { roles: mocks.roles, first_name: "Ana", last_name: "Gómez", username: "ana" },
+      user: { roles: mocks.roles, areas: mocks.areas, first_name: "Ana", last_name: "Gómez", username: "ana" },
     },
   }),
 }));
@@ -70,6 +71,7 @@ function renderBar() {
 describe("MobileTabBar", () => {
   it("admin/superuser: Panel General, Inicio, Pedidos, Chat interno + Más", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
@@ -86,6 +88,7 @@ describe("MobileTabBar", () => {
 
   it("recepción: Inicio, Pedidos, Chat interno, Notificaciones + Más", () => {
     mocks.roles = ["recepcion"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
@@ -99,7 +102,8 @@ describe("MobileTabBar", () => {
   });
 
   it("rol operativo (taller): Inicio, Tareas asignadas, Chat interno, Notificaciones + Más", () => {
-    mocks.roles = ["taller"];
+    mocks.roles = [];
+    mocks.areas = ["taller"];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 
@@ -115,6 +119,7 @@ describe("MobileTabBar", () => {
 
   it("resalta el tab activo por match exacto de ruta", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/admin";
     renderBar();
 
@@ -127,6 +132,7 @@ describe("MobileTabBar", () => {
 
   it("no confunde /dashboard/admin con /dashboard/admin/rendimiento (sin match por prefijo)", () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/admin/rendimiento";
     renderBar();
 
@@ -140,6 +146,7 @@ describe("MobileTabBar", () => {
 
   it("el detalle de un pedido mantiene activo el tab Pedidos", () => {
     mocks.roles = ["recepcion"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/orders/42";
     renderBar();
     expect(screen.getByRole("link", { name: "Pedidos" })).toHaveAttribute("aria-current", "page");
@@ -147,6 +154,7 @@ describe("MobileTabBar", () => {
 
   it('el tab "Más" abre el bottom sheet (no el Sidebar primitive)', () => {
     mocks.roles = ["superuser"];
+    mocks.areas = [];
     mocks.pathname = "/dashboard/orders";
     renderBar();
 

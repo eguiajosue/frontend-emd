@@ -21,7 +21,7 @@ import {
   formatDateTime,
   getStatusLabel,
   getStatusTone,
-  statusIdsForRoles,
+  statusIdsFor,
 } from '@emd/business';
 
 /** Mismo mapeo semántico que usa la Web y `OrdersScreen`, a color HEX. */
@@ -53,7 +53,7 @@ export function OrderDetailScreen({
   onBack: () => void;
 }) {
   const { data: order, isPending, isError, refetch } = useOrder(orderId);
-  const { roles, canManageOperations } = usePermissionsFromSession();
+  const { roles, areas, canManageOperations } = usePermissionsFromSession();
   const { histories } = useOrderHistoryForOrder(orderId);
   const { updateOrder, isUpdating } = useUpdateOrder();
   const { changeStatus, isChangingStatus } = useChangeOrderStatusSimple();
@@ -66,7 +66,7 @@ export function OrderDetailScreen({
   }, [order]);
 
   const canEdit = canManageOperations;
-  const myStageIds = statusIdsForRoles(roles);
+  const myStageIds = statusIdsFor({ roles, areas });
   const canChangeStatus = canEdit || (!!order && myStageIds.includes(order.statusId));
 
   const handleSave = async () => {

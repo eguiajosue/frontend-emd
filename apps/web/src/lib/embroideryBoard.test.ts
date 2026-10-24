@@ -208,28 +208,28 @@ describe("datos del backend", () => {
 describe("cuándo se usa el tablero de Bordado", () => {
   it("con el filtro Bordado, o si es lo único que trabaja el usuario", () => {
     expect(
-      isEmbroideryView("bordado", ["bordado", "taller"], ["bordado", "taller"]),
+      isEmbroideryView("bordado", { roles: [], areas: ["bordado", "taller"] }),
     ).toBe(true);
     expect(
-      isEmbroideryView("taller", ["bordado", "taller"], ["bordado", "taller"]),
+      isEmbroideryView("taller", { roles: [], areas: ["bordado", "taller"] }),
     ).toBe(false);
-    expect(isEmbroideryView(null, ["bordado"], ["bordado"])).toBe(true);
+    expect(isEmbroideryView(null, { roles: [], areas: ["bordado"] })).toBe(true);
     expect(
-      isEmbroideryView(null, ["bordado", "taller"], ["bordado", "taller"]),
+      isEmbroideryView(null, { roles: [], areas: ["bordado", "taller"] }),
     ).toBe(false);
   });
 
   it("Diseño y gerencia siguen viendo todas las áreas juntas", () => {
-    expect(isEmbroideryView(null, ["bordado"], ["bordado", "diseno"])).toBe(
+    expect(isEmbroideryView(null, { roles: [], areas: ["bordado", "diseno"] })).toBe(
       false,
     );
-    expect(isEmbroideryView(null, [], ["admin"])).toBe(false);
+    expect(isEmbroideryView(null, { roles: ["admin"], areas: [] })).toBe(false);
   });
 
   it("mueven las etapas Bordado y Recepción/admin; el resto no", () => {
-    expect(canMoveEmbroideryPrep(["bordado"])).toBe(true);
-    expect(canMoveEmbroideryPrep(["recepcion"])).toBe(true);
-    expect(canMoveEmbroideryPrep(["admin"])).toBe(true);
-    expect(canMoveEmbroideryPrep(["taller", "diseno"])).toBe(false);
+    expect(canMoveEmbroideryPrep({ roles: [], areas: ["bordado"] })).toBe(true);
+    expect(canMoveEmbroideryPrep({ roles: ["recepcion"], areas: [] })).toBe(true);
+    expect(canMoveEmbroideryPrep({ roles: ["admin"], areas: [] })).toBe(true);
+    expect(canMoveEmbroideryPrep({ roles: [], areas: ["taller", "diseno"] })).toBe(false);
   });
 });

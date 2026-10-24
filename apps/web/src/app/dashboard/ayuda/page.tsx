@@ -45,8 +45,8 @@ function StatusButtonsPreview() {
 }
 
 const AyudaPage = () => {
-  const { roles, isAdmin } = usePermissions();
-  const guides = resolveGuideKeys(roles, isAdmin).map((key) => GUIDES[key]);
+  const { roles, areas, isAdmin } = usePermissions();
+  const guides = resolveGuideKeys({ roles, areas }, isAdmin).map((key) => GUIDES[key]);
 
   return (
     <div className="space-y-6 pb-10">

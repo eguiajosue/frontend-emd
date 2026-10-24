@@ -20,6 +20,7 @@ import { isGarmentName, parseSizeBreakdown, sizeBreakdownTotal, type SizeBreakdo
 import { combineDateAndTime, getAssignedUserName, getOrderProductName } from "@/lib/format";
 import { splitDeliveryDate, type OrderDetailPermissions } from "@/lib/orderDetail";
 import type { Order, UpdateOrderPayload, User } from "@/types";
+import { DESIGN_AREA, isDesignArea } from "@/lib/areas";
 
 const ImageLightbox = dynamic(() => import("../ImageLightbox"), { ssr: false });
 
@@ -174,12 +175,12 @@ function DetailsForm({ order, onDone }: { order: Order; onDone: () => void }) {
 
   // Mientras está en Diseño sólo puede tenerlo alguien de Diseño (el backend
   // lo exige): ofrecer Taller o un admin era un "Guardar" que sólo fallaba.
-  const inDesign = order.area === "diseno";
-  const hasRoleInfo = users.some((u) => Array.isArray(u.roles));
+  const inDesign = isDesignArea(order.area);
+  const hasAreaInfo = users.some((u) => Array.isArray(u.areas));
   const assignableUsers =
-    inDesign && hasRoleInfo
+    inDesign && hasAreaInfo
       ? users.filter(
-          (u) => u.id === order.assignedUserId || u.roles?.some((r) => r.name === "diseno")
+          (u) => u.id === order.assignedUserId || u.areas?.some((a) => a.slug === DESIGN_AREA)
         )
       : users;
 

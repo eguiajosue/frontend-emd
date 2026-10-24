@@ -142,12 +142,12 @@ describe("textos", () => {
 
 describe("homeKindsFor", () => {
   it("Recepción/admin: control general; áreas: el suyo (Diseño y/o Producción)", () => {
-    expect(homeKindsFor(["recepcion"])).toEqual(["reception"]);
-    expect(homeKindsFor(["admin"])).toEqual(["reception"]);
-    expect(homeKindsFor(["recepcion", "taller"])).toEqual(["reception"]);
-    expect(homeKindsFor(["diseno"])).toEqual(["design"]);
-    expect(homeKindsFor(["taller", "dtf"])).toEqual(["production"]);
-    expect(homeKindsFor(["diseno", "bordado"])).toEqual(["design", "production"]);
-    expect(homeKindsFor([])).toEqual([]);
+    expect(homeKindsFor({ roles: ["recepcion"], areas: [] })).toEqual(["reception"]);
+    expect(homeKindsFor({ roles: ["admin"], areas: [] })).toEqual(["reception"]);
+    expect(homeKindsFor({ roles: ["recepcion"], areas: ["taller"] })).toEqual(["reception"]);
+    expect(homeKindsFor({ roles: [], areas: ["diseno"] })).toEqual(["design"]);
+    expect(homeKindsFor({ roles: [], areas: ["taller", "dtf"] })).toEqual(["production"]);
+    expect(homeKindsFor({ roles: [], areas: ["diseno", "bordado"] })).toEqual(["design", "production"]);
+    expect(homeKindsFor({ roles: [], areas: [] })).toEqual([]);
   });
 });

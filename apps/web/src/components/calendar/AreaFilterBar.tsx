@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AREA_OPTIONS, AREA_ICONS } from "@/lib/areas";
+import { getAreaIcon } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import type { AreaFilter } from "@/hooks/useCalendarPrefs";
 
 interface AreaFilterBarProps {
@@ -19,11 +20,11 @@ interface AreaFilterBarProps {
 }
 
 /**
- * Filtro por área de producción (Taller/DTF/Bordado/Diseño/Láser/
- * Impresiones), independiente del de categoría. Mismo patrón que
+ * Filtro por área (las del catálogo), independiente del de categoría. Mismo patrón que
  * `CategoryFilterBar`, con los íconos de área de las tarjetas de pedido.
  */
 export function AreaFilterBar({ value, onChange, compact }: AreaFilterBarProps) {
+  const areaOptions = useAreaOptions();
   return (
     <Select value={value} onValueChange={(v) => onChange(v as AreaFilter)}>
       <SelectTrigger className={cn("w-full rounded-full", compact ? "px-3" : "px-4 sm:w-48")} aria-label="Filtrar por área">
@@ -31,12 +32,12 @@ export function AreaFilterBar({ value, onChange, compact }: AreaFilterBarProps) 
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="todas">Todas las áreas</SelectItem>
-        {AREA_OPTIONS.map((option) => {
-          const Icon = AREA_ICONS[option.value];
+        {areaOptions.map((option) => {
+          const Icon = getAreaIcon(option.value);
           return (
             <SelectItem key={option.value} value={option.value}>
               <span className="flex items-center gap-2">
-                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {Icon && <Icon className="h-3.5 w-3.5" aria-hidden />}
                 {option.label}
               </span>
             </SelectItem>

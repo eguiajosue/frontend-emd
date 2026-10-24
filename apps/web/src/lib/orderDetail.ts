@@ -1,4 +1,5 @@
-import { statusIdsForRoles } from "@/lib/roleTaskMapping";
+import { statusIdsFor } from "@/lib/roleTaskMapping";
+import { DESIGN_AREA } from "@/lib/areas";
 import {
   DESIGN_FLOW_STATUS_NAMES,
   getNextStatusOption,
@@ -18,6 +19,8 @@ import type { Order } from "@/types";
 
 export interface OrderDetailViewer {
   roles: string[];
+  /** Áreas en las que trabaja (ver `Area`). */
+  areas: string[];
   isAdmin: boolean;
   canManageOperations: boolean;
 }
@@ -47,7 +50,7 @@ export function getOrderDetailPermissions(
 ): OrderDetailPermissions {
   const canSeeHistory = viewer.isAdmin || viewer.roles.includes("recepcion");
   const canEdit = canSeeHistory;
-  const myStageIds = statusIdsForRoles(viewer.roles);
+  const myStageIds = statusIdsFor(viewer);
   const statusName = order.status?.name;
   const isInDesignLimbo =
     !!order.requiresDesign &&
@@ -103,7 +106,7 @@ export function getOrderNextAction(
 ): OrderNextAction {
   if (isCancelledStatus(order.statusId) || isDeliveredStatus(order.statusId)) return null;
   const stage = handoff.current.key;
-  const canDesign = viewer.isAdmin || viewer.roles.includes("diseno");
+  const canDesign = viewer.isAdmin || viewer.areas.includes(DESIGN_AREA);
   const canReception = viewer.isAdmin || viewer.roles.includes("recepcion");
 
   if (stage === "diseno") {

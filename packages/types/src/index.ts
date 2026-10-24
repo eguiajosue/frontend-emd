@@ -43,11 +43,43 @@ export interface Client extends BaseEntity {
   branch?: BranchRef | null;
 }
 
+/** Área asignada a un usuario, como la devuelve `GET /users` (ver `Area`). */
+export interface UserAreaRef {
+  id: number;
+  slug: string;
+  name: string;
+}
+
+/**
+ * Área de trabajo (`GET /areas`): Taller, DTF, Bordado, Diseño, Láser,
+ * Impresiones y las que se den de alta. Separada de los roles: el rol dice
+ * qué puede hacer alguien, el área dónde trabaja.
+ */
+export interface Area {
+  id: number;
+  /** Identificador estable: es lo que viaja en `Order.area`, `OrderAreaTask.area`, etc. */
+  slug: string;
+  name: string;
+  /** Nombre de ícono de lucide-react ("Hammer"). */
+  icon: string;
+  /** Color base `#rrggbb`; el tinte y el texto se derivan en `areaToneCss`. */
+  color: string;
+  /** Sólo Diseño: fase previa con su propio circuito, nunca destino de producción. */
+  isDesign: boolean;
+  isProductionDestination: boolean;
+  hasInventory: boolean;
+  generalViewEnabled: boolean;
+  sortOrder: number;
+  active: boolean;
+}
+
 export interface User extends BaseEntity {
   firstName: string;
   lastName?: string | null;
   username: string;
   roles?: Role[];
+  /** Áreas en las que trabaja (ver `Area`). */
+  areas?: UserAreaRef[];
   /** Cuenta de área/departamento compartida por todo un equipo (ej. "taller", "dtf"), no de una persona. */
   isSharedAccount?: boolean;
   /** Sucursal de la cuenta (sólo rol "sucursal", ej. "Punto Madero"). */
@@ -318,7 +350,7 @@ export interface AreaSupplySheet {
 export interface OrderAreaTask {
   id: number;
   orderId: number;
-  /** taller | dtf | bordado | laser | impresiones (nunca 'diseno'). */
+  /** Slug de un área de producción del catálogo (nunca Diseño, ver `Area`). */
   area: string;
   status: AreaTaskStatus;
   /** Sólo Bordado: etapa previa a producción; null/ausente = ya puede producir. */
@@ -489,7 +521,7 @@ export interface CreateOrderPayload {
   branchEmployeeId?: number;
   statusId: number;
   /**
-   * Área destino (ver `AREA_OPTIONS` en `@/lib/areas`). Obligatoria cuando
+   * Área destino (slug, ver `productionAreaOptions` en `@/lib/areas`). Obligatoria cuando
    * `requiresDesign` es `false`; opcional (se puede definir después) cuando
    * el pedido entra primero a Diseño.
    */
@@ -639,6 +671,8 @@ export interface ChatUserSummary {
 /** Usuario elegible para abrir un mensaje directo (GET /chat/users). */
 export interface ChatUserOption extends ChatUserSummary {
   roles: string[];
+  /** Slugs de sus áreas (ver `Area`). */
+  areas?: string[];
   isOnline: boolean;
   lastSeenAt: string | null;
 }
@@ -763,7 +797,7 @@ export interface CalendarEvent extends BaseEntity {
   /** Pedido vinculado, opcional. En categoría "compras" arma el checklist de su hoja de materiales. */
   orderId?: number | null;
   category: CalendarEventCategory;
-  /** Área de producción involucrada (taller/dtf/bordado/diseno/laser/impresiones), opcional. */
+  /** Área involucrada (slug de un área del catálogo), opcional. */
   area?: string | null;
   eventDate: string;
   /** `false` = evento "todo el día" (la hora de `eventDate` se ignora). */
@@ -900,17 +934,10 @@ export type UpdateMaterialPayload = Partial<CreateMaterialPayload>;
 /* -------------------------------------------------------------------------- */
 
 /**
- * Departamento con inventario propio: las 6 áreas operativas + Recepción.
- * Coincide con el nombre del rol del área.
+ * Departamento con inventario propio: el slug de un área con
+ * `Area.hasInventory`, o "recepcion" (Recepción también tiene existencias).
  */
-export type InventoryArea =
-  | "taller"
-  | "dtf"
-  | "bordado"
-  | "diseno"
-  | "laser"
-  | "impresiones"
-  | "recepcion";
+export type InventoryArea = string;
 
 /** Semáforo de existencias: `low` = en o por debajo del mínimo. */
 export type InventoryStockStatus = "ok" | "low" | "out";

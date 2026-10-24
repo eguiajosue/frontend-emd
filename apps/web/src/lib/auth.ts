@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import type { JWT } from "next-auth/jwt";
 import { decodeJwt } from "jose";
 import { apiUrl } from "@/lib/config";
+import { normalizeSessionAccess } from "@emd/business/src/areas";
 
 /** Margen de seguridad: renovamos el access token si expira en menos de esto. */
 const REFRESH_MARGIN_SECONDS = 60;
@@ -15,6 +16,8 @@ interface BackendAuthResponse {
   first_name?: string;
   last_name?: string;
   roles?: string[];
+  /** Slugs de las áreas en las que trabaja (separadas de los roles). */
+  areas?: string[];
   role?: string;
 }
 
@@ -53,6 +56,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
       refreshToken: refreshed.refreshToken ?? token.refreshToken,
       accessTokenExpires: getTokenExpiry(refreshed.token),
       roles: Array.isArray(refreshed.roles) ? refreshed.roles : token.roles,
+      areas: Array.isArray(refreshed.areas) ? refreshed.areas : token.areas,
       error: undefined,
     };
   } catch (error) {
@@ -110,6 +114,7 @@ export const authOptions: NextAuthOptions = {
               first_name: user.first_name ?? "",
               last_name: user.last_name ?? "",
               roles: Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []),
+              areas: Array.isArray(user.areas) ? user.areas : undefined,
             };
           }
 
@@ -163,6 +168,12 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
+      // Una sesión iniciada antes de separar áreas y roles trae las áreas
+      // dentro de `roles`: se separan aquí hasta que el refresh traiga `areas`.
+      const { roles, areas } = normalizeSessionAccess({
+        roles: token.roles as string[] | undefined,
+        areas: token.areas as string[] | undefined,
+      });
       session.user = {
         ...session.user,
         id: token.id as string,
@@ -170,7 +181,8 @@ export const authOptions: NextAuthOptions = {
         token: token.token as string,
         first_name: token.first_name as string,
         last_name: token.last_name as string,
-        roles: (token.roles as string[]) || [],
+        roles,
+        areas,
       };
       // Si el refresh falló, exponemos el error para que el cliente cierre sesión.
       session.error = token.error as string | undefined;

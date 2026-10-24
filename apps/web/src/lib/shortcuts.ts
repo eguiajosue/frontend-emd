@@ -11,7 +11,7 @@ export const SEQUENCE_TIMEOUT_MS = 1200;
 /**
  * Atajos "ir a" (estilo Gmail/Linear: `g` y después la letra). Las letras son
  * la inicial de la pantalla en castellano; "i" es Inicio y cambia de destino
- * según el rol (ver `homePathForRoles`).
+ * según el rol (ver `homePathFor`).
  */
 const GO_KEYS: { key: string; url: string | "home" }[] = [
   { key: "i", url: "home" },

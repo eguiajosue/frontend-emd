@@ -19,7 +19,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { statusOptions, statusLabel } from "@/lib/orderStatus";
-import { AREA_OPTIONS, getAreaLabel } from "@/lib/areas";
+import { getAreaLabel } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import { ownProductionAreas } from "@/lib/orderScreen";
 import { getAssignedUserName } from "@/lib/format";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -110,7 +111,8 @@ export function OrdersFilterBar({
 }: OrdersFilterBarProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
-  const { isAdmin, roles } = usePermissions();
+  const { isAdmin, roles, areas: myAreas } = usePermissions();
+  const areaOptions = useAreaOptions();
   const isManager = isAdmin || roles.includes("recepcion");
   // "Mis pedidos" es sólo para quien puede REALIZAR (crear) pedidos como
   // Recepción — para un rol operativo no tiene sentido (no crea pedidos).
@@ -119,10 +121,10 @@ export function OrdersFilterBar({
   // el modo "Por área" de la pantalla "Mi trabajo", que se fusionó con esta.
   // Sólo ofrece SUS áreas — filtrar por una ajena no mostraría nada, porque el
   // backend ya no se las manda.
-  const ownAreas = ownProductionAreas(roles);
+  const ownAreas = ownProductionAreas(myAreas);
   const areaChoices = isManager
-    ? AREA_OPTIONS
-    : AREA_OPTIONS.filter((a) => ownAreas.includes(a.value));
+    ? areaOptions
+    : areaOptions.filter((a) => ownAreas.includes(a.value));
   const canFilterByArea = isManager || ownAreas.length > 1;
 
   const hasActiveFilters =

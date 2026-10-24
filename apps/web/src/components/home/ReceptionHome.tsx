@@ -22,7 +22,7 @@ import { ErrorState } from "@/components/feedback/states";
 import { OrderDetailDialog } from "@/components/orders/OrderDetailDialog";
 import { useReceptionDashboard } from "@/hooks/useDashboard";
 import { useNow } from "@/hooks/useNow";
-import { getAreaIcon, getAreaLabel } from "@/lib/areas";
+import { getAreaIcon, getAreaLabel, isDesignArea } from "@/lib/areas";
 import { orderViewHref } from "@/lib/orderViews";
 import { ATTENTION_META, HEALTH_META, attentionText, relativeTo } from "@/lib/homeDashboard";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 function AreaCard({ load, now }: { load: DashboardAreaLoad; now: number }) {
   const Icon = getAreaIcon(load.area);
   const health = HEALTH_META[load.health];
-  const isDesign = load.area === "diseno";
+  const isDesign = isDesignArea(load.area);
   return (
     <article className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft dark:border-border">
       <header className="flex items-center justify-between gap-2">

@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import type { LucideIcon } from "lucide-react";
 import { isOperationalOnly } from "@/lib/roleTaskMapping";
 import { isBranchOnly } from "@/lib/roles";
+import type { SessionAccess } from "@emd/business/src/areas";
 import { BRANCH_MENU, OPERATIONAL_MENU, buildMenuItems, isNavItemVisible, type NavGroup } from "@/lib/navMenu";
 import { useChatUnreadCount } from "@/hooks/useChat";
 import { useUnreadNotificationsCount } from "@/hooks/useNotifications";
@@ -17,12 +18,17 @@ export interface VisibleNavItem {
   unreadCount: number;
 }
 
+/** Roles y áreas de la sesión (vacíos mientras carga). */
+function sessionAccess(session: ReturnType<typeof useSession>["data"]): SessionAccess {
+  return { roles: session?.user?.roles ?? [], areas: session?.user?.areas ?? [] };
+}
+
 /** Grupos del menú (sin filtrar por rol) del usuario actual. */
 export function useNavGroups() {
   const { data: session } = useSession();
-  const userRoles = session?.user?.roles || [];
-  if (isBranchOnly(userRoles)) return BRANCH_MENU;
-  return isOperationalOnly(userRoles) ? OPERATIONAL_MENU : buildMenuItems();
+  const access = sessionAccess(session);
+  if (isBranchOnly(access)) return BRANCH_MENU;
+  return isOperationalOnly(access) ? OPERATIONAL_MENU : buildMenuItems();
 }
 
 /**
@@ -65,17 +71,17 @@ export function useVisibleNavItems(): VisibleNavItem[] {
  */
 export function useVisibleNavGroups(): NavGroup[] {
   const { data: session, status } = useSession();
-  const userRoles = session?.user?.roles || [];
+  const access = sessionAccess(session);
   // Mientras la sesión carga no se sabe el rol: sin ítems en vez de pintar el
   // menú completo y cambiarlo (la cuenta de sucursal veía parpadear opciones
   // que no puede abrir, y un clic podía perderse al re-renderizar la lista).
   if (status === "loading") return [];
-  const branchOnly = isBranchOnly(userRoles);
-  const operationalOnly = branchOnly || isOperationalOnly(userRoles);
+  const branchOnly = isBranchOnly(access);
+  const operationalOnly = branchOnly || isOperationalOnly(access);
   return (branchOnly ? BRANCH_MENU : operationalOnly ? OPERATIONAL_MENU : buildMenuItems())
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => isNavItemVisible(item, userRoles, operationalOnly)),
+      items: group.items.filter((item) => isNavItemVisible(item, access, operationalOnly)),
     }))
     .filter((group) => group.items.length > 0);
 }

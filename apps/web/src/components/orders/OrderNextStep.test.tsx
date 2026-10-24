@@ -12,9 +12,10 @@ const writeOrderStatus = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/hooks/useOrders", () => ({ writeOrderStatus: (...a: unknown[]) => writeOrderStatus(...a) }));
 vi.mock("@/hooks/useEntity", () => ({ useAuthToken: () => "t" }));
 vi.mock("@/hooks/useAreaSupplies", () => ({ invalidateSupplyData: vi.fn() }));
-let roles = ["bordado"];
+let roles: string[] = [];
+let areas: string[] = ["bordado"];
 vi.mock("@/hooks/usePermissions", () => ({
-  usePermissions: () => ({ roles, isAdmin: false, canManageOperations: roles.includes("recepcion") }),
+  usePermissions: () => ({ roles, areas, isAdmin: false, canManageOperations: roles.includes("recepcion") }),
 }));
 const toastSuccess = vi.fn();
 vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => toastSuccess(...a), error: vi.fn() } }));
@@ -57,7 +58,8 @@ function setup(orders: Order[]) {
 const card = (id: number) => document.querySelector<HTMLElement>(`[data-order-card="${id}"]`)!;
 
 beforeEach(() => {
-  roles = ["bordado"];
+  roles = [];
+  areas = ["bordado"];
   patch.mockClear();
   writeOrderStatus.mockClear();
   toastSuccess.mockClear();
@@ -91,6 +93,7 @@ describe("siguiente paso en las tarjetas", () => {
 
   it("Recepción entrega un pedido terminado (estado del pedido, no de la tarea)", async () => {
     roles = ["recepcion"];
+    areas = [];
     setup([order(1, 50, "terminado")]);
     await userEvent.click(screen.getByRole("button", { name: "Entregar · pedido #1" }));
     expect(writeOrderStatus).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), 5, "t");

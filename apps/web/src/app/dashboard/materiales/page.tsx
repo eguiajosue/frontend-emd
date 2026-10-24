@@ -9,7 +9,7 @@ import { CrudPage, type CrudFilterConfig } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { CATALOG_STALE_TIME, useEntityList } from "@/hooks/useEntity";
 import { usePermissions } from "@/hooks/usePermissions";
-import { AREA_OPTIONS } from "@/lib/areas";
+import { useAreaOptions } from "@/hooks/useAreas";
 import type { Material, MaterialCategory, MaterialUnit, Supplier } from "@/types";
 import { getMaterialColumns } from "./components/materialColumns";
 
@@ -32,6 +32,7 @@ const materialSchema = z.object({
  */
 export default function MaterialesPage() {
   const { canManageOperations } = usePermissions();
+  const areaOptions = useAreaOptions();
   const router = useRouter();
   // Links viejos a la pestaña de proveedores (?tab=proveedores): ahora es
   // su propia sección.
@@ -81,7 +82,7 @@ export default function MaterialesPage() {
         name: "areas",
         label: "Áreas donde se usa",
         type: "multiselect",
-        options: AREA_OPTIONS.map((a) => ({ value: a.value, label: a.label })),
+        options: areaOptions,
       },
       {
         name: "suggestedPrice",
@@ -90,7 +91,7 @@ export default function MaterialesPage() {
         helpText: "Se copia a cada línea de la hoja de materiales al agregarla.",
       },
     ],
-    [categories, units, suppliers]
+    [categories, units, suppliers, areaOptions]
   );
 
   const materialFilters: CrudFilterConfig<Material>[] = useMemo(
@@ -106,11 +107,11 @@ export default function MaterialesPage() {
         key: "area",
         label: "Área",
         allLabel: "Todas las áreas",
-        options: AREA_OPTIONS.map((a) => ({ value: a.value, label: a.label })),
+        options: areaOptions,
         matches: (item, value) => item.areas.includes(value),
       },
     ],
-    [categories]
+    [categories, areaOptions]
   );
 
   return (
