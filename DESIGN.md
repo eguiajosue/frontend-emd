@@ -114,12 +114,14 @@ nav item change in `src/lib/navMenu.ts` so the rail and the tab bar can't
 drift apart.
 
 Because the tab bar permanently occupies bottom screen space, the dashboard
-layout's mobile-only bottom padding and the chat page's mobile card height
-both carry a matching extra offset (`~5.5rem`, sized to the bar's own
-height + margins) up to the same `md` breakpoint where the bar disappears —
-see the inline comments in `src/app/dashboard/layout.tsx` and
-`src/app/dashboard/chat/page.tsx` before changing either the bar's size or
-these paddings.
+layout's mobile-only bottom padding carries a matching extra offset
+(`~5.5rem`, sized to the bar's own height + margins) up to the same `md`
+breakpoint where the bar disappears — see the inline comment in
+`src/app/dashboard/layout.tsx` before changing either the bar's size or that
+padding. The one screen that covers the bar is an open chat conversation on
+mobile: it goes full screen (`fixed`, `z-40`, above the top bar and the tab
+bar) and sizes itself to `window.visualViewport` so the iOS keyboard never
+hides the composer (`useVisualViewport`, `src/app/dashboard/chat/page.tsx`).
 
 ## Motion
 

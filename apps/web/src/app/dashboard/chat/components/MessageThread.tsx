@@ -614,7 +614,7 @@ export function MessageThread({
         className
       )}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+      <header className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3 max-md:pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <div className="flex min-w-0 items-center gap-2.5">
           {onBack ? (
             <Button
@@ -718,7 +718,7 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-4 sm:px-5">
+      <div ref={scrollRef} data-no-pull-refresh className="flex-1 space-y-2 overflow-y-auto overscroll-contain p-4 sm:px-5">
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
@@ -792,7 +792,7 @@ export function MessageThread({
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-3 pt-1 sm:px-4 sm:pb-4">
+      <div className="p-3 pt-1 sm:px-4 sm:pb-4 max-md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         {attachedOrder ? (
           <div className="mb-2 flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs">
             <Paperclip className="h-3 w-3 shrink-0 text-muted-foreground" />
