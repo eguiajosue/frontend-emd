@@ -765,7 +765,10 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div ref={scrollRef} data-no-pull-refresh className="flex-1 overflow-y-auto overscroll-contain p-4 sm:px-5">
+      <div ref={scrollRef} data-no-pull-refresh className="flex flex-1 flex-col overflow-y-auto overscroll-contain p-4 sm:px-5">
+        {/* Con pocos mensajes, el hilo arranca abajo (pegado al compositor)
+            y no arriba de todo: el espacio libre queda sobre el primero. */}
+        <div aria-hidden className="mt-auto" />
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
