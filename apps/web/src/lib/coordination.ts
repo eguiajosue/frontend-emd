@@ -39,7 +39,7 @@ export interface OverdueOrder {
   reason: DelayReason | null;
   note: string | null;
   reasonAt: string | null;
-  areas: { area: string; status: "pendiente" | "en_proceso" | "terminado"; prepStage: string | null; assignee: string | null }[];
+  areas: { area: string; status: "pendiente" | "en_proceso" | "terminado"; stage: { key: string; name: string; kind: string } | null; assignee: string | null }[];
 }
 export interface CoordinationOverview {
   generatedAt: string;
@@ -60,16 +60,13 @@ export function formatHours(h: number | null): string {
   return `${Math.round((h / 24) * 10) / 10} días`;
 }
 
-/** Etapa de un área en un pedido atrasado: "digitalizando (Ana)", "sin empezar"… */
+/** Etapa de un área en un pedido atrasado: "en «Digitalizado» (Ana)", "sin empezar"… */
 export function areaStageLabel(a: OverdueOrder["areas"][number]): string {
-  const stage =
-    a.prepStage === "digitalizado"
-      ? "digitalizando"
-      : a.prepStage === "en_pruebas"
-        ? "en pruebas"
-        : a.status === "en_proceso"
-          ? "en proceso"
-          : "sin empezar";
+  const stage = a.stage
+    ? `en «${a.stage.name}»`
+    : a.status === "en_proceso"
+      ? "en proceso"
+      : "sin empezar";
   return `${stage}${a.assignee ? ` (${a.assignee})` : ""}`;
 }
 

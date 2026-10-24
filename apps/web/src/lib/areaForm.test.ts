@@ -5,13 +5,19 @@ import {
   MAX_SUGGESTIONS,
   addSuggestion,
   draftToPayload,
+  moveStage,
   removeSuggestion,
   slugPreview,
+  stageDraftsOf,
+  stagesChanged,
+  stagesPayload,
   summaryLines,
   validateColor,
   validateName,
+  validateStages,
   validateStep,
   wizardSteps,
+  type StageDraft,
 } from "./areaForm";
 
 describe("slugPreview", () => {
@@ -73,8 +79,31 @@ describe("validateColor / validateStep", () => {
 
 describe("wizardSteps", () => {
   it("sin inventario propio se salta el paso de inventario inicial", () => {
-    expect(wizardSteps({ hasInventory: true })).toEqual(["identidad", "comportamiento", "inventario", "equipo", "resumen"]);
-    expect(wizardSteps({ hasInventory: false })).toEqual(["identidad", "comportamiento", "equipo", "resumen"]);
+    expect(wizardSteps({ hasInventory: true, isProductionDestination: true })).toEqual([
+      "identidad",
+      "comportamiento",
+      "etapas",
+      "inventario",
+      "equipo",
+      "resumen",
+    ]);
+    expect(wizardSteps({ hasInventory: false, isProductionDestination: true })).toEqual([
+      "identidad",
+      "comportamiento",
+      "etapas",
+      "equipo",
+      "resumen",
+    ]);
+  });
+
+  it("un área que no recibe producción no tiene etapas", () => {
+    expect(wizardSteps({ hasInventory: true, isProductionDestination: false })).toEqual([
+      "identidad",
+      "comportamiento",
+      "inventario",
+      "equipo",
+      "resumen",
+    ]);
   });
 });
 
@@ -131,5 +160,71 @@ describe("summaryLines", () => {
     expect(lines).toMatch(/1 persona pasará/);
     expect(lines).toMatch(/no se ofrece al crear pedidos/);
     expect(lines).not.toMatch(/cuenta compartida/);
+  });
+});
+
+describe("etapas", () => {
+  const work = (name: string, id?: number): StageDraft => ({ id, name, kind: "work" });
+  const review = (name: string, id?: number): StageDraft => ({ id, name, kind: "review" });
+
+  it("acepta una lista vacía y una de trabajo + revisión", () => {
+    expect(validateStages([])).toBeUndefined();
+    expect(validateStages([work("Slicing"), review("Prueba"), work("Post-proceso")])).toBeUndefined();
+  });
+
+  it.each([
+    ["la primera es una revisión", [review("Prueba"), work("Producir")], /primera etapa/],
+    ["dos revisiones seguidas", [work("Corte"), review("Prueba 1"), review("Prueba 2")], /después de otra revisión/],
+    ["nombres repetidos (sin importar mayúsculas)", [work("Corte"), work("corte")], /repetida/],
+    ["nombre muy corto", [work("a")], /entre 2 y 40/],
+    ["demasiadas", Array.from({ length: 7 }, (_, i) => work(`Etapa ${i}`)), /hasta 6/],
+  ])("rechaza %s", (_label, stages, message) => {
+    expect(validateStages(stages)).toMatch(message);
+  });
+
+  it("el paso de etapas del wizard valida la lista", () => {
+    expect(validateStep("etapas", EMPTY_DRAFT, DEFAULT_AREAS)).toEqual({});
+    expect(validateStep("etapas", { ...EMPTY_DRAFT, stages: [review("Prueba")] }, DEFAULT_AREAS)).toHaveProperty("stages");
+  });
+
+  it("mueve una etapa arriba o abajo sin salirse de la lista", () => {
+    const list = [work("A1"), work("B2"), work("C3")];
+    expect(moveStage(list, 1, -1).map((s) => s.name)).toEqual(["B2", "A1", "C3"]);
+    expect(moveStage(list, 1, 1).map((s) => s.name)).toEqual(["A1", "C3", "B2"]);
+    expect(moveStage(list, 0, -1)).toEqual(list);
+    expect(moveStage(list, 2, 1)).toEqual(list);
+  });
+
+  it("detecta cambios en orden, nombre o tipo respecto al área", () => {
+    const stages = [
+      { id: 1, key: "a", name: "Digitalizado", kind: "work" as const },
+      { id: 2, key: "b", name: "En pruebas", kind: "review" as const },
+    ];
+    expect(stagesChanged(stages, stageDraftsOf(stages))).toBe(false);
+    expect(stagesChanged(stages, [{ ...stageDraftsOf(stages)[0], name: " Digitalizado " }, stageDraftsOf(stages)[1]])).toBe(false);
+    expect(stagesChanged(stages, [{ ...stageDraftsOf(stages)[0], name: "Digitalizar" }, stageDraftsOf(stages)[1]])).toBe(true);
+    expect(stagesChanged(stages, [...stageDraftsOf(stages), work("Extra")])).toBe(true);
+    expect(stagesChanged(stages, [...stageDraftsOf(stages)].reverse())).toBe(true);
+  });
+
+  it("el payload recorta nombres y sólo manda id de las que ya existen", () => {
+    expect(stagesPayload([work(" Corte ", 4), review("Prueba")])).toEqual([
+      { id: 4, name: "Corte", kind: "work" },
+      { name: "Prueba", kind: "review" },
+    ]);
+  });
+
+  it("draftToPayload manda las etapas sólo si el área recibe producción", () => {
+    const stages = [work("Corte"), review("Prueba")];
+    expect(draftToPayload({ ...EMPTY_DRAFT, name: "Nueva", stages }).stages).toEqual([
+      { name: "Corte", kind: "work" },
+      { name: "Prueba", kind: "review" },
+    ]);
+    expect(draftToPayload({ ...EMPTY_DRAFT, name: "Nueva", stages, isProductionDestination: false }).stages).toEqual([]);
+  });
+
+  it("el resumen cuenta el camino de las tareas", () => {
+    const lines = summaryLines({ ...EMPTY_DRAFT, stages: [work("Corte"), review("Prueba")] }, 0).join("\n");
+    expect(lines).toMatch(/«Corte» → «Prueba» antes de producir/);
   });
 });

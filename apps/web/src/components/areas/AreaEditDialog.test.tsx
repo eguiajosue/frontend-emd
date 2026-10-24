@@ -6,8 +6,9 @@ import { DEFAULT_AREAS, resetAreaCatalog } from "@emd/business/src/areas";
 import { AreaEditDialog, changesOf } from "./AreaEditDialog";
 
 const update = vi.fn();
+const setStages = vi.fn();
 vi.mock("@/hooks/useAreaAdmin", () => ({
-  useAreaAdminMutations: () => ({ create: vi.fn(), update, isCreating: false, isUpdating: false }),
+  useAreaAdminMutations: () => ({ create: vi.fn(), update, setStages, isCreating: false, isUpdating: false }),
 }));
 vi.mock("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -24,6 +25,8 @@ const area = (slug: string, over: Partial<AreaOverview> = {}): AreaOverview => (
 beforeEach(() => {
   update.mockReset();
   update.mockResolvedValue({});
+  setStages.mockReset();
+  setStages.mockResolvedValue({});
   resetAreaCatalog();
 });
 
@@ -100,5 +103,55 @@ describe("AreaEditDialog", () => {
     expect(screen.getByLabelText("Categorías")).toBeInTheDocument();
     await user.click(screen.getByRole("switch", { name: /Inventario propio/ }));
     expect(screen.queryByLabelText("Categorías")).not.toBeInTheDocument();
+  });
+
+  it("muestra las etapas del área y guarda su cambio sin tocar lo demás", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<AreaEditDialog area={area("bordado")} onClose={onClose} />);
+
+    expect(screen.getByLabelText("Nombre de la etapa 1")).toHaveValue("Digitalizado");
+    expect(screen.getByLabelText("Nombre de la etapa 2")).toHaveValue("En pruebas");
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Agregar etapa" }));
+    await user.type(screen.getByLabelText("Nombre de la etapa 3"), "Bastidor");
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    await waitFor(() =>
+      expect(setStages).toHaveBeenCalledWith(3, {
+        stages: [
+          { id: 301, name: "Digitalizado", kind: "work" },
+          { id: 302, name: "En pruebas", kind: "review" },
+          { name: "Bastidor", kind: "work" },
+        ],
+      })
+    );
+    expect(update).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("no guarda una lista de etapas que no sirve", async () => {
+    const user = userEvent.setup();
+    render(<AreaEditDialog area={area("bordado")} onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Subir la etapa 2" }));
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByText(/primera etapa no puede ser una revisión/)).toBeInTheDocument();
+    expect(setStages).not.toHaveBeenCalled();
+  });
+
+  it("Diseño y las áreas que no reciben producción no muestran etapas", () => {
+    const { unmount } = render(<AreaEditDialog area={area("diseno")} onClose={vi.fn()} />);
+    expect(screen.queryByText("Etapas previas a producción")).not.toBeInTheDocument();
+    unmount();
+    render(<AreaEditDialog area={area("taller", { isProductionDestination: false })} onClose={vi.fn()} />);
+    expect(screen.queryByText("Etapas previas a producción")).not.toBeInTheDocument();
+  });
+
+  it("sin etapas ofrece agregarlas", () => {
+    render(<AreaEditDialog area={area("taller")} onClose={vi.fn()} />);
+    expect(screen.getByText(/Sin etapas: las tareas nacen listas para producir/)).toBeInTheDocument();
   });
 });

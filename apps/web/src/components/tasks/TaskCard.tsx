@@ -6,12 +6,12 @@ import { ArrowRight, CalendarDays, CheckCircle2, Loader2, Play, RotateCcw, Timer
 import { Badge } from "@/components/ui/badge";
 import { BranchBadge } from "@/components/orders/BranchBadge";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
-import { PREP_STAGE_META } from "@/components/orders/EmbroideryPrepControls";
-import { EmbroideryPrepActions, EmbroideryStepper, RejectionNote } from "@/components/tasks/EmbroideryCardParts";
+import { stageChip } from "@/components/orders/StageControls";
+import { StageActions, StageStepper, RejectionNote } from "@/components/tasks/StageCardParts";
 import { Button } from "@/components/ui/button";
 import { formatCountdown, type DeadlineState } from "@/lib/orderDeadline";
 import { formatDeliveryDate, type TimeFormatPreference } from "@/lib/format";
-import { isEmbroideryTask, prepStageOf } from "@/lib/embroideryBoard";
+import { isStageTask, taskStage } from "@/lib/stageBoard";
 import { isReturnedDesign } from "@/lib/myTasks";
 import { cn } from "@/lib/utils";
 import { AreaChip } from "@/components/AreaChip";
@@ -57,7 +57,7 @@ interface TaskCardProps {
   onOpen: (orderId: number) => void;
   onAdvance: (task: MyTask, status: AreaTaskStatus) => void;
   busy: boolean;
-  /** Bordado: ¿puede mandar a pruebas / aprobar / rechazar? (el área y Recepción). */
+  /** ¿Puede pasar de etapa / aprobar / rechazar? (el área y Recepción). */
   canMovePrep?: boolean;
 }
 
@@ -72,9 +72,9 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
   const ActionIcon = action.icon;
   const returned = isReturnedDesign(task);
   const inProgress = task.kind === "production" && task.status === "en_proceso";
-  const embroidery = isEmbroideryTask(task);
-  const stage = embroidery ? prepStageOf(task) : null;
-  const stageMeta = stage ? PREP_STAGE_META[stage] : null;
+  const staged = isStageTask(task);
+  const stage = staged ? taskStage(task) : null;
+  const stageMeta = stage ? stageChip(stage) : null;
 
   return (
     <article
@@ -140,8 +140,8 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           <OrderSizesList products={task.order.orderProducts} />
         </div>
 
-        {embroidery && <EmbroideryStepper task={task} />}
-        {embroidery && <RejectionNote task={task} />}
+        {staged && <StageStepper task={task} />}
+        {staged && <RejectionNote task={task} />}
 
         {task.kind === "production" && <AreaSupplySummary supply={task.supply} />}
 
@@ -174,7 +174,7 @@ export const TaskCard = memo(function TaskCard({ task, state, timeFormat, onOpen
           </span>
         </p>
         {stage ? (
-          <EmbroideryPrepActions task={task} canAct={canMovePrep} className="relative z-10 ml-auto" />
+          <StageActions task={task} canAct={canMovePrep} className="relative z-10 ml-auto" />
         ) : (
           <Button
             type="button"

@@ -6,7 +6,7 @@ import { AreaWizard } from "./AreaWizard";
 
 const create = vi.fn();
 vi.mock("@/hooks/useAreaAdmin", () => ({
-  useAreaAdminMutations: () => ({ create, update: vi.fn(), isCreating: false, isUpdating: false }),
+  useAreaAdminMutations: () => ({ create, update: vi.fn(), setStages: vi.fn(), isCreating: false, isUpdating: false }),
 }));
 vi.mock("@/hooks/useEntity", () => ({
   useEntityList: () => ({
@@ -39,7 +39,7 @@ describe("AreaWizard", () => {
 
     await next(user);
     expect(screen.getByText(/al menos 2 caracteres/)).toBeInTheDocument();
-    expect(screen.getByText(/Paso 1 de 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Paso 1 de 6/)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/Nombre del área/), "Láser");
     await next(user);
@@ -55,7 +55,7 @@ describe("AreaWizard", () => {
     expect(screen.getByText(/Identificador interno: impresion-3d/)).toBeInTheDocument();
   });
 
-  it("recorre los cinco pasos y crea el área con todo lo capturado", async () => {
+  it("recorre los seis pasos y crea el área con todo lo capturado", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     const onCreated = vi.fn();
@@ -68,19 +68,27 @@ describe("AreaWizard", () => {
     await next(user);
 
     // 2 · Comportamiento
-    expect(screen.getByText(/Paso 2 de 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Paso 2 de 6/)).toBeInTheDocument();
     await user.click(screen.getByRole("switch", { name: /Todo el equipo ve todo/ }));
     await next(user);
 
-    // 3 · Inventario inicial
-    expect(screen.getByText(/Paso 3 de 5/)).toBeInTheDocument();
+    // 3 · Etapas previas a producción
+    expect(screen.getByText(/Paso 3 de 6/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Agregar etapa" }));
+    await user.type(screen.getByLabelText("Nombre de la etapa 1"), "Slicing");
+    await user.click(screen.getByRole("button", { name: "Agregar revisión" }));
+    await user.type(screen.getByLabelText("Nombre de la etapa 2"), "Prueba de impresión");
+    await next(user);
+
+    // 4 · Inventario inicial
+    expect(screen.getByText(/Paso 4 de 6/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Categorías"), "Filamento{Enter}Resina{Enter}");
     await user.type(screen.getByLabelText("Unidades"), "kg,rollo,");
     expect(screen.getByRole("button", { name: "Quitar Resina" })).toBeInTheDocument();
     await next(user);
 
-    // 4 · Equipo: sólo personas (ni cuentas compartidas ni de sucursal)
-    expect(screen.getByText(/Paso 4 de 5/)).toBeInTheDocument();
+    // 5 · Equipo: sólo personas (ni cuentas compartidas ni de sucursal)
+    expect(screen.getByText(/Paso 5 de 6/)).toBeInTheDocument();
     expect(screen.getByText("Ana Ruiz")).toBeInTheDocument();
     expect(screen.getByText("Beto Lara")).toBeInTheDocument();
     expect(screen.queryByText("Taller")).not.toBeInTheDocument();
@@ -88,10 +96,11 @@ describe("AreaWizard", () => {
     await user.click(screen.getByRole("checkbox", { name: /Beto Lara/ }));
     await next(user);
 
-    // 5 · Resumen
-    expect(screen.getByText(/Paso 5 de 5/)).toBeInTheDocument();
+    // 6 · Resumen
+    expect(screen.getByText(/Paso 6 de 6/)).toBeInTheDocument();
     const summary = screen.getByRole("list", { name: "Resumen del área" });
     expect(within(summary).getByText(/Sugerirá en inventario: Filamento, Resina, kg, rollo/)).toBeInTheDocument();
+    expect(within(summary).getByText(/«Slicing» → «Prueba de impresión» antes de producir/)).toBeInTheDocument();
     expect(within(summary).getByText(/1 persona pasará/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Crear área" }));
 
@@ -107,6 +116,10 @@ describe("AreaWizard", () => {
       inventoryUnits: ["kg", "rollo"],
       createSharedAccount: true,
       userIds: [4],
+      stages: [
+        { name: "Slicing", kind: "work" },
+        { name: "Prueba de impresión", kind: "review" },
+      ],
     });
     expect(toastSuccess).toHaveBeenCalledWith('Área "Impresión 3D" creada');
     expect(onCreated).toHaveBeenCalledWith("impresion-3d");
@@ -121,8 +134,9 @@ describe("AreaWizard", () => {
     await next(user);
     await user.click(screen.getByRole("switch", { name: /Inventario propio/ }));
     await next(user);
+    await next(user); // Etapas (opcional): se deja vacío
 
-    expect(screen.getByText(/Paso 3 de 4 · Equipo/)).toBeInTheDocument();
+    expect(screen.getByText(/Paso 4 de 5 · Equipo/)).toBeInTheDocument();
     await next(user);
     await user.click(screen.getByRole("button", { name: "Crear área" }));
 
@@ -137,6 +151,7 @@ describe("AreaWizard", () => {
     render(<AreaWizard open onClose={onClose} />);
 
     await user.type(screen.getByLabelText(/Nombre del área/), "Serigrafía");
+    await next(user);
     await next(user);
     await next(user);
     await next(user);
@@ -157,5 +172,37 @@ describe("AreaWizard", () => {
     await next(user);
 
     expect(screen.getByText(/Ya existe un área parecida: "Serigrafía"/)).toBeInTheDocument();
+  });
+
+  it("el paso de etapas no deja avanzar con una lista que no sirve y sin etapas es opcional", async () => {
+    const user = userEvent.setup();
+    render(<AreaWizard open onClose={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/Nombre del área/), "Serigrafía");
+    await next(user);
+    await next(user);
+    expect(screen.getByText(/Paso 3 de 6 · Etapas/)).toBeInTheDocument();
+    expect(screen.getByText(/Sin etapas: las tareas nacen listas para producir/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Agregar etapa" }));
+    await next(user);
+    expect(screen.getByText(/entre 2 y 40 caracteres/)).toBeInTheDocument();
+    expect(screen.getByText(/Paso 3 de 6/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Quitar la etapa 1" }));
+    await next(user);
+    expect(screen.getByText(/Paso 4 de 6/)).toBeInTheDocument();
+  });
+
+  it("un área que no es destino de producción no pide etapas", async () => {
+    const user = userEvent.setup();
+    render(<AreaWizard open onClose={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/Nombre del área/), "Oficina");
+    await next(user);
+    await user.click(screen.getByRole("switch", { name: /Destino de producción/ }));
+    await next(user);
+
+    expect(screen.getByText(/Paso 3 de 5 · Inventario inicial/)).toBeInTheDocument();
   });
 });

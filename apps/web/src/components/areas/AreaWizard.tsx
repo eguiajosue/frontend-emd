@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AreaPreview, ColorPicker, IconPicker, SuggestionInput } from "@/components/areas/AreaPickers";
+import { StageEditor } from "@/components/areas/StageEditor";
 import { useAreaCatalog } from "@/hooks/useAreas";
 import { useAreaAdminMutations } from "@/hooks/useAreaAdmin";
 import { useEntityList } from "@/hooks/useEntity";
@@ -70,8 +71,8 @@ function userName(user: User): string {
 }
 
 /**
- * Wizard para dar de alta un área: identidad → comportamiento → inventario
- * inicial → equipo → resumen. No crea nada hasta el último paso.
+ * Wizard para dar de alta un área: identidad → comportamiento → etapas →
+ * inventario inicial → equipo → resumen. No crea nada hasta el último paso.
  */
 export function AreaWizard({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: (slug: string) => void }) {
   const catalog = useAreaCatalog();
@@ -198,6 +199,17 @@ export function AreaWizard({ open, onClose, onCreated }: { open: boolean; onClos
                 checked={draft.generalViewEnabled}
                 onChange={(checked) => set("generalViewEnabled", checked)}
               />
+            </>
+          )}
+
+          {step === "etapas" && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Opcional. Etapas por las que pasa cada tarea del área antes de producir, en orden. Una etapa de trabajo
+                se completa y pasa a la siguiente; una revisión se aprueba o se rechaza (al rechazarla regresa a la etapa
+                anterior). Ej.: Preparación → Revisión de prueba.
+              </p>
+              <StageEditor value={draft.stages} onChange={(next) => set("stages", next)} showErrors={touched} />
             </>
           )}
 

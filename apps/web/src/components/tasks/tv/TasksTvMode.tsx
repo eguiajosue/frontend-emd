@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, Clock3, Inbox, Package, Sun, Volume2, VolumeX, X, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useTimeFormat } from "@/hooks/useTimeFormat";
 import { useNow } from "@/hooks/useNow";
 import { useWakeLock } from "@/hooks/useWakeLock";
-import { EMBROIDERY_COLUMN_ICON } from "@/components/tasks/EmbroideryBoard";
+import { STAGE_COLUMN_ICON } from "@/components/tasks/StageBoard";
 import { getAreaIcon, getAreaLabel, isDesignArea, productionAreaSlugs } from "@/lib/areas";
-import {
-  buildEmbroideryBoard,
-  canMoveEmbroideryPrep,
-  EMBROIDERY_COLUMNS,
-  EMBROIDERY_AREA,
-  isEmbroideryView,
-} from "@/lib/embroideryBoard";
+import { buildStageBoard, canMoveStages, stageBoardArea, stageColumns } from "@/lib/stageBoard";
 import { isReturnedDesign, taskDeadline } from "@/lib/myTasks";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 import {
@@ -160,26 +154,28 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
         : fullBoard,
     [fullBoard, activeArea]
   );
-  // Bordado se ve en cuatro columnas (Digitalizado → En pruebas → En
-  // producción → Terminado) cuando es lo único que se está viendo.
-  const embroideryView = isEmbroideryView(activeArea, access);
+  // Un área con etapas (en Bordado: Digitalizado → En pruebas → En producción
+  // → Terminado) se ve por etapas cuando es lo único que se está viendo.
+  const stageArea = stageBoardArea(activeArea, access);
+  const stageView = stageArea !== null;
   const columns = useMemo(() => {
-    if (!embroideryView) {
+    if (!stageArea) {
       return TV_COLUMNS.map((c) => ({ ...c, hint: null as string | null, Icon: COLUMN_ICON[c.id], list: board[c.id] }));
     }
-    const eb = buildEmbroideryBoard(
-      [...board.pendiente, ...board.en_proceso, ...board.terminado].filter((t) => t.area === EMBROIDERY_AREA),
+    const stageBoard = buildStageBoard(
+      stageArea,
+      [...board.pendiente, ...board.en_proceso, ...board.terminado],
       now
     );
-    return EMBROIDERY_COLUMNS.map((c) => ({
+    return stageColumns(stageArea).map((c) => ({
       id: c.id,
       label: c.label,
-      hint: c.id === "terminado" ? "últimas 12 h" : null,
-      Icon: EMBROIDERY_COLUMN_ICON[c.id],
-      list: eb[c.id],
+      hint: c.kind === "done" ? "últimas 12 h" : null,
+      Icon: STAGE_COLUMN_ICON[c.kind],
+      list: stageBoard[c.id] ?? [],
     }));
-  }, [embroideryView, board, now]);
-  const canMovePrep = canMoveEmbroideryPrep(access);
+  }, [stageArea, board, now]);
+  const canMovePrep = canMoveStages(access);
   const boardRef = useRef(fullBoard);
   boardRef.current = fullBoard;
 
@@ -593,8 +589,9 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
               <div
                 className={cn(
                   "grid min-h-0 flex-1 grid-cols-1 gap-5",
-                  embroideryView ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3"
+                  stageView ? "md:grid-cols-2 xl:[grid-template-columns:repeat(var(--stage-columns),minmax(0,1fr))]" : "md:grid-cols-3"
                 )}
+                style={stageView ? ({ "--stage-columns": columns.length } as CSSProperties) : undefined}
               >
                 {columns.map((column) => {
                   const Icon = column.Icon;
@@ -611,9 +608,9 @@ export function TasksTvMode({ onClose, demo = false }: TasksTvModeProps) {
                       >
                         <Icon className="h-7 w-7 text-muted-foreground" aria-hidden />
                         {column.label}
-                        {(embroideryView ? column.hint : column.id === "terminado" ? "últimas 12 h" : null) && (
+                        {(stageView ? column.hint : column.id === "terminado" ? "últimas 12 h" : null) && (
                           <span className="text-base font-normal text-muted-foreground">
-                            {embroideryView ? column.hint : "últimas 12 h"}
+                            {stageView ? column.hint : "últimas 12 h"}
                           </span>
                         )}
                         <span className="ml-auto rounded-full bg-card px-3 py-0.5 text-xl tabular-nums text-muted-foreground">

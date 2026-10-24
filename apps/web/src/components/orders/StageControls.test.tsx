@@ -1,20 +1,21 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { EmbroideryPrepControls } from "./EmbroideryPrepControls";
+import { StageControls } from "./StageControls";
 import type { OrderAreaTask } from "@/types";
+import { DEFAULT_AREAS, resetAreaCatalog, setAreaCatalog } from "@emd/business/src/areas";
 
-const sendToTest = {
+const advanceStage = {
   mutateAsync: vi.fn().mockResolvedValue({}),
   isPending: false,
 };
-const decideTest = {
+const decideStage = {
   mutateAsync: vi.fn().mockResolvedValue({}),
   isPending: false,
 };
 
 vi.mock("@/hooks/useAreaTasks", () => ({
-  useAreaTasks: () => ({ sendToTest, decideTest }),
+  useAreaTasks: () => ({ advanceStage, decideStage }),
   useSampleTestPhoto: (
     _o: number,
     _t: number,
@@ -34,6 +35,9 @@ vi.mock("@/hooks/useAreaTasks", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const DIGITALIZADO = { id: 301, key: "digitalizado", name: "Digitalizado", kind: "work" } as const;
+const EN_PRUEBAS = { id: 302, key: "en_pruebas", name: "En pruebas", kind: "review" } as const;
+
 const task = (over: Partial<OrderAreaTask>): OrderAreaTask =>
   ({
     id: 4,
@@ -50,22 +54,22 @@ beforeAll(() => {
   URL.revokeObjectURL = vi.fn();
 });
 
-describe("EmbroideryPrepControls", () => {
+describe("StageControls", () => {
   it("en digitalizado ofrece mandar a pruebas", async () => {
     render(
-      <EmbroideryPrepControls
+      <StageControls
         orderId={9}
-        task={task({ prepStage: "digitalizado" })}
+        task={task({ stage: DIGITALIZADO })}
         canAct
       />,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Mandar a pruebas" }),
+      screen.getByRole("button", { name: "Pasar a «En pruebas»" }),
     );
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Mandar a pruebas" }).at(-1)!,
+      screen.getAllByRole("button", { name: "Pasar a «En pruebas»" }).at(-1)!,
     );
-    expect(sendToTest.mutateAsync).toHaveBeenCalledWith({
+    expect(advanceStage.mutateAsync).toHaveBeenCalledWith({
       taskId: 4,
       notes: undefined,
     });
@@ -73,22 +77,22 @@ describe("EmbroideryPrepControls", () => {
 
   it("rechazar exige observaciones", async () => {
     render(
-      <EmbroideryPrepControls
+      <StageControls
         orderId={9}
-        task={task({ prepStage: "en_pruebas" })}
+        task={task({ stage: EN_PRUEBAS })}
         canAct
       />,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Rechazar prueba" }),
+      screen.getByRole("button", { name: "Rechazar" }),
     );
     const confirm = screen
-      .getAllByRole("button", { name: "Rechazar prueba" })
+      .getAllByRole("button", { name: "Rechazar" })
       .at(-1)!;
     expect(confirm).toBeDisabled();
     await userEvent.type(screen.getByLabelText("Observaciones"), "hilo tenso");
     await userEvent.click(confirm);
-    expect(decideTest.mutateAsync).toHaveBeenCalledWith({
+    expect(decideStage.mutateAsync).toHaveBeenCalledWith({
       taskId: 4,
       result: "rechazada",
       notes: "hilo tenso",
@@ -97,10 +101,10 @@ describe("EmbroideryPrepControls", () => {
 
   it("quien no puede actuar ve el registro pero no los botones", () => {
     render(
-      <EmbroideryPrepControls
+      <StageControls
         orderId={9}
         task={task({
-          prepStage: "digitalizado",
+          stage: DIGITALIZADO,
           sampleTests: [
             {
               id: 1,
@@ -115,28 +119,28 @@ describe("EmbroideryPrepControls", () => {
       />,
     );
     expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText("Prueba 1")).toBeInTheDocument();
+    expect(screen.getByText("Revisión 1")).toBeInTheDocument();
     expect(screen.getByText("Rechazada")).toBeInTheDocument();
   });
 
   it("no pinta nada fuera de las etapas y sin registro", () => {
     const { container } = render(
-      <EmbroideryPrepControls orderId={9} task={task({})} canAct />,
+      <StageControls orderId={9} task={task({})} canAct />,
     );
     expect(container).toBeEmptyDOMElement();
   });
 
   it("adjunta la foto de la prueba al mandarla a pruebas", async () => {
-    sendToTest.mutateAsync.mockClear();
+    advanceStage.mutateAsync.mockClear();
     render(
-      <EmbroideryPrepControls
+      <StageControls
         orderId={9}
-        task={task({ prepStage: "digitalizado" })}
+        task={task({ stage: DIGITALIZADO })}
         canAct
       />,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Mandar a pruebas" }),
+      screen.getByRole("button", { name: "Pasar a «En pruebas»" }),
     );
     const input = document.querySelector(
       'input[type="file"]:not([capture])',
@@ -146,12 +150,12 @@ describe("EmbroideryPrepControls", () => {
       new File(["x"], "prueba.jpg", { type: "image/jpeg" }),
     );
     expect(
-      await screen.findByAltText("Vista previa de la prueba"),
+      await screen.findByAltText("Vista previa de la foto"),
     ).toBeInTheDocument();
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Mandar a pruebas" }).at(-1)!,
+      screen.getAllByRole("button", { name: "Pasar a «En pruebas»" }).at(-1)!,
     );
-    const sent = sendToTest.mutateAsync.mock.calls[0][0];
+    const sent = advanceStage.mutateAsync.mock.calls[0][0];
     expect(sent.photo).toMatchObject({
       filename: "prueba.jpg",
       mimeType: "image/jpeg",
@@ -160,10 +164,10 @@ describe("EmbroideryPrepControls", () => {
 
   it("muestra 'Ver foto' sólo en las rondas que la traen y la abre al pedirla", async () => {
     render(
-      <EmbroideryPrepControls
+      <StageControls
         orderId={9}
         task={task({
-          prepStage: "en_pruebas",
+          stage: EN_PRUEBAS,
           sampleTests: [
             {
               id: 1,
@@ -181,6 +185,35 @@ describe("EmbroideryPrepControls", () => {
     const buttons = screen.getAllByRole("button", { name: "Ver foto" });
     expect(buttons).toHaveLength(1);
     await userEvent.click(buttons[0]);
-    expect(await screen.findByAltText("Prueba 1")).toBeInTheDocument();
+    expect(await screen.findByAltText("Revisión 1")).toBeInTheDocument();
+  });
+
+  describe("área con etapas propias", () => {
+    const CORTE = { id: 901, key: "corte", name: "Corte", kind: "work" } as const;
+    const ARMADO = { id: 902, key: "armado", name: "Armado", kind: "work" } as const;
+
+    beforeAll(() => {
+      setAreaCatalog([
+        ...DEFAULT_AREAS,
+        { ...DEFAULT_AREAS[0], id: 9, slug: "carpinteria", name: "Carpintería", sortOrder: 70, stages: [CORTE, ARMADO] },
+      ]);
+    });
+    afterAll(() => resetAreaCatalog());
+
+    it("una etapa de trabajo ofrece pasar a la siguiente, sin foto ni observaciones", async () => {
+      advanceStage.mutateAsync.mockClear();
+      render(<StageControls orderId={9} task={task({ area: "carpinteria", stage: CORTE })} canAct />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Pasar a «Armado»" }));
+      expect(screen.queryByLabelText("Observaciones")).toBeNull();
+      expect(screen.queryByText("Foto para la revisión (opcional)")).toBeNull();
+      await userEvent.click(screen.getAllByRole("button", { name: "Pasar a «Armado»" }).at(-1)!);
+      expect(advanceStage.mutateAsync).toHaveBeenCalledWith({ taskId: 4, notes: undefined });
+    });
+
+    it("la última etapa se completa con 'Listo para producir'", async () => {
+      render(<StageControls orderId={9} task={task({ area: "carpinteria", stage: ARMADO })} canAct />);
+      expect(screen.getByRole("button", { name: "Listo para producir" })).toBeInTheDocument();
+    });
   });
 });

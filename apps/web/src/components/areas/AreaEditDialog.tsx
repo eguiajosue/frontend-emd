@@ -17,9 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AreaPreview, ColorPicker, IconPicker, SuggestionInput } from "@/components/areas/AreaPickers";
+import { StageEditor } from "@/components/areas/StageEditor";
 import { useAreaCatalog } from "@/hooks/useAreas";
 import { useAreaAdminMutations } from "@/hooks/useAreaAdmin";
-import { validateColor, validateName } from "@/lib/areaForm";
+import { stageDraftsOf, stagesChanged, stagesPayload, validateColor, validateName, validateStages, type StageDraft } from "@/lib/areaForm";
 
 interface EditDraft {
   name: string;
@@ -85,12 +86,14 @@ function SwitchRow({
 /** Edición de un área existente: nombre, ícono, color, comportamiento y sugerencias. El slug no cambia. */
 export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; onClose: () => void }) {
   const catalog = useAreaCatalog();
-  const { update, isUpdating } = useAreaAdminMutations();
+  const { update, setStages, isUpdating } = useAreaAdminMutations();
   const [draft, setDraft] = useState<EditDraft | null>(null);
+  const [stages, setStagesDraft] = useState<StageDraft[]>([]);
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     setDraft(area ? draftOf(area) : null);
+    setStagesDraft(area ? stageDraftsOf(area.stages) : []);
     setTouched(false);
   }, [area]);
 
@@ -101,14 +104,17 @@ export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; o
   const nameError = validateName(draft.name, catalog, area.id);
   const colorError = validateColor(draft.color);
   const changes = changesOf(area, draft);
-  const hasChanges = Object.keys(changes).length > 0;
+  const stagesError = draft.isProductionDestination ? validateStages(stages) : undefined;
+  const stagesDirty = !area.isDesign && stagesChanged(area.stages, stages);
+  const hasChanges = Object.keys(changes).length > 0 || stagesDirty;
   const hasOpenWork = area.openOrders > 0 || area.openTasks > 0;
 
   const handleSave = async () => {
     setTouched(true);
-    if (nameError || colorError || !hasChanges) return;
+    if (nameError || colorError || stagesError || !hasChanges) return;
     try {
-      await update(area.id, changes);
+      if (Object.keys(changes).length > 0) await update(area.id, changes);
+      if (stagesDirty) await setStages(area.id, { stages: stagesPayload(stages) });
       toast.success("Área actualizada");
       onClose();
     } catch {
@@ -171,6 +177,17 @@ export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; o
             checked={draft.generalViewEnabled}
             onChange={(checked) => set("generalViewEnabled", checked)}
           />
+          {!area.isDesign && draft.isProductionDestination && (
+            <FormField label="Etapas previas a producción">
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Cada tarea nueva pasa por estas etapas antes de producir. Las tareas que ya están en curso conservan
+                  su etapa; no se puede quitar una etapa (ni cambiarle el tipo) mientras tenga tareas abiertas.
+                </p>
+                <StageEditor value={stages} onChange={setStagesDraft} showErrors={touched} disabled={isUpdating} />
+              </div>
+            </FormField>
+          )}
           {draft.hasInventory && (
             <>
               <FormField label="Categorías sugeridas en inventario">

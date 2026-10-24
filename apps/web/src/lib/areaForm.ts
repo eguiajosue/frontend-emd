@@ -1,4 +1,4 @@
-import type { Area, CreateAreaPayload } from "@emd/types";
+import type { Area, AreaStage, AreaStageInput, AreaStageKind, CreateAreaPayload } from "@emd/types";
 
 /**
  * Lógica pura del wizard de áreas (ver `AreaWizard`): borrador, pasos,
@@ -30,6 +30,22 @@ export const AREA_COLOR_PRESETS = [
 
 export const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
+export const MAX_STAGES = 6;
+export const STAGE_NAME_MIN = 2;
+export const STAGE_NAME_MAX = 40;
+
+/** Una etapa en el editor: sin `id` es nueva. */
+export interface StageDraft {
+  id?: number;
+  name: string;
+  kind: AreaStageKind;
+}
+
+export const STAGE_KIND_LABELS: Record<AreaStageKind, string> = {
+  work: "Trabajo",
+  review: "Revisión",
+};
+
 export interface AreaDraft {
   name: string;
   icon: string;
@@ -41,6 +57,7 @@ export interface AreaDraft {
   inventoryUnits: string[];
   createSharedAccount: boolean;
   userIds: number[];
+  stages: StageDraft[];
 }
 
 export const EMPTY_DRAFT: AreaDraft = {
@@ -54,23 +71,82 @@ export const EMPTY_DRAFT: AreaDraft = {
   inventoryUnits: [],
   createSharedAccount: true,
   userIds: [],
+  stages: [],
 };
 
-export type WizardStepId = "identidad" | "comportamiento" | "inventario" | "equipo" | "resumen";
+export type WizardStepId = "identidad" | "comportamiento" | "etapas" | "inventario" | "equipo" | "resumen";
 
 export const STEP_TITLES: Record<WizardStepId, string> = {
   identidad: "Identidad",
   comportamiento: "Comportamiento",
+  etapas: "Etapas",
   inventario: "Inventario inicial",
   equipo: "Equipo",
   resumen: "Resumen",
 };
 
-/** Pasos del wizard: sin inventario propio no hay nada que sugerir. */
-export function wizardSteps(draft: Pick<AreaDraft, "hasInventory">): WizardStepId[] {
-  return draft.hasInventory
-    ? ["identidad", "comportamiento", "inventario", "equipo", "resumen"]
-    : ["identidad", "comportamiento", "equipo", "resumen"];
+/**
+ * Pasos del wizard: sin inventario propio no hay nada que sugerir, y un área
+ * que no es destino de producción no recibe tareas, así que no tiene etapas.
+ */
+export function wizardSteps(
+  draft: Pick<AreaDraft, "hasInventory" | "isProductionDestination">
+): WizardStepId[] {
+  return [
+    "identidad",
+    "comportamiento",
+    ...(draft.isProductionDestination ? (["etapas"] as const) : []),
+    ...(draft.hasInventory ? (["inventario"] as const) : []),
+    "equipo",
+    "resumen",
+  ];
+}
+
+/** Las etapas de un área existente como borrador editable. */
+export function stageDraftsOf(stages: readonly AreaStage[]): StageDraft[] {
+  return stages.map(({ id, name, kind }) => ({ id, name, kind }));
+}
+
+/**
+ * Errores de la lista de etapas, o `undefined` si sirve. Repite las reglas del
+ * backend: hasta 6, nombres distintos, la primera es de trabajo y no hay dos
+ * revisiones seguidas.
+ */
+export function validateStages(stages: readonly StageDraft[]): string | undefined {
+  if (stages.length > MAX_STAGES) return `Un área puede tener hasta ${MAX_STAGES} etapas`;
+  const seen = new Set<string>();
+  for (const [index, stage] of stages.entries()) {
+    const name = stage.name.trim();
+    if (name.length < STAGE_NAME_MIN || name.length > STAGE_NAME_MAX) {
+      return `El nombre de cada etapa debe tener entre ${STAGE_NAME_MIN} y ${STAGE_NAME_MAX} caracteres`;
+    }
+    if (seen.has(name.toLowerCase())) return `La etapa "${name}" está repetida`;
+    seen.add(name.toLowerCase());
+    if (stage.kind === "review") {
+      if (index === 0) return `La primera etapa no puede ser una revisión ("${name}"): no habría nada que revisar`;
+      if (stages[index - 1].kind === "review") return `"${name}" no puede ir justo después de otra revisión`;
+    }
+  }
+  return undefined;
+}
+
+/** Lista de etapas lista para mandar (nombres recortados). */
+export function stagesPayload(stages: readonly StageDraft[]): AreaStageInput[] {
+  return stages.map(({ id, name, kind }) => ({ ...(id !== undefined && { id }), name: name.trim(), kind }));
+}
+
+/** ¿Cambió la lista de etapas respecto a la que tiene el área? (orden, nombre o tipo) */
+export function stagesChanged(before: readonly AreaStage[], after: readonly StageDraft[]): boolean {
+  return JSON.stringify(stagesPayload(stageDraftsOf(before))) !== JSON.stringify(stagesPayload(after));
+}
+
+/** Mueve la etapa `index` una posición (−1 arriba, +1 abajo); la misma lista si no se puede. */
+export function moveStage(stages: readonly StageDraft[], index: number, delta: -1 | 1): StageDraft[] {
+  const target = index + delta;
+  if (target < 0 || target >= stages.length) return [...stages];
+  const next = [...stages];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
 }
 
 /** Slug que tendrá un nombre ("Impresión 3D" → "impresion-3d"). Igual que el backend. */
@@ -116,9 +192,13 @@ export function validateStep(
   step: WizardStepId,
   draft: AreaDraft,
   areas: readonly Area[]
-): Partial<Record<"name" | "color", string>> {
+): Partial<Record<"name" | "color" | "stages", string>> {
+  if (step === "etapas") {
+    const stages = validateStages(draft.stages);
+    return stages ? { stages } : {};
+  }
   if (step !== "identidad") return {};
-  const errors: Partial<Record<"name" | "color", string>> = {};
+  const errors: Partial<Record<"name" | "color" | "stages", string>> = {};
   const name = validateName(draft.name, areas);
   if (name) errors.name = name;
   const color = validateColor(draft.color);
@@ -156,6 +236,8 @@ export function draftToPayload(draft: AreaDraft): CreateAreaPayload {
     inventoryUnits: draft.hasInventory ? draft.inventoryUnits : [],
     createSharedAccount: draft.createSharedAccount,
     userIds: draft.userIds,
+    // Un área que no recibe producción no tiene etapas.
+    stages: draft.isProductionDestination ? stagesPayload(draft.stages) : [],
   };
 }
 
@@ -177,6 +259,11 @@ export function summaryLines(draft: AreaDraft, userCount: number): string[] {
       ? "Todo el equipo del área ve todos los pedidos del área."
       : "Cada persona sólo ve lo que se le asignó (y lo que está libre)."
   );
+  if (draft.isProductionDestination && draft.stages.length > 0) {
+    lines.push(
+      `Cada tarea pasará por ${draft.stages.map((stage) => `«${stage.name.trim()}»`).join(" → ")} antes de producir.`
+    );
+  }
   lines.push("Tendrá su canal de chat con Recepción.");
   if (draft.createSharedAccount) lines.push("Se creará su cuenta compartida (responsable por defecto de sus tareas).");
   if (userCount > 0) lines.push(`${userCount} persona${userCount === 1 ? "" : "s"} pasará${userCount === 1 ? "" : "n"} a trabajar en ella.`);

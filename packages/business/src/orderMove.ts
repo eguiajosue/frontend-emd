@@ -35,9 +35,10 @@ export interface MoveActor {
 export function areaTasksToMove(order: Order, actor: MoveActor) {
   const all = order.areaTasks ?? [];
   if (all.length === 0) return [];
-  // Una tarea de Bordado en digitalización o pruebas todavía no se puede
-  // empezar (el backend responde 400): no se mueve desde el tablero.
-  const movable = (tasks: typeof all) => tasks.filter((task) => !task.prepStage);
+  // Una tarea que sigue en una etapa previa a producción (en Bordado,
+  // digitalizado o pruebas) todavía no se puede empezar (el backend responde
+  // 400): no se mueve desde el tablero.
+  const movable = (tasks: typeof all) => tasks.filter((task) => !task.stage);
   const mine = all.filter((task) => actor.areas.includes(task.area));
   // Quien trabaja un área sólo mueve la suya, aunque esté bloqueada.
   if (mine.length > 0) return movable(mine);

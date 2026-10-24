@@ -1,4 +1,4 @@
-import type { Area } from "@emd/types";
+import type { Area, AreaStage } from "@emd/types";
 
 /**
  * Catálogo de áreas de trabajo (`GET /areas`, ver backend docs/areas.md).
@@ -17,10 +17,7 @@ import type { Area } from "@emd/types";
  */
 export const DESIGN_AREA = "diseno";
 
-/**
- * Bordado tiene etapas previas a producción (digitalizado → pruebas). Las
- * etapas configurables por área llegan después; mientras, el slug queda fijo.
- */
+/** Slug de Bordado, el área con la que arranca el catálogo de etapas (ya no tiene lógica propia). */
 export const EMBROIDERY_AREA = "bordado";
 
 const defaults = (
@@ -30,6 +27,7 @@ const defaults = (
   color: string,
   sortOrder: number,
   isDesign = false,
+  stages: Area["stages"] = [],
 ): Area => ({
   id: sortOrder / 10,
   slug,
@@ -44,13 +42,20 @@ const defaults = (
   inventoryUnits: [],
   sortOrder,
   active: true,
+  stages,
 });
+
+/** Etapas con las que el backend siembra Bordado (digitalizar y probar antes de producir). */
+const BORDADO_STAGES: Area["stages"] = [
+  { id: 301, key: "digitalizado", name: "Digitalizado", kind: "work" },
+  { id: 302, key: "en_pruebas", name: "En pruebas", kind: "review" },
+];
 
 /** Las seis áreas sembradas por el backend: catálogo inicial y de respaldo. */
 export const DEFAULT_AREAS: readonly Area[] = [
   defaults("taller", "Taller", "Hammer", "#c5d629", 10),
   defaults("dtf", "DTF", "Layers", "#30b7cf", 20),
-  defaults("bordado", "Bordado", "Scissors", "#e24091", 30),
+  defaults("bordado", "Bordado", "Scissors", "#e24091", 30, false, BORDADO_STAGES),
   defaults("diseno", "Diseño", "PenTool", "#6659c0", 40, true),
   defaults("laser", "Láser", "Zap", "#f68a1e", 50),
   defaults("impresiones", "Impresiones", "Printer", "#3583e9", 60),
@@ -128,6 +133,11 @@ export function productionAreaSlugs(): string[] {
 /** Áreas activas con inventario propio. */
 export function inventoryAreaSlugs(): string[] {
   return catalog.filter((a) => a.active && a.hasInventory).map((a) => a.slug);
+}
+
+/** Etapas previas a producción de un área (activas, en orden); vacío si no tiene. */
+export function stagesOf(slug: string | null | undefined): readonly AreaStage[] {
+  return findArea(slug)?.stages ?? [];
 }
 
 /** Si el slug es el área de Diseño (por catálogo o por el slug fijo). */

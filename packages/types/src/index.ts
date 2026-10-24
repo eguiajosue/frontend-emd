@@ -74,6 +74,8 @@ export interface Area {
   inventoryUnits: string[];
   sortOrder: number;
   active: boolean;
+  /** Etapas previas a producción (activas, en orden); vacío = las tareas nacen listas para producir. */
+  stages: AreaStage[];
 }
 
 /** Un área en el panel de administración (`GET /areas/overview`). */
@@ -83,6 +85,18 @@ export interface AreaOverview extends Area {
   /** Pedidos y tareas sin cerrar: mientras haya, el área no se puede desactivar. */
   openOrders: number;
   openTasks: number;
+}
+
+/** Una etapa tal como se captura: sin `id` es nueva; con `id`, una existente (el orden es el de la lista). */
+export interface AreaStageInput {
+  id?: number;
+  name: string;
+  kind: AreaStageKind;
+}
+
+/** Reemplaza las etapas de un área (`PUT /areas/:id/stages`). */
+export interface SetAreaStagesPayload {
+  stages: AreaStageInput[];
 }
 
 /** Alta de un área desde el wizard (`POST /areas`). */
@@ -97,6 +111,8 @@ export interface CreateAreaPayload {
   inventoryUnits: string[];
   createSharedAccount: boolean;
   userIds: number[];
+  /** Etapas previas a producción, en orden (opcional). */
+  stages?: AreaStageInput[];
 }
 
 /** Edición de un área (`PATCH /areas/:id`). El slug no cambia. */
@@ -300,15 +316,25 @@ export interface UploadedFileInput {
 export type AreaTaskStatus = "pendiente" | "en_proceso" | "terminado";
 
 /**
- * Etapa previa a producción de una tarea de Bordado: se digitaliza, se manda a
- * pruebas y sólo con la prueba aprobada pasa a producción (`prepStage` null).
+ * Tipo de una etapa previa a producción: `work` es un paso de trabajo y
+ * `review` una revisión que se aprueba (sigue) o se rechaza (regresa a la
+ * etapa anterior). En Bordado: Digitalizado (work) → En pruebas (review).
  */
-export type EmbroideryPrepStage = "digitalizado" | "en_pruebas";
+export type AreaStageKind = "work" | "review";
 
-/** Resultado de una prueba de bordado; una prueba en curso no tiene resultado. */
+/** Etapa previa a producción de un área; una tarea la recorre antes de producir. */
+export interface AreaStage {
+  id: number;
+  /** Clave estable dentro del área ("digitalizado"); no cambia al renombrar. */
+  key: string;
+  name: string;
+  kind: AreaStageKind;
+}
+
+/** Resultado de una revisión; una revisión en curso no tiene resultado. */
 export type SampleTestResult = "aprobada" | "rechazada";
 
-/** Ronda del registro de pruebas de una tarea de Bordado. */
+/** Ronda del registro de revisiones de una tarea (en Bordado, las pruebas). */
 export interface AreaTaskSampleTest {
   id: number;
   round: number;
@@ -401,8 +427,8 @@ export interface OrderAreaTask {
   /** Slug de un área de producción del catálogo (nunca Diseño, ver `Area`). */
   area: string;
   status: AreaTaskStatus;
-  /** Sólo Bordado: etapa previa a producción; null/ausente = ya puede producir. */
-  prepStage?: EmbroideryPrepStage | null;
+  /** Etapa previa a producción en la que está; null/ausente = ya puede producir. */
+  stage?: AreaStage | null;
   assignedUserId?: number | null;
   createdAt: string;
   startedAt?: string | null;
@@ -1199,9 +1225,9 @@ export interface MyTask {
   taskId: number | null;
   /** Estado de la tarea de área, o nombre del estado de diseño del pedido. */
   status: string;
-  /** Sólo Bordado: etapa previa a producción (digitalizado | en_pruebas); null/ausente = ya puede producir. */
-  prepStage?: EmbroideryPrepStage | null;
-  /** Sólo Bordado: la última ronda de pruebas (para mostrar por qué se rechazó). */
+  /** Etapa previa a producción en la que está; null/ausente = ya puede producir. */
+  stage?: AreaStage | null;
+  /** La última ronda de revisión (para mostrar por qué se rechazó). */
   lastTest?: {
     round: number;
     result: SampleTestResult | null;
