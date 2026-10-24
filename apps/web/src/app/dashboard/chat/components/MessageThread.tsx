@@ -63,6 +63,10 @@ const CHAT_ATTACHMENT_ACCEPT =
 // escribir (ver ChatService.handleTyping en el backend).
 const TYPING_STOP_DELAY_MS = 3000;
 
+// Mensajes seguidos de la misma persona con menos de esto entre uno y otro
+// se muestran como un solo bloque.
+const GROUP_GAP_MS = 5 * 60 * 1000;
+
 /** Lee un File a `{ data, filename, mimeType }` (base64 sin el prefijo data:...;base64,). */
 function readFileAsChatAttachment(file: File): Promise<ChatAttachmentInput> {
   return new Promise((resolve, reject) => {
@@ -334,14 +338,27 @@ export function MessageThread({
   // Precalcula el separador de día por mensaje una sola vez (antes se hacía
   // con una variable mutable `lastDay` durante el .map, lo cual no es
   // compatible con el acceso por índice del virtualizador).
+  //
+  // También marca los grupos: mensajes seguidos de la misma persona, el mismo
+  // día y con menos de GROUP_GAP_MS entre uno y otro se apilan juntos (como en
+  // WhatsApp o iMessage), con el nombre sólo en el primero y el avatar sólo
+  // en el último.
   const messagesWithDay = useMemo(() => {
-    let lastDay = "";
-    return messages.map((message) => {
-      const day = formatDay(message.createdAt);
-      const showDay = day !== lastDay;
-      lastDay = day;
-      return { message, day, showDay };
-    });
+    const days = messages.map((message) => formatDay(message.createdAt));
+    const sameGroup = (a: number, b: number) =>
+      days[a] === days[b] &&
+      messages[a].senderId === messages[b].senderId &&
+      Math.abs(
+        new Date(messages[b].createdAt).getTime() -
+          new Date(messages[a].createdAt).getTime()
+      ) < GROUP_GAP_MS;
+    return messages.map((message, i) => ({
+      message,
+      day: days[i],
+      showDay: i === 0 || days[i] !== days[i - 1],
+      firstOfGroup: i === 0 || !sameGroup(i - 1, i),
+      lastOfGroup: i === messages.length - 1 || !sameGroup(i, i + 1),
+    }));
   }, [messages]);
 
   const virtualizer = useVirtualizer({
@@ -541,8 +558,16 @@ export function MessageThread({
     setAttachedFile(null);
   };
 
-  const renderBubble = (message: ChatMessage, day: string, showDay: boolean) => {
+  const renderBubble = ({
+    message,
+    day,
+    showDay,
+    firstOfGroup,
+    lastOfGroup,
+  }: (typeof messagesWithDay)[number]) => {
     const mine = message.senderId === currentUserId;
+    // En un mensaje directo el nombre del otro ya está en el encabezado.
+    const showName = !mine && firstOfGroup && conversation.type === "area";
     const author = message.sender ?? {
       id: message.senderId,
       username: message.senderUsername ?? "",
@@ -559,23 +584,45 @@ export function MessageThread({
             <Separator className="flex-1 bg-border/60" />
           </div>
         ) : null}
-        <div className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start")}>
+        {/* Poco aire dentro de un grupo, más entre grupos: así se lee quién
+            habló sin repetir avatar y nombre en cada burbuja. */}
+        <div
+          className={cn(
+            "flex items-end gap-2",
+            mine ? "justify-end" : "justify-start",
+            showDay ? "" : firstOfGroup ? "pt-3" : "pt-0.5"
+          )}
+        >
           {!mine ? (
-            <UserAvatar seed={author.username} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-semibold">
-              {chatInitials(author)}
-            </UserAvatar>
+            lastOfGroup ? (
+              <UserAvatar seed={author.username} className="h-7 w-7 shrink-0" fallbackClassName="text-[10px] font-semibold">
+                {chatInitials(author)}
+              </UserAvatar>
+            ) : (
+              <span aria-hidden className="w-7 shrink-0" />
+            )
           ) : null}
           <div
             className={cn(
-              "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm transition-shadow sm:max-w-[75%]",
+              "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm transition-shadow sm:max-w-[75%]",
               // Propias en tinta (negro en claro / blanco en oscuro), ajenas en
               // gris suave: contraste alto en los dos temas sin bloques magenta.
+              // La esquina de la "colita" se marca sólo en la última burbuja
+              // del grupo; las del medio quedan rectas de ese lado.
               mine
-                ? "rounded-br-md bg-ink text-ink-foreground"
-                : "rounded-bl-md bg-muted text-foreground"
+                ? cn(
+                    "bg-ink text-ink-foreground",
+                    !firstOfGroup && "rounded-tr-md",
+                    lastOfGroup ? "rounded-br-sm" : "rounded-br-md"
+                  )
+                : cn(
+                    "bg-muted text-foreground",
+                    !firstOfGroup && "rounded-tl-md",
+                    lastOfGroup ? "rounded-bl-sm" : "rounded-bl-md"
+                  )
             )}
           >
-            {!mine ? (
+            {showName ? (
               <p className="pb-0.5 text-xs font-bold text-primary">{chatDisplayName(author)}</p>
             ) : null}
             {/* message.body se renderiza como children de React (auto-escapado),
@@ -718,7 +765,7 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <div ref={scrollRef} data-no-pull-refresh className="flex-1 space-y-2 overflow-y-auto overscroll-contain p-4 sm:px-5">
+      <div ref={scrollRef} data-no-pull-refresh className="flex-1 overflow-y-auto overscroll-contain p-4 sm:px-5">
         {isLoading && messages.length === 0 ? (
           <MessageThreadSkeleton />
         ) : messages.length === 0 ? (
@@ -728,7 +775,8 @@ export function MessageThread({
         ) : shouldVirtualize ? (
           <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
             {virtualizer.getVirtualItems().map((virtualRow) => {
-              const { message, day, showDay } = messagesWithDay[virtualRow.index];
+              const item = messagesWithDay[virtualRow.index];
+              const { message } = item;
               // La virtualización monta/desmonta ítems al hacer scroll, así
               // que no puede depender de AnimatePresence (que animaría cada
               // vez que un mensaje viejo vuelve a montarse). En su lugar se
@@ -760,18 +808,18 @@ export function MessageThread({
                       : { type: "spring", bounce: 0.25, duration: 0.35 }
                   }
                 >
-                  {renderBubble(message, day, showDay)}
+                  {renderBubble(item)}
                 </motion.div>
               );
             })}
           </div>
         ) : (
           <AnimatePresence initial={false}>
-            {messagesWithDay.map(({ message, day, showDay }) => (
+            {messagesWithDay.map((item) => (
               <motion.div
-                key={message.id}
+                key={item.message.id}
                 initial={
-                  !newMessageIds.has(message.id)
+                  !newMessageIds.has(item.message.id)
                     ? false
                     : reduced
                       ? { opacity: 0 }
@@ -784,7 +832,7 @@ export function MessageThread({
                     : { type: "spring", bounce: 0.25, duration: 0.35 }
                 }
               >
-                {renderBubble(message, day, showDay)}
+                {renderBubble(item)}
               </motion.div>
             ))}
           </AnimatePresence>
