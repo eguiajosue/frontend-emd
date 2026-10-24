@@ -230,11 +230,11 @@ const atrasados = [
 const coordinacion = () => ({
   generatedAt: new Date().toISOString(),
   load: [
-    { area: "taller", pendiente: 3, enProceso: 1, atrasadas: 0, pronto: 1, sinPersona: 2, people: [{ userId: 31, name: "Marco", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }] },
-    { area: "dtf", pendiente: 5, enProceso: 2, atrasadas: 1, pronto: 2, sinPersona: 1, people: [{ userId: 32, name: "Sofía", pendiente: 4, enProceso: 2, atrasadas: 1, pronto: 2 }] },
-    { area: "bordado", pendiente: 8, enProceso: 3, atrasadas: 2, pronto: 3, sinPersona: 4, people: [{ userId: 33, name: "Luis", pendiente: 4, enProceso: 2, atrasadas: 2, pronto: 1 }, { userId: 34, name: "Carmen", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }] },
-    { area: "laser", pendiente: 0, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 0, people: [] },
-    { area: "impresiones", pendiente: 2, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 2, people: [] },
+    { area: "taller", pendiente: 3, enProceso: 1, atrasadas: 0, pronto: 1, sinPersona: 2, people: [{ userId: 31, name: "Marco", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }], capacity: null, loadPct: null, overloaded: false, queueHours: null, machines: [] },
+    { area: "dtf", pendiente: 5, enProceso: 2, atrasadas: 1, pronto: 2, sinPersona: 1, people: [{ userId: 32, name: "Sofía", pendiente: 4, enProceso: 2, atrasadas: 1, pronto: 2 }], capacity: null, loadPct: null, overloaded: false, queueHours: null, machines: [] },
+    { area: "bordado", pendiente: 8, enProceso: 3, atrasadas: 2, pronto: 3, sinPersona: 4, people: [{ userId: 33, name: "Luis", pendiente: 4, enProceso: 2, atrasadas: 2, pronto: 1 }, { userId: 34, name: "Carmen", pendiente: 1, enProceso: 1, atrasadas: 0, pronto: 1 }], capacity: 8, loadPct: 138, overloaded: true, queueHours: 22, machines: [{ id: 1, name: "Bordadora 1", tasks: 7 }, { id: 2, name: "Bordadora 2", tasks: 4 }] },
+    { area: "laser", pendiente: 0, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 0, people: [], capacity: null, loadPct: null, overloaded: false, queueHours: null, machines: [] },
+    { area: "impresiones", pendiente: 2, enProceso: 0, atrasadas: 0, pronto: 0, sinPersona: 2, people: [], capacity: null, loadPct: null, overloaded: false, queueHours: null, machines: [] },
   ],
   stageTimes: {
     windowDays: 30,

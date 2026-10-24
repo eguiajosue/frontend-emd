@@ -17,6 +17,9 @@ test("Coordinación: atrasados con motivo, carga por área y tiempos", async ({ 
   await expect(page.getByRole("textbox", { name: "Detalle del atraso del pedido #102" })).toBeVisible();
 
   await expect(page.getByRole("list", { name: "Carga por persona en Bordado" })).toContainText("Luis");
+  // Capacidad, horas en cola y carga por máquina (parámetros del área).
+  await expect(page.getByText("Sobrecargada (138% de su capacidad)")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Carga por máquina en Bordado" })).toContainText("Bordadora 1");
   await expect(page.getByRole("heading", { name: "Tiempos por etapa" })).toBeVisible();
   if (shots) await page.screenshot({ path: `${shots}/coordinacion.png`, fullPage: true });
   if (shots) {

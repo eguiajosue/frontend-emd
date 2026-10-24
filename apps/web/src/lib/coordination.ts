@@ -22,6 +22,15 @@ interface Counts {
 export interface AreaLoad extends Counts {
   area: string;
   sinPersona: number;
+  /** Tareas abiertas que el área puede llevar a la vez (null = sin tope). */
+  capacity: number | null;
+  /** Abiertas / capacidad en %, o null sin capacidad. */
+  loadPct: number | null;
+  overloaded: boolean;
+  /** Horas de trabajo en cola (abiertas × horas típicas), o null sin dato. */
+  queueHours: number | null;
+  /** Carga por máquina (tareas abiertas asignadas). */
+  machines: { id: number; name: string; tasks: number }[];
   people: (Counts & { userId: number; name: string })[];
 }
 export interface StageSummary {

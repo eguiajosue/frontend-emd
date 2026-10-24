@@ -26,6 +26,7 @@ import {
 import { SimpleTooltip } from "@/components/ui/tooltip";
 import { AreaSupplySummary } from "@/components/orders/AreaSupplySummary";
 import { StageControls, stageChip } from "@/components/orders/StageControls";
+import { AreaTaskExtras } from "@/components/orders/AreaTaskExtras";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
 import { useAreaTasks } from "@/hooks/useAreaTasks";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -452,6 +453,8 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
                       canAct={editable || isManager}
                     />
                   )}
+
+                  <AreaTaskExtras orderId={orderId} task={task} canEdit={editable || isManager} />
 
                   <AreaSupplySummary supply={task.supply} clamp={false} className="order-last basis-full" />
 

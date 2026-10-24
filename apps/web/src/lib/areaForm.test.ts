@@ -7,6 +7,16 @@ import {
   addSuggestion,
   deactivationBlocker,
   draftToPayload,
+  fieldDraftsOf,
+  fieldsChanged,
+  fieldsPayload,
+  machineDraftsOf,
+  machinesChanged,
+  machinesPayload,
+  validateFields,
+  validateMachines,
+  validateWhole,
+  wholeOrNull,
   moveStage,
   removeSuggestion,
   slugPreview,
@@ -19,6 +29,7 @@ import {
   validateStages,
   validateStep,
   wizardSteps,
+  type FieldDraft,
   type StageDraft,
 } from "./areaForm";
 
@@ -85,6 +96,8 @@ describe("wizardSteps", () => {
       "identidad",
       "comportamiento",
       "etapas",
+      "capacidad",
+      "datos",
       "inventario",
       "equipo",
       "resumen",
@@ -93,6 +106,8 @@ describe("wizardSteps", () => {
       "identidad",
       "comportamiento",
       "etapas",
+      "capacidad",
+      "datos",
       "equipo",
       "resumen",
     ]);
@@ -246,5 +261,99 @@ describe("deactivationBlocker", () => {
     expect(deactivationBlocker(overview("dtf", { openOrders: 1, openTasks: 0 }))).toBe("Tiene 1 pedido abierto.");
     expect(deactivationBlocker(overview("dtf", { openOrders: 2, openTasks: 1 }))).toBe("Tiene 2 pedidos abiertos y 1 tarea sin terminar.");
     expect(deactivationBlocker(overview("diseno"))).toMatch(/no se desactiva/);
+  });
+});
+
+describe("capacidad, máquinas y datos propios", () => {
+  const field = (over: Partial<FieldDraft> = {}): FieldDraft => ({
+    label: "Material",
+    type: "text",
+    required: false,
+    options: [],
+    unit: "",
+    ...over,
+  });
+
+  it("la capacidad y las horas son enteros positivos, o vacío", () => {
+    expect(validateWhole("", 500, "La capacidad")).toBeUndefined();
+    expect(validateWhole(" 6 ", 500, "La capacidad")).toBeUndefined();
+    expect(validateWhole("0", 500, "La capacidad")).toMatch(/entre 1 y 500/);
+    expect(validateWhole("2.5", 500, "La capacidad")).toBeDefined();
+    expect(validateWhole("501", 500, "La capacidad")).toBeDefined();
+    expect(validateWhole("abc", 720, "Las horas")).toMatch(/Las horas/);
+    expect(wholeOrNull("")).toBeNull();
+    expect(wholeOrNull(" 6 ")).toBe(6);
+  });
+
+  it("valida la lista de máquinas", () => {
+    expect(validateMachines([])).toBeUndefined();
+    expect(validateMachines([{ name: "Plotter 1" }, { name: "Plotter 2" }])).toBeUndefined();
+    expect(validateMachines([{ name: "Plotter" }, { name: "plotter" }])).toMatch(/repetido/);
+    expect(validateMachines([{ name: "a" }])).toMatch(/entre 2 y 40/);
+    expect(validateMachines(Array.from({ length: 13 }, (_, i) => ({ name: `Máquina ${i}` })))).toMatch(/hasta 12/);
+  });
+
+  it("valida la lista de datos propios", () => {
+    expect(validateFields([])).toBeUndefined();
+    expect(validateFields([field({ type: "select", options: ["PLA", "ABS"] }), field({ label: "Alto", type: "number" })])).toBeUndefined();
+    expect(validateFields([field({ type: "select", options: ["PLA"] })])).toMatch(/entre 2 y 10 opciones/);
+    expect(validateFields([field({ type: "select", options: ["PLA", "pla"] })])).toMatch(/distintas/);
+    expect(validateFields([field(), field({ label: "material" })])).toMatch(/repetido/);
+    expect(validateFields(Array.from({ length: 11 }, (_, i) => field({ label: `Dato ${i}` })))).toMatch(/hasta 10/);
+  });
+
+  it("el payload de datos sólo manda lo que aplica al tipo", () => {
+    expect(
+      fieldsPayload([
+        field({ id: 3, label: " Material ", type: "select", options: [" PLA ", "ABS"], required: true, unit: "x" }),
+        field({ label: "Alto", type: "number", unit: " cm ", options: ["x"] }),
+        field({ label: "Soporte", type: "boolean", required: true }),
+        field({ label: "Notas", unit: "x" }),
+      ])
+    ).toEqual([
+      { id: 3, label: "Material", type: "select", required: true, options: ["PLA", "ABS"] },
+      { label: "Alto", type: "number", required: false, unit: "cm" },
+      { label: "Soporte", type: "boolean", required: false },
+      { label: "Notas", type: "text", required: false },
+    ]);
+    expect(machinesPayload([{ id: 1, name: " Plotter " }, { name: "Otro" }])).toEqual([{ id: 1, name: "Plotter" }, { name: "Otro" }]);
+  });
+
+  it("detecta cambios respecto a lo que tiene el área", () => {
+    const machines = [{ id: 1, name: "Plotter 1" }];
+    expect(machinesChanged(machines, machineDraftsOf(machines))).toBe(false);
+    expect(machinesChanged(machines, [{ id: 1, name: "Plotter 9" }])).toBe(true);
+    const fields = [{ id: 1, key: "alto", label: "Alto", type: "number" as const, required: false, options: [], unit: "cm" }];
+    expect(fieldsChanged(fields, fieldDraftsOf(fields))).toBe(false);
+    expect(fieldsChanged(fields, [{ ...fieldDraftsOf(fields)[0], required: true }])).toBe(true);
+  });
+
+  it("el payload del alta manda capacidad, máquinas y datos sólo si el área recibe producción", () => {
+    const draft = {
+      ...EMPTY_DRAFT,
+      name: "Nueva",
+      capacity: "6",
+      turnaroundHours: "",
+      machines: [{ name: "M1" }],
+      fields: [field({ label: "Alto", type: "number" })],
+    };
+    expect(draftToPayload(draft)).toMatchObject({
+      capacity: 6,
+      turnaroundHours: null,
+      machines: [{ name: "M1" }],
+      fields: [{ label: "Alto", type: "number", required: false }],
+    });
+    expect(draftToPayload({ ...draft, isProductionDestination: false })).toMatchObject({
+      capacity: null,
+      machines: [],
+      fields: [],
+    });
+  });
+
+  it("los pasos nuevos validan sus campos", () => {
+    expect(validateStep("capacidad", { ...EMPTY_DRAFT, capacity: "0" }, DEFAULT_AREAS)).toHaveProperty("capacity");
+    expect(validateStep("capacidad", { ...EMPTY_DRAFT, machines: [{ name: "a" }] }, DEFAULT_AREAS)).toHaveProperty("machines");
+    expect(validateStep("capacidad", EMPTY_DRAFT, DEFAULT_AREAS)).toEqual({});
+    expect(validateStep("datos", { ...EMPTY_DRAFT, fields: [field({ type: "select" })] }, DEFAULT_AREAS)).toHaveProperty("fields");
   });
 });

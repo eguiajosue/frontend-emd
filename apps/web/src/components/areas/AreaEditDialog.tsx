@@ -18,9 +18,32 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AreaPreview, ColorPicker, IconPicker, SuggestionInput } from "@/components/areas/AreaPickers";
 import { StageEditor } from "@/components/areas/StageEditor";
+import { CapacityFields, FieldEditor, MachineEditor } from "@/components/areas/AreaConfigEditors";
 import { useAreaCatalog } from "@/hooks/useAreas";
 import { useAreaAdminMutations } from "@/hooks/useAreaAdmin";
-import { stageDraftsOf, stagesChanged, stagesPayload, validateColor, validateName, validateStages, type StageDraft } from "@/lib/areaForm";
+import {
+  fieldDraftsOf,
+  fieldsChanged,
+  fieldsPayload,
+  machineDraftsOf,
+  machinesChanged,
+  machinesPayload,
+  stageDraftsOf,
+  stagesChanged,
+  stagesPayload,
+  validateColor,
+  validateFields,
+  validateMachines,
+  validateName,
+  validateStages,
+  validateWhole,
+  wholeOrNull,
+  MAX_CAPACITY,
+  MAX_TURNAROUND_HOURS,
+  type FieldDraft,
+  type MachineDraft,
+  type StageDraft,
+} from "@/lib/areaForm";
 
 interface EditDraft {
   name: string;
@@ -31,6 +54,9 @@ interface EditDraft {
   generalViewEnabled: boolean;
   inventoryCategories: string[];
   inventoryUnits: string[];
+  /** Como se teclean ("" = sin dato). */
+  capacity: string;
+  turnaroundHours: string;
 }
 
 const draftOf = (area: AreaOverview): EditDraft => ({
@@ -42,6 +68,8 @@ const draftOf = (area: AreaOverview): EditDraft => ({
   generalViewEnabled: area.generalViewEnabled,
   inventoryCategories: area.inventoryCategories,
   inventoryUnits: area.inventoryUnits,
+  capacity: area.capacity === null ? "" : String(area.capacity),
+  turnaroundHours: area.turnaroundHours === null ? "" : String(area.turnaroundHours),
 });
 
 /** Sólo lo que cambió: el backend rechaza (409) tocar lo que tiene trabajo abierto, aunque no cambie. */
@@ -50,7 +78,9 @@ export function changesOf(area: AreaOverview, draft: EditDraft): UpdateAreaPaylo
   const changes: Record<string, unknown> = {};
   for (const key of Object.keys(before) as (keyof EditDraft)[]) {
     const next = key === "name" ? draft.name.trim() : key === "color" ? draft.color.trim().toLowerCase() : draft[key];
-    if (JSON.stringify(next) !== JSON.stringify(before[key])) changes[key] = next;
+    if (JSON.stringify(next) !== JSON.stringify(before[key])) {
+      changes[key] = key === "capacity" || key === "turnaroundHours" ? wholeOrNull(next as string) : next;
+    }
   }
   return changes as UpdateAreaPayload;
 }
@@ -86,14 +116,18 @@ function SwitchRow({
 /** Edición de un área existente: nombre, ícono, color, comportamiento y sugerencias. El slug no cambia. */
 export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; onClose: () => void }) {
   const catalog = useAreaCatalog();
-  const { update, setStages, isUpdating } = useAreaAdminMutations();
+  const { update, setStages, setMachines, setFields, isUpdating } = useAreaAdminMutations();
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [stages, setStagesDraft] = useState<StageDraft[]>([]);
+  const [machines, setMachinesDraft] = useState<MachineDraft[]>([]);
+  const [fields, setFieldsDraft] = useState<FieldDraft[]>([]);
   const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     setDraft(area ? draftOf(area) : null);
     setStagesDraft(area ? stageDraftsOf(area.stages) : []);
+    setMachinesDraft(area ? machineDraftsOf(area.machines) : []);
+    setFieldsDraft(area ? fieldDraftsOf(area.fields) : []);
     setTouched(false);
   }, [area]);
 
@@ -106,15 +140,25 @@ export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; o
   const changes = changesOf(area, draft);
   const stagesError = draft.isProductionDestination ? validateStages(stages) : undefined;
   const stagesDirty = !area.isDesign && stagesChanged(area.stages, stages);
-  const hasChanges = Object.keys(changes).length > 0 || stagesDirty;
+  const production = !area.isDesign && draft.isProductionDestination;
+  const capacityError = validateWhole(draft.capacity, MAX_CAPACITY, "La capacidad");
+  const hoursError = validateWhole(draft.turnaroundHours, MAX_TURNAROUND_HOURS, "Las horas");
+  const configError = production
+    ? (validateMachines(machines) ?? validateFields(fields) ?? capacityError ?? hoursError)
+    : undefined;
+  const machinesDirty = production && machinesChanged(area.machines, machines);
+  const fieldsDirty = production && fieldsChanged(area.fields, fields);
+  const hasChanges = Object.keys(changes).length > 0 || stagesDirty || machinesDirty || fieldsDirty;
   const hasOpenWork = area.openOrders > 0 || area.openTasks > 0;
 
   const handleSave = async () => {
     setTouched(true);
-    if (nameError || colorError || stagesError || !hasChanges) return;
+    if (nameError || colorError || stagesError || configError || !hasChanges) return;
     try {
       if (Object.keys(changes).length > 0) await update(area.id, changes);
       if (stagesDirty) await setStages(area.id, { stages: stagesPayload(stages) });
+      if (machinesDirty) await setMachines(area.id, { machines: machinesPayload(machines) });
+      if (fieldsDirty) await setFields(area.id, { fields: fieldsPayload(fields) });
       toast.success("Área actualizada");
       onClose();
     } catch {
@@ -187,6 +231,37 @@ export function AreaEditDialog({ area, onClose }: { area: AreaOverview | null; o
                 <StageEditor value={stages} onChange={setStagesDraft} showErrors={touched} disabled={isUpdating} />
               </div>
             </FormField>
+          )}
+          {production && (
+            <>
+              <FormField label="Capacidad y tiempos">
+                <CapacityFields
+                  capacity={draft.capacity}
+                  turnaroundHours={draft.turnaroundHours}
+                  onCapacity={(value) => set("capacity", value)}
+                  onTurnaroundHours={(value) => set("turnaroundHours", value)}
+                  showErrors={touched}
+                  disabled={isUpdating}
+                />
+              </FormField>
+              <FormField label="Máquinas o equipos">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    No se puede quitar una máquina mientras tenga tareas abiertas asignadas.
+                  </p>
+                  <MachineEditor value={machines} onChange={setMachinesDraft} showErrors={touched} disabled={isUpdating} />
+                </div>
+              </FormField>
+              <FormField label="Datos del pedido">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Se capturan en cada tarea del área. Quitar un dato lo oculta; lo ya capturado se conserva. El tipo de un
+                    dato existente no cambia.
+                  </p>
+                  <FieldEditor value={fields} onChange={setFieldsDraft} showErrors={touched} disabled={isUpdating} />
+                </div>
+              </FormField>
+            </>
           )}
           {draft.hasInventory && (
             <>

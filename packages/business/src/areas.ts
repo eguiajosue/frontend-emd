@@ -43,6 +43,10 @@ const defaults = (
   sortOrder,
   active: true,
   stages,
+  capacity: null,
+  turnaroundHours: null,
+  machines: [],
+  fields: [],
 });
 
 /** Etapas con las que el backend siembra Bordado (digitalizar y probar antes de producir). */

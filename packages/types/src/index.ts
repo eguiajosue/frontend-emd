@@ -55,6 +55,31 @@ export interface UserAreaRef {
  * Impresiones y las que se den de alta. Separada de los roles: el rol dice
  * qué puede hacer alguien, el área dónde trabaja.
  */
+/** Máquina o equipo de un área; una tarea puede asignarse a una. */
+export interface AreaMachine {
+  id: number;
+  name: string;
+}
+
+export type AreaFieldType = "text" | "number" | "select" | "boolean";
+
+/** Dato propio de un área que se captura en cada una de sus tareas. */
+export interface AreaField {
+  id: number;
+  /** Clave estable: es la que usa `OrderAreaTask.fieldValues`. */
+  key: string;
+  label: string;
+  type: AreaFieldType;
+  required: boolean;
+  /** Sólo `select`. */
+  options: string[];
+  /** Sólo `number` ("cm"). */
+  unit: string | null;
+}
+
+/** Valores capturados de los datos propios de una tarea, por clave. */
+export type AreaFieldValues = Record<string, string | number | boolean>;
+
 export interface Area {
   id: number;
   /** Identificador estable: es lo que viaja en `Order.area`, `OrderAreaTask.area`, etc. */
@@ -76,6 +101,12 @@ export interface Area {
   active: boolean;
   /** Etapas previas a producción (activas, en orden); vacío = las tareas nacen listas para producir. */
   stages: AreaStage[];
+  /** Tareas abiertas que el área puede llevar a la vez (null = sin tope). */
+  capacity: number | null;
+  /** Horas típicas de producción por tarea (null = sin dato). */
+  turnaroundHours: number | null;
+  machines: AreaMachine[];
+  fields: AreaField[];
 }
 
 /** Un área en el panel de administración (`GET /areas/overview`). */
@@ -99,6 +130,22 @@ export interface SetAreaStagesPayload {
   stages: AreaStageInput[];
 }
 
+/** Una máquina como se captura: sin `id` es nueva. */
+export interface AreaMachineInput {
+  id?: number;
+  name: string;
+}
+
+/** Un dato propio como se captura: sin `id` es nuevo; el tipo no cambia después. */
+export interface AreaFieldInput {
+  id?: number;
+  label: string;
+  type: AreaFieldType;
+  required?: boolean;
+  options?: string[];
+  unit?: string;
+}
+
 /** Alta de un área desde el wizard (`POST /areas`). */
 export interface CreateAreaPayload {
   name: string;
@@ -113,6 +160,20 @@ export interface CreateAreaPayload {
   userIds: number[];
   /** Etapas previas a producción, en orden (opcional). */
   stages?: AreaStageInput[];
+  capacity?: number | null;
+  turnaroundHours?: number | null;
+  machines?: AreaMachineInput[];
+  fields?: AreaFieldInput[];
+}
+
+/** Reemplaza las máquinas de un área (`PUT /areas/:id/machines`). */
+export interface SetAreaMachinesPayload {
+  machines: AreaMachineInput[];
+}
+
+/** Reemplaza los datos propios de un área (`PUT /areas/:id/fields`). */
+export interface SetAreaFieldsPayload {
+  fields: AreaFieldInput[];
 }
 
 /** Edición de un área (`PATCH /areas/:id`). El slug no cambia. */
@@ -128,6 +189,8 @@ export type UpdateAreaPayload = Partial<
     | "inventoryCategories"
     | "inventoryUnits"
     | "active"
+    | "capacity"
+    | "turnaroundHours"
   >
 >;
 
@@ -429,6 +492,10 @@ export interface OrderAreaTask {
   status: AreaTaskStatus;
   /** Etapa previa a producción en la que está; null/ausente = ya puede producir. */
   stage?: AreaStage | null;
+  /** Máquina del área asignada; null/ausente = sin asignar. */
+  machine?: AreaMachine | null;
+  /** Datos propios del área capturados en la tarea. */
+  fieldValues?: AreaFieldValues | null;
   assignedUserId?: number | null;
   createdAt: string;
   startedAt?: string | null;
