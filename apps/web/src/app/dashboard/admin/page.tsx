@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
-import { staggerContainerVariants, staggerItemVariants } from "@/lib/motion";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -93,10 +92,10 @@ function OnTimePill({ pct }: { pct: number | null }) {
     pct == null
       ? "bg-muted text-muted-foreground"
       : pct >= 80
-      ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300"
+      ? "bg-success-soft text-success"
       : pct >= 50
-      ? "bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
-      : "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300";
+      ? "bg-warning-soft text-warning"
+      : "bg-destructive/10 text-destructive";
   return (
     <span
       className={cn("shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums", tone)}
@@ -397,7 +396,7 @@ const AdminDashboardPage = () => {
           isStagnant ? (
             <Badge
               variant="muted"
-              className="bg-red-500/10 font-semibold tabular-nums text-red-700 dark:bg-red-400/10 dark:text-red-300"
+              className="bg-destructive/10 font-semibold tabular-nums text-destructive"
             >
               <AlertTriangle className="h-3 w-3" aria-hidden />
               {formatDuration(row.original.timeInStatusMs)}
@@ -431,7 +430,7 @@ const AdminDashboardPage = () => {
       id: "timeInStatus",
       header: "Tiempo estancado",
       cell: ({ row }) => (
-        <span className="font-semibold tabular-nums text-red-700 dark:text-red-400">
+        <span className="font-semibold tabular-nums text-destructive">
           {formatDuration(row.original.timeInStatusMs)}
         </span>
       ),
@@ -493,16 +492,16 @@ const AdminDashboardPage = () => {
         <>
           {/* Banner del score global: el número más importante del panel,
               dicho en una frase, con el atajo a Rendimiento a la derecha. */}
-          <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
-            <div className="flex min-w-0 flex-1 items-center gap-4">
+          <div className="surface-brand flex flex-col gap-4 p-4 shadow-soft-md sm:flex-row sm:items-center sm:p-5">
+            <div className="relative flex min-w-0 flex-1 items-center gap-4">
               <span
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-primary-foreground"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-gradient text-white shadow-soft"
                 aria-hidden
               >
                 <Gauge className="h-5 w-5" />
               </span>
-              <p className="min-w-0 text-sm text-muted-foreground sm:text-[0.95rem]">
-                <span className="font-semibold text-foreground">
+              <p className="min-w-0 text-sm text-white/75 sm:text-[0.95rem]">
+                <span className="font-semibold text-white">
                   {overallScore.onTimePct != null
                     ? `${overallScore.onTimePct}% de los pedidos activos va a tiempo.`
                     : "Todavía no hay pedidos activos para medir."}
@@ -513,7 +512,7 @@ const AdminDashboardPage = () => {
                   <>
                     {" "}
                     ·{" "}
-                    <span className="font-medium text-red-600 dark:text-red-400">
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 font-medium text-white">
                       {overallScore.totalStagnant} estancado
                       {overallScore.totalStagnant === 1 ? "" : "s"}
                     </span>
@@ -522,13 +521,13 @@ const AdminDashboardPage = () => {
                 .
               </p>
             </div>
-            <Button variant="secondary" className="shrink-0 self-start sm:self-auto" asChild>
+            <Button variant="secondary" className="relative shrink-0 self-start sm:self-auto" asChild>
               <Link href="/dashboard/admin/rendimiento">
                 <TrendingUp aria-hidden />
                 Rendimiento de empleados y áreas
               </Link>
             </Button>
-          </Card>
+          </div>
 
           {/* Una tarjeta "carpeta" por etapa + la de vencimientos próximos:
               ícono en círculo gris, número y etiqueta, y la puntualidad de la
@@ -537,20 +536,15 @@ const AdminDashboardPage = () => {
             <h2 id="rendimiento-etapas" className="text-section-title">
               Rendimiento por área/etapa
             </h2>
-            <motion.div
-              className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-              variants={staggerContainerVariants}
-              initial="hidden"
-              animate="show"
-            >
+            <Stagger className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {performanceByStatus.map((p) => {
                 const Icon = STAGE_ICONS[p.statusId] ?? ListChecks;
                 return (
-                  <motion.div key={p.statusId} variants={staggerItemVariants} className="min-w-0">
+                  <StaggerItem key={p.statusId} className="min-w-0">
                     <Card className="flex h-full min-w-0 flex-col gap-4 p-5">
                       <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted" aria-hidden>
-                          <Icon className="h-5 w-5 text-muted-foreground" />
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-navy-50 text-navy-700 dark:bg-secondary dark:text-primary" aria-hidden>
+                          <Icon className="h-5 w-5" />
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="font-heading text-lg font-semibold leading-tight tabular-nums">
@@ -573,7 +567,7 @@ const AdminDashboardPage = () => {
                           <span
                             className={cn(
                               "font-medium tabular-nums",
-                              p.stagnantCount > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
+                              p.stagnantCount > 0 ? "text-destructive" : "text-foreground"
                             )}
                           >
                             {p.stagnantCount}
@@ -581,14 +575,14 @@ const AdminDashboardPage = () => {
                         </span>
                       </div>
                     </Card>
-                  </motion.div>
+                  </StaggerItem>
                 );
               })}
-              <motion.div variants={staggerItemVariants} className="min-w-0">
+              <StaggerItem className="min-w-0">
                 <Card className="flex h-full min-w-0 flex-col gap-4 p-5">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-muted" aria-hidden>
-                      <AlarmClock className="h-5 w-5 text-muted-foreground" />
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-magenta-soft text-magenta-ink" aria-hidden>
+                      <AlarmClock className="h-5 w-5" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-heading text-lg font-semibold leading-tight tabular-nums">
@@ -601,8 +595,8 @@ const AdminDashboardPage = () => {
                     Entregas de las próximas 24 horas que todavía no vencieron.
                   </p>
                 </Card>
-              </motion.div>
-            </motion.div>
+              </StaggerItem>
+            </Stagger>
           </section>
 
           {/* `grid-cols-1` explícito: sin él, por debajo de `lg:` la única
@@ -665,7 +659,7 @@ const AdminDashboardPage = () => {
                     className={cn(
                       "rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
                       stagnantOrders.length > 0
-                        ? "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300"
+                        ? "bg-destructive/10 text-destructive"
                         : "bg-muted text-muted-foreground"
                     )}
                   >

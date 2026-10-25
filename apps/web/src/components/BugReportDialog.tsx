@@ -89,7 +89,12 @@ export function BugReportDialog({
       )}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reportar un error</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-magenta-soft text-magenta-ink" aria-hidden>
+              <Bug className="h-4 w-4" />
+            </span>
+            Reportar un error
+          </DialogTitle>
           <DialogDescription>
             Contanos qué pasó. Tu usuario y la fecha se agregan automáticamente.
           </DialogDescription>
@@ -107,7 +112,7 @@ export function BugReportDialog({
             onBlur={() => setTouched(true)}
             rows={5}
             autoFocus
-            className="focus-visible:ring-0 focus-visible:border-primary transition-colors"
+            className="transition-colors duration-150"
           />
         </FormField>
         <DialogFooter>

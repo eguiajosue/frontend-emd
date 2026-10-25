@@ -60,6 +60,7 @@ import {
   Plus,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { FadeIn } from "@/components/motion";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +78,7 @@ import {
 import { ordersScreenCopy } from "@/lib/orderScreen";
 import { matchesOrigin, ORIGIN_URL_PARAM, parseOrigin } from "@/lib/orderOrigin";
 import { TASKS_URL } from "@/lib/navMenu";
+import { getAppErrorMessage } from "@/lib/errorMessages";
 import { ORDER_TONE_PARAM, parseToneParam } from "@/lib/orderViews";
 import type { DeadlineTone } from "@/lib/orderDeadline";
 import {
@@ -190,7 +192,7 @@ const OrdersPage = () => {
   const { timeFormat } = useTimeFormat();
   const [filters, setFilters] = useState<OrdersFilters>(EMPTY_ORDERS_FILTERS);
   // El filtro "Origen" es sólo de matriz y lo aplica el backend (`GET /orders?branchId|origin=`).
-  const { data: orders, isPending, isError, refetch } = useOrders({
+  const { data: orders, isPending, isError, error, refetch } = useOrders({
     origin: isBranch ? undefined : filters.origin,
   });
   const { data: clients } = useEntityList<Client>("clients");
@@ -511,9 +513,7 @@ const OrdersPage = () => {
         assignedUserId: filters.assignedUserId,
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "No se pudo exportar el CSV."
-      );
+      toast.error(getAppErrorMessage(error, "No se pudo exportar el CSV."));
     } finally {
       setIsExportingCsv(false);
     }
@@ -680,7 +680,7 @@ const OrdersPage = () => {
   return (
     // El "siguiente paso" de las tarjetas (Lista, Cuadrícula y Modo TV) con su "Deshacer".
     <OrderStepProvider>
-    <div className="space-y-6">
+    <FadeIn className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4 max-sm:flex-nowrap max-sm:items-center">
         <div>
           {/* Una sola pantalla, dos lecturas: quien administra ve "Pedidos",
@@ -803,7 +803,7 @@ const OrdersPage = () => {
       {loading ? (
         <CardsSkeleton count={6} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : visibleOrders.length === 0 ? (
         orders.length > 0 ? (
           <EmptyState
@@ -932,7 +932,7 @@ const OrdersPage = () => {
           setCreateOpen(true);
         }}
       />
-    </div>
+    </FadeIn>
     </OrderStepProvider>
   );
 };

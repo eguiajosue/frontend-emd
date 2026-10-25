@@ -113,7 +113,7 @@ export function ClientTemplatesDialog({ clientId, onClose }: ClientTemplatesDial
                       : null;
                   const uses = t.useCount === 1 ? "usada 1 vez" : t.useCount > 1 ? `usada ${t.useCount} veces` : null;
                   return (
-                    <li key={t.id} className="flex flex-wrap items-center gap-3 py-3">
+                    <li key={t.id} className="flex flex-wrap items-center gap-3 rounded-xl px-2 py-3 transition-colors duration-fast hover:bg-muted/50 sm:-mx-2">
                       <div className="min-w-0 flex-1 space-y-0.5">
                         {renamingId === t.id ? (
                           <form
@@ -170,10 +170,10 @@ export function ClientTemplatesDialog({ clientId, onClose }: ClientTemplatesDial
                             </Button>
                           </form>
                         ) : (
-                          <p className="truncate text-sm font-medium">{t.name}</p>
+                          <p className="truncate font-heading text-sm font-semibold">{t.name}</p>
                         )}
                         {renamingId === t.id && renameError && (
-                          <p role="alert" className="text-xs font-medium text-red-700 dark:text-red-400">
+                          <p role="alert" className="text-xs font-medium text-destructive">
                             {renameError}
                           </p>
                         )}

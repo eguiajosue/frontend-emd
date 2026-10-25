@@ -18,7 +18,8 @@ import {
   Warehouse,
   type LucideIcon,
 } from "lucide-react";
-import Title from "@/components/Title";
+import { PageContainer, PageHeader } from "@/components/layout";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,16 +98,16 @@ function StatTile({
       onClick={onClick}
       aria-pressed={onClick ? active : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3 text-left shadow-soft transition-colors",
-        onClick && "hover:bg-muted/40",
-        active && "ring-2 ring-ink/80"
+        "flex h-full w-full items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left shadow-soft transition-[box-shadow,border-color,transform,background-color] duration-base ease-out-expo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
+        onClick && "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-soft-md active:translate-y-0 active:scale-[0.99] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
+        active && "border-primary/50 ring-2 ring-primary/60"
       )}
     >
       <span
         className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground/70",
-          tone === "warn" && "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
-          tone === "danger" && "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300"
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/15",
+          tone === "warn" && "bg-warning-soft text-warning",
+          tone === "danger" && "bg-destructive/10 text-destructive"
         )}
         aria-hidden
       >
@@ -114,7 +115,7 @@ function StatTile({
       </span>
       <span className="min-w-0">
         <span className="block text-label">{label}</span>
-        <span className="block font-heading text-xl font-semibold leading-tight">{value}</span>
+        <span className="block font-heading text-xl font-semibold leading-tight tabular-nums">{value}</span>
         {hint && <span className="block truncate text-meta">{hint}</span>}
       </span>
     </Comp>
@@ -151,7 +152,7 @@ export default function InventarioPage() {
   const effectiveArea: InventoryArea | undefined =
     area !== ALL ? area : areas.length === 1 ? areas[0] : undefined;
 
-  const { data: items, isPending, isError, refetch } = useInventoryItems(effectiveArea);
+  const { data: items, isPending, isError, error, refetch } = useInventoryItems(effectiveArea);
   const restockCount = useRestockCount({ enabled: canManage || isArea });
   const { remove } = useInventoryMutations();
 
@@ -303,20 +304,24 @@ export default function InventarioPage() {
 
   if (!areasPending && areas.length === 0) {
     return (
-      <div className="space-y-4">
-        <Title title="Inventario" />
+      <PageContainer className="space-y-4">
+        <PageHeader title="Inventario" icon={Warehouse} />
         <EmptyState
           icon={Warehouse}
           title="No tienes un departamento con inventario"
           description="El inventario se lleva por área. Pide a administración que te asigne a un departamento."
         />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <Title title="Inventario" />
+    <PageContainer className="space-y-5">
+      <PageHeader
+        title="Inventario"
+        icon={Warehouse}
+        description="Existencias físicas de cada departamento, con su historial de entradas y salidas."
+      />
 
       {/* Departamentos */}
       {areas.length > 1 && (
@@ -335,9 +340,9 @@ export default function InventarioPage() {
       )}
 
       {/* Indicadores */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile icon={Package} label="Artículos" value={String(summary.items)} hint={scopeLabel} />
-        <StatTile
+      <Stagger className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StaggerItem><StatTile icon={Package} label="Artículos" value={String(summary.items)} hint={scopeLabel} /></StaggerItem>
+        <StaggerItem><StatTile
           icon={AlertTriangle}
           label="Bajo stock"
           value={String(summary.low)}
@@ -348,8 +353,8 @@ export default function InventarioPage() {
             setView("stock");
             toggleStatus("low");
           }}
-        />
-        <StatTile
+        /></StaggerItem>
+        <StaggerItem><StatTile
           icon={PackageX}
           label="Agotados"
           value={String(summary.out)}
@@ -360,16 +365,16 @@ export default function InventarioPage() {
             setView("stock");
             toggleStatus("out");
           }}
-        />
+        /></StaggerItem>
         {!isArea && (
-          <StatTile
+          <StaggerItem><StatTile
             icon={Wallet}
             label="Valor del inventario"
             value={formatCurrencyMXN(summary.value)}
             hint={summary.withoutCost > 0 ? `${summary.withoutCost} sin costo cargado` : "Existencia × costo"}
-          />
+          /></StaggerItem>
         )}
-      </div>
+      </Stagger>
 
       {scanMode ? (
         <InventoryScanPanel
@@ -398,7 +403,7 @@ export default function InventarioPage() {
                 {canManage && (restockCount.data?.pending ?? 0) > 0 && (
                   <Badge
                     aria-label={`${restockCount.data?.pending} pendientes`}
-                    className="ml-2 border-transparent bg-rose-500 px-1.5 py-0 text-[11px] text-white"
+                    className="ml-2 border-transparent bg-magenta-strong px-1.5 py-0 text-[11px] text-white"
                   >
                     {restockCount.data?.pending}
                   </Badge>
@@ -418,7 +423,7 @@ export default function InventarioPage() {
                 </Button>
               )}
               {isArea && (
-                <Button className="h-10 rounded-full px-4" onClick={() => setRestock({ item: null })}>
+                <Button className="h-10 px-4" onClick={() => setRestock({ item: null })}>
                   <PackagePlus className="h-4 w-4" /> Avisar reabasto
                 </Button>
               )}
@@ -433,7 +438,7 @@ export default function InventarioPage() {
                 </Button>
               )}
               {canManage && (
-                <Button className="h-10 px-5" onClick={() => openCreate()}>
+                <Button variant="brand" className="h-10 px-5" onClick={() => openCreate()}>
                   <Plus className="h-4 w-4" /> Nuevo artículo
                 </Button>
               )}
@@ -444,18 +449,18 @@ export default function InventarioPage() {
             {items.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative w-full sm:w-72">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search aria-hidden className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Buscar artículo, código, color..."
                     aria-label="Buscar en el inventario"
-                    className="h-10 rounded-full border-border/60 pl-10 text-sm shadow-soft"
+                    className="h-10 rounded-full border-border/70 bg-card pl-10 text-sm shadow-soft-xs"
                   />
                 </div>
                 <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
                   <SelectTrigger
-                    className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
+                    className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/70 bg-card px-4 text-sm shadow-soft-xs"
                     aria-label="Estado"
                   >
                     <SelectValue />
@@ -472,7 +477,7 @@ export default function InventarioPage() {
                 {categories.length > 0 && (
                   <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger
-                      className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/60 px-4 text-sm shadow-soft"
+                      className="h-10 w-auto min-w-[9rem] gap-2 rounded-full border-border/70 bg-card px-4 text-sm shadow-soft-xs"
                       aria-label="Categoría"
                     >
                       <SelectValue />
@@ -488,7 +493,7 @@ export default function InventarioPage() {
                   </Select>
                 )}
                 {activeFilters > 0 && (
-                  <Button variant="ghost" size="sm" className="h-10 rounded-full px-4" onClick={clearFilters}>
+                  <Button variant="ghost" size="sm" className="h-10 px-4" onClick={clearFilters}>
                     Limpiar filtros
                   </Button>
                 )}
@@ -498,7 +503,7 @@ export default function InventarioPage() {
             {isPending || areasPending ? (
               <TableSkeleton rows={5} />
             ) : isError ? (
-              <ErrorState onRetry={() => refetch()} />
+              <ErrorState error={error} onRetry={() => refetch()} />
             ) : items.length === 0 ? (
               <EmptyState
                 icon={Warehouse}
@@ -517,7 +522,9 @@ export default function InventarioPage() {
                 secondaryAction={{ label: "Limpiar filtros", onClick: clearFilters }}
               />
             ) : (
-              <DataTable columns={columns} data={filtered} className="shadow-soft" />
+              <FadeIn duration={0.2}>
+                <DataTable columns={columns} data={filtered} className="shadow-soft" />
+              </FadeIn>
             )}
           </TabsContent>
 
@@ -538,7 +545,7 @@ export default function InventarioPage() {
         <div
           role="region"
           aria-label="Selección para etiquetas"
-          className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 mx-auto flex w-fit max-w-full items-center gap-2 rounded-full border border-border/60 bg-card py-1.5 pl-4 pr-1.5 shadow-lg md:bottom-4"
+          className="sticky bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 mx-auto flex w-fit max-w-full items-center gap-2 rounded-full border border-border/60 bg-card py-1.5 pl-4 pr-1.5 shadow-soft-lg md:bottom-4"
         >
           <span className="whitespace-nowrap text-sm font-medium tabular-nums">
             {selectedItems.length === 1 ? "1 seleccionado" : `${selectedItems.length} seleccionados`}
@@ -600,6 +607,6 @@ export default function InventarioPage() {
             : undefined
         }
       />
-    </div>
+    </PageContainer>
   );
 }

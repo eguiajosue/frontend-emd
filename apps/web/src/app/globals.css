@@ -1,9 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * EMD design tokens — "Navy brand" (ver /DESIGN.md, fuente de verdad).
+ *
+ * Todos los colores son tripletas HSL sin `hsl()` para poder usar `/alpha`
+ * en Tailwind (`bg-primary/10`). Paleta del logo:
+ *   marino  #1B1B3A  240 31% 15%   -> primario (botones, sidebar, títulos, activos)
+ *   magenta #E0399A  330 74% 57%   -> acento de marca (momentos estrella)
+ *   cian    #7DD3E8  189 62% 70%   -> secundario (info, gráficas, detalles)
+ *   lima    #C6D645   66 68% 58%   -> secundario (éxito/destacados, gráficas)
+ *
+ * Contraste: el color "crudo" del logo (--magenta, --cyan, --lime) es para
+ * relleno/decoración. Para TEXTO sobre superficie usar la variante `-ink`
+ * (>= 4.5:1) y para relleno con texto blanco `--magenta-strong`.
+ */
 @layer base {
   :root {
-    /* Marca: rosa/magenta EMD como acento principal + cian como acento secundario. */
+    /* ---- Escalas de marca ------------------------------------------------ */
+    /* Magenta (la escala `brand-*` histórica se conserva y sigue siendo magenta). */
     --brand-50: 330 100% 97%;
     --brand-100: 330 95% 93%;
     --brand-200: 330 90% 86%;
@@ -16,12 +32,20 @@
     --brand-900: 330 68% 24%;
     --brand-950: 330 70% 14%;
 
-    /* Logo EMD: azul marino #1A1A31, cian #85D3E3, lima #CBDD57, magenta #E24699. */
-    --brand-navy: 240 31% 15%;
-    --brand-cyan: 189 62% 70%;
-    --brand-lime: 66 68% 58%;
-    --brand-magenta: 330 74% 57%;
+    /* Marino (primario). 800 = color exacto del logo. */
+    --navy-50: 240 25% 97%;
+    --navy-100: 240 20% 93%;
+    --navy-200: 240 17% 85%;
+    --navy-300: 240 15% 70%;
+    --navy-400: 240 14% 52%;
+    --navy-500: 240 20% 38%;
+    --navy-600: 240 26% 28%;
+    --navy-700: 240 29% 21%;
+    --navy-800: 240 31% 15%;
+    --navy-900: 240 33% 11%;
+    --navy-950: 240 35% 7%;
 
+    /* Cian (escala `accent2-*` histórica). */
     --accent2-50: 189 94% 95%;
     --accent2-100: 189 90% 88%;
     --accent2-200: 189 85% 76%;
@@ -33,128 +57,232 @@
     --accent2-800: 189 80% 18%;
     --accent2-900: 189 75% 13%;
 
-    /* Lienzo gris cálido muy claro (no blanco): las tarjetas blancas se
-       separan por contraste de superficie, casi sin borde ni sombra. Texto
-       casi negro. Magenta EMD = acento de marca; "tinta" = acción principal
-       (botón negro), como en la referencia. */
-    --background: 240 6% 95.5%;
-    --foreground: 240 31% 15%;
+    /* Colores crudos del logo (relleno / decoración). */
+    --brand-navy: 240 31% 15%;
+    --brand-cyan: 189 62% 70%;
+    --brand-lime: 66 68% 58%;
+    --brand-magenta: 330 74% 57%;
+
+    /* Magenta: acento de marca. strong = relleno con texto blanco; ink = texto. */
+    --magenta: 330 74% 57%;
+    --magenta-strong: 330 76% 46%;
+    --magenta-ink: 330 78% 38%;
+    --magenta-soft: 330 85% 96%;
+    --magenta-foreground: 0 0% 100%;
+    /* Cian: info / detalles. */
+    --cyan: 189 62% 70%;
+    --cyan-strong: 189 82% 28%;
+    --cyan-ink: 189 85% 24%;
+    --cyan-soft: 189 70% 94%;
+    --cyan-foreground: 240 31% 12%;
+    /* Lima: éxito / destacados. Sobre lima usar texto marino, nunca blanco. */
+    --lime: 66 68% 58%;
+    --lime-strong: 66 70% 40%;
+    --lime-ink: 66 80% 22%;
+    --lime-soft: 66 75% 91%;
+    --lime-foreground: 240 31% 12%;
+
+    /* ---- Superficies y texto -------------------------------------------- */
+    --background: 240 25% 97%;
+    --foreground: 240 31% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 240 31% 15%;
+    --card-foreground: 240 31% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 31% 15%;
-    --primary: 330 76% 48%;
+    --popover-foreground: 240 31% 13%;
+    /* Primario = marino. Botón por defecto, títulos activos, enlaces. */
+    --primary: 240 31% 16%;
     --primary-foreground: 0 0% 100%;
+    /* "Tinta": alias histórico de la acción principal. */
     --ink: 240 31% 15%;
     --ink-foreground: 0 0% 100%;
-    --secondary: 240 6% 94.5%;
-    --secondary-foreground: 240 10% 14%;
-    --muted: 240 6% 95.5%;
-    --muted-foreground: 240 4% 40%;
-    --accent: 240 6% 94.5%;
-    --accent-foreground: 240 10% 14%;
-    --destructive: 0 78% 52%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 90%;
-    --input: 240 6% 88%;
-    --ring: 330 81% 46%;
-    --chart-1: 330 81% 53%;
-    --chart-2: 217 85% 56%;
-    --chart-3: 38 92% 52%;
-    --chart-4: 262 70% 60%;
-    --chart-5: 150 60% 42%;
-    --radius: 1rem;
+    --secondary: 240 20% 94%;
+    --secondary-foreground: 240 31% 18%;
+    --muted: 240 20% 95%;
+    --muted-foreground: 240 8% 40%;
+    --accent: 240 25% 94%;
+    --accent-foreground: 240 31% 15%;
+    --destructive: 0 72% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 16% 90%;
+    --input: 240 12% 78%;
+    --ring: 330 76% 46%;
+    /* Superficie hundida (fondos de tablas, wells) y elevada. */
+    --surface-sunken: 240 22% 95%;
+    --surface-raised: 0 0% 100%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 6% 30%;
-    --sidebar-primary: 240 31% 15%;
+    /* Semánticos (para pills/alertas; texto = -ink, fondo = -soft). */
+    --success: 152 60% 30%;
+    --success-soft: 152 55% 93%;
+    --warning: 32 90% 30%;
+    --warning-soft: 40 95% 92%;
+    --info: 189 82% 28%;
+    --info-soft: 189 70% 94%;
+
+    /* Gráficas (orden de uso: 1 magenta, 2 cian, 3 lima, 4 marino, 5 violeta). */
+    --chart-1: 330 74% 52%;
+    --chart-2: 189 80% 36%;
+    --chart-3: 66 70% 36%;
+    --chart-4: 240 30% 35%;
+    --chart-5: 262 60% 58%;
+
+    /* ---- Forma, sombra, gradientes -------------------------------------- */
+    --radius: 0.875rem;
+    --shadow-color: 240 40% 14%;
+    --gradient-brand: linear-gradient(135deg, hsl(240 31% 15%) 0%, hsl(240 34% 24%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(330 76% 46%) 0%, hsl(344 82% 54%) 100%);
+    --gradient-spectrum: linear-gradient(90deg, hsl(189 62% 70%), hsl(66 68% 58%), hsl(330 74% 57%));
+    --gradient-hero:
+      radial-gradient(60rem 30rem at 0% 0%, hsl(189 62% 70% / 0.22), transparent 60%),
+      radial-gradient(50rem 30rem at 100% 100%, hsl(330 74% 57% / 0.28), transparent 60%),
+      linear-gradient(160deg, hsl(240 31% 15%), hsl(240 36% 10%));
+
+    /* ---- Movimiento (espejo de src/lib/motion.ts) ----------------------- */
+    --dur-fast: 150ms;
+    --dur-base: 200ms;
+    --dur-slow: 250ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ---- Sidebar (siempre marino, también en claro) ---------------------- */
+    --sidebar-background: 240 31% 15%;
+    --sidebar-foreground: 240 20% 82%;
+    --sidebar-primary: 240 30% 27%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 6% 95%;
-    --sidebar-accent-foreground: 240 31% 15%;
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: 330 81% 46%;
+    --sidebar-accent: 240 28% 21%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 24% 24%;
+    --sidebar-ring: 189 62% 70%;
   }
 
   /*
    * Superficies que deben quedar SIEMPRE en modo claro sin importar el tema
-   * global (ej. login): redeclara el mismo bloque de tokens semánticos que
-   * :root, para que las variables no se hereden del ancestro .dark. Mantener
-   * en sync con :root si esos valores cambian.
+   * global (ej. login): redeclara los tokens semánticos de :root para que no
+   * se hereden del ancestro .dark. Mantener en sync con :root.
    */
   .theme-force-light {
     color-scheme: light;
-    --background: 240 6% 95.5%;
-    --foreground: 240 31% 15%;
+    --background: 240 25% 97%;
+    --foreground: 240 31% 13%;
     --card: 0 0% 100%;
-    --card-foreground: 240 31% 15%;
+    --card-foreground: 240 31% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 31% 15%;
-    --primary: 330 76% 48%;
+    --popover-foreground: 240 31% 13%;
+    --primary: 240 31% 16%;
     --primary-foreground: 0 0% 100%;
     --ink: 240 31% 15%;
     --ink-foreground: 0 0% 100%;
-    --secondary: 240 6% 94.5%;
-    --secondary-foreground: 240 10% 14%;
-    --muted: 240 6% 95.5%;
-    --muted-foreground: 240 4% 40%;
-    --accent: 240 6% 94.5%;
-    --accent-foreground: 240 10% 14%;
-    --destructive: 0 78% 52%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 6% 90%;
-    --input: 240 6% 88%;
-    --ring: 330 81% 46%;
+    --secondary: 240 20% 94%;
+    --secondary-foreground: 240 31% 18%;
+    --muted: 240 20% 95%;
+    --muted-foreground: 240 8% 40%;
+    --accent: 240 25% 94%;
+    --accent-foreground: 240 31% 15%;
+    --destructive: 0 72% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 16% 90%;
+    --input: 240 12% 78%;
+    --ring: 330 76% 46%;
+    --magenta-ink: 330 78% 38%;
+    --magenta-strong: 330 76% 46%;
+    --magenta-soft: 330 85% 96%;
+    --cyan-ink: 189 85% 24%;
+    --cyan-soft: 189 70% 94%;
+    --lime-ink: 66 80% 22%;
+    --lime-soft: 66 75% 91%;
+    --surface-sunken: 240 22% 95%;
+    --shadow-color: 240 40% 14%;
   }
+
   .dark {
-    /* Mismo lenguaje que el claro: lienzo casi negro neutro, tarjetas un
-       escalón más claras (la sombra no se ve en oscuro), tinta invertida
-       (botón principal blanco) y magenta suavizado para que no vibre. */
-    --background: 240 24% 7%;
-    --foreground: 240 6% 93%;
-    --card: 240 20% 11%;
-    --card-foreground: 240 6% 93%;
-    --popover: 240 4% 11.5%;
-    --popover-foreground: 240 6% 93%;
-    --primary: 330 72% 62%;
-    --primary-foreground: 330 30% 8%;
-    --ink: 240 6% 94%;
-    --ink-foreground: 240 8% 8%;
-    --secondary: 240 4% 15%;
-    --secondary-foreground: 240 6% 92%;
-    --muted: 240 4% 14.5%;
-    --muted-foreground: 240 4% 64%;
-    --accent: 240 4% 15%;
-    --accent-foreground: 240 6% 92%;
-    --destructive: 0 65% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 17%;
-    --input: 240 4% 20%;
-    --ring: 330 72% 62%;
-    --chart-1: 330 72% 62%;
-    --chart-2: 217 80% 64%;
-    --chart-3: 38 85% 60%;
-    --chart-4: 262 65% 68%;
-    --chart-5: 150 45% 50%;
+    color-scheme: dark;
+    /* Lienzo marino casi negro, tarjetas un escalón más claras (la sombra no
+       se ve en oscuro: la profundidad es "luz en capas"). El primario pasa a
+       cian del logo con texto marino; el magenta se aclara para texto. */
+    --background: 240 33% 7%;
+    --foreground: 240 14% 93%;
+    --card: 240 27% 11%;
+    --card-foreground: 240 14% 93%;
+    --popover: 240 27% 12.5%;
+    --popover-foreground: 240 14% 93%;
+    --primary: 189 62% 70%;
+    --primary-foreground: 240 34% 9%;
+    --ink: 240 14% 94%;
+    --ink-foreground: 240 34% 9%;
+    --secondary: 240 22% 16%;
+    --secondary-foreground: 240 14% 92%;
+    --muted: 240 22% 14%;
+    --muted-foreground: 240 12% 69%;
+    --accent: 240 22% 17%;
+    --accent-foreground: 240 14% 92%;
+    --destructive: 0 68% 62%;
+    --destructive-foreground: 240 34% 9%;
+    --border: 240 20% 19%;
+    --input: 240 18% 28%;
+    --ring: 189 62% 70%;
+    --surface-sunken: 240 30% 9%;
+    --surface-raised: 240 24% 14%;
 
-    --sidebar-background: 240 20% 11%;
-    --sidebar-foreground: 240 4% 70%;
-    --sidebar-primary: 240 6% 94%;
-    --sidebar-primary-foreground: 240 8% 8%;
-    --sidebar-accent: 240 4% 15%;
-    --sidebar-accent-foreground: 240 6% 93%;
-    --sidebar-border: 240 4% 17%;
-    --sidebar-ring: 330 72% 62%;
+    --magenta: 330 74% 60%;
+    --magenta-strong: 330 74% 50%;
+    --magenta-ink: 330 85% 74%;
+    --magenta-soft: 330 45% 16%;
+    --cyan-strong: 189 62% 70%;
+    --cyan-ink: 189 62% 72%;
+    --cyan-soft: 189 45% 15%;
+    --lime-strong: 66 68% 58%;
+    --lime-ink: 66 68% 64%;
+    --lime-soft: 66 35% 15%;
 
-    --elevation-1: 240 20% 11%;
-    --elevation-2: 240 18% 14%;
+    --success: 152 55% 62%;
+    --success-soft: 152 35% 14%;
+    --warning: 38 90% 66%;
+    --warning-soft: 38 40% 15%;
+    --info: 189 62% 72%;
+    --info-soft: 189 45% 15%;
+
+    --chart-1: 330 72% 64%;
+    --chart-2: 189 62% 62%;
+    --chart-3: 66 68% 58%;
+    --chart-4: 240 40% 68%;
+    --chart-5: 262 65% 72%;
+
+    --shadow-color: 240 60% 2%;
+    --gradient-brand: linear-gradient(135deg, hsl(240 30% 14%) 0%, hsl(240 32% 20%) 100%);
+    --gradient-hero:
+      radial-gradient(60rem 30rem at 0% 0%, hsl(189 62% 70% / 0.14), transparent 60%),
+      radial-gradient(50rem 30rem at 100% 100%, hsl(330 74% 57% / 0.2), transparent 60%),
+      linear-gradient(160deg, hsl(240 34% 11%), hsl(240 36% 7%));
+
+    --sidebar-background: 240 36% 9.5%;
+    --sidebar-foreground: 240 16% 78%;
+    --sidebar-primary: 240 28% 21%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 26% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 22% 17%;
+    --sidebar-ring: 189 62% 70%;
+
+    --elevation-1: 240 27% 11%;
+    --elevation-2: 240 24% 14%;
   }
 
   /*
    * Color de acento (Configuración > Apariencia): sólo redefine --primary y sus
-   * derivados (foreground, ring, sidebar-primary/ring) — el resto de la paleta
-   * (fondo, texto, bordes) no cambia. El atributo data-accent se setea en <html>
-   * desde localStorage (ver AccentProvider) antes del primer paint.
+   * derivados (foreground, ring, sidebar-ring). El resto de la paleta no
+   * cambia. data-accent se setea en <html> (AccentProvider / ACCENT_INIT_SCRIPT)
+   * antes del primer paint. Sin data-accent = marino (predeterminado).
    */
+  :root[data-accent="magenta"] {
+    --primary: 330 76% 46%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 330 76% 46%;
+  }
+  .dark[data-accent="magenta"] {
+    --primary: 330 72% 62%;
+    --primary-foreground: 330 30% 8%;
+    --ring: 330 72% 62%;
+  }
+
   :root[data-accent="blue"] {
     --primary: 217 91% 46%;
     --primary-foreground: 0 0% 100%;
@@ -299,11 +427,22 @@
  * en todas las pantallas (antes cada una elegía su tamaño: 10, 11, 12, 13px…).
  */
 @layer components {
+  /* Hero / login / portal. */
+  .text-display {
+    @apply font-heading text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl;
+  }
   .text-page-title {
-    @apply font-heading text-2xl font-semibold leading-tight tracking-tight sm:text-[1.75rem];
+    @apply font-heading text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-[1.75rem];
   }
   .text-section-title {
     @apply font-heading text-[0.9375rem] font-semibold leading-snug tracking-tight;
+  }
+  /* Cifra grande de KPI: heading font, tabular. */
+  .text-stat {
+    @apply font-heading text-3xl font-semibold leading-none tracking-tight tabular-nums;
+  }
+  .text-body-lg {
+    @apply text-base leading-relaxed;
   }
   .text-label {
     @apply text-xs font-medium text-muted-foreground;
@@ -311,6 +450,71 @@
   .text-meta {
     @apply text-xs text-muted-foreground;
   }
+
+  /* ---- Superficies ------------------------------------------------------ */
+  .surface-card {
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground shadow-soft-xs;
+  }
+  .surface-sunken {
+    @apply rounded-xl bg-[hsl(var(--surface-sunken))];
+  }
+  /* Panel marino de marca (héroes, banners): texto claro, brillos de marca. */
+  .surface-brand {
+    @apply relative overflow-hidden rounded-2xl text-white;
+    background-image: var(--gradient-hero);
+  }
+
+  /* ---- Detalles de marca ------------------------------------------------ */
+  /* Línea fina cian-lima-magenta (3 cuadros del logo, en barra). */
+  .brand-bar {
+    height: 3px;
+    border-radius: 9999px;
+    background-image: var(--gradient-spectrum);
+  }
+  .bg-brand-gradient { background-image: var(--gradient-brand); }
+  .bg-accent-gradient { background-image: var(--gradient-accent); }
+  .bg-spectrum-gradient { background-image: var(--gradient-spectrum); }
+  .text-gradient-accent {
+    background-image: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* ---- Interacción ------------------------------------------------------ */
+  /* Anillo de foco único (magenta en claro, cian en oscuro). */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  /* Elemento clicable no-botón: sube 2px al hover, se hunde al presionar. */
+  .interactive-lift {
+    transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+  }
+  .interactive-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px -2px hsl(var(--shadow-color) / 0.08), 0 14px 28px -10px hsl(var(--shadow-color) / 0.2);
+  }
+  .interactive-lift:active { transform: translateY(0) scale(0.995); }
+  /* Mínimo de toque 44px sin cambiar el aspecto (zona invisible). */
+  .hit-44 { position: relative; }
+  .hit-44::after { content: ""; position: absolute; inset: 50% auto auto 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+}
+
+/*
+ * Red de seguridad "reducir movimiento": ninguna transición/animación CSS
+ * pasa de un parpadeo, aun si un componente olvidó `motion-reduce:`. Las
+ * animaciones de framer-motion lo respetan por su cuenta (useReducedMotion).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .interactive-lift:hover { transform: none; }
 }
 
 /*

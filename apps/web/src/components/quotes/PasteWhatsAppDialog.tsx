@@ -147,7 +147,7 @@ export function PasteWhatsAppDialog({ open, onOpenChange, clients, onSubmit }: P
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>{rows ? "Revisa antes de crear" : "Pegar de WhatsApp"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{rows ? "Revisa antes de crear" : "Pegar de WhatsApp"}</DialogTitle>
           <DialogDescription>
             {rows
               ? "Corrige lo que haga falta: cada fila es una cotización."
@@ -187,7 +187,7 @@ export function PasteWhatsAppDialog({ open, onOpenChange, clients, onSubmit }: P
                     data-testid="paste-row"
                     className={cn(
                       "rounded-xl border p-3 transition-opacity",
-                      row.warnings.length ? "border-amber-300 bg-amber-50/50 dark:border-amber-500/40 dark:bg-amber-500/5" : "border-border/60",
+                      row.warnings.length ? "border-warning/40 bg-warning-soft/60" : "border-border/60",
                       !row.include && "opacity-50",
                       error && "border-destructive"
                     )}
@@ -210,7 +210,7 @@ export function PasteWhatsAppDialog({ open, onOpenChange, clients, onSubmit }: P
                           />
                           {row.clientId && (
                             <UserCheck
-                              className="absolute right-2.5 top-2.5 h-4 w-4 text-emerald-600"
+                              className="absolute right-2.5 top-2.5 h-4 w-4 text-success"
                               aria-label="Cliente registrado"
                             />
                           )}
@@ -268,7 +268,7 @@ export function PasteWhatsAppDialog({ open, onOpenChange, clients, onSubmit }: P
                           {row.line}: {row.raw}
                         </p>
                         {row.warnings.map((w) => (
-                          <p key={w} className="flex items-start gap-1.5 text-xs text-amber-800 dark:text-amber-300 sm:col-span-2">
+                          <p key={w} className="flex items-start gap-1.5 text-xs text-warning sm:col-span-2">
                             <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden /> {w}
                           </p>
                         ))}

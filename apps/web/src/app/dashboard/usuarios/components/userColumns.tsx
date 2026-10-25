@@ -20,7 +20,7 @@ export const getUserColumns = ({
       <div className="flex items-center gap-2">
         <span>{row.original.firstName}</span>
         {row.original.isSharedAccount && (
-          <Badge variant="outline" className="border-primary/20 bg-primary/10 px-2 text-primary">
+          <Badge variant="magenta" className="px-2">
             <Users2 className="h-3 w-3" />
             Área
           </Badge>
@@ -48,7 +48,7 @@ export const getUserColumns = ({
               {roles.map((r) => (
                 <span
                   key={`role-${r.id}`}
-                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                  className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground"
                 >
                   {getRoleLabel(r.name)}
                 </span>
@@ -56,7 +56,7 @@ export const getUserColumns = ({
               {areas.map((a) => (
                 <span
                   key={`area-${a.id}`}
-                  className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+                  className="inline-flex items-center rounded-full bg-cyan-soft px-2 py-0.5 text-xs font-medium text-cyan-ink"
                 >
                   {a.name}
                 </span>

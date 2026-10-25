@@ -158,7 +158,7 @@ export function LabelPrintDialog({ items, onClose }: LabelPrintDialogProps) {
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{isBatch ? `Imprimir ${items!.length} etiquetas` : "Imprimir etiqueta"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{isBatch ? `Imprimir ${items!.length} etiquetas` : "Imprimir etiqueta"}</DialogTitle>
           <DialogDescription>
             Etiqueta de 80 × 35 mm para impresora térmica, una por hoja.
           </DialogDescription>
@@ -192,7 +192,7 @@ export function LabelPrintDialog({ items, onClose }: LabelPrintDialogProps) {
           </div>
 
           {unreadable.length > 0 && (
-            <p className="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+            <p className="flex items-start gap-2 rounded-xl bg-warning-soft px-3 py-2 text-sm text-warning">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               {unreadable.length === 1
                 ? `El código ${unreadable[0].code} es muy largo para esta etiqueta: las barras salen muy finas y puede costar leerlo.`

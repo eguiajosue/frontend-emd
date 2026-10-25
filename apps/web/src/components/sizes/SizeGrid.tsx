@@ -81,7 +81,7 @@ export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGr
         <table className="w-full min-w-[22rem] border-separate border-spacing-0 text-xs">
           <caption className="sr-only">Tallas{label ? ` de ${label}` : ""}</caption>
           <thead>
-            <tr className="text-muted-foreground">
+            <tr className="text-muted-foreground [&>th]:text-[0.6875rem] [&>th]:uppercase [&>th]:tracking-wide">
               <th scope="col" className="px-1 py-1 text-left font-medium">
                 Corte
               </th>
@@ -111,7 +111,7 @@ export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGr
                         inputMode="numeric"
                         autoComplete="off"
                         aria-label={`${FIT_LABELS[fit]} ${size}${label ? ` de ${label}` : ""}`}
-                        className="h-8 w-full min-w-9 rounded-md border border-input bg-background px-1 text-center tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                        className={cn("h-9 w-full min-w-9 rounded-lg border border-input bg-background px-1 text-center tabular-nums transition-[border-color,background-color,box-shadow] duration-fast placeholder:text-muted-foreground/60 hover:border-primary/40 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60", qty ? "border-primary/30 bg-primary/5 font-semibold" : "")}
                         value={qty ?? ""}
                         placeholder="0"
                         onChange={(e) => {
@@ -129,7 +129,7 @@ export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGr
                   {shown.length > 1 && (
                     <button
                       type="button"
-                      className="rounded-full p-1 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                      className="rounded-full p-1.5 text-muted-foreground transition-colors duration-fast hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                       aria-label={`Quitar corte ${FIT_LABELS[fit]}`}
                       onClick={() => removeFit(fit)}
                     >
@@ -147,7 +147,7 @@ export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGr
           <button
             key={fit}
             type="button"
-            className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors duration-fast hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
             onClick={() => {
               setExtraFits((prev) => [...prev, fit]);
               requestAnimationFrame(() => document.getElementById(cellId(fit, 0))?.focus());
@@ -157,7 +157,7 @@ export function SizeGrid({ value, onChange, idPrefix, label, className }: SizeGr
             {FIT_HINTS[fit]}
           </button>
         ))}
-        <span className="ml-auto text-xs font-semibold tabular-nums" aria-live="polite" data-testid={`${idPrefix}-total`}>
+        <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold tabular-nums text-primary" aria-live="polite" data-testid={`${idPrefix}-total`}>
           Total: {piecesLabel(total)}
         </span>
       </div>

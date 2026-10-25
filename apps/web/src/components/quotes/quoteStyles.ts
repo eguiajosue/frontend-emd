@@ -1,45 +1,50 @@
 import type { QuoteStatus } from "@/lib/quotes/types";
 import type { PriorityTone } from "@/lib/quotes/priority";
 
-/** Color de cada subestado: punto + chip suave (clases completas para Tailwind). */
+/**
+ * Color de cada subestado: punto + chip suave (clases completas para Tailwind).
+ * Usa los tokens de marca (-soft de fondo, -ink de texto: contraste >= 4.5:1
+ * en claro y oscuro). Lectura: lima = listo/aceptado, ámbar = falta algo,
+ * cian = informativo, magenta = requiere atención, marino = en espera.
+ */
 export const QUOTE_STATUS_STYLES: Record<QuoteStatus, { dot: string; chip: string }> = {
   lista: {
-    dot: "bg-emerald-500",
-    chip: "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:ring-emerald-500/30",
+    dot: "bg-lime-strong",
+    chip: "bg-lime-soft text-lime-ink ring-lime-strong/30",
   },
   pendiente_medidas: {
-    dot: "bg-amber-500",
-    chip: "bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-500/30",
+    dot: "bg-warning",
+    chip: "bg-warning-soft text-warning ring-warning/25",
   },
   info: {
-    dot: "bg-sky-500",
-    chip: "bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-500/15 dark:text-sky-200 dark:ring-sky-500/30",
+    dot: "bg-cyan-strong",
+    chip: "bg-cyan-soft text-cyan-ink ring-cyan-strong/25",
   },
   esperando_montaje: {
-    dot: "bg-violet-500",
-    chip: "bg-violet-50 text-violet-800 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-200 dark:ring-violet-500/30",
+    dot: "bg-chart-5",
+    chip: "bg-chart-5/15 text-foreground ring-chart-5/35",
   },
   esperando_respuesta: {
-    dot: "bg-slate-400",
-    chip: "bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-500/20 dark:text-slate-200 dark:ring-slate-500/30",
+    dot: "bg-navy-400",
+    chip: "bg-secondary text-secondary-foreground ring-border",
   },
   aceptada: {
-    dot: "bg-emerald-600",
-    chip: "bg-emerald-100 text-emerald-900 ring-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-100 dark:ring-emerald-500/40",
+    dot: "bg-success",
+    chip: "bg-success-soft text-success ring-success/30",
   },
   no_aceptada: {
-    dot: "bg-rose-500",
-    chip: "bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:ring-rose-500/30",
+    dot: "bg-destructive",
+    chip: "bg-destructive/10 text-destructive ring-destructive/25",
   },
   comentarios: {
-    dot: "bg-orange-500",
-    chip: "bg-orange-50 text-orange-800 ring-orange-200 dark:bg-orange-500/15 dark:text-orange-200 dark:ring-orange-500/30",
+    dot: "bg-magenta",
+    chip: "bg-magenta-soft text-magenta-ink ring-magenta-strong/25",
   },
 };
 
 export const PRIORITY_STYLES: Record<PriorityTone, string> = {
-  atrasada: "bg-rose-600 text-white dark:bg-rose-500",
-  hoy: "bg-amber-400 text-amber-950 dark:bg-amber-400 dark:text-amber-950",
-  manana: "bg-sky-100 text-sky-900 ring-1 ring-inset ring-sky-200 dark:bg-sky-500/20 dark:text-sky-100 dark:ring-sky-500/30",
+  atrasada: "bg-magenta-strong text-white shadow-soft-xs",
+  hoy: "bg-lime text-lime-foreground",
+  manana: "bg-cyan-soft text-cyan-ink ring-1 ring-inset ring-cyan-strong/25",
   futura: "bg-muted text-muted-foreground",
 };

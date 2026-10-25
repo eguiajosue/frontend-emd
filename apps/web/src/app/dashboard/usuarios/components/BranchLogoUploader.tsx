@@ -26,12 +26,12 @@ const COPY: Record<LogoVariantKey, { title: string; hint: string; previewClass: 
   onLight: {
     title: "Logo para fondos claros (negro)",
     hint: "Se usa en la interfaz clara, hojas impresas y PDF.",
-    previewClass: "bg-white border-neutral-200",
+    previewClass: "bg-white border-navy-100",
   },
   onDark: {
     title: "Logo para fondos oscuros (blanco)",
     hint: "Se usa en el tema oscuro y en el Modo TV. Mejor con fondo transparente.",
-    previewClass: "bg-neutral-900 border-neutral-700",
+    previewClass: "bg-navy-900 border-navy-600",
   },
 };
 
@@ -83,7 +83,7 @@ export function BranchLogoUploader({ branchId, branchName, variant, current, has
   };
 
   return (
-    <div className="space-y-2 rounded-xl border border-border/60 p-3" data-testid={`logo-uploader-${branchId}-${variant}`}>
+    <div className="space-y-2 rounded-xl border border-border/60 bg-sunken/50 p-3 transition-colors duration-150 hover:border-border" data-testid={`logo-uploader-${branchId}-${variant}`}>
       <div>
         <p className="text-sm font-medium">{copy.title}</p>
         <p className="text-meta">{copy.hint}</p>
@@ -97,7 +97,7 @@ export function BranchLogoUploader({ branchId, branchName, variant, current, has
           // eslint-disable-next-line @next/next/no-img-element
           <img src={current} alt={`Logo de ${branchName} (${variant === "onLight" ? "fondos claros" : "fondos oscuros"})`} className="max-h-full max-w-full object-contain" />
         ) : (
-          <span className={cn("text-xs", variant === "onDark" ? "text-neutral-400" : "text-neutral-500")}>
+          <span className={cn("text-xs", variant === "onDark" ? "text-navy-300" : "text-navy-400")}>
             {hasLogo ? "Logo cargado (sin vista previa)" : "Sin logo"}
           </span>
         )}
@@ -141,7 +141,7 @@ export function BranchLogoUploader({ branchId, branchName, variant, current, has
         </p>
       )}
       {warning && (
-        <p role="status" className="flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-300">
+        <p role="status" className="flex items-start gap-1.5 text-sm text-warning">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           {warning}
         </p>

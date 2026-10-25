@@ -25,7 +25,8 @@ export interface AccentOption {
 }
 
 export const ACCENT_OPTIONS: AccentOption[] = [
-  { id: "pink", label: "Rosa (predeterminado)", previewHsl: "330 81% 46%" },
+  { id: "pink", label: "Marino (predeterminado)", previewHsl: "240 31% 16%" },
+  { id: "magenta", label: "Magenta", previewHsl: "330 76% 46%" },
   { id: "blue", label: "Azul", previewHsl: "217 91% 46%" },
   { id: "green", label: "Verde", previewHsl: "142 71% 35%" },
   { id: "orange", label: "Naranja", previewHsl: "24 90% 45%" },

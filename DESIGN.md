@@ -1,160 +1,249 @@
-# EMD Bordados — Design System
+# EMD HUB — Design System ("Navy brand")
 
-Foundation for the "Noteflow"-inspired redesign: light, spacious SaaS dashboard
-with EMD Publicidad's brand magenta as the signature accent, soft cards, pill
-badges, and a collapsible icon-rail sidebar. Built on shadcn/ui + Tailwind
-CSS variables (`src/app/globals.css`), so most primitives (`Card`, `Badge`,
-`Button`, `Dialog`, `Table`, the `Sidebar` family) pick these tokens up
-automatically.
+Source of truth for every screen. Tokens live in `apps/web/src/app/globals.css`,
+mapped to Tailwind in `apps/web/tailwind.config.js`. Primitives are shadcn/ui in
+`apps/web/src/components/ui`, shell in `components/app-sidebar.tsx`,
+`AppTopBar.tsx`, `MobileTabBar.tsx`, page patterns in `components/layout`, motion in
+`components/motion` + `src/lib/motion.ts`.
 
-## Palette
+**Idea:** the EMD logo palette, with a clear job for each color.
+Navy is the structure (sidebar, default buttons, titles, active states). Magenta
+is the single brand accent (one star action, unread counts, "where am I" marker).
+Cyan and lime are secondary: info, success, charts, small details. Never paint
+whole cards in saturated color.
 
-Light-first (default theme = light; dark mirrors the same language).
+## 1. Palette
 
-| token | light | dark | use |
-|---|---|---|---|
-| `--background` | `330 6% 95.5%` warm light gray canvas | `330 5% 6.5%` | page canvas |
-| `--card` | white | `330 4% 10.5%` | every surface (cards, panels, rail, top bar pills) |
-| `--ink` | `330 10% 9%` near-black | `330 6% 94%` near-white | **primary action** (`Button` default), active rail item, today markers |
-| `--primary` | EMD magenta `330 81% 46%` | `330 72% 62%` | brand accent only: logo monogram, unread dots/badges, focus ring, `Button variant="brand"` (magenta gradient) |
-| `--muted` | `330 6% 95.5%` | `330 4% 14.5%` | gray pills (dates, active segmented tab, chips) |
-| `--border` | `330 6% 90%` (used at /60) | `330 4% 17%` | hairlines; cards barely bordered |
+HSL triplets (use as `hsl(var(--x))` or the Tailwind class). Light / dark.
 
-Semantic color lives ONLY in small tinted pills (`bg-X-500/10 text-X-700`,
-dark `bg-X-400/15 text-X-300`): status (`packages/business/src/statusColors.ts`,
-`StatusBadge` with icon + optional count), deadline tone (`TONE_META.pill`),
-calendar categories, notification types. Never paint whole cards in saturated
-color. Accent picker (`data-accent`) still remaps `--primary` only.
+| role | token → Tailwind | light | dark | use |
+|---|---|---|---|---|
+| Canvas | `--background` → `bg-background` | `240 25% 97%` | `240 33% 7%` | page background |
+| Surface | `--card` → `bg-card` | `0 0% 100%` | `240 27% 11%` | cards, panels, inputs |
+| Sunken | `--surface-sunken` → `bg-sunken` | `240 22% 95%` | `240 30% 9%` | table header, wells |
+| Text | `--foreground` → `text-foreground` | `240 31% 13%` | `240 14% 93%` | titles, body |
+| Muted text | `--muted-foreground` | `240 8% 40%` (7.6:1 on canvas) | `240 12% 69%` | meta, labels |
+| **Primary (navy)** | `--primary` → `bg-primary text-primary-foreground` | `240 31% 16%` (#1B1B3A family) | cyan `189 62% 70%` | default Button, links, active tab, selected |
+| Accent hover | `--accent` | `240 25% 94%` | `240 22% 17%` | ghost/outline hover, row hover |
+| Border | `--border` / `--input` | `240 16% 90%` / `240 12% 78%` | `240 20% 19%` / `240 18% 28%` | hairlines / control borders |
+| Focus ring | `--ring` → `ring-ring` | magenta `330 76% 46%` | cyan `189 62% 70%` | `focus-visible` only |
+| Destructive | `--destructive` | `0 72% 47%` | `0 68% 52%` | delete, errors |
+| Sidebar | `--sidebar-*` → `bg-sidebar` | navy `240 31% 15%` | `240 36% 9.5%` | always navy, both themes |
 
-Radii: `rounded-2xl` (20px) cards, `rounded-full` buttons/pills/inputs-as-pills,
-`rounded-xl` inner blocks. Buttons are pills by default.
+Brand colors (each has `DEFAULT` raw logo color, `-strong`, `-ink`, `-soft`, `-foreground`):
 
-## Typography
+| color | DEFAULT (raw logo) | `-strong` fill (white text) | `-ink` text on surface | `-soft` tint bg | job |
+|---|---|---|---|---|---|
+| **navy** `navy-50…950` | `navy` = #1B1B3A | – | – | `navy-50/100` | structure |
+| **magenta** | `bg-magenta` `330 74% 57%` | `bg-magenta-strong` (5.4:1 w/ white) | `text-magenta-ink` (7:1) | `bg-magenta-soft` | brand accent, unread, star CTA |
+| **cyan** | `bg-cyan` `189 62% 70%` | `cyan-strong` | `text-cyan-ink` | `bg-cyan-soft` | info, charts, details |
+| **lime** | `bg-lime` `66 68% 58%` | `lime-strong` | `text-lime-ink` | `bg-lime-soft` | success, highlights, chart |
 
-- **Display / titles**: **Space Grotesk** (`font-heading`, weight 600 for
-  titles — 700 read heavy at app sizes). Loaded via `next/font/google` in
-  `src/app/layout.tsx`. (Ezra Bold was requested originally but no verifiable
-  font binary was obtainable; to swap it in later, switch the import to
-  `next/font/local` keeping `variable: "--font-heading"`.)
-- **Body/UI**: **DM Sans** (variable, `--font-body`, Tailwind `font-sans`).
-  Replaced Poppins: Poppins is very wide and geometric, read poorly at 14px in
-  dense screens, and next to Space Grotesk gave two near-identical geometric
-  voices with no hierarchy contrast. DM Sans is compact with clean tabular
-  figures.
-- Numbers are tabular app-wide (`font-variant-numeric: tabular-nums` on
-  `body`): dates, quantities and counts align across rows.
+**Contrast rules (>= 4.5:1 text, >= 3:1 icons/borders):**
+- Raw `magenta`, `cyan`, `lime` are for FILLS and decoration only. Text in those
+  colors on a surface must use `*-ink`. Text on a raw cyan/lime fill is navy
+  (`text-cyan-foreground`, `text-lime-foreground`), never white.
+- White text on magenta is only allowed on `magenta-strong` or `bg-accent-gradient`.
+- Semantic pills: `bg-success-soft text-success`, `bg-warning-soft text-warning`,
+  `bg-info-soft text-info` (Badge variants `success|warning|info`). Dark values flip
+  automatically.
+- Status colors for orders stay in `packages/business/src/statusColors.ts` and
+  `StatusBadge` (single source). Do not invent new status colors.
 
-### Type roles (`src/app/globals.css`, `@layer components`)
+**Charts:** `--chart-1..5` = magenta, cyan, lime, navy, violet (brighter in dark).
+Use `hsl(var(--chart-n))`. Never rely on color alone: add labels, patterns or icons.
 
-Few, fixed roles — identical on every screen:
+**Gradients (CSS vars + utilities):** `bg-brand-gradient` (navy), `bg-accent-gradient`
+(magenta), `bg-spectrum-gradient` (cyan→lime→magenta), `.brand-bar` (3px spectrum
+line), `.surface-brand` (navy hero panel with cyan/magenta glows),
+`.text-gradient-accent`. Use sparingly: one hero or one accent per screen.
+
+**Accent picker (`data-accent`)**: only remaps `--primary`, `--primary-foreground`,
+`--ring` (+ `--sidebar-ring`). Default id `pink` is now "Marino" (navy), plus a
+`magenta` preset. Anything that must stay navy/brand regardless of the picker uses
+`bg-navy`, `bg-sidebar`, or the brand colors, not `bg-primary`.
+
+## 2. Typography
+
+| role | font | why |
+|---|---|---|
+| Display / titles / KPI numbers | **Bricolage Grotesque** 600/700 (`font-heading`, `--font-heading`) | Grotesque with character; gives the brand a voice without being decorative; optical sizing stays crisp from 28px titles to 14px numbers. Replaced Space Grotesk (read generic next to the body). |
+| Body / UI | **DM Sans** variable (`font-sans`, `--font-body`) | Compact, very legible at 14px in dense tables, clean tabular figures. Pairing = expressive display + neutral body. |
+
+Numbers are tabular app-wide (`font-variant-numeric: tabular-nums` on `body`).
+Body minimum 14px (inputs 16px on mobile to avoid iOS zoom), line-height >= 1.5 for
+paragraphs. No uppercase micro-labels above headings.
 
 | role | class | spec |
 |---|---|---|
-| Page title | `text-page-title` | Space Grotesk 24→28px / 600 / tight |
-| Section title | `text-section-title` (also `CardTitle`) | Space Grotesk 15px / 600 |
-| Body | default `text-sm` | DM Sans 14px |
-| Reading text | `text-[0.95rem] leading-relaxed max-w-prose` | descriptions, notes |
+| Hero | `text-display` | heading 36→48px / 600 / 1.05 (login, portal hero only) |
+| Page title | `text-page-title` | heading 24→28px / 600 (exactly one `<h1>` per page, via `PageHeader`) |
+| Section title | `text-section-title` (= `CardTitle`) | heading 15px / 600 |
+| KPI figure | `text-stat` | heading 30px / 600 / tabular |
+| Large body | `text-body-lg` | 16px / relaxed |
+| Body | default | DM Sans 14px |
 | Label | `text-label` | 12px / 500 / muted |
-| Metadata | `text-meta` | 12px / muted |
+| Meta | `text-meta` | 12px / muted |
 
-No uppercase 10px "eyebrow" labels above headings; the heading carries its
-own weight.
+## 3. Spacing, shape, elevation
 
-## Spacing
+- 4px base (Tailwind scale). Inside a group `gap-1…3`; between blocks `space-y-6`
+  (24px, `PageContainer` does this); between page sections `space-y-8`. More space
+  above a section title than below it. Separate with space + hairline, never nest cards.
+- Page gutters: `px-4` (mobile) / `sm:px-6` / `md:px-8`, max width 110rem, set by
+  `dashboard/layout.tsx`. Do not re-add page padding.
+- Radius (`--radius: 0.875rem`): `rounded-sm 6` · `md 8` · `lg 10` · `xl 14`
+  (buttons, inputs, menus) · `2xl 18` (cards, dialogs) · `rounded-full` only for
+  badges/pills/avatars/dots. Buttons are NOT pills any more.
+- Touch targets: >= 44px on coarse pointers (Button/Input already add
+  `min-h-11` under `@media (pointer:coarse)`); keep >= 8px between targets. Use
+  `.hit-44` on tiny icon buttons.
+- Elevation (soft, layered, navy-tinted `--shadow-color`): `shadow-soft-xs` (cards at
+  rest), `shadow-soft` (raised/hover), `shadow-soft-md` (menus, floating bars),
+  `shadow-soft-lg` (dialogs, sheets), `shadow-glow-magenta` (brand CTA hover). In dark
+  mode shadows barely show: depth = lighter surface (`elevation-1/2` classes,
+  `Card elevation={2}`).
 
-4px base scale. Tight inside a group (`gap-1`–`gap-3`), generous between
-groups (`space-y-5`–`space-y-8`), more space above a section title than
-below it. Separate sections with space and a hairline (`border-t pt-5`),
-not with a card per section — never nest cards.
+## 4. Motion
 
-## Shell (desktop)
+Expressive but fast. Everything <= 250ms except number counters (600ms).
+Tokens in `src/lib/motion.ts` (JS) mirrored in `globals.css` (`--dur-*`, `--ease-out`)
+and Tailwind (`duration-fast|base|slow`, `ease-out-expo`).
 
-- `AppTopBar` (`components/AppTopBar.tsx`): brand pill (magenta gradient "E" +
-  "EMD HUB"), center pill with the active nav group's pages (labels for what
-  the rail only shows as icons), right cluster: search pill (⌘K), bell circle,
-  account pill (avatar → menu: Configuración, Instalar app, Reportar un error,
-  Cerrar sesión).
-- `AppSidebar` (`components/app-sidebar.tsx`): floating icon rail of three
-  white pills — theme (sun/moon radio), navigation (groups separated by
-  hairlines, active = ink circle, tooltips with labels, unread/overdue
-  badges), footer (Configuración, Cerrar sesión). No expanded state.
-- Content: `md:pl-[5.75rem]`, max width 110rem.
+| token | value | use |
+|---|---|---|
+| `DUR.fast` / `duration-fast` | 150ms | hover, press, toggles, tab color, exit |
+| `DUR.base` / `duration-base` | 200ms | menus, tooltips, panel open, sidebar width |
+| `DUR.slow` / `duration-slow` | 250ms | page/card entrance, dialog, sheet |
+| `EASE_OUT` / `ease-out-expo` | cubic-bezier(.16,1,.3,1) | all enters/moves |
+| `SPRING_LAYOUT` | spring 420/36 | shared `layoutId` selection (sidebar, tab bar, section tabs) |
+| `STAGGER_STEP` | 45ms | list/grid entrance (cap total ~400ms) |
 
-## Mobile navigation
+Rules: enter = fade + 10px rise; exit faster than enter; press = `scale(.97)`;
+animate only `transform`/`opacity` (never width/height of big layouts); one shared
+`layoutId` per selection group (ids in use: `rail-active-indicator`,
+`mobile-tabbar-highlight`, `section-nav-active`; pick a new unique id for your own).
+**Reduced motion:** every primitive below checks `useReducedMotion()` and degrades to
+a 150ms linear fade; `globals.css` also has a `prefers-reduced-motion` safety net that
+zeroes CSS transitions/animations. Never write raw `animate-*` without
+`motion-reduce:animate-none`.
 
-`src/components/MobileTabBar.tsx` renders a floating pill tab bar
-(`md:hidden`, so it only exists below the sidebar's own mobile breakpoint):
-`rounded-full bg-card shadow-soft-md`, centered, with side/bottom margin (not
-edge-to-edge) and `padding-bottom: env(safe-area-inset-bottom)` on its outer
-wrapper, matching this app's other mobile-safe-area handling
-(`src/app/dashboard/layout.tsx`).
+Motion primitives (`@/components/motion`):
 
-It shows the first 4 items — role-filtered, same source as the rail — from a
-fixed URL priority order (`/dashboard/admin`, `/dashboard/orders`,
-`/dashboard/chat`, `/dashboard/notificaciones`, `/dashboard/admin/rendimiento`,
-`/dashboard/historial`, `/dashboard/clientes`, `/dashboard/usuarios`,
-`/dashboard/ayuda`), skipping any URL the current role can't see. In practice
-that resolves to Panel General/Pedidos/Chat/Notificaciones for admin and
-superuser, Pedidos/Chat/Notificaciones/Historial for recepción, and Tareas
-asignadas/Chat interno/Notificaciones/Ayuda for the operational roles. A 5th
-"Más" tab is always appended and calls `setOpenMobile(true)` to open the
-existing `AppSidebar` Sheet — it is not a second menu, just the door to the
-one that already exists (full list, config, theme, logout, identity).
+| component | use |
+|---|---|
+| `<PageTransition>` | route fade/slide; already wraps every dashboard page. Do not re-wrap. |
+| `<FadeIn from="up\|down\|left\|right\|none" delay inView>` | single block entrance |
+| `<Stagger step delay inView as>` + `<StaggerItem as>` | grids of KPI/cards/rows |
+| `<HoverLift lift>` | clickable non-button cards (CSS alternative: class `interactive-lift`) |
+| `<AnimatedNumber value format decimals prefix suffix>` | KPI counters (counts up on first view, then between values) |
+| `<MovingItem id>` | list item that slides between columns (existing) |
 
-The active tab gets a soft `bg-primary/10` rounded-square highlight (`layoutId`
-spring, `mobile-tabbar-highlight` — distinct from the rail's own
-`sidebar-active-indicator` since both can be mounted at once) plus a small
-`bg-primary` dot beneath the icon. Active detection is `pathname === item.url`
-(exact match, so `/dashboard/admin` and `/dashboard/admin/rendimiento` never
-collide).
+## 5. Shell
 
-The role-filtered flat list both surfaces read from is
-`useVisibleNavItems()` (`src/hooks/useVisibleNavItems.ts`) — keep any future
-nav item change in `src/lib/navMenu.ts` so the rail and the tab bar can't
-drift apart.
+- **Sidebar** (`AppSidebar`, desktop `md+`): full-height navy panel docked left,
+  `4.5rem` collapsed (icons + tooltips) / `16rem` expanded (Ctrl+B). Header = logo
+  (white) or the three logo squares; theme switch; nav groups (collapsible, favorites);
+  footer (collapse, settings, logout). Active item = lighter navy pill that slides
+  (`rail-active-indicator`) + magenta edge marker + cyan icon. Unread/overdue badges
+  are magenta/rose. Exports `RAIL_OFFSET_COLLAPSED|EXPANDED`; content uses
+  `md:pl-[var(--rail-offset)]` (set on `<main>` in `dashboard/layout.tsx`).
+- **Top bar** (`AppTopBar`): sticky, translucent background, hairline when scrolled.
+  Left: section tabs of the active nav group (sliding `section-nav-active` pill);
+  right: search (⌘K), bell (magenta count), account menu. On mobile: logo, collapsing
+  large title, search, bell.
+- **Mobile tab bar** (`MobileTabBar`): floating navy bar, 4 role tabs + "Más" sheet,
+  active tab expands with its short label (`mobile-tabbar-highlight`). Dashboard
+  content keeps `pb-[calc(6.5rem+env(safe-area-inset-bottom))]` on mobile. The primary
+  mobile action goes in `MobileFab` (magenta).
+- Page frame is `PageTransition` > `max-w-[110rem]` container. Pages render only
+  their own content.
 
-Because the tab bar permanently occupies bottom screen space, the dashboard
-layout's mobile-only bottom padding and the chat page's mobile card height
-both carry a matching extra offset (`~5.5rem`, sized to the bar's own
-height + margins) up to the same `md` breakpoint where the bar disappears —
-see the inline comments in `src/app/dashboard/layout.tsx` and
-`src/app/dashboard/chat/page.tsx` before changing either the bar's size or
-these paddings.
+## 6. Component recipes
 
-## Motion
+**Button** (`ui/button.tsx`; `rounded-xl`, 150ms, press scale .97, ring on focus-visible,
+sizes `sm 36 · default 40 · lg 48 · icon 40`):
 
-Framer Motion conventions already in `src/lib/motion.ts` /
-`useMotionPreset()` continue to apply (route transitions, reduced-motion
-awareness). Sidebar active-route indicator uses a spring
-(`type: "spring", stiffness: 400, damping: 35`) `layoutId` for a fluid
-Apple-style interruptible highlight; keep new interactive elements on the
-same spring family rather than introducing new easing curves.
+| variant | when |
+|---|---|
+| `default` | primary action (navy; cyan in dark). Normally one per view region |
+| `brand` | THE star action of a screen (magenta gradient, glow on hover): "Nuevo pedido", "Aprobar". At most one per screen |
+| `soft` | secondary action tinted with primary |
+| `outline` | neutral secondary, toolbars, cancel |
+| `secondary` | quiet filled |
+| `ghost` | icon buttons, menu-like actions |
+| `destructive` | irreversible actions (inside a confirm) |
+| `link` | inline text action; `bare` = clickable surface without button look |
 
-## Components
+Icon-only buttons need `aria-label` (or `SimpleTooltip`).
 
-- **Everything is shadcn/ui** (`src/components/ui/`): Button, Input,
-  Textarea, Select (no native `<select>`), Checkbox, Switch, Tabs,
-  ToggleGroup (segmented controls and filter chips), DropdownMenu (any "⋯" or
-  action menu), Popover (rich pickers only), Dialog/AlertDialog/Sheet,
-  Collapsible, Accordion, Card, Badge, Table, Tooltip (`SimpleTooltip` on
-  icon-only buttons), ScrollArea, Skeleton. Raw HTML controls only where a
-  primitive can't express it (e.g. the full-card invisible hit area).
-- Neutral hover for ghost/outline controls (`bg-muted`), not the cyan
-  `accent`; tooltips are neutral (`bg-foreground`).
-- Status/priority pills: `src/components/StatusBadge.tsx` and
-  `src/lib/statusColors.ts` remain the single source of truth for status
-  color mapping; only their visual treatment (pill shape, tint) follows the
-  tokens above.
-- Order cards / detail: `src/components/orders/OrderCard.tsx` and
-  `OrderDetailDialog.tsx` keep all existing data/table functionality
-  (sorting, filtering, bulk actions, virtualization, pagination) — this is a
-  visual reskin onto the new tokens, not a Kanban rewrite.
+**Card** (`Card/CardHeader/CardTitle/CardContent`): white surface, 1px border, `shadow-soft-xs`,
+`rounded-2xl`, `p-5`. `elevation={2}` only for floating things. Utility alternative for custom
+markup: `surface-card`. For clickable cards add `interactive-lift` (or `<HoverLift>`) and a
+focus ring (`focus-ring`).
 
-## Known follow-ups (not completed in this pass)
+**Badge** variants: `default` (navy) · `secondary` · `outline` · `muted` · `brand` (magenta
+solid, counters) · `magenta|cyan|lime|success|warning|info` (tinted, safe contrast) ·
+`destructive`. Order status always via `StatusBadge`.
 
-Given the scope, this pass established the shared design-system foundation
-(tokens, typography, sidebar rail) that cascades to every shadcn-based
-surface automatically. Page-specific deeper reskins (chat bubbles/attachment
-picker, admin/reportes charts, login hero, order-detail rich expansion,
-avatar-stack primitive) were **not** hand-tuned individually in this session
-and should be revisited page-by-page against this system.
+**Input / Textarea / Select:** `h-10`, `rounded-xl`, border `--input`, hover border
+`primary/40`, focus = border + 2px ring `ring/25`; set `aria-invalid` to get the red state.
+Wrap with `FormField` (label + inline error). Visible labels, never placeholder-only.
+
+**Tabs:** muted track, active trigger = white card + navy bold text + `shadow-soft`
+(150ms), panel fades in. For page-level section switching prefer the top-bar section tabs.
+
+**Table:** sunken header (`text-xs font-semibold`), 1px row dividers, row hover
+`bg-accent/60`, selected `bg-primary/5`. Tabular numbers. Use `data-table` for feature
+parity (sorting, virtualization, bulk actions).
+
+**Dialog / Sheet / AlertDialog:** navy-tinted scrim (`navy-950/60`, no blur), `rounded-2xl`,
+`shadow-soft-lg`, 200–250ms; mobile dialogs are full-screen sheets (existing). Titles use
+`font-heading`. Footer: cancel = `outline`, confirm = `default` (or `destructive`).
+
+**Skeleton:** shimmer with a cyan tint; match the final layout's size to avoid CLS.
+**EmptyState** (`ui/empty-state.tsx`): dashed card, primary-tinted icon tile, spectrum tick,
+title (heading) + one-line help + up to two actions. Always give the next action.
+
+**Page pattern** (`components/layout`):
+`PageContainer` (`space-y-6`; `width="narrow|prose"` for forms) → `PageHeader`
+(title, description, optional icon, `actions`, children = tabs/filters) → `PageSection`
+(`text-section-title` + actions) → `StatCard` (label, animated value, icon `tone`
+navy|magenta|cyan|lime, delta, hint).
+
+## 7. How to build a page (rules for page agents)
+
+1. Start with `PageContainer` + `PageHeader`. One `<h1>`. Put the main action in
+   `actions` (`variant="brand"` only if it is the screen's star action, else `default`).
+   Don't add your own page padding, max-width, or route animation.
+2. Layout in this order: KPI row (`Stagger` > `StatCard`) → filters/toolbar → main content
+   (cards / `data-table`) → secondary panels. Group with `PageSection`; do not nest cards.
+3. Use only tokens: `bg-background|card|sunken|primary|accent`, `text-foreground|muted-foreground`,
+   `border-border`. Brand colors via `magenta|cyan|lime|navy` classes and their `-ink/-soft`
+   variants. **Never** hardcode hex, `bg-white`, `text-gray-*`, `slate-*`, `black/NN`,
+   or Tailwind default `pink-*|rose-*|emerald-*` for brand meaning. Verify the page in
+   dark mode (`.dark` on `<html>`).
+4. Text sizes only from the roles in section 2. Status via `StatusBadge`; areas via
+   `AreaChip`/`area-*` classes.
+5. Motion: wrap grids/lists in `Stagger`/`StaggerItem`, single blocks in `FadeIn`, KPI numbers
+   in `AnimatedNumber`, clickable cards in `HoverLift`/`interactive-lift`. Durations from
+   the table in section 4 only. Always keep it reduced-motion safe (use the primitives; for
+   custom framer code use `useReducedMotion`).
+6. Loading = `Skeleton` with the real layout; empty = `EmptyState`; errors = inline message +
+   retry. Disable and spinner a submitting button (`Loader2 animate-spin`).
+7. Responsive: mobile first, no horizontal page scroll, side gutter comes from layout,
+   touch targets >= 44px, keep the bottom ~6.5rem free for the tab bar.
+8. Accessibility: contrast rules in section 1, visible `focus-visible` rings (don't remove),
+   `aria-label` on icon buttons, icons come with text or labels, never color-only meaning.
+9. Keep existing behavior, props and `data-testid`/`data-tour` attributes; update tests only
+   if markup you changed was asserted.
+
+## 8. Known follow-ups
+
+- Page-level reskins (dashboard, orders board, chat, calendar, admin charts, settings,
+  TV mode, mockup studio) still contain pre-redesign classes such as `rounded-full` buttons
+  and ad-hoc `emerald|amber|rose` pills; page agents should convert them as they go.
+- Tabs have no shared-layout sliding indicator (CSS color/shadow transition only) because
+  Radix does not expose the active trigger geometry; add one per page if needed with a
+  unique `layoutId`.
+- Mobile app (`apps/mobile`) was not touched in phase 1.

@@ -31,7 +31,7 @@ import {
 } from "@/lib/homeDashboard";
 import { cn } from "@/lib/utils";
 import type { DesignDashboard, DesignWorkItem } from "@/types";
-import { HomeSection, LiveStatus, Panel, PriorityPill, RecentNotices, StatTile, productsLine } from "./HomeShared";
+import { StatGrid, HomeSection, LiveStatus, Panel, PriorityPill, RecentNotices, StatTile, productsLine } from "./HomeShared";
 
 function whoLine(item: DesignWorkItem): string {
   if (item.mine) return "Tuyo";
@@ -66,7 +66,7 @@ function Meta({ item, now }: { item: DesignWorkItem; now: number }) {
 function NextUp({ entry, now, onOpen }: { entry: Prioritized<DesignWorkItem>; now: number; onOpen: () => void }) {
   const { item, priority } = entry;
   return (
-    <Panel className="space-y-4 p-5">
+    <Panel className="space-y-4 border-l-[3px] border-l-magenta p-5">
       <div className="flex flex-wrap items-center gap-2">
         <PriorityPill priority={priority} />
         <span className="text-meta">{stateLine(item, now)}</span>
@@ -81,7 +81,7 @@ function NextUp({ entry, now, onOpen }: { entry: Prioritized<DesignWorkItem>; no
       <p
         className={cn(
           "text-sm font-medium",
-          priority === "overdue" ? "text-rose-600 dark:text-rose-400" : priority === "due_soon" ? "text-amber-700 dark:text-amber-300" : "text-foreground/80"
+          priority === "overdue" ? "text-destructive" : priority === "due_soon" ? "text-warning" : "text-foreground/80"
         )}
       >
         {dueText(item.deliveryDate, now)} · {whoLine(item)}
@@ -112,7 +112,7 @@ function subtitleFor(data: DesignDashboard | undefined): string {
  * autorización del cliente, la carga del equipo, las rondas y los avisos.
  */
 export function DesignHome({ firstName, switcher }: { firstName?: string | null; switcher?: ReactNode }) {
-  const { data, isLoading, isError, isFetching, updatedAt, refetch } = useDesignDashboard();
+  const { data, isLoading, isError, error, isFetching, updatedAt, refetch } = useDesignDashboard();
   const now = useNow(60_000);
   const [openOrderId, setOpenOrderId] = useState<number | null>(null);
 
@@ -131,7 +131,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
       </div>
 
       {isError && !data ? (
-        <ErrorState onRetry={() => void refetch()} />
+        <ErrorState error={error} onRetry={() => void refetch()} />
       ) : isLoading || !data ? (
         <div className="space-y-6" aria-hidden>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
@@ -143,7 +143,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          <StatGrid>
             <StatTile icon={RotateCcw} label="Cambios del cliente" value={data.counters.changesRequested} tone="warn" hint="el cliente espera" />
             <StatTile icon={Inbox} label="Nuevos sin empezar" value={data.counters.notStarted} tone="warn" />
             <StatTile icon={Timer} label="En curso" value={data.counters.inProgress} tone="info" />
@@ -162,7 +162,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
               tone="good"
               hint={`${data.counters.approvedWeek} en los últimos 7 días`}
             />
-          </div>
+          </StatGrid>
 
           <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-3 lg:items-start">
             <div className="min-w-0 space-y-8 lg:col-span-2">
@@ -248,7 +248,7 @@ export function DesignHome({ firstName, switcher }: { firstName?: string | null;
                           <button
                             type="button"
                             onClick={() => setOpenOrderId(item.id)}
-                            className="block w-full px-4 py-2.5 text-left hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                            className="block w-full px-4 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
                           >
                             <span className="block truncate text-sm font-medium">
                               #{item.id} · {item.clientName}

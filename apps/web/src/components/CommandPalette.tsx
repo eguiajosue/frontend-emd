@@ -261,7 +261,7 @@ export function CommandPalette() {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-start justify-center bg-black/30 pt-[12vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-[100] flex items-start justify-center bg-navy-950/50 pt-[12vh] backdrop-blur-[3px]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -273,7 +273,7 @@ export function CommandPalette() {
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
-            transition={{ type: "spring", bounce: 0, duration: 0.25 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
           >
             <Command
@@ -285,7 +285,7 @@ export function CommandPalette() {
                 "[&_[cmdk-input-wrapper]]:border-border/60 [&_[cmdk-input-wrapper]]:px-5 [&_[cmdk-input]]:h-14 [&_[cmdk-input]]:text-[0.9375rem]",
                 "[&_[cmdk-list]]:max-h-[min(24rem,60vh)] [&_[cmdk-list]]:p-2",
                 "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2",
-                "[&_[cmdk-item]]:rounded-full [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2.5 [&_[cmdk-item][data-selected=true]]:bg-muted [&_[cmdk-item][data-selected=true]]:text-foreground"
+                "[&_[cmdk-item]]:rounded-full [&_[cmdk-item]]:px-3 [&_[cmdk-item]]:py-2.5 [&_[cmdk-item]]:transition-colors [&_[cmdk-item]]:duration-150 [&_[cmdk-item][data-selected=true]]:bg-accent [&_[cmdk-item][data-selected=true]]:text-foreground [&_[cmdk-item][data-selected=true]_svg]:text-[hsl(var(--magenta-ink))]"
               )}
               value={selected}
               onValueChange={setSelected}
@@ -324,7 +324,7 @@ export function CommandPalette() {
                         <action.icon className="mr-2 h-4 w-4" />
                         {action.label}
                         {action.hint && (
-                          <kbd className="ml-auto rounded-full border border-border/60 bg-card px-2 py-0.5 font-sans text-xs text-muted-foreground">
+                          <kbd className="ml-auto rounded-md border border-border border-b-2 bg-card px-2 py-0.5 font-sans text-xs font-semibold text-muted-foreground">
                             {action.hint}
                           </kbd>
                         )}

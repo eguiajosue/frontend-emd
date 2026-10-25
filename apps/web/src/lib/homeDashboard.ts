@@ -135,19 +135,19 @@ export function dueText(deliveryDate: string | null, now: number): string {
 export const ATTENTION_META: Record<AttentionReason, { label: string; pill: string }> = {
   overdue: {
     label: "Vencido",
-    pill: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+    pill: "bg-destructive/10 text-destructive",
   },
   ready_not_delivered: {
     label: "Listo sin entregar",
-    pill: "bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+    pill: "bg-info-soft text-info",
   },
   at_risk_not_started: {
     label: "Por vencer sin empezar",
-    pill: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+    pill: "bg-warning-soft text-warning",
   },
   waiting_client: {
     label: "Esperando al cliente",
-    pill: "bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+    pill: "bg-magenta-soft text-magenta-ink",
   },
   changes_requested: {
     label: "Cambios sin retomar",
@@ -155,7 +155,7 @@ export const ATTENTION_META: Record<AttentionReason, { label: string; pill: stri
   },
   design_not_started: {
     label: "Diseño sin empezar",
-    pill: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+    pill: "bg-warning-soft text-warning",
   },
   no_date: {
     label: "Sin fecha",
@@ -187,9 +187,9 @@ export function attentionText(reason: AttentionReason, since: string | null, now
 /* ------------------------------- Salud de área ----------------------------- */
 
 export const HEALTH_META: Record<AreaHealth, { label: string; dot: string; text: string }> = {
-  ok: { label: "Al día", dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-300" },
-  warning: { label: "Atención", dot: "bg-amber-400", text: "text-amber-700 dark:text-amber-300" },
-  critical: { label: "Con vencidos", dot: "bg-rose-500", text: "text-rose-700 dark:text-rose-300" },
+  ok: { label: "Al día", dot: "bg-emerald-500", text: "text-success" },
+  warning: { label: "Atención", dot: "bg-amber-400", text: "text-warning" },
+  critical: { label: "Con vencidos", dot: "bg-rose-500", text: "text-destructive" },
 };
 
 /* ---------------------------------- Varios --------------------------------- */

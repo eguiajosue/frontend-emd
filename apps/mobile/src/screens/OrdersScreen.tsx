@@ -1,30 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { request, unwrapList, getErrorMessage } from '@emd/api-client';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { request, unwrapList } from '@emd/api-client';
 import { getStatusLabel, getStatusTone } from '@emd/business';
 import type { Order } from '@emd/types';
+import { colors, radii, shadows, spacing, typography } from '../theme';
+import { FadeInView, PressableScale } from '../theme/motion';
+import { statusBarPad } from '../theme/layout';
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  StatusChip,
+  describeError,
+  type FriendlyError,
+} from '../components/ui';
 
-/** Mismo mapeo semántico que usa la Web (`statusColors.ts`), pero a color HEX en vez de clases Tailwind. */
-const DOT_COLOR_BY_TONE: Record<string, string> = {
-  neutral: '#94a3b8',
-  info: '#0ea5e9',
-  warning: '#f59e0b',
-  progress: '#8b5cf6',
-  success: '#10b981',
-  done: '#6366f1',
-  danger: '#f97316',
-  critical: '#ef4444',
-};
-
-function OrderRow({ order, onPress }: { order: Order; onPress: () => void }) {
+function OrderRow({ order, index, onPress }: { order: Order; index: number; onPress: () => void }) {
   const tone = getStatusTone(order.statusId, order.status?.name);
   const label = getStatusLabel(order.statusId, order.status?.name);
   const clientName =
@@ -33,19 +24,27 @@ function OrderRow({ order, onPress }: { order: Order; onPress: () => void }) {
     'Sin cliente';
 
   return (
-    <TouchableOpacity style={styles.row} onPress={onPress}>
-      <View style={styles.rowHeader}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          #{order.id} · {clientName}
-        </Text>
-        <View style={[styles.badge, { backgroundColor: DOT_COLOR_BY_TONE[tone] }]}>
-          <Text style={styles.badgeText}>{label}</Text>
+    <FadeInView index={index}>
+      <PressableScale
+        onPress={onPress}
+        style={styles.row}
+        accessibilityLabel={`Pedido ${order.id}, ${clientName}, ${label}`}
+        accessibilityHint="Abre el detalle del pedido"
+      >
+        <View style={styles.rowHeader}>
+          <Text style={styles.rowId}>#{order.id}</Text>
+          <StatusChip tone={tone} label={label} />
         </View>
-      </View>
-      <Text style={styles.rowDescription} numberOfLines={2}>
-        {order.description}
-      </Text>
-    </TouchableOpacity>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {clientName}
+        </Text>
+        {!!order.description && (
+          <Text style={styles.rowDescription} numberOfLines={2}>
+            {order.description}
+          </Text>
+        )}
+      </PressableScale>
+    </FadeInView>
   );
 }
 
@@ -61,7 +60,7 @@ export function OrdersScreen({
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FriendlyError | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -69,7 +68,7 @@ export function OrdersScreen({
       const res = await request<Order[] | { data: Order[] }>('orders', { token });
       setOrders(unwrapList(res));
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudieron cargar los pedidos.'));
+      setError(describeError(err, 'No se pudieron cargar los pedidos.'));
     }
   }, [token]);
 
@@ -84,37 +83,56 @@ export function OrdersScreen({
     setRefreshing(false);
   };
 
+  const handleRetry = () => {
+    setLoading(true);
+    load().finally(() => setLoading(false));
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Pedidos</Text>
-        <TouchableOpacity onPress={onLogout}>
-          <Text style={styles.logout}>Cerrar sesión</Text>
-        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerOverline}>EMD BORDADOS</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">
+            Pedidos
+          </Text>
+        </View>
+        <PressableScale onPress={onLogout} style={styles.logout} accessibilityLabel="Cerrar sesión">
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </PressableScale>
+      </View>
+      <View style={styles.accentBar}>
+        <View style={{ flex: 3, backgroundColor: colors.magenta }} />
+        <View style={{ flex: 2, backgroundColor: colors.cyan }} />
+        <View style={{ flex: 1, backgroundColor: colors.lime }} />
       </View>
 
       {loading ? (
-        <ActivityIndicator style={styles.loader} size="large" />
+        <LoadingState label="Cargando pedidos…" />
       ) : error ? (
-        <View style={styles.center}>
-          <Text style={styles.error}>{error}</Text>
-        </View>
+        <ErrorState error={error} onRetry={handleRetry} onSessionExpired={onLogout} />
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
-            <OrderRow order={item} onPress={() => onOpenOrder(item.id)} />
+          renderItem={({ item, index }) => (
+            <OrderRow order={item} index={index} onPress={() => onOpenOrder(item.id)} />
           )}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.magenta}
+              colors={[colors.magenta]}
+            />
           }
           ListEmptyComponent={
-            <View style={styles.center}>
-              <Text>No hay pedidos.</Text>
-            </View>
+            <EmptyState
+              title="Aún no hay pedidos"
+              message="Cuando se registren pedidos aparecerán aquí. Desliza hacia abajo para actualizar."
+            />
           }
-          contentContainerStyle={orders.length === 0 && styles.emptyContent}
+          contentContainerStyle={[styles.list, orders.length === 0 && styles.emptyContent]}
         />
       )}
     </View>
@@ -122,37 +140,38 @@ export function OrdersScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.bg },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    alignItems: 'flex-end',
+    paddingHorizontal: spacing.xl,
+    paddingTop: statusBarPad,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.navy,
   },
-  headerTitle: { fontSize: 22, fontWeight: '700' },
-  logout: { color: '#dc2626', fontSize: 14 },
-  loader: { marginTop: 40 },
-  center: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  emptyContent: { flexGrow: 1 },
-  error: { color: '#dc2626', fontSize: 15, textAlign: 'center' },
+  headerOverline: { ...typography.overline, color: colors.cyan },
+  headerTitle: { ...typography.display, color: colors.textOnNavy },
+  logout: {
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.textOnNavyMuted,
+  },
+  logoutText: { ...typography.caption, color: colors.textOnNavy },
+  accentBar: { flexDirection: 'row', height: 4 },
+  list: { padding: spacing.lg, gap: spacing.md },
+  emptyContent: { flexGrow: 1, justifyContent: 'center' },
   row: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f1f1',
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: 6,
+    ...shadows.card,
   },
-  rowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  rowTitle: { fontSize: 16, fontWeight: '600', flex: 1 },
-  rowDescription: { marginTop: 4, color: '#555', fontSize: 14 },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  rowHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rowId: { ...typography.caption, color: colors.textMuted },
+  rowTitle: { ...typography.heading, color: colors.text },
+  rowDescription: { ...typography.body, color: colors.textMuted },
 });

@@ -56,7 +56,10 @@ export function ThemeToggle() {
  * opciones a la vista, la activa marcada, en vez de un único botón que
  * alterna sin decir en qué tema estás.
  */
-export function ThemeRailSwitch({ orientation = "vertical" }: { orientation?: "vertical" | "horizontal" } = {}) {
+export function ThemeRailSwitch({
+  orientation = "vertical",
+  tone = "default",
+}: { orientation?: "vertical" | "horizontal"; tone?: "default" | "sidebar" } = {}) {
   const { resolvedTheme, setTheme } = useTheme();
   const { updatePreferences } = useUserPreferences();
   const [mounted, setMounted] = useState(false);
@@ -99,7 +102,10 @@ export function ThemeRailSwitch({ orientation = "vertical" }: { orientation?: "v
               onClick={(e) => choose(value, e)}
               className={cn(
                 "h-10 w-10 text-muted-foreground",
-                active && "bg-muted text-foreground ring-1 ring-border"
+                active && "bg-muted text-foreground ring-1 ring-border",
+                tone === "sidebar" &&
+                  "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white focus-visible:ring-sidebar-ring/80 focus-visible:ring-offset-0",
+                tone === "sidebar" && active && "bg-sidebar-primary text-cyan ring-1 ring-white/10"
               )}
             >
               <Icon className="!size-[1.15rem]" />

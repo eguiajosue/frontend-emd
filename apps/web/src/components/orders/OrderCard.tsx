@@ -76,8 +76,8 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
             if (e.key === "Enter" || e.key === " ") onOpen(order.id);
           }}
           className={cn(
-            "cursor-pointer shadow-soft transition-[box-shadow,border-color] duration-200 hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            isCritical && "border-rose-500/40 dark:border-rose-400/40"
+            "cursor-pointer shadow-soft transition-[box-shadow,border-color] duration-200 hover:border-primary/25 hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            isCritical && "border-destructive/40"
           )}
         >
         <CardContent className="density-card space-y-4 p-5">
@@ -143,7 +143,7 @@ function OrderCardImpl({ order, onOpen }: OrderCardProps) {
               )}
               {pendingTasksCount > 0 && (
                 <span
-                  className="inline-flex items-center gap-1 font-medium text-amber-700 dark:text-amber-300"
+                  className="inline-flex items-center gap-1 font-medium text-warning"
                   title={`${pendingTasksCount} tarea${pendingTasksCount === 1 ? "" : "s"} pendiente${pendingTasksCount === 1 ? "" : "s"} por marcar`}
                 >
                   <ListChecks className="h-3.5 w-3.5" aria-hidden />

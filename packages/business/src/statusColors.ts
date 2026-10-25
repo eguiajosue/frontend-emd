@@ -44,33 +44,34 @@ const TONE_BY_DESIGN_STATUS_NAME: Record<string, StatusTone> = {
 };
 
 /**
- * Clases Tailwind (bg + texto + borde) por tono, pensadas para light y dark.
- * Píldora tintada suave: texto del color + fondo del mismo color al ~10%, sin
+ * Clases Tailwind (bg + texto + borde) por tono con tokens de DESIGN.md
+ * (semánticos `*-soft`/`*-ink`, magenta de marca, destructive): ya cambian
+ * solos en dark y cumplen >= 4.5:1. Píldora tintada suave, sin
  * borde visible (el `border-transparent` mantiene la altura de los call sites
  * que todavía agregan `border`). El color fuerte queda para el texto y el
  * punto/barra; nunca un bloque saturado.
  */
 const CLASSES_BY_TONE: Record<StatusTone, string> = {
-  neutral: "border-transparent bg-slate-500/10 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
-  info: "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
-  warning: "border-transparent bg-amber-500/15 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
-  progress: "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
-  success: "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
-  done: "border-transparent bg-primary/10 text-primary",
+  neutral: "border-transparent bg-muted text-muted-foreground",
+  info: "border-transparent bg-info-soft text-info",
+  warning: "border-transparent bg-warning-soft text-warning",
+  progress: "border-transparent bg-magenta-soft text-magenta-ink",
+  success: "border-transparent bg-success-soft text-success",
+  done: "border-transparent bg-primary/10 text-foreground",
   danger: "border-transparent bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
-  critical: "border-transparent bg-red-500/10 text-red-700 dark:bg-red-400/15 dark:text-red-300",
+  critical: "border-transparent bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/30",
 };
 
 /** Punto (indicador) sólido por tono, para usar en leyendas/gráficos. */
 const DOT_BY_TONE: Record<StatusTone, string> = {
-  neutral: "bg-slate-400",
-  info: "bg-sky-500",
-  warning: "bg-amber-500",
-  progress: "bg-violet-500",
-  success: "bg-emerald-500",
+  neutral: "bg-muted-foreground/50",
+  info: "bg-info",
+  warning: "bg-warning",
+  progress: "bg-magenta",
+  success: "bg-success",
   done: "bg-primary",
   danger: "bg-orange-500",
-  critical: "bg-red-500",
+  critical: "bg-destructive",
 };
 
 function toneByName(statusName: string | null | undefined): StatusTone | null {

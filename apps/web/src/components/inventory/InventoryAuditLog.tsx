@@ -32,7 +32,7 @@ export function InventoryAuditLog({ areas }: { areas: InventoryArea[] }) {
     to: to || undefined,
     limit: 200,
   };
-  const { data = [], isPending, isError, refetch } = useInventoryMovements(filter);
+  const { data = [], isPending, isError, error, refetch } = useInventoryMovements(filter);
 
   // Los usuarios disponibles se arman con lo que ya trae la bitácora.
   const [seen, setSeen] = useState<Map<number, string>>(() => new Map());
@@ -80,7 +80,7 @@ export function InventoryAuditLog({ areas }: { areas: InventoryArea[] }) {
       {isPending ? (
         <TableSkeleton rows={5} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : data.length === 0 ? (
         <EmptyState
           icon={History}

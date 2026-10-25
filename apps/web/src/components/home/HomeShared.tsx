@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { Children, useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, Loader2, RefreshCw, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SimpleTooltip } from "@/components/ui/tooltip";
@@ -10,6 +10,7 @@ import { notificationHref } from "@/lib/notifications";
 import { describeOrderProducts } from "@/lib/createOrderForm";
 import { PRIORITY_LABEL, relativeTo, type WorkPriority } from "@/lib/homeDashboard";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber, FadeIn, Stagger, StaggerItem } from "@/components/motion";
 
 /* -------------------------------- En vivo --------------------------------- */
 
@@ -36,10 +37,10 @@ export function LiveStatus({
     seconds === null ? "" : seconds < 60 ? "hace instantes" : relativeTo(new Date(updatedAt).toISOString(), now);
 
   return (
-    <div className="inline-flex w-fit items-center gap-2 rounded-full bg-card py-1 pl-3 pr-1 text-sm text-muted-foreground">
+    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-card py-1 pl-3 pr-1 shadow-soft-xs text-sm text-muted-foreground">
       <span className="relative flex h-2 w-2" aria-hidden>
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime opacity-70 motion-reduce:hidden" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-lime-strong dark:bg-lime" />
       </span>
       <span>
         <span className="font-medium text-foreground">En vivo</span>
@@ -66,17 +67,27 @@ export function LiveStatus({
 
 const TONE_CLASSES = {
   default: "text-muted-foreground",
-  danger: "text-rose-600 dark:text-rose-400",
-  warn: "text-amber-600 dark:text-amber-400",
-  info: "text-sky-600 dark:text-sky-400",
-  good: "text-emerald-600 dark:text-emerald-400",
+  danger: "text-destructive",
+  warn: "text-warning",
+  info: "text-cyan-ink dark:text-cyan",
+  good: "text-lime-ink dark:text-lime",
+} as const;
+
+/** Fondo tintado del icono cuando la métrica "importa" (> 0). */
+const TONE_CHIP = {
+  default: "bg-muted text-muted-foreground",
+  danger: "bg-destructive/10 text-destructive",
+  warn: "bg-warning-soft text-warning",
+  info: "bg-cyan/25 text-cyan-ink dark:bg-cyan/15 dark:text-cyan",
+  good: "bg-lime/30 text-lime-ink dark:bg-lime/15 dark:text-lime",
 } as const;
 
 export type StatTone = keyof typeof TONE_CLASSES;
 
 /**
  * Una métrica del tablero. Con `href` es un acceso directo a la lista
- * filtrada; el color sólo aparece cuando el número importa (> 0).
+ * filtrada; el color sólo aparece cuando el número importa (> 0). Las cifras
+ * numéricas cuentan hacia arriba al entrar en pantalla.
  */
 export function StatTile({
   icon: Icon,
@@ -100,8 +111,8 @@ export function StatTile({
         <span className="text-label">{label}</span>
         <span
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted",
-            active ? TONE_CLASSES[tone] : "text-muted-foreground"
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105",
+            active ? TONE_CHIP[tone] : TONE_CHIP.default
           )}
         >
           <Icon className="h-4 w-4" aria-hidden />
@@ -109,29 +120,39 @@ export function StatTile({
       </div>
       <p
         className={cn(
-          "font-heading text-3xl font-semibold leading-none tabular-nums",
-          active && tone === "danger" && "text-rose-600 dark:text-rose-400"
+          "font-heading text-3xl font-semibold leading-none tracking-tight tabular-nums",
+          active && tone === "danger" ? TONE_CLASSES.danger : "text-foreground"
         )}
       >
-        {value}
+        {typeof value === "number" ? <AnimatedNumber value={value} /> : value}
       </p>
       {hint && <p className="text-meta">{hint}</p>}
     </>
   );
   const className =
-    "flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft dark:border-border";
+    "group flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-soft dark:border-border";
   return href ? (
     <Link
       href={href}
-      className={cn(
-        className,
-        "transition-[border-color,box-shadow] hover:border-border hover:shadow-soft-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-      )}
+      className={cn(className, "interactive-lift hover:border-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60")}
     >
       {body}
     </Link>
   ) : (
     <div className={className}>{body}</div>
+  );
+}
+
+/** Rejilla de métricas con entrada escalonada (fade + sube 10px, reduced-motion safe). */
+export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <Stagger className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6", className)}>
+      {Children.toArray(children).map((child, i) => (
+        <StaggerItem key={i} className="min-w-0 [&>*]:h-full">
+          {child}
+        </StaggerItem>
+      ))}
+    </Stagger>
   );
 }
 
@@ -155,13 +176,15 @@ export function HomeSection({
   className?: string;
 }) {
   return (
+    <FadeIn inView className="min-w-0">
     <section aria-labelledby={id} className={cn("min-w-0 space-y-3", className)}>
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
           <h2 id={id} className="flex items-center gap-2 text-section-title">
+            <span className="h-4 w-1 rounded-full bg-accent-gradient" aria-hidden />
             {title}
             {count !== undefined && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary dark:text-foreground">
                 {count}
               </span>
             )}
@@ -171,22 +194,23 @@ export function HomeSection({
         {action && (
           <Link
             href={action.href}
-            className="inline-flex shrink-0 items-center gap-0.5 rounded-full text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="group/link inline-flex shrink-0 items-center gap-0.5 rounded-full text-sm font-medium text-muted-foreground transition-colors hover:text-magenta-ink dark:hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             {action.label}
-            <ChevronRight className="h-4 w-4" aria-hidden />
+            <ChevronRight className="h-4 w-4 transition-transform duration-150 group-hover/link:translate-x-0.5" aria-hidden />
           </Link>
         )}
       </div>
       {children}
     </section>
+    </FadeIn>
   );
 }
 
 /** Tarjeta contenedora de una lista o panel (una sola capa: nunca tarjetas anidadas). */
 export function Panel({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-2xl border border-border/60 bg-card shadow-soft dark:border-border", className)}>
+    <div className={cn("overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft dark:border-border", className)}>
       {children}
     </div>
   );
@@ -199,11 +223,11 @@ export function productsLine(products: Array<{ customName?: string | null; quant
 }
 
 export const PRIORITY_PILL: Record<WorkPriority, string> = {
-  overdue: "bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+  overdue: "bg-destructive/10 text-destructive",
   changes: "bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
-  due_soon: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+  due_soon: "bg-warning-soft text-warning",
   not_started: "bg-muted text-foreground/80",
-  in_progress: "bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+  in_progress: "bg-info-soft text-info",
 };
 
 /** Etiqueta en singular de la prioridad, para la píldora de cada fila. */
@@ -236,7 +260,7 @@ export { PRIORITY_LABEL };
 export function RecentNotices({ limit = 5 }: { limit?: number }) {
   const { notifications, isLoading } = useNotifications(1, limit);
   const now = Date.now();
-  if (isLoading) return <p className="px-4 py-3 text-meta">Cargando avisos…</p>;
+  if (isLoading) return <p className="px-4 py-3 text-meta" role="status">Cargando avisos…</p>;
   if (notifications.length === 0) {
     return <p className="px-4 py-3 text-sm text-muted-foreground">Sin avisos nuevos.</p>;
   }
@@ -247,7 +271,7 @@ export function RecentNotices({ limit = 5 }: { limit?: number }) {
         const content = (
           <>
             <span
-              className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-primary")}
+              className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.read ? "bg-transparent" : "bg-magenta")}
               aria-hidden
             />
             <span className="min-w-0 flex-1">
@@ -262,7 +286,7 @@ export function RecentNotices({ limit = 5 }: { limit?: number }) {
             {href ? (
               <Link
                 href={href}
-                className="flex items-start gap-3 px-4 py-2.5 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none"
               >
                 {content}
               </Link>

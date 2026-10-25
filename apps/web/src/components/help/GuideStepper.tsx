@@ -6,7 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { SPRING_DEFAULT } from "@/lib/motion";
+import { DUR, EASE_OUT } from "@/lib/motion";
+
+const STEP_TRANSITION = { duration: DUR.base, ease: EASE_OUT };
 import type { Guide } from "./guides";
 
 /**
@@ -31,7 +33,7 @@ export function GuideStepper({ guide }: { guide: Guide }) {
       }}
     >
       <div className="grid gap-0 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="bg-muted/40 p-4 sm:p-6" role="img" aria-label={`Animación: ${step.title}`}>
+        <div className="bg-gradient-to-br from-navy-50 to-cyan-soft p-4 dark:from-secondary/50 dark:to-sunken sm:p-6" role="img" aria-label={`Animación: ${step.title}`}>
           <div className="mx-auto h-[16.5rem] max-w-md">
             {/* `key` reinicia la animación al cambiar de paso. */}
             <AnimatePresence mode="wait">
@@ -41,7 +43,7 @@ export function GuideStepper({ guide }: { guide: Guide }) {
                 initial={{ opacity: 0, x: 16 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -16 }}
-                transition={SPRING_DEFAULT}
+                transition={STEP_TRANSITION}
               >
                 {step.scene}
               </motion.div>
@@ -50,16 +52,24 @@ export function GuideStepper({ guide }: { guide: Guide }) {
         </div>
 
         <div className="flex flex-col gap-4 p-5 sm:p-6">
-          <p className="text-meta tabular-nums">
-            Paso {index + 1} de {total}
-          </p>
+          <div className="space-y-2">
+            <p className="text-meta font-medium tabular-nums">
+              Paso {index + 1} de {total}
+            </p>
+            <div className="h-1 overflow-hidden rounded-full bg-secondary" aria-hidden>
+              <div
+                className="h-full rounded-full bg-accent-gradient transition-[width] duration-200 ease-out motion-reduce:transition-none"
+                style={{ width: `${((index + 1) / total) * 100}%` }}
+              />
+            </div>
+          </div>
           <AnimatePresence mode="wait">
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              transition={SPRING_DEFAULT}
+              transition={STEP_TRANSITION}
               className="space-y-2"
               aria-live="polite"
             >
@@ -78,8 +88,8 @@ export function GuideStepper({ guide }: { guide: Guide }) {
                   aria-label={`Ir al paso ${i + 1}: ${s.title}`}
                   aria-current={i === index ? "step" : undefined}
                   className={cn(
-                    "h-2 rounded-full transition-all",
-                    i === index ? "w-6 bg-primary" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    "hit-44 h-2 rounded-full transition-all duration-200 focus-ring",
+                    i === index ? "w-6 bg-[hsl(var(--magenta-strong))]" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/50"
                   )}
                 />
               ))}

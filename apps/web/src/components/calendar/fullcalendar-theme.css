@@ -11,16 +11,16 @@
   --fc-neutral-text-color: hsl(var(--muted-foreground));
   --fc-list-event-hover-bg-color: hsl(var(--muted));
   --fc-highlight-color: hsl(var(--muted));
-  --fc-today-bg-color: hsl(var(--muted) / 0.6);
-  --fc-now-indicator-color: hsl(var(--primary));
+  --fc-today-bg-color: hsl(var(--primary) / 0.06);
+  --fc-now-indicator-color: hsl(var(--magenta-strong));
   --fc-small-font-size: 0.75rem;
   /* Tintes por categoría (ver `CATEGORY_FC_COLORS`): fondo ~10%, texto del mismo color. */
   --cal-instalacion-bg: rgb(249 115 22 / 0.12);
   --cal-instalacion-fg: rgb(194 65 12);
-  --cal-visita-bg: rgb(59 130 246 / 0.12);
-  --cal-visita-fg: rgb(29 78 216);
-  --cal-entrega-bg: rgb(20 184 166 / 0.12);
-  --cal-entrega-fg: rgb(15 118 110);
+  --cal-visita-bg: hsl(var(--cyan-soft));
+  --cal-visita-fg: hsl(var(--cyan-ink));
+  --cal-entrega-bg: hsl(var(--lime-soft));
+  --cal-entrega-fg: hsl(var(--lime-ink));
   --cal-junta-bg: rgb(168 85 247 / 0.12);
   --cal-junta-fg: rgb(126 34 206);
   --cal-compras-bg: rgb(245 158 11 / 0.14);
@@ -32,10 +32,6 @@
 .dark .fc {
   --cal-instalacion-bg: rgb(251 146 60 / 0.16);
   --cal-instalacion-fg: rgb(253 186 116);
-  --cal-visita-bg: rgb(96 165 250 / 0.16);
-  --cal-visita-fg: rgb(147 197 253);
-  --cal-entrega-bg: rgb(45 212 191 / 0.16);
-  --cal-entrega-fg: rgb(94 234 212);
   --cal-junta-bg: rgb(192 132 252 / 0.16);
   --cal-junta-fg: rgb(216 180 254);
   --cal-compras-bg: rgb(251 191 36 / 0.16);
@@ -94,9 +90,13 @@
 
 .fc .fc-button-primary:not(:disabled).fc-button-active,
 .fc .fc-button-primary:not(:disabled):active {
-  background: hsl(var(--muted));
-  border-color: hsl(var(--border));
-  color: hsl(var(--foreground));
+  background: hsl(var(--ink));
+  border-color: hsl(var(--ink));
+  color: hsl(var(--ink-foreground));
+}
+
+.fc .fc-button {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .fc .fc-timegrid-slot-label,
@@ -122,8 +122,20 @@
 
 .fc .fc-day-today .fc-col-header-cell-cushion,
 .fc .fc-day-today .fc-daygrid-day-number {
-  color: hsl(var(--foreground));
+  color: hsl(var(--magenta-ink));
   font-weight: 700;
+}
+
+/* Los bloques aparecen con un fade corto al cambiar de semana/día. */
+.fc .fc-event {
+  animation: fc-event-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes fc-event-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc .fc-event { animation: none; }
 }
 
 .fc .fc-event {

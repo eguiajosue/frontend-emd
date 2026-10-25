@@ -43,13 +43,13 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
-            <PackageCheck className="h-4 w-4 text-muted-foreground" />
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-lime-soft text-lime-ink" aria-hidden>
+            <PackageCheck className="h-4 w-4" />
           </span>
           Próximas entregas
         </CardTitle>
         {upcoming.length > 0 && (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold tabular-nums text-secondary-foreground">
             {upcoming.length}
           </span>
         )}
@@ -69,7 +69,7 @@ export function UpcomingDeliveries({ orders, onSelectOrder, limit = 6 }: Upcomin
                 <Button
                   variant="ghost"
                   onClick={() => onSelectOrder(order.id)}
-                  className="h-auto w-full flex-col items-stretch gap-2 whitespace-normal rounded-xl px-2.5 py-2.5 text-left font-normal"
+                  className="h-auto w-full flex-col items-stretch gap-2 whitespace-normal rounded-xl px-2.5 py-2.5 text-left font-normal transition-colors duration-150 hover:bg-accent"
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span

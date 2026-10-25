@@ -54,14 +54,13 @@ function clearUrlParams(...keys: string[]) {
 /** Cabecera de grupo al estilo kanban: píldora con ícono, nombre y contador. */
 function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: LucideIcon; label: string; count: number }) {
   return (
-    <div className="flex items-center rounded-2xl border border-border/60 bg-card px-3 py-2.5 dark:border-border">
-      <h2
-        id={id}
-        className="inline-flex items-center gap-2 rounded-full bg-muted py-1 pl-2.5 pr-1 text-sm font-medium"
-      >
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+    <div className="flex items-center gap-3 border-b border-border/70 pb-2.5">
+      <span aria-hidden className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="size-4" />
+      </span>
+      <h2 id={id} className="flex items-center gap-2 font-heading text-base font-semibold tracking-tight">
         {label}
-        <span className="rounded-full bg-card px-2 py-0.5 text-xs tabular-nums text-muted-foreground">{count}</span>
+        <span className="rounded-full bg-muted px-2 py-0.5 font-sans text-xs font-medium tabular-nums text-muted-foreground">{count}</span>
       </h2>
     </div>
   );
@@ -76,7 +75,7 @@ function ColumnHeader({ id, icon: Icon, label, count }: { id: string; icon: Luci
 export default function TareasPage() {
   const { roles, areas: myAreas, session } = usePermissions();
   const access = useMemo(() => ({ roles, areas: myAreas }), [roles, myAreas]);
-  const { tasks, isLoading, isError, refetch } = useMyTasks();
+  const { tasks, isLoading, isError, error, refetch } = useMyTasks();
   const { advance, pendingKey } = useAdvanceMyTask();
   const { timeFormat } = useTimeFormat();
   const now = useNow(60_000);
@@ -177,12 +176,12 @@ export default function TareasPage() {
       </div>
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Skeleton className="h-52 w-full rounded-2xl" />
-          <Skeleton className="h-52 w-full rounded-2xl" />
-          <Skeleton className="h-52 w-full rounded-2xl" />
+          <Skeleton className="h-56 w-full rounded-2xl" />
+          <Skeleton className="h-56 w-full rounded-2xl" />
+          <Skeleton className="hidden h-56 w-full rounded-2xl sm:block" />
         </div>
       ) : stageBoard && stageArea ? (
         areaLoading ? (

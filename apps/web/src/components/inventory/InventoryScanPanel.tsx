@@ -254,8 +254,8 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
       <div className="min-w-0 space-y-4 rounded-2xl border border-border/60 bg-card p-4 shadow-soft sm:p-5">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5" aria-hidden>
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/60" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-lime-strong/60" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-lime-strong" />
           </span>
           <p className="text-sm font-medium">Listo para escanear</p>
           <div className="ml-auto flex items-center gap-1">
@@ -269,7 +269,7 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
             >
               {sound ? <Volume2 /> : <VolumeX />}
             </Button>
-            <Button variant="ghost" className="h-9 rounded-full px-3" onClick={onExit}>
+            <Button variant="ghost" className="h-9 px-3" onClick={onExit}>
               <X /> Salir
             </Button>
           </div>
@@ -299,10 +299,10 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
                   !active && "border-border/70 bg-muted/40 text-muted-foreground hover:bg-muted",
                   active &&
                     value === "ENTRADA" &&
-                    "border-sky-600 bg-sky-600 text-white shadow-sm dark:border-sky-500 dark:bg-sky-500",
+                    "border-cyan-strong bg-cyan-strong text-white shadow-soft-xs dark:text-navy-950",
                   active &&
                     value === "SALIDA" &&
-                    "border-orange-600 bg-orange-600 text-white shadow-sm dark:border-orange-500 dark:bg-orange-500"
+                    "border-magenta-strong bg-magenta-strong text-white shadow-soft-xs"
                 )}
               >
                 <Icon className="h-7 w-7 shrink-0" aria-hidden />
@@ -408,8 +408,8 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
               className={cn(
                 "flex items-center gap-3 rounded-2xl px-4 py-4",
                 last.entry.type === "ENTRADA"
-                  ? "bg-sky-500/10 text-sky-900 dark:text-sky-100"
-                  : "bg-orange-500/10 text-orange-900 dark:text-orange-100"
+                  ? "bg-cyan-soft text-cyan-ink"
+                  : "bg-magenta-soft text-magenta-ink"
               )}
             >
               <CheckCircle2 className="h-7 w-7 shrink-0" aria-hidden />
@@ -427,7 +427,7 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
             <div
               role="alert"
               data-testid="scan-last"
-              className="flex items-center gap-3 rounded-2xl bg-rose-500/10 px-4 py-4 text-rose-900 dark:text-rose-100"
+              className="flex items-center gap-3 rounded-2xl bg-destructive/10 px-4 py-4 text-destructive"
             >
               <AlertCircle className="h-7 w-7 shrink-0" aria-hidden />
               <div className="min-w-0">
@@ -469,7 +469,7 @@ export function InventoryScanPanel({ items, onCreateItem, onExit }: InventorySca
                 <span
                   className={cn(
                     "w-12 shrink-0 text-right font-heading text-lg font-semibold tabular-nums",
-                    entry.type === "ENTRADA" ? "text-sky-700 dark:text-sky-300" : "text-orange-700 dark:text-orange-300",
+                    entry.type === "ENTRADA" ? "text-cyan-ink" : "text-magenta-ink",
                     entry.undone && "line-through"
                   )}
                 >

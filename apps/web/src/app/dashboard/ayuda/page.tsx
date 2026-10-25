@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { FadeIn } from "@/components/motion";
 import Title from "@/components/Title";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,9 +20,16 @@ import { GUIDES, resolveGuideKeys } from "@/components/help/guides";
 import { BarChart3, LifeBuoy, ListChecks } from "lucide-react";
 
 /** Círculo de ícono reutilizado en encabezados de sección. */
-function IconBadge({ children }: { children: ReactNode }) {
+const BADGE_TINT = {
+  navy: "bg-navy-50 text-navy-700 dark:bg-secondary dark:text-primary",
+  magenta: "bg-magenta-soft text-magenta-ink",
+  cyan: "bg-cyan-soft text-cyan-ink",
+  lime: "bg-lime-soft text-lime-ink",
+} as const;
+
+function IconBadge({ children, tint = "navy" }: { children: ReactNode; tint?: keyof typeof BADGE_TINT }) {
   return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${BADGE_TINT[tint]}`}>
       {children}
     </div>
   );
@@ -49,7 +57,7 @@ const AyudaPage = () => {
   const guides = resolveGuideKeys({ roles, areas }, isAdmin).map((key) => GUIDES[key]);
 
   return (
-    <div className="space-y-6 pb-10">
+    <FadeIn className="space-y-6 pb-10">
       <Title title="Ayuda" />
 
       {guides.length === 0 ? (
@@ -88,7 +96,7 @@ const AyudaPage = () => {
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card className="space-y-4 p-5 sm:p-6">
           <div className="flex items-center gap-3">
-            <IconBadge>
+            <IconBadge tint="magenta">
               <BarChart3 className="h-4 w-4" />
             </IconBadge>
             <h2 className="text-section-title">Colores de estado</h2>
@@ -102,7 +110,7 @@ const AyudaPage = () => {
 
         <Card className="p-5 pb-2 sm:p-6 sm:pb-2">
           <div className="flex items-center gap-3">
-            <IconBadge>
+            <IconBadge tint="cyan">
               <ListChecks className="h-4 w-4" />
             </IconBadge>
             <h2 className="text-section-title">Preguntas frecuentes</h2>
@@ -113,24 +121,24 @@ const AyudaPage = () => {
               <AccordionContent>
                 <ul className="space-y-1.5">
                   <li>
-                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">
+                    <kbd className="rounded-md border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs font-semibold text-secondary-foreground shadow-soft-xs">
                       Ctrl/Cmd + K
                     </kbd>{" "}
                     abre el buscador rápido (navegar a una sección o buscar un pedido).
                   </li>
                   <li>
-                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">N</kbd>{" "}
+                    <kbd className="rounded-md border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs font-semibold text-secondary-foreground shadow-soft-xs">N</kbd>{" "}
                     en la pantalla de Pedidos abre &quot;+ Nueva Orden&quot; (sin tener nada
                     escribiendo en un campo).
                   </li>
                   <li>
-                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">Esc</kbd>{" "}
+                    <kbd className="rounded-md border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs font-semibold text-secondary-foreground shadow-soft-xs">Esc</kbd>{" "}
                     cierra cualquier ventana o diálogo abierto.
                   </li>
                   <li>
-                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">G</kbd>{" "}
+                    <kbd className="rounded-md border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs font-semibold text-secondary-foreground shadow-soft-xs">G</kbd>{" "}
                     y luego una letra te lleva a una sección (por ejemplo G y P abre Pedidos).{" "}
-                    <kbd className="rounded-md border border-border/60 bg-muted px-1.5 py-0.5 font-sans text-xs font-medium">?</kbd>{" "}
+                    <kbd className="rounded-md border border-border bg-secondary px-1.5 py-0.5 font-sans text-xs font-semibold text-secondary-foreground shadow-soft-xs">?</kbd>{" "}
                     muestra la lista completa.
                   </li>
                 </ul>
@@ -158,7 +166,7 @@ const AyudaPage = () => {
           </Accordion>
         </Card>
       </div>
-    </div>
+    </FadeIn>
   );
 };
 

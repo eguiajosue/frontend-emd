@@ -23,9 +23,9 @@ export function scoreTier(score: number | null): "high" | "mid" | "low" | "unkno
 }
 
 const TIER_STYLES: Record<ReturnType<typeof scoreTier>, string> = {
-  high: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300",
-  mid: "bg-amber-500/10 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300",
-  low: "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300",
+  high: "bg-lime/30 text-lime-ink dark:bg-lime/15 dark:text-lime",
+  mid: "bg-warning-soft text-warning",
+  low: "bg-destructive/10 text-destructive",
   unknown: "bg-muted text-muted-foreground",
 };
 
@@ -49,7 +49,7 @@ export function ScoreBadge({ score }: { score: number | null }) {
       // filtro/orden) y no se repite en re-renders posteriores del mismo nodo.
       initial={celebrate ? { scale: 0.85, opacity: 0 } : false}
       animate={celebrate ? { scale: 1, opacity: 1 } : undefined}
-      transition={celebrate ? { type: "spring", bounce: 0.35, duration: 0.4 } : undefined}
+      transition={celebrate ? { type: "spring", bounce: 0.3, duration: 0.25 } : undefined}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium",
         TIER_STYLES[tier]

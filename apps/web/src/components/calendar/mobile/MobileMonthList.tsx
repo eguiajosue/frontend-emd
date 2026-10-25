@@ -152,7 +152,7 @@ export function MobileMonthList({ events, orders, onSelectDay }: MobileMonthList
                   <span
                     className={cn(
                       "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                      today && "bg-ink text-ink-foreground"
+                      today && "bg-magenta-strong text-white"
                     )}
                   >
                     {format(day, "d")}

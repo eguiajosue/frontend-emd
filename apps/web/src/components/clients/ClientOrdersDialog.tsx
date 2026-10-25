@@ -16,6 +16,7 @@ import { useEntityDetail } from "@/hooks/useEntity";
 import { getClientName } from "@/lib/format";
 import { useMotionPreset } from "@/lib/motion";
 import { motion } from "framer-motion";
+import { PackageOpen } from "lucide-react";
 import type { Client } from "@/types";
 
 interface ClientOrdersDialogProps {
@@ -45,7 +46,7 @@ export function ClientOrdersDialog({ clientId, onClose }: ClientOrdersDialogProp
       <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
         <DialogContent className="sm:max-h-[85vh] sm:overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="font-heading tracking-tight">
               Pedidos de {client ? getClientName(client) : "cliente"}
             </DialogTitle>
           </DialogHeader>
@@ -54,7 +55,7 @@ export function ClientOrdersDialog({ clientId, onClose }: ClientOrdersDialogProp
             {isLoading ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-32 w-full" />
+                  <Skeleton key={i} className="h-32 w-full rounded-2xl" style={{ animationDelay: `${i * 60}ms` }} />
                 ))}
               </div>
             ) : isUnavailable ? (
@@ -69,9 +70,12 @@ export function ClientOrdersDialog({ clientId, onClose }: ClientOrdersDialogProp
                 </Button>
               </div>
             ) : orders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Este cliente todavía no tiene pedidos.
-              </p>
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
+                <span aria-hidden className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <PackageOpen className="size-5" />
+                </span>
+                <p className="text-sm text-muted-foreground">Este cliente todavía no tiene pedidos.</p>
+              </div>
             ) : (
               <motion.div
                 initial="hidden"

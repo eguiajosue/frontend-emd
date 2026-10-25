@@ -111,7 +111,7 @@ export function SaveOrderTemplateDialog({
               Guarda {contentSummary}. La fecha, el archivo del cliente y el asignado se eligen en cada pedido.
             </p>
             {(error || blocker) && (
-              <p role="alert" className="flex items-center gap-1 text-xs font-medium text-red-700 dark:text-red-400">
+              <p role="alert" className="flex items-center gap-1 text-xs font-medium text-destructive">
                 <AlertCircle className="h-3 w-3 shrink-0" aria-hidden />
                 {error ?? blocker}
               </p>

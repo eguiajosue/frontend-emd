@@ -9,6 +9,7 @@ import { haptic } from "@/lib/haptics";
 import { Button } from "@/components/ui/button";
 import { useVisibleNavItems, type VisibleNavItem } from "@/hooks/useVisibleNavItems";
 import { useNavLayout } from "@/hooks/useNavLayout";
+import { SPRING_LAYOUT } from "@/lib/motion";
 import { MobileMoreSheet } from "./MobileMoreSheet";
 
 /**
@@ -56,10 +57,10 @@ export function MobileTabBar() {
       aria-label="Navegación principal"
       className="fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:hidden"
     >
-      {/* Píldora blanca flotante, mismo lenguaje que el riel de escritorio:
-          íconos en círculo y el destino activo en tinta, que además se estira
-          para mostrar su nombre corto. */}
-      <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-card p-1.5 shadow-soft-md dark:border-border">
+      {/* Píldora marina flotante, mismo lenguaje que el riel de escritorio:
+          íconos y el destino activo resaltado, que además se estira para
+          mostrar su nombre corto. */}
+      <div className="inline-flex items-center gap-1 rounded-[1.375rem] border border-sidebar-border bg-sidebar p-1.5 shadow-soft-lg">
         {primaryTabs.map((item) => {
           const active = activeUrl === item.url;
           return (
@@ -70,24 +71,24 @@ export function MobileTabBar() {
               aria-label={item.title}
               onClick={() => !active && haptic("light")}
               className={cn(
-                "relative flex h-12 items-center justify-center gap-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                "relative flex h-12 items-center justify-center gap-2 rounded-2xl transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
                 active
                   ? "px-4 text-sidebar-primary-foreground"
-                  : "w-12 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  : "w-12 text-sidebar-foreground/75 hover:bg-white/10 hover:text-white"
               )}
             >
               {active && (
                 <motion.span
                   layoutId="mobile-tabbar-highlight"
                   aria-hidden
-                  className="pointer-events-none absolute inset-0 rounded-full bg-sidebar-primary"
-                  transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 35 }}
+                  className="pointer-events-none absolute inset-0 rounded-2xl bg-sidebar-primary ring-1 ring-white/10"
+                  transition={reducedMotion ? { duration: 0 } : SPRING_LAYOUT}
                 />
               )}
               <span className="relative">
-                <item.icon className="h-5 w-5" />
+                <item.icon className={cn("h-5 w-5 transition-colors duration-150", active && "text-cyan")} />
                 {item.unreadCount > 0 && (
-                  <span className="pointer-events-none absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground ring-2 ring-card">
+                  <span className="pointer-events-none absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-magenta-strong px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar">
                     {item.unreadCount > 99 ? "99+" : item.unreadCount}
                   </span>
                 )}
@@ -106,8 +107,8 @@ export function MobileTabBar() {
           aria-label="Más opciones"
           aria-expanded={moreOpen}
           className={cn(
-            "h-12 w-12 rounded-full p-0 text-muted-foreground hover:bg-muted hover:text-foreground [&_svg]:size-5",
-            moreOpen && "bg-muted text-foreground"
+            "h-12 w-12 rounded-2xl p-0 text-sidebar-foreground/75 hover:bg-white/10 hover:text-white focus-visible:ring-sidebar-ring/80 focus-visible:ring-offset-0 [&_svg]:size-5",
+            moreOpen && "bg-white/10 text-white"
           )}
         >
           <Menu />

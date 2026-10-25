@@ -40,7 +40,7 @@ export function HandoffStrip({
 
         {pendingSync && (
           <span
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-medium text-warning"
             title="El último cambio se guardó sin conexión y se va a sincronizar solo apenas vuelva la red."
           >
             <CloudOff className="h-3 w-3 shrink-0" aria-hidden />
@@ -117,10 +117,10 @@ const STAGE_ICONS: Record<HandoffStageState, typeof Check> = {
 // Píldoras tintadas, como los estados del tablero: la actual en tinta (es lo
 // que hay que mirar), lo hecho y lo pendiente en gris, lo bloqueado en ámbar.
 const STAGE_CLASSES: Record<HandoffStageState, string> = {
-  done: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  done: "bg-success-soft text-success",
   current: "bg-ink text-ink-foreground shadow-sm",
   // Bloqueada no es lo mismo que pendiente: el trabajo existe pero no puede
   // empezar todavía, y confundirlas hace que un área crea que se traspapeló.
-  blocked: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  blocked: "bg-warning-soft text-warning",
   pending: "bg-muted text-muted-foreground",
 };

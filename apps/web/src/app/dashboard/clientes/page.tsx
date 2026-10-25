@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { ColumnDef } from "@tanstack/react-table";
 import { BookmarkCheck, History, Users, Building2 } from "lucide-react";
-import Title from "@/components/Title";
+import { PageContainer, PageHeader } from "@/components/layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CrudPage, type CrudColumnsArgs, type CrudFilterConfig } from "@/components/crud/CrudPage";
@@ -178,8 +178,8 @@ const ClientesPage = () => {
   };
 
   return (
-    <div className="space-y-4">
-      <Title title="Clientes" />
+    <PageContainer className="space-y-4">
+      <PageHeader title="Clientes" icon={Users} description="Personas y empresas a las que les haces pedidos, con su historial y plantillas." />
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         {!isBranch && (
           <TabsList>
@@ -264,7 +264,7 @@ const ClientesPage = () => {
         clientId={templatesClientId}
         onClose={() => setTemplatesClientId(null)}
       />
-    </div>
+    </PageContainer>
   );
 };
 

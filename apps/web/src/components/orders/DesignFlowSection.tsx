@@ -464,7 +464,7 @@ export function DesignFlowSection({ order, embedded = false }: DesignFlowSection
       )}
 
       {isAuthorized && (
-        <p className="flex items-center gap-1.5 border-t border-border/60 pt-4 text-sm text-emerald-600 dark:text-emerald-400">
+        <p className="flex items-center gap-1.5 border-t border-border/60 pt-4 text-sm text-success">
           <CheckCircle2 className="h-4 w-4" />
           El cliente autorizó el diseño — el pedido pasa a producción.
         </p>
@@ -578,10 +578,10 @@ function RevisionTimelineItem({
   );
 
   const state: { label: string; classes: string } = revision.approved
-    ? { label: "Aprobada", classes: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" }
+    ? { label: "Aprobada", classes: "bg-success-soft text-success" }
     : revision.feedbackText
     ? { label: "Con cambios", classes: "bg-orange-500/10 text-orange-700 dark:text-orange-300" }
-    : { label: "Enviada", classes: "bg-sky-500/10 text-sky-700 dark:text-sky-300" };
+    : { label: "Enviada", classes: "bg-info-soft text-info" };
 
   const legacyMontageName = revision.montageFileName ?? `montaje-ronda-${revision.round}`;
   const feedbackBlock = revision.feedbackText ? (
@@ -696,7 +696,7 @@ function RevisionTimelineItem({
       {!feedbackFirst && feedbackBlock}
 
       {revision.approved && (
-        <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        <p className="flex items-center gap-1 text-xs font-medium text-success">
           <CheckCircle2 className="h-3.5 w-3.5" />
           Aprobada{revision.approvedAt ? ` · ${formatDateTime(revision.approvedAt, undefined, timeFormat)}` : ""}
         </p>
@@ -1523,7 +1523,7 @@ function ApproveDialog({
 function RequirementMark({ done, loading = false }: { done: boolean; loading?: boolean }) {
   if (loading) return <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-muted-foreground" aria-hidden />;
   return done ? (
-    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-label="Listo" />
+    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" aria-label="Listo" />
   ) : (
     <CircleDashed className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-label="Falta" />
   )
@@ -1560,13 +1560,13 @@ function ClientResponseCard({
       className={cn(
         "space-y-3 rounded-xl border p-4",
         approved
-          ? "border-emerald-500/30 bg-emerald-500/5"
+          ? "border-success/30 bg-success-soft"
           : "border-orange-500/30 bg-orange-500/5"
       )}
     >
       <div className="flex items-start gap-2">
         {approved ? (
-          <ThumbsUp className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+          <ThumbsUp className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
         ) : (
           <MessagesSquare className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" aria-hidden />
         )}

@@ -186,7 +186,7 @@ function TemplateCard({
     .join(" · ");
 
   return (
-    <li className="group flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft">
+    <li className="group interactive-lift flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-soft-xs">
       <button
         type="button"
         onClick={onApply}

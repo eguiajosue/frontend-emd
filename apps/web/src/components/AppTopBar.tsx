@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { SPRING_LAYOUT } from "@/lib/motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -28,13 +30,13 @@ import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
 
-/** Marca: píldora con el logo de EMD. */
+/** Marca en móvil (en escritorio vive en la cabecera del riel marino). */
 function BrandPill() {
   return (
     <Link
       href="/dashboard"
       aria-label="EMD marketing & design, inicio"
-      className="flex h-11 shrink-0 items-center rounded-full border border-border/60 bg-card px-5 shadow-soft transition-colors hover:bg-card/80 dark:border-border"
+      className="flex h-10 shrink-0 items-center rounded-xl px-1 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 md:hidden"
     >
       <BrandLogo className="h-6" />
     </Link>
@@ -44,12 +46,13 @@ function BrandPill() {
 /**
  * Pestañas de la sección actual (ej. Operación: Panel · Pedidos · Calendario ·
  * Historial). El riel sólo muestra íconos; aquí se leen los nombres de lo que
- * está "al lado" de la pantalla abierta, como la barra central de la
- * referencia.
+ * está "al lado" de la pantalla abierta. El resalte activo se desliza entre
+ * pestañas (layoutId compartido).
  */
 function SectionNav() {
   const pathname = usePathname();
   const items = useVisibleNavItems();
+  const reduced = useReducedMotion();
   const activeUrl = findActiveNavUrl(
     items.map((i) => i.url),
     pathname
@@ -67,10 +70,7 @@ function SectionNav() {
   if (siblings.length < 2) return null;
 
   return (
-    <nav
-      aria-label={activeGroup}
-      className="hidden min-w-0 items-center gap-0.5 rounded-full border border-border/60 bg-card p-1.5 shadow-soft dark:border-border lg:flex"
-    >
+    <nav aria-label={activeGroup} className="hidden min-w-0 items-center gap-0.5 lg:flex">
       {siblings.map((item) => {
         const active = item.url === activeUrl;
         return (
@@ -79,11 +79,19 @@ function SectionNav() {
             href={item.url}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex h-8 items-center whitespace-nowrap rounded-full px-4 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-              active && "bg-muted font-semibold text-foreground dark:bg-secondary"
+              "relative flex h-9 items-center whitespace-nowrap rounded-lg px-3.5 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70",
+              active && "font-semibold text-primary hover:text-primary"
             )}
           >
-            {item.title}
+            {active && (
+              <motion.span
+                layoutId="section-nav-active"
+                aria-hidden
+                className="absolute inset-0 rounded-lg bg-primary/10 dark:bg-primary/15"
+                transition={reduced ? { duration: 0 } : SPRING_LAYOUT}
+              />
+            )}
+            <span className="relative">{item.title}</span>
           </Link>
         );
       })}
@@ -106,17 +114,17 @@ function UserMenu() {
           <Button
             variant="bare"
             aria-label="Cuenta"
-            className="flex h-11 items-center gap-1.5 rounded-full border border-border/60 bg-card p-1 pr-2.5 shadow-soft dark:border-border"
+            className="flex h-10 items-center gap-1.5 rounded-xl border border-border/70 bg-card p-1 pr-2 shadow-soft-xs transition-colors duration-150 hover:border-primary/40"
           >
             <span className="relative">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-xs font-semibold uppercase text-primary-foreground">
+              <Avatar className="size-8 rounded-lg">
+                <AvatarFallback className="rounded-lg bg-primary text-xs font-semibold uppercase text-primary-foreground">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <span
                 aria-hidden
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
+                className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-lime ring-2 ring-card"
               />
             </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden />
@@ -180,10 +188,10 @@ export function AppTopBar({ title }: { title?: string | null }) {
   return (
     <header
       data-scrolled={scrolled || undefined}
-      className="sticky top-0 z-30 flex items-center gap-3 bg-background/85 px-4 pb-2 transition-shadow md:-ml-[var(--rail-offset,5.75rem)] md:transition-[margin] md:duration-200 md:[transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pr-6 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md md:h-[4.75rem] md:pb-0 md:pt-0 max-md:data-[scrolled]:shadow-[0_1px_0_hsl(var(--border))]"
+      className="sticky top-0 z-30 flex items-center gap-3 border-b border-transparent bg-background/80 px-4 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] backdrop-blur-md transition-[border-color,box-shadow] duration-200 motion-reduce:transition-none md:h-[4.25rem] md:px-6 md:pb-0 md:pt-0 data-[scrolled]:border-border/70"
     >
       <BrandPill />
-      <div className="relative flex min-w-0 flex-1 justify-center self-stretch">
+      <div className="relative flex min-w-0 flex-1 justify-center self-stretch md:justify-start">
         <SectionNav />
         {title && (
           <span

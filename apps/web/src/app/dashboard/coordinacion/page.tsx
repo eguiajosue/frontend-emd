@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { AlarmClock, CalendarClock, Clock3, Cpu, Hourglass, RefreshCw, UserX, Users } from "lucide-react";
+import { AlarmClock, CalendarClock, CheckCircle2, Clock3, Cpu, Hourglass, RefreshCw, UserX, Users } from "lucide-react";
 import Title from "@/components/Title";
 import { AreaChip } from "@/components/AreaChip";
 import { Card } from "@/components/ui/card";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,8 +34,10 @@ const NO_REASON = "__sin_motivo";
 function SectionTitle({ id, icon: Icon, children, aside }: { id: string; icon: typeof Clock3; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-2">
-      <h2 id={id} className="flex items-center gap-2 text-section-title">
-        <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
+      <h2 id={id} className="flex items-center gap-2.5 text-section-title">
+        <span aria-hidden className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="size-4" />
+        </span>
         {children}
       </h2>
       {aside}
@@ -89,7 +92,10 @@ function DelayReasonEditor({ order }: { order: OverdueOrder }) {
 function OverdueList({ orders, onOpen }: { orders: OverdueOrder[]; onOpen: (id: number) => void }) {
   if (orders.length === 0) {
     return (
-      <Card className="border-dashed p-6 text-center text-sm text-muted-foreground">Ningún pedido atrasado. 🎉</Card>
+      <Card className="flex items-center justify-center gap-2 border-dashed p-6 text-center text-sm text-muted-foreground">
+        <CheckCircle2 className="size-4 text-success" aria-hidden />
+        Ningún pedido atrasado.
+      </Card>
     );
   }
   const withoutReason = orders.filter((o) => !o.reason).length;
@@ -100,13 +106,13 @@ function OverdueList({ orders, onOpen }: { orders: OverdueOrder[]; onOpen: (id: 
           {withoutReason} sin motivo registrado: anotarlo ayuda a ver qué se repite.
         </p>
       )}
-      <ul className="space-y-2">
+      <Stagger as="ul" className="space-y-2">
         {orders.map((o) => (
-          <li key={o.id}>
-            <Card className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
+          <StaggerItem as="li" key={o.id}>
+            <Card className="flex flex-col gap-3 border-l-4 border-l-destructive/70 p-4 lg:flex-row lg:items-center">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-red-500/12 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-red-700 dark:bg-red-400/15 dark:text-red-300">
+                  <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-destructive">
                     {o.daysLate} día{o.daysLate === 1 ? "" : "s"} tarde
                   </span>
                   <button
@@ -134,9 +140,9 @@ function OverdueList({ orders, onOpen }: { orders: OverdueOrder[]; onOpen: (id: 
               </div>
               <DelayReasonEditor key={`${o.id}-${o.reasonAt ?? ""}`} order={o} />
             </Card>
-          </li>
+          </StaggerItem>
         ))}
-      </ul>
+      </Stagger>
     </div>
   );
 }
@@ -155,7 +161,7 @@ function Stat({ value, label, tone }: { value: number; label: string; tone?: str
 function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
   const open = load.pendiente + load.enProceso;
   return (
-    <Card data-area={load.area} className="space-y-4 overflow-hidden p-0">
+    <Card data-area={load.area} className="space-y-4 overflow-hidden p-0 transition-shadow duration-200 hover:shadow-soft-md">
       <div className="area-band flex items-center justify-between px-4 py-3">
         <span className="font-semibold">{getAreaLabel(load.area)}</span>
         <span className="text-sm tabular-nums text-muted-foreground">
@@ -166,18 +172,18 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
         <div className="grid grid-cols-4 gap-2">
           <Stat value={load.pendiente} label="Sin empezar" />
           <Stat value={load.enProceso} label="En proceso" />
-          <Stat value={load.atrasadas} label="Atrasadas" tone="text-red-600 dark:text-red-400" />
-          <Stat value={load.pronto} label="Hoy / mañana" tone="text-amber-600 dark:text-amber-400" />
+          <Stat value={load.atrasadas} label="Atrasadas" tone="text-destructive" />
+          <Stat value={load.pronto} label="Hoy / mañana" tone="text-warning" />
         </div>
         {/* Barra relativa a la más cargada: de un vistazo, quién está saturado. */}
         <div className="h-2 overflow-hidden rounded-full bg-muted" role="presentation">
-          <div className="h-full rounded-full bg-[hsl(var(--tone))]" style={{ width: `${max ? (open / max) * 100 : 0}%` }} />
+          <div className="h-full rounded-full bg-[hsl(var(--tone))] transition-[width] duration-200 ease-out-expo" style={{ width: `${max ? (open / max) * 100 : 0}%` }} />
         </div>
         {(load.overloaded || load.queueHours != null) && (
           <p
             className={cn(
               "flex flex-wrap items-center gap-x-2 text-sm",
-              load.overloaded ? "font-medium text-red-600 dark:text-red-400" : "text-muted-foreground"
+              load.overloaded ? "font-medium text-destructive" : "text-muted-foreground"
             )}
           >
             {load.overloaded && <span>Sobrecargada ({load.loadPct}% de su capacidad)</span>}
@@ -204,7 +210,7 @@ function AreaLoadCard({ load, max }: { load: AreaLoad; max: number }) {
                 <span className="truncate">{p.name}</span>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {p.pendiente + p.enProceso}
-                  {p.atrasadas > 0 && <span className="ml-1.5 text-red-600 dark:text-red-400">· {p.atrasadas} tarde</span>}
+                  {p.atrasadas > 0 && <span className="ml-1.5 text-destructive">· {p.atrasadas} tarde</span>}
                 </span>
               </li>
             ))}
@@ -277,7 +283,7 @@ function StageTimes({ data }: { data: CoordinationOverview["stageTimes"] }) {
 export default function CoordinacionPage() {
   const router = useRouter();
   const { canManageOperations, isSessionLoading: sessionLoading } = usePermissions();
-  const { data, isPending, isError, refetch, isFetching } = useCoordination();
+  const { data, isPending, isError, error, refetch, isFetching } = useCoordination();
 
   if (!sessionLoading && !canManageOperations) {
     return <Card className="mt-10 border-dashed p-10 text-center text-sm text-muted-foreground">No tienes permiso para ver esta página.</Card>;
@@ -290,7 +296,7 @@ export default function CoordinacionPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <FadeIn className="space-y-8">
       <Title title="Coordinación" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
@@ -305,7 +311,7 @@ export default function CoordinacionPage() {
       </div>
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending || !data ? (
         <div className="space-y-4">
           <Skeleton className="h-40 w-full rounded-2xl" />
@@ -325,11 +331,13 @@ export default function CoordinacionPage() {
             <SectionTitle id="coord-carga" icon={Users}>
               Carga por área y persona
             </SectionTitle>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {data.load.map((l) => (
-                <AreaLoadCard key={l.area} load={l} max={maxLoad} />
+                <StaggerItem key={l.area}>
+                  <AreaLoadCard load={l} max={maxLoad} />
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           </section>
 
           <section aria-labelledby="coord-tiempos" className="space-y-3">
@@ -340,6 +348,6 @@ export default function CoordinacionPage() {
           </section>
         </>
       )}
-    </div>
+    </FadeIn>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { DUR, EASE_OUT } from "@/lib/motion";
 import { AlertTriangle, Inbox, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { describeError } from "@/lib/errorMessages";
 
 /**
  * Estados compartidos de carga / vacío / error.
@@ -82,14 +84,15 @@ export function MessageThreadSkeleton() {
 }
 
 export function EmptyState({ message }: { message: string }) {
+  const reduced = useReducedMotion();
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: DUR.slow, ease: EASE_OUT }}
       className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center text-sm text-muted-foreground shadow-soft"
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-navy-50 text-navy-600 dark:bg-secondary dark:text-primary">
         <Inbox className="h-5 w-5" aria-hidden />
       </span>
       <p className="max-w-sm">{message}</p>
@@ -101,18 +104,33 @@ interface ErrorStateProps {
   title?: string;
   description?: string;
   onRetry?: () => void;
+  /**
+   * El error real: si se pasa, el catálogo (`lib/errorMessages`) decide el
+   * texto según el caso (sin conexión, sin permiso, servidor caído…) y oculta
+   * el reintento cuando no tiene sentido. `title`/`description` explícitos
+   * siguen ganando para conservar el contexto de cada pantalla.
+   */
+  error?: unknown;
 }
 
 export function ErrorState({
-  title = "No se pudo cargar la información",
-  description = "Ocurrió un problema al comunicarse con el servidor.",
+  title,
+  description,
   onRetry,
+  error,
 }: ErrorStateProps) {
+  const reduced = useReducedMotion();
+  const info = error !== undefined ? describeError(error) : undefined;
+  title = title ?? (info && info.kind !== "unknown" ? info.title : "No se pudo cargar la información");
+  description =
+    description ??
+    (info && info.kind !== "unknown" ? info.description : "Ocurrió un problema al comunicarse con el servidor.");
+  if (info && !info.retryable && info.kind !== "unknown") onRetry = undefined;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: DUR.slow, ease: EASE_OUT }}
       role="alert"
       className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-card px-6 py-12 text-center shadow-soft"
     >

@@ -51,7 +51,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
         {active ? (
           <motion.span
             layoutId="chat-conversation-active"
-            className="absolute inset-0 rounded-xl bg-muted"
+            className="absolute inset-0 rounded-xl bg-primary/[0.08] ring-1 ring-primary/15"
             transition={{ type: "spring", stiffness: 400, damping: 35 }}
           />
         ) : null}
@@ -111,7 +111,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
             ) : null}
           </span>
           {isTyping ? (
-            <span className="block truncate text-xs italic text-primary">
+            <span className="block truncate text-xs italic text-magenta-ink">
               escribiendo…
             </span>
           ) : conversation.lastMessage ? (
@@ -125,7 +125,7 @@ function ConversationRow({ conversation, active, onSelect }: ConversationRowProp
           )}
         </span>
         {conversation.unreadCount > 0 ? (
-          <Badge className="relative z-10 ml-auto h-5 min-w-5 shrink-0 justify-center px-1.5 tabular-nums hover:bg-primary">
+          <Badge className="relative z-10 ml-auto h-5 min-w-5 shrink-0 justify-center border-transparent bg-magenta-strong px-1.5 tabular-nums text-white hover:bg-magenta-strong">
             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
           </Badge>
         ) : null}
@@ -184,13 +184,13 @@ export function ConversationList({
         // mobile (de ahí el max-h-[45vh] + border-b) — ahora en mobile son
         // pantallas separadas (ver mobileView en page.tsx), así que la lista
         // ocupa el alto completo igual que el hilo.
-        "flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card md:w-80 md:shrink-0",
+        "flex h-full w-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-soft-xs md:w-80 md:shrink-0",
         className
       )}
     >
       <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-4">
         <h2 className="text-section-title">Conversaciones</h2>
-        <Button size="sm" className="gap-1.5 rounded-full" onClick={onNewDirect}>
+        <Button size="sm" className="gap-1.5" onClick={onNewDirect}>
           <MessageSquarePlus className="h-3.5 w-3.5" />
           Nuevo
         </Button>

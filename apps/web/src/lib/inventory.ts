@@ -40,16 +40,16 @@ export const STOCK_STATUS_META: Record<InventoryStockStatus, { label: string; cl
   ok: {
     label: "Disponible",
     className:
-      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+      "border-transparent bg-lime-soft text-lime-ink",
   },
   low: {
     label: "Bajo stock",
     className:
-      "border-transparent bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+      "border-transparent bg-warning-soft text-warning",
   },
   out: {
     label: "Agotado",
-    className: "border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300",
+    className: "border-transparent bg-destructive/10 text-destructive",
   },
 };
 
@@ -60,19 +60,19 @@ export const MOVEMENT_TYPE_META: Record<
   ENTRADA: {
     label: "Entrada",
     verb: "Registrar entrada",
-    className: "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+    className: "border-transparent bg-cyan-soft text-cyan-ink",
   },
   SALIDA: {
     label: "Salida",
     verb: "Registrar salida",
     className:
-      "border-transparent bg-orange-500/10 text-orange-700 dark:bg-orange-400/15 dark:text-orange-300",
+      "border-transparent bg-magenta-soft text-magenta-ink",
   },
   AJUSTE: {
     label: "Ajuste",
     verb: "Ajustar por conteo",
     className:
-      "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+      "border-transparent bg-chart-5/15 text-foreground",
   },
 };
 
@@ -150,21 +150,21 @@ export const RESTOCK_STATUS_META: Record<RestockRequestStatus, { label: string; 
   PENDIENTE: {
     label: "Pendiente",
     className:
-      "border-transparent bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300",
+      "border-transparent bg-warning-soft text-warning",
   },
   EN_CAMINO: {
     label: "En camino",
-    className: "border-transparent bg-sky-500/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
+    className: "border-transparent bg-cyan-soft text-cyan-ink",
   },
   COMPRADO: {
     label: "Comprado",
     className:
-      "border-transparent bg-violet-500/10 text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+      "border-transparent bg-chart-5/15 text-foreground",
   },
   RESUELTO: {
     label: "Resuelto",
     className:
-      "border-transparent bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+      "border-transparent bg-lime-soft text-lime-ink",
   },
 };
 

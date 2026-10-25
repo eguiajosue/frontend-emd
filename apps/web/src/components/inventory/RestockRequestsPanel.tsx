@@ -56,7 +56,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
   };
 
   return (
-    <li className="space-y-2 py-4" data-testid="restock-row">
+    <li className="space-y-2 py-4 transition-colors duration-fast" data-testid="restock-row">
       <div className="flex flex-wrap items-start gap-2">
         <div className="min-w-0 flex-1">
           <p className="font-medium leading-snug">
@@ -76,7 +76,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
           {request.statusNote && <p className="text-sm">Recepción: {request.statusNote}</p>}
         </div>
         {request.urgency === "URGENTE" && (
-          <Badge className="border-transparent bg-rose-500/10 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300">
+          <Badge className="border-transparent bg-destructive/10 text-destructive">
             Urgente
           </Badge>
         )}
@@ -115,7 +115,7 @@ function RequestRow({ request, canManage }: { request: RestockRequest; canManage
  */
 export function RestockRequestsPanel({ canManage }: { canManage: boolean }) {
   const [status, setStatus] = useState<RestockRequestStatus | "open" | "all">("open");
-  const { data, isPending, isError, refetch } = useRestockRequests(
+  const { data, isPending, isError, error, refetch } = useRestockRequests(
     status === "open" ? { open: true } : status === "all" ? {} : { status }
   );
 
@@ -141,7 +141,7 @@ export function RestockRequestsPanel({ canManage }: { canManage: boolean }) {
       {isPending ? (
         <TableSkeleton rows={4} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : (data ?? []).length === 0 ? (
         <EmptyState
           icon={PackageCheck}

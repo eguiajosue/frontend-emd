@@ -65,6 +65,7 @@ import {
   isRawSteel,
 } from "@/lib/mockups/types";
 import { cn } from "@/lib/utils";
+import { getAppErrorMessage } from "@/lib/errorMessages";
 
 export interface MockupStudioProps {
   /** Texto del botón de adjuntar ("Adjuntar a pedido", "Agregar al pedido"…). */
@@ -260,7 +261,7 @@ export function MockupStudio({
         try {
           designs.push(await importDesignFile(file));
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : "No se pudo leer el diseño.");
+          toast.error(getAppErrorMessage(error, "No se pudo leer el diseño."));
         }
       }
       setImporting(false);

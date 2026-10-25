@@ -111,13 +111,13 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
           <div className="flex items-center gap-3 rounded-2xl bg-muted/70 p-3">
             <div className="relative shrink-0">
               <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-sm font-semibold text-primary-foreground">
+                <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
                   {session?.user?.username?.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span
                 aria-hidden
-                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-muted"
+                className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-lime ring-2 ring-muted"
               />
             </div>
             <div className="flex min-w-0 flex-col">
@@ -162,7 +162,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                     </span>
                     <span className="flex-1">{item.title}</span>
                     {item.unreadCount > 0 && (
-                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-magenta-strong px-1.5 text-xs font-semibold text-white">
                         {item.unreadCount > 99 ? "99+" : item.unreadCount}
                       </span>
                     )}

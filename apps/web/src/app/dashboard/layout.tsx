@@ -7,11 +7,10 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useSocket, ChatSocketContext } from "@/hooks/useSocket";
-import { AnimatePresence, motion } from "framer-motion";
+import { PageTransition } from "@/components/motion/PageTransition";
 import { usePathname, useRouter } from "next/navigation";
 import { usePermissions } from "@/hooks/usePermissions";
 import { isBranchAllowedPath } from "@/lib/navMenu";
-import { useMotionPreset } from "@/lib/motion";
 import dynamic from "next/dynamic";
 import { CommandPalette } from "@/components/CommandPalette";
 import { AppTopBar } from "@/components/AppTopBar";
@@ -35,7 +34,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { isBranch } = usePermissions();
-  const { routeTransition } = useMotionPreset();
   const { count } = useUnreadNotificationsCount();
   const crumbs = useBreadcrumbs();
   const pageTitle = pageTitleFromBreadcrumbs(crumbs);
@@ -70,39 +68,32 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <SidebarProvider open={expanded} onOpenChange={setExpanded}>
         <AppSidebar />
         <MobileTabBar />
-        {/* Riel fijo a la izquierda (`AppSidebar`, sólo escritorio): el
-            contenido deja su ancho (3.75rem, o 14.5rem expandido) + márgenes
-            (1rem a cada lado). `--rail-offset` lo reutiliza `AppTopBar`. */}
+        {/* Riel marino anclado a la izquierda (`AppSidebar`, sólo escritorio):
+            el contenido deja su ancho (4.5rem, o 16rem expandido) como
+            `--rail-offset`. */}
         <main
           data-rail={expanded ? "expanded" : "collapsed"}
           style={{ "--rail-offset": expanded ? RAIL_OFFSET_EXPANDED : RAIL_OFFSET_COLLAPSED } as React.CSSProperties}
-          className="relative w-full min-w-0 overflow-x-clip transition-[padding] duration-200 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none md:pl-[var(--rail-offset)]"
+          className="relative w-full min-w-0 overflow-x-clip transition-[padding] duration-200 ease-out-expo motion-reduce:transition-none md:pl-[var(--rail-offset)]"
         >
           <AppTopBar title={pageTitle} />
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={routeTransition.initial}
-              animate={routeTransition.animate}
-              exit={routeTransition.exit}
-              transition={routeTransition.transition}
-              // La barra flotante (`MobileTabBar`, `md:hidden`) ocupa ~4.5rem
-              // de alto (píldora + su margen inferior) más un respiro de
-              // 0.75rem antes del contenido — de ahí los 5.5rem extra sobre
-              // el padding base, hasta el mismo breakpoint `md` en el que la
-              // barra desaparece y el padding vuelve al de siempre.
-              className="mx-auto mt-4 max-w-[110rem] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:mt-2 md:pb-8 md:pl-0 md:pr-6"
-            >
-              {blockedForBranch ? (
-                <div data-testid="branch-redirecting" aria-busy="true" className="space-y-3">
-                  <Skeleton className="h-8 w-48" />
-                  <Skeleton className="h-64 w-full rounded-xl" />
-                </div>
-              ) : (
-                children
-              )}
-            </motion.div>
-          </AnimatePresence>
+          <PageTransition
+            // La barra flotante (`MobileTabBar`, `md:hidden`) ocupa ~4.5rem
+            // de alto (píldora + su margen inferior) más un respiro de
+            // 0.75rem antes del contenido — de ahí los 6.5rem de padding
+            // inferior en móvil, hasta el mismo breakpoint `md` en el que la
+            // barra desaparece y el padding vuelve al de escritorio.
+            className="mx-auto mt-4 max-w-[110rem] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:px-6 md:mt-6 md:px-8 md:pb-12"
+          >
+            {blockedForBranch ? (
+              <div data-testid="branch-redirecting" aria-busy="true" className="space-y-3">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-64 w-full rounded-xl" />
+              </div>
+            ) : (
+              children
+            )}
+          </PageTransition>
         </main>
         <ConnectionStatus />
         <PullToRefresh />

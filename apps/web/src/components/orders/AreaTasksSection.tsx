@@ -56,17 +56,17 @@ const STATUS_META: Record<
 > = {
   pendiente: {
     label: "Pendiente",
-    classes: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    classes: "bg-warning-soft text-warning",
     icon: Circle,
   },
   en_proceso: {
     label: "En proceso",
-    classes: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    classes: "bg-info-soft text-info",
     icon: Play,
   },
   terminado: {
     label: "Terminado",
-    classes: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    classes: "bg-success-soft text-success",
     icon: CheckCircle2,
   },
 };
@@ -316,7 +316,7 @@ export function AreaTasksSection({ order, embedded = false }: AreaTasksSectionPr
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
         {allDone && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-2.5 py-1 text-xs font-semibold text-success">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
             Listo para entregar
           </span>

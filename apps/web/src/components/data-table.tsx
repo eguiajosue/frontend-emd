@@ -46,11 +46,11 @@ interface DataTableProps<TData, TValue> {
 
 /** Superficie de escritorio: panel blanco redondeado, borde casi invisible. */
 const DESKTOP_SURFACE =
-  "hidden w-full overflow-x-auto rounded-2xl border border-border/60 bg-card md:block";
+  "hidden w-full overflow-x-auto rounded-2xl border border-border bg-card shadow-soft-xs md:block";
 /** Fila en móvil: misma superficie, como tarjeta independiente. */
-const MOBILE_CARD = "rounded-2xl border border-border/60 bg-card px-4 py-3 shadow-soft transition-colors";
+const MOBILE_CARD = "rounded-2xl border border-border bg-card px-4 py-3 shadow-soft transition-colors";
 const MOBILE_EMPTY =
-  "rounded-2xl border border-border/60 bg-card p-6 text-center text-sm text-muted-foreground";
+  "rounded-2xl border border-border bg-card p-6 text-center text-sm text-muted-foreground";
 
 const MOBILE_PAGE_SIZE = 30;
 
@@ -151,7 +151,7 @@ export function DataTable<TData, TValue>({
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
                   MOBILE_CARD,
-                  onRowClick && "cursor-pointer active:bg-muted/60"
+                  onRowClick && "cursor-pointer active:bg-accent"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {
@@ -201,7 +201,7 @@ export function DataTable<TData, TValue>({
         style={{ maxHeight }}
       >
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-card">
+        <TableHeader className="sticky top-0 z-10 bg-sunken">
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map((header) => (
@@ -274,7 +274,7 @@ export function DataTable<TData, TValue>({
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 className={cn(
                   MOBILE_CARD,
-                  onRowClick && "cursor-pointer active:bg-muted/60"
+                  onRowClick && "cursor-pointer active:bg-accent"
                 )}
               >
                 {row.getVisibleCells().map((cell) => {

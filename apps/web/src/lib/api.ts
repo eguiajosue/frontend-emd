@@ -4,3 +4,8 @@
 import "./authFetch";
 
 export * from "@emd/api-client";
+
+// Mensajes de error unificados (catálogo en español). El export local gana
+// sobre el `export *` de arriba, así los ~60 sitios que importan
+// `getErrorMessage` de "@/lib/api" usan el catálogo sin cambios.
+export { getErrorMessage, describeError, getErrorTitle } from "./errorMessages";

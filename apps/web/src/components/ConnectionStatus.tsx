@@ -93,10 +93,10 @@ export function ConnectionStatus() {
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cn(
               "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium shadow-soft-md",
-              !online ? "bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-100" : "bg-card text-foreground ring-1 ring-border/60"
+              !online ? "bg-warning-soft text-warning ring-1 ring-warning/30" : "bg-card text-foreground ring-1 ring-border/60"
             )}
           >
-            <Icon className={cn("h-4 w-4", online && pending > 0 && !stuck && !reduced && "animate-spin")} aria-hidden />
+            <Icon className={cn("h-4 w-4", online && pending === 0 && "text-success", online && pending > 0 && !stuck && !reduced && "animate-spin")} aria-hidden />
             {label}
           </motion.div>
         )}

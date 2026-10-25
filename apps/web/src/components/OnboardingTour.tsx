@@ -161,13 +161,13 @@ export function OnboardingTour() {
         {/* Overlay con "recorte" (spotlight) sobre el elemento actual vía box-shadow.
             Radio grande: los objetivos (riel, botones) son píldoras y círculos. */}
         <div
-          className="pointer-events-none absolute rounded-[1.75rem] ring-2 ring-primary transition-[top,left,width,height] duration-300"
+          className="pointer-events-none absolute rounded-[1.75rem] ring-2 ring-[hsl(var(--magenta))] transition-[top,left,width,height] duration-200 ease-out motion-reduce:transition-none"
           style={{
             top: rect.top - 6,
             left: rect.left - 6,
             width: rect.width + 12,
             height: rect.height + 12,
-            boxShadow: "0 0 0 9999px rgba(0,0,0,0.5)",
+            boxShadow: "0 0 0 9999px hsl(240 35% 7% / 0.62)",
           }}
         />
 
@@ -195,8 +195,18 @@ export function OnboardingTour() {
           </div>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
           <div className="mt-4 flex items-center justify-between">
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium tabular-nums text-muted-foreground">
-              {stepIndex + 1} / {STEPS.length}
+            <span className="flex items-center gap-2" aria-label={`Paso ${stepIndex + 1} de ${STEPS.length}`}>
+              <span className="flex gap-1" aria-hidden>
+                {STEPS.map((_, i) => (
+                  <span
+                    key={i}
+                    className={cn("h-1.5 rounded-full transition-all duration-200", i === stepIndex ? "w-4 bg-[hsl(var(--magenta-strong))]" : "w-1.5 bg-border")}
+                  />
+                ))}
+              </span>
+              <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                {stepIndex + 1} / {STEPS.length}
+              </span>
             </span>
             <div className="flex gap-2">
               <Button variant="ghost" size="sm" onClick={finish}>

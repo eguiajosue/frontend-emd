@@ -140,7 +140,7 @@ export function QuoteFormDialog({ open, onOpenChange, clients, quote, defaultSta
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar cotización" : "Nueva cotización"}</DialogTitle>
+          <DialogTitle className="font-heading tracking-tight">{editing ? "Editar cotización" : "Nueva cotización"}</DialogTitle>
           <DialogDescription className="sr-only">
             Cliente, descripción, subestado y prioridad de la cotización.
           </DialogDescription>

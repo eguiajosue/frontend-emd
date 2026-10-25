@@ -1,14 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { getErrorMessage } from '@emd/api-client';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   useOrder,
   useOrderHistoryForOrder,
@@ -23,18 +14,18 @@ import {
   getStatusTone,
   statusIdsFor,
 } from '@emd/business';
-
-/** Mismo mapeo semántico que usa la Web y `OrdersScreen`, a color HEX. */
-const DOT_COLOR_BY_TONE: Record<string, string> = {
-  neutral: '#94a3b8',
-  info: '#0ea5e9',
-  warning: '#f59e0b',
-  progress: '#8b5cf6',
-  success: '#10b981',
-  done: '#6366f1',
-  danger: '#f97316',
-  critical: '#ef4444',
-};
+import { colors, radii, shadows, spacing, typography } from '../theme';
+import { FadeInView, PressableScale } from '../theme/motion';
+import { statusBarPad } from '../theme/layout';
+import {
+  Button,
+  ErrorBanner,
+  ErrorState,
+  LoadingState,
+  StatusChip,
+  describeError,
+  type FriendlyError,
+} from '../components/ui';
 
 /** Estados a los que se puede pasar desde el detalle (mismo circuito base que la Web). */
 const STATUS_FLOW: { id: number; label: string }[] = [
@@ -48,18 +39,20 @@ const STATUS_FLOW: { id: number; label: string }[] = [
 export function OrderDetailScreen({
   orderId,
   onBack,
+  onSessionExpired,
 }: {
   orderId: number;
   onBack: () => void;
+  onSessionExpired?: () => void;
 }) {
-  const { data: order, isPending, isError, refetch } = useOrder(orderId);
+  const { data: order, isPending, isError, error: queryError, refetch } = useOrder(orderId);
   const { roles, areas, canManageOperations } = usePermissionsFromSession();
   const { histories } = useOrderHistoryForOrder(orderId);
   const { updateOrder, isUpdating } = useUpdateOrder();
   const { changeStatus, isChangingStatus } = useChangeOrderStatusSimple();
 
   const [description, setDescription] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FriendlyError | null>(null);
 
   useEffect(() => {
     if (order) setDescription(order.description ?? '');
@@ -75,7 +68,7 @@ export function OrderDetailScreen({
     try {
       await updateOrder({ id: order.id, payload: { description } });
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo guardar el cambio.'));
+      setError(describeError(err, 'No se pudo guardar el cambio.'));
     }
   };
 
@@ -85,25 +78,28 @@ export function OrderDetailScreen({
     try {
       await changeStatus(order, newStatusId);
     } catch (err) {
-      setError(getErrorMessage(err, 'No se pudo cambiar el estado.'));
+      setError(describeError(err, 'No se pudo cambiar el estado.'));
     }
   };
 
   if (isPending) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
+      <View style={styles.container}>
+        <TopBar title={`Pedido #${orderId}`} onBack={onBack} />
+        <LoadingState label="Cargando pedido…" />
       </View>
     );
   }
 
   if (isError || !order) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>No se pudo cargar el pedido.</Text>
-        <TouchableOpacity onPress={() => refetch()}>
-          <Text style={styles.retry}>Reintentar</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <TopBar title={`Pedido #${orderId}`} onBack={onBack} />
+        <ErrorState
+          error={describeError(queryError, 'No se pudo cargar el pedido.')}
+          onRetry={() => refetch()}
+          onSessionExpired={onSessionExpired}
+        />
       </View>
     );
   }
@@ -111,95 +107,118 @@ export function OrderDetailScreen({
   const tone = getStatusTone(order.statusId, order.status?.name);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.back}>‹ Pedidos</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Pedido #{order.id}</Text>
-      </View>
+    <View style={styles.container}>
+      <TopBar title={`Pedido #${order.id}`} onBack={onBack}>
+        <StatusChip tone={tone} label={getStatusLabel(order.statusId, order.status?.name)} />
+      </TopBar>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <FadeInView style={styles.card}>
+          <Text style={styles.sectionTitle}>Información</Text>
+          <Row label="Cliente" value={getOrderClientName(order)} />
+          <Row label="Creado por" value={getUserName(order.user)} />
+          <Row label="Fecha de creación" value={formatDateTime(order.creationDate)} />
+          <Row
+            label="Asignado a"
+            value={getAssignedUserName(order.assignedUser) ?? 'sin asignar'}
+          />
+        </FadeInView>
 
-      <View style={styles.card}>
-        <Row label="Cliente" value={getOrderClientName(order)} />
-        <Row label="Creado por" value={getUserName(order.user)} />
-        <Row label="Fecha de creación" value={formatDateTime(order.creationDate)} />
-        <Row
-          label="Asignado a"
-          value={getAssignedUserName(order.assignedUser) ?? 'sin asignar'}
-        />
-        <View style={styles.row}>
-          <Text style={styles.label}>Estado actual</Text>
-          <View style={[styles.badge, { backgroundColor: DOT_COLOR_BY_TONE[tone] }]}>
-            <Text style={styles.badgeText}>
-              {getStatusLabel(order.statusId, order.status?.name)}
-            </Text>
+        <FadeInView index={1} style={styles.card}>
+          <Text style={styles.sectionTitle}>Descripción</Text>
+          <TextInput
+            style={[styles.textarea, !canEdit && styles.textareaReadonly]}
+            value={description}
+            onChangeText={setDescription}
+            editable={canEdit}
+            multiline
+            placeholder="Sin descripción"
+            placeholderTextColor={colors.textMuted}
+            accessibilityLabel="Descripción del pedido"
+          />
+          {canEdit && (
+            <Button
+              label={isUpdating ? 'Guardando...' : 'Guardar cambios'}
+              onPress={handleSave}
+              loading={isUpdating}
+            />
+          )}
+        </FadeInView>
+
+        <FadeInView index={2} style={styles.card}>
+          <Text style={styles.sectionTitle}>Cambiar estado</Text>
+          <View style={styles.statusRow}>
+            {STATUS_FLOW.map((s) => {
+              const active = s.id === order.statusId;
+              const off = !canChangeStatus || isChangingStatus;
+              return (
+                <PressableScale
+                  key={s.id}
+                  disabled={off}
+                  onPress={() => handleStatusChange(s.id)}
+                  accessibilityLabel={s.label}
+                  accessibilityState={{ selected: active, disabled: off }}
+                  style={[
+                    styles.statusChip,
+                    active && styles.statusChipActive,
+                    off && !active && styles.statusChipDisabled,
+                  ]}
+                >
+                  <Text style={[styles.statusChipText, active && styles.statusChipTextActive]}>
+                    {s.label}
+                  </Text>
+                </PressableScale>
+              );
+            })}
           </View>
-        </View>
-      </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Descripción</Text>
-        <TextInput
-          style={styles.textarea}
-          value={description}
-          onChangeText={setDescription}
-          editable={canEdit}
-          multiline
-        />
-        {canEdit && (
-          <TouchableOpacity
-            style={[styles.button, isUpdating && styles.buttonDisabled]}
-            onPress={handleSave}
-            disabled={isUpdating}
-          >
-            <Text style={styles.buttonText}>
-              {isUpdating ? 'Guardando...' : 'Guardar cambios'}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+          {histories.length > 0 && (
+            <View style={styles.historySection}>
+              <Text style={styles.sectionTitle}>Historial</Text>
+              {histories.slice(0, 5).map((h) => (
+                <View key={h.id} style={styles.historyItem}>
+                  <View style={styles.historyDot} />
+                  <Text style={styles.historyText}>
+                    {getStatusLabel(h.previousStatusId)} → {getStatusLabel(h.newStatusId)} ·{' '}
+                    {formatDateTime(h.changeDate)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </FadeInView>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Cambiar estado</Text>
-        <View style={styles.statusRow}>
-          {STATUS_FLOW.map((s) => (
-            <TouchableOpacity
-              key={s.id}
-              disabled={!canChangeStatus || isChangingStatus}
-              onPress={() => handleStatusChange(s.id)}
-              style={[
-                styles.statusChip,
-                s.id === order.statusId && styles.statusChipActive,
-                (!canChangeStatus || isChangingStatus) && styles.statusChipDisabled,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.statusChipText,
-                  s.id === order.statusId && styles.statusChipTextActive,
-                ]}
-              >
-                {s.label}
-              </Text>
-            </TouchableOpacity>
+        {error &&
+          (error.kind === 'session' && onSessionExpired ? (
+            <ErrorState error={error} onSessionExpired={onSessionExpired} />
+          ) : (
+            <ErrorBanner error={error} />
           ))}
-        </View>
+      </ScrollView>
+    </View>
+  );
+}
 
-        {histories.length > 0 && (
-          <View style={styles.historySection}>
-            <Text style={styles.sectionTitle}>Historial</Text>
-            {histories.slice(0, 5).map((h) => (
-              <Text key={h.id} style={styles.historyItem}>
-                {getStatusLabel(h.previousStatusId)} → {getStatusLabel(h.newStatusId)} ·{' '}
-                {formatDateTime(h.changeDate)}
-              </Text>
-            ))}
-          </View>
-        )}
+function TopBar({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.topBar}>
+      <PressableScale onPress={onBack} style={styles.back} accessibilityLabel="Volver a pedidos">
+        <Text style={styles.backText}>‹ Pedidos</Text>
+      </PressableScale>
+      <View style={styles.topBarRow}>
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
+        {children}
       </View>
-
-      {error && <Text style={styles.error}>{error}</Text>}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -213,61 +232,59 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 20, paddingTop: 60, gap: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  header: { gap: 4, marginBottom: 4 },
-  back: { color: '#2563eb', fontSize: 15, marginBottom: 8 },
-  title: { fontSize: 22, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: colors.bg },
+  topBar: {
+    backgroundColor: colors.navy,
+    paddingTop: statusBarPad - 12,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 4,
+    borderBottomColor: colors.magenta,
+  },
+  back: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  backText: { ...typography.bodyStrong, color: colors.cyan },
+  topBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  title: { ...typography.title, color: colors.textOnNavy, flexShrink: 1 },
+  content: { padding: spacing.lg, gap: spacing.lg },
   card: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
-    gap: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadows.card,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  label: { color: '#666', fontSize: 13 },
-  value: { fontSize: 14, fontWeight: '500', flexShrink: 1, textAlign: 'right' },
-  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  sectionTitle: { fontSize: 15, fontWeight: '700' },
+  sectionTitle: { ...typography.heading, color: colors.text },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
+  label: { ...typography.caption, color: colors.textMuted },
+  value: { ...typography.bodyStrong, color: colors.text, flexShrink: 1, textAlign: 'right' },
   textarea: {
-    borderWidth: 1,
-    borderColor: '#d0d5dd',
-    borderRadius: 8,
-    padding: 10,
-    minHeight: 80,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    minHeight: 96,
     textAlignVertical: 'top',
-    fontSize: 14,
+    ...typography.body,
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
-  button: {
-    backgroundColor: '#111827',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  textareaReadonly: { backgroundColor: colors.bg },
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   statusChip: {
-    borderWidth: 1,
-    borderColor: '#d0d5dd',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    minHeight: 44,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
   },
-  statusChipActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  statusChipDisabled: { opacity: 0.4 },
-  statusChipText: { fontSize: 13 },
-  statusChipTextActive: { color: '#fff', fontWeight: '600' },
-  historySection: { marginTop: 12, gap: 4 },
-  historyItem: { fontSize: 12, color: '#555' },
-  error: { color: '#dc2626', fontSize: 14, textAlign: 'center' },
-  retry: { color: '#2563eb', fontSize: 14 },
+  statusChipActive: { backgroundColor: colors.navy, borderColor: colors.navy },
+  statusChipDisabled: { opacity: 0.45 },
+  statusChipText: { ...typography.caption, color: colors.text },
+  statusChipTextActive: { color: '#fff', fontWeight: '700' },
+  historySection: { marginTop: spacing.sm, gap: spacing.sm },
+  historyItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.cyan },
+  historyText: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
 });

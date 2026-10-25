@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
+import { ErrorScreen } from "@/components/feedback/ErrorScreen";
 import { reportErrorToSentry } from "@/lib/reportErrorToSentry";
 import "./globals.css";
 
 /**
  * Último recurso: un error en el propio layout raíz (fuera del alcance de
  * `app/error.tsx`). Reemplaza al layout, por eso trae su propio `<html>` y
- * `<body>` y no usa providers ni componentes que dependan de ellos.
+ * `<body>` y no usa providers (sin sesión, tema ni react-query). Los enlaces
+ * son `<a>` (`plainLinks`) y el reintento es una recarga completa: si el
+ * layout raíz falló, `reset()` no alcanza.
  *
  * Reporta a Sentry sólo si está configurado (ver lib/reportErrorToSentry.ts).
  */
@@ -18,29 +21,29 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     reportErrorToSentry(error);
+    // Sin ThemeProvider: aplica el tema guardado por next-themes (o el del
+    // sistema) para que el modo oscuro también funcione en esta pantalla.
+    try {
+      const saved = localStorage.getItem("theme");
+      const dark =
+        saved === "dark" || ((!saved || saved === "system") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.classList.toggle("dark", dark);
+    } catch {
+      // Sin localStorage: se queda el tema por defecto.
+    }
   }, [error]);
 
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <div className="flex min-h-dvh items-center justify-center bg-background p-4">
-          <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-[1.75rem] border border-border/60 bg-card px-6 py-10 text-center sm:px-10">
-            <h1 className="text-2xl font-semibold leading-tight tracking-tight">Algo salió mal</h1>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Ocurrió un error inesperado. Recarga la página para intentarlo de nuevo.
-            </p>
-            {error.digest && (
-              <p className="text-xs text-muted-foreground">Referencia: {error.digest}</p>
-            )}
-            {/* Recarga completa: el layout raíz falló, `reset()` no alcanza. */}
-            <a
-              href="/dashboard"
-              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
-            >
-              Ir al inicio
-            </a>
-          </div>
-        </div>
+        <ErrorScreen
+          layout="page"
+          variant="500"
+          plainLinks
+          digest={error.digest}
+          primary={{ label: "Recargar la página", onClick: () => window.location.reload() }}
+          secondary={{ label: "Ir al inicio", href: "/dashboard" }}
+        />
       </body>
     </html>
   );

@@ -59,7 +59,7 @@ export function SidebarOrderViews() {
                     count === 0
                       ? "text-muted-foreground/60"
                       : tone === "overdue"
-                      ? "font-semibold text-rose-600 dark:text-rose-400"
+                      ? "font-semibold text-destructive"
                       : "text-muted-foreground"
                   )}
                 >

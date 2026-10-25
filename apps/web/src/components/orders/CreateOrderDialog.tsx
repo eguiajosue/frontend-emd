@@ -228,7 +228,7 @@ const CHIP_CLASS =
 const TAP = "min-h-11 sm:min-h-0";
 
 /** Texto de error con contraste AA también en modo oscuro. */
-const ERROR_TEXT = "text-xs font-medium text-red-700 dark:text-red-400";
+const ERROR_TEXT = "text-xs font-medium text-destructive";
 
 interface OrderProductRow {
   /** Clave estable de la fila (no viaja al backend). */
@@ -2614,7 +2614,7 @@ export function CreateOrderDialog({
                   className={cn(
                     "flex flex-wrap items-center gap-x-2 gap-y-1 text-sm outline-none",
                     showErrorNotice && "mb-2",
-                    "text-red-700 dark:text-red-400"
+                    "text-destructive"
                   )}
                 >
                   {showErrorNotice && (
@@ -2635,7 +2635,7 @@ export function CreateOrderDialog({
                               type="button"
                               variant="link"
                               className={cn(
-                                "h-auto p-0 text-red-700 underline dark:text-red-400",
+                                "h-auto p-0 text-destructive underline ",
                                 TAP,
                                 i > 0 && "hidden sm:inline-flex"
                               )}

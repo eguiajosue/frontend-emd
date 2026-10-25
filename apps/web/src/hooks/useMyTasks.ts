@@ -28,6 +28,7 @@ export function useMyTasks() {
     tasks: query.data ?? [],
     isLoading: query.isPending,
     isError: query.isError,
+    error: query.error,
     refetch: query.refetch,
   };
 }

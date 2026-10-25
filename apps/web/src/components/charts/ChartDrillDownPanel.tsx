@@ -41,18 +41,18 @@ export function ChartDrillDownPanel({
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
           transition={
-            reduced ? { duration: 0.15, ease: "linear" } : { type: "spring", bounce: 0, duration: 0.32 }
+            reduced ? { duration: 0.15, ease: "linear" } : { type: "spring", bounce: 0, duration: 0.22 }
           }
           className="overflow-hidden"
         >
           <div
             className={cn(
-              "mt-4 rounded-2xl bg-muted/50 p-4 sm:p-5",
+              "mt-4 rounded-2xl border border-border/60 bg-muted/50 p-4 sm:p-5",
               className
             )}
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold">{title}</h4>
+              <h4 className="font-heading text-sm font-semibold">{title}</h4>
               <Button
                 type="button"
                 variant="ghost"

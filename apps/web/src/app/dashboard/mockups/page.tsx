@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Shirt } from "lucide-react";
+import { FadeIn } from "@/components/motion";
 import Title from "@/components/Title";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MockupStudio } from "@/components/mockups/MockupStudio";
@@ -30,7 +31,7 @@ export default function MockupsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <FadeIn className="space-y-4">
       <Title title="Mockups" />
       <MockupStudio attachLabel="Adjuntar a pedido" onAttach={(result) => setPending(result)} />
       <AttachToOrderDialog
@@ -38,6 +39,6 @@ export default function MockupsPage() {
         onOpenChange={(open) => !open && setPending(null)}
         result={pending}
       />
-    </div>
+    </FadeIn>
   );
 }

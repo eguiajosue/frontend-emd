@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { Truck } from "lucide-react";
-import Title from "@/components/Title";
+import { PageContainer, PageHeader } from "@/components/layout";
 import { CrudPage, type CrudFilterConfig } from "@/components/crud/CrudPage";
 import type { FieldConfig } from "@/components/crud/EntityFormDialog";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -58,8 +58,8 @@ export default function ProveedoresPage() {
   const { canManageOperations } = usePermissions();
 
   return (
-    <div className="space-y-4">
-      <Title title="Proveedores" />
+    <PageContainer className="space-y-4">
+      <PageHeader title="Proveedores" icon={Truck} description="Quién te surte cada material, con su contacto y alcance." />
       <CrudPage<Supplier>
         entity="suppliers"
         title="Proveedores"
@@ -88,6 +88,6 @@ export default function ProveedoresPage() {
             : {}
         }
       />
-    </div>
+    </PageContainer>
   );
 }

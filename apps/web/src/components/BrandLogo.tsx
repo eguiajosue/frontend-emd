@@ -7,7 +7,30 @@ import { cn } from "@/lib/utils";
  * Ambas imágenes se renderizan y el tema decide cuál se ve, así no hay parpadeo
  * ni desajuste de hidratación.
  */
-export function BrandLogo({ className, priority = false }: { className?: string; priority?: boolean }) {
+export function BrandLogo({
+  className,
+  priority = false,
+  onDark = false,
+}: {
+  className?: string;
+  priority?: boolean;
+  /** Sobre fondo marino/oscuro fijo (riel, login): siempre la variante blanca. */
+  onDark?: boolean;
+}) {
+  if (onDark) {
+    return (
+      <span className={cn("inline-flex shrink-0", className)}>
+        <Image
+          src="/brand/emd-logo-dark.png"
+          alt="EMD marketing & design"
+          width={546}
+          height={118}
+          priority={priority}
+          className="h-full w-auto"
+        />
+      </span>
+    );
+  }
   return (
     <span className={cn("inline-flex shrink-0", className)}>
       <Image

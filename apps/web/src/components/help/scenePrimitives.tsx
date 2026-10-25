@@ -25,11 +25,11 @@ export function useScenePhase(count: number, ms = 1300): number {
 /** Marco de "mini pantalla": barra superior con el nombre de la sección. */
 export function Screen({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-      <div className="flex items-center gap-1.5 border-b border-border/70 bg-muted/50 px-3 py-2">
-        <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-        <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-        <span className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+    <div className="relative h-full w-full overflow-hidden rounded-xl border border-border bg-background shadow-soft">
+      <div className="flex items-center gap-1.5 border-b border-border/70 bg-navy-50 px-3 py-2 dark:bg-secondary/60">
+        <span className="h-2 w-2 rounded-full bg-[hsl(var(--magenta))]" />
+        <span className="h-2 w-2 rounded-full bg-[hsl(var(--lime))]" />
+        <span className="h-2 w-2 rounded-full bg-[hsl(var(--cyan))]" />
         <span className="ml-2 truncate text-[11px] font-medium text-muted-foreground">{title}</span>
       </div>
       <div className={cn("relative p-3 text-xs", className)}>{children}</div>
@@ -112,11 +112,11 @@ export function Pill({
 }) {
   const tones: Record<string, string> = {
     muted: "bg-muted text-muted-foreground",
-    amber: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    blue: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
-    green: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-    red: "bg-red-500/15 text-red-700 dark:text-red-300",
-    violet: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+    amber: "bg-warning-soft text-warning",
+    blue: "bg-cyan-soft text-cyan-ink",
+    green: "bg-success-soft text-success",
+    red: "bg-destructive/10 text-destructive",
+    violet: "bg-magenta-soft text-magenta-ink",
   };
   return (
     <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium", tones[tone], className)}>

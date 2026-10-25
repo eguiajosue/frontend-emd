@@ -1,5 +1,7 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { EASE_OUT } from "@/lib/motion";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ListChecks, Package, Pencil, Plus, Trash2 } from "lucide-react";
@@ -72,9 +74,13 @@ export function CalendarTasksList() {
   };
 
   const renderTask = (task: CalendarTask) => (
-    <div
+    <motion.div
       key={task.id}
-      className="group flex items-start gap-3 rounded-xl bg-muted/50 p-3 transition-colors hover:bg-muted"
+      layout="position"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: EASE_OUT, layout: { duration: 0.2, ease: EASE_OUT } }}
+      className="group flex items-start gap-3 rounded-xl border border-transparent bg-[hsl(var(--surface-sunken))] p-3 transition-colors hover:border-border"
     >
       <Checkbox
         checked={task.completed}
@@ -125,7 +131,7 @@ export function CalendarTasksList() {
           </Button>
         </SimpleTooltip>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (

@@ -77,8 +77,8 @@ export function InventoryMovementsList({ movements, showItem = false, unit }: In
               <p
                 className={cn(
                   "text-sm font-semibold",
-                  m.delta > 0 && "text-emerald-700 dark:text-emerald-300",
-                  m.delta < 0 && "text-orange-700 dark:text-orange-300"
+                  m.delta > 0 && "text-success",
+                  m.delta < 0 && "text-magenta-ink"
                 )}
               >
                 {formatDelta(m.delta)}

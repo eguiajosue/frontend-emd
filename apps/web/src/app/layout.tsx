@@ -1,36 +1,29 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
-import { Space_Grotesk, DM_Sans } from "next/font/google";
+import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import { Toaster } from "@/components/ui/sonner";
 import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
 
-// Fuente de display bold/geométrica para títulos (H1/H2, saludo, etc).
-//
-// Nota de procedencia: la marca solicitó "Ezra Bold" como fuente de display.
-// Se intentó localizar un archivo de fuente real (no un generador de preview)
-// en freefontdl.com / fontspad.com / fontshut.com / exfont.com / freefonts.co
-// y no fue posible verificar un binario válido (firma sfnt/OTTO/WOFF) desde
-// ninguno de esos sitios sin pasar por generadores de "vista previa" o
-// descargas bloqueadas por email/JS. Se sustituyó por Space Grotesk en peso
-// bold (700), una geométrica de character similar, autoalojada vía
-// next/font/google (sin request externo en runtime). Swap de una línea en
-// cuanto se disponga de un archivo Ezra Bold con licencia: ver DESIGN.md.
-const spaceGrotesk = Space_Grotesk({
+// Fuente de display (títulos, cifras de KPI, saludo). Bricolage Grotesque:
+// grotesca con carácter (cortes de trazo y proporciones propias) que le da voz
+// a la marca sin ser decorativa; a pesos 600/700 se lee firme sobre marino y
+// sobre claro, y su eje óptico la mantiene nítida tanto en un título de
+// 28px como en una cifra de 14px. Sustituye a Space Grotesk, que junto al
+// cuerpo se sentía "tech genérico". Autoalojada vía next/font/google.
+const heading = Bricolage_Grotesque({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-heading",
   display: "swap",
 });
 
-// Fuente de cuerpo/UI en toda la app. DM Sans y no Poppins (la anterior):
-// Poppins es muy ancha y geométrica — a 14px en una interfaz densa ocupa de
-// más y se lee peor, y junto a Space Grotesk dejaba dos geométricas casi
-// iguales sin contraste de jerarquía. DM Sans es más compacta, con cifras
-// tabulares limpias (fechas, cantidades, conteos) y comparte la familia
-// "grotesca" de Space Grotesk sin confundirse con ella. Variable: sólo se
-// carga un archivo para todos los pesos.
+// Fuente de cuerpo/UI en toda la app. DM Sans: compacta y muy legible a
+// 14px en interfaces densas, con cifras tabulares limpias (fechas,
+// cantidades, conteos) y un contraste claro de jerarquía frente a
+// Bricolage Grotesque en los títulos (display expresivo + cuerpo neutro).
+// Variable: sólo se carga un archivo para todos los pesos.
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-body",
@@ -58,8 +51,8 @@ export const viewport: Viewport = {
   // del magenta; `ThemeColorSync` la ajusta si el tema elegido en la app no
   // es el del sistema.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3f3f4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e0e16" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f6f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0c17" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -87,7 +80,7 @@ export default async function RootLayout({
     <html
       suppressHydrationWarning
       lang="es"
-      className={`${spaceGrotesk.variable} ${dmSans.variable}`}
+      className={`${heading.variable} ${dmSans.variable}`}
     >
       <body className="font-sans antialiased">
         <script

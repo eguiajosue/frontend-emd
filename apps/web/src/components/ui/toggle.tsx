@@ -7,18 +7,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const toggleVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-muted data-[state=on]:text-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors duration-150 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "bg-transparent",
         outline:
-          "border border-input bg-transparent hover:bg-muted data-[state=on]:border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground",
-        /** Control segmentado: la opción activa es una píldora gris suave
-         *  dentro del contenedor blanco (como las pestañas Board/Timeline de
-         *  la referencia), no un bloque de color. */
+          "border border-input bg-transparent hover:bg-primary/10 data-[state=on]:border-primary/60 data-[state=on]:bg-primary/10 data-[state=on]:text-foreground",
+        /** Control segmentado: la opción activa es una pastilla blanca (card) con
+         *  texto marino sobre un riel hundido, igual que `Tabs`. Hover usa
+         *  un tinte `primary/10` (no `muted`) para no desaparecer sobre `bg-sunken`. */
         segmented:
-          "rounded-full px-3.5 text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-muted data-[state=on]:text-foreground data-[state=on]:font-semibold dark:data-[state=on]:bg-secondary",
+          "rounded-lg px-3.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-primary data-[state=on]:font-semibold data-[state=on]:shadow-soft-xs data-[state=on]:ring-1 data-[state=on]:ring-border data-[state=on]:hover:bg-card",
       },
       size: {
         default: "h-9 px-2 min-w-9",

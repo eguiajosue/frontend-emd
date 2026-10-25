@@ -18,6 +18,19 @@ export const DURATION_MICRO = 0.15; // hover, toggles, focus
 export const DURATION_STANDARD = 0.22; // transiciones de ruta, aparición/cierre de paneles
 export const DURATION_ENTRANCE = 0.35; // entrada de listas/cards al montar
 
+/**
+ * Tokens de movimiento "expresivo pero rápido" (espejo de --dur-* / --ease-*
+ * en globals.css). Regla: nada de UI dura más de 250ms; las entradas de lista
+ * se escalonan con STAGGER_STEP y nunca suman más de ~400ms en total.
+ */
+export const DUR = {
+  fast: 0.15, // hover, press, toggle, focus
+  base: 0.2, // aparición de paneles, tooltips, cambio de pestaña
+  slow: 0.25, // entrada de página/diálogo, contadores (máx.)
+} as const;
+export const STAGGER_STEP = 0.045;
+export const STAGGER_MAX = 8; // a partir del elemento N ya no se retrasa más
+
 // Easings (se conservan para casos puntuales, p.ej. crossfade de reduced-motion).
 export const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 export const EASE_IN_OUT: [number, number, number, number] = [0.4, 0, 0.2, 1];
@@ -144,3 +157,9 @@ export function useMotionPreset() {
       : formButtonMotion,
   };
 }
+
+/** Spring de selección compartida (layoutId: indicador de nav, pestañas, tab bar). */
+export const SPRING_LAYOUT = { type: "spring" as const, stiffness: 420, damping: 36 };
+
+/** Transición tween estándar con ease-out expo. */
+export const tweenOut = (duration: number = DUR.base) => ({ duration, ease: EASE_OUT });

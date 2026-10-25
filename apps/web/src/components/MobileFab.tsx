@@ -33,7 +33,7 @@ export function MobileFab({ icon: Icon, label, onClick }: { icon: LucideIcon; la
       layout={!reduced}
       transition={{ type: "spring", bounce: 0.3, duration: 0.4 }}
       aria-label={label}
-      className="fixed right-4 z-30 flex h-14 min-w-14 items-center justify-center gap-2 rounded-full bg-ink px-4 text-base font-semibold text-ink-foreground shadow-soft-md [-webkit-tap-highlight-color:transparent] md:hidden bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
+      className="fixed right-4 z-30 flex h-14 min-w-14 items-center justify-center gap-2 rounded-2xl bg-accent-gradient px-4 text-base font-semibold text-white shadow-glow-magenta [-webkit-tap-highlight-color:transparent] md:hidden bottom-[calc(5.75rem+env(safe-area-inset-bottom))]"
     >
       <Icon className="h-6 w-6" aria-hidden />
       {!compact && <span className="pr-1">{label}</span>}

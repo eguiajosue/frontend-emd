@@ -41,7 +41,9 @@ import {
   X,
 } from "lucide-react";
 import type { Client, Order } from "@/types";
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getAppErrorMessage } from "@/lib/errorMessages";
 
 const PAGE_SIZE = 20;
 const ALL = "all";
@@ -154,9 +156,9 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
         size="bare"
         onClick={() => onOpen(order.id)}
         aria-label={`Ver pedido #${order.id} de ${client}`}
-        className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center sm:grid-cols-[3rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors hover:bg-muted/50 lg:grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
+        className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)] items-center sm:grid-cols-[3rem_minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-none px-5 py-4 transition-colors duration-150 hover:bg-muted/60 active:bg-muted lg:grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem]"
       >
-        <span className="font-heading text-sm font-semibold tabular-nums">#{order.id}</span>
+        <span className="font-heading text-sm font-semibold tabular-nums text-primary dark:text-foreground">#{order.id}</span>
         <span className="min-w-0">
           <span className="flex items-center gap-2">
             <span className="min-w-0 truncate text-sm font-medium">{client}</span>
@@ -188,7 +190,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
           )}
           {pendingTasks > 0 && (
             <span
-              className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-400/10 dark:text-amber-300"
+              className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-xs text-warning"
               title={`${pendingTasks} tarea${pendingTasks === 1 ? "" : "s"} de área pendiente${pendingTasks === 1 ? "" : "s"}`}
             >
               <ListChecks className="h-3 w-3" aria-hidden />
@@ -207,7 +209,7 @@ function HistoryRow({ order, onOpen }: { order: Order; onOpen: (id: number) => v
             className={cn(
               "inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs",
               isCritical
-                ? "bg-red-500/10 text-red-700 dark:bg-red-400/10 dark:text-red-300"
+                ? "bg-destructive/10 text-destructive"
                 : "bg-muted text-muted-foreground"
             )}
           >
@@ -233,7 +235,7 @@ const HistorialPage = () => {
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [filters, setFilters] = useState<HistoryFilterState>(EMPTY_FILTERS);
   const query = useMemo(() => toHistoryQuery(filters), [filters]);
-  const { orders: fetched, meta, isPending, isError, refetch, isFetching } = useOrderHistoryList(
+  const { orders: fetched, meta, isPending, isError, error, refetch, isFetching } = useOrderHistoryList(
     page,
     PAGE_SIZE,
     query
@@ -272,16 +274,14 @@ const HistorialPage = () => {
     try {
       await downloadOrdersExport(token, {});
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "No se pudo exportar el CSV."
-      );
+      toast.error(getAppErrorMessage(error, "No se pudo exportar el CSV."));
     } finally {
       setIsExportingCsv(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <FadeIn className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <Title title="Historial de pedidos" />
         {canManageOperations && (
@@ -292,7 +292,11 @@ const HistorialPage = () => {
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filtros del historial">
+      <div
+        className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-soft-xs"
+        role="group"
+        aria-label="Filtros del historial"
+      >
         <ClientFilter clients={clients} value={filters.clientId} onChange={(clientId) => updateFilters({ clientId })} />
         <OriginFilter value={filters.origin} onChange={(origin) => updateFilters({ origin })} />
         <Select
@@ -350,7 +354,7 @@ const HistorialPage = () => {
           ))}
         </Card>
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : orders.length === 0 && hasFilters ? (
         <EmptyState
           icon={SearchX}
@@ -365,9 +369,9 @@ const HistorialPage = () => {
         />
       ) : (
         <>
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden shadow-soft">
             <div
-              className="hidden grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 px-5 py-3 text-label lg:grid"
+              className="hidden grid-cols-[3.5rem_minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)_9.5rem] gap-x-4 border-b border-border/60 bg-[hsl(var(--surface-sunken))] px-5 py-3 text-label lg:grid"
               aria-hidden
             >
               <span>Pedido</span>
@@ -410,7 +414,7 @@ const HistorialPage = () => {
       )}
 
       <OrderDetailDialog orderId={openOrderId} onClose={() => setOpenOrderId(null)} />
-    </div>
+    </FadeIn>
   );
 };
 

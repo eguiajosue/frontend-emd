@@ -75,7 +75,7 @@ export function KanbanBoard({
       <p
         className={cn(
           "rounded-2xl border border-dashed border-border px-3 py-8 text-center text-xs text-muted-foreground transition-colors",
-          isTarget && "border-primary/50 text-primary"
+          isTarget && "border-magenta/60 text-magenta-ink dark:text-magenta"
         )}
       >
         {isTarget ? "Soltar aquí" : "Sin pedidos"}
@@ -158,11 +158,11 @@ export function KanbanBoard({
               key={col.statusId}
               aria-label={col.label}
               className={cn(
-                "w-[18.5rem] shrink-0 rounded-2xl p-1.5 transition-colors duration-150",
+                "w-[18.5rem] shrink-0 rounded-2xl bg-[hsl(var(--surface-sunken))] p-1.5 transition-colors duration-150",
                 // La columna no es una tarjeta: las tarjetas van adentro y
                 // anidarlas ensucia la jerarquía. Sólo se tiñe mientras es
                 // destino de un arrastre.
-                isTarget && "bg-primary/[0.06]"
+                isTarget && "bg-magenta/10 ring-1 ring-magenta/40"
               )}
               onDragOver={(e) => {
                 if (!acceptsDrop(col.statusId)) return;
@@ -192,7 +192,7 @@ export function KanbanBoard({
               <header
                 className={cn(
                   "sticky top-0 z-10 mb-3 flex items-center gap-2 rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-soft transition-colors",
-                  isTarget && "border-primary/50"
+                  isTarget && "border-magenta/50"
                 )}
               >
                 <h3 className="min-w-0">

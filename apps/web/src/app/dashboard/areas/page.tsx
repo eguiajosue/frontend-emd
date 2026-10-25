@@ -5,6 +5,7 @@ import { Boxes, Pencil, Plus, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import type { AreaOverview } from "@emd/types";
 import Title from "@/components/Title";
+import { FadeIn, Stagger, StaggerItem } from "@/components/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/crud/ConfirmDeleteDialog";
@@ -30,9 +31,13 @@ function AreaCard({
   const Icon = getAreaIcon(area.slug);
   const blocker = area.active ? deactivationBlocker(area) : null;
   return (
-    <li
+    <StaggerItem
+      as="li"
       data-area={area.slug}
-      className={cn("area-stripe flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border bg-card px-4 py-3", !area.active && "opacity-60")}
+      className={cn(
+        "area-stripe flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-border/70 bg-card py-3.5 pl-6 pr-4 shadow-soft-xs transition-[box-shadow,border-color] duration-200 hover:border-border hover:shadow-soft",
+        !area.active && "opacity-60"
+      )}
     >
       <span className="area-chip">
         {Icon && <Icon className="h-3.5 w-3.5" aria-hidden />}
@@ -81,7 +86,7 @@ function AreaCard({
           </Button>
         )}
       </div>
-    </li>
+    </StaggerItem>
   );
 }
 
@@ -92,7 +97,7 @@ function AreaCard({
  */
 export default function AreasPage() {
   const { canManageUsers, isSessionLoading } = usePermissions();
-  const { areas, isPending, isError, refetch } = useAreaOverview(canManageUsers);
+  const { areas, isPending, isError, error, refetch } = useAreaOverview(canManageUsers);
   const { update } = useAreaAdminMutations();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editing, setEditing] = useState<AreaOverview | null>(null);
@@ -117,7 +122,7 @@ export default function AreasPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <FadeIn className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Title title="Áreas" />
         <Button type="button" onClick={() => setWizardOpen(true)}>
@@ -133,11 +138,11 @@ export default function AreasPage() {
       {isPending ? (
         <TableSkeleton rows={6} />
       ) : isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : areas.length === 0 ? (
         <EmptyState icon={Boxes} title="Todavía no hay áreas" description="Crea la primera con “Nueva área”." />
       ) : (
-        <ul className="space-y-2" aria-label="Áreas">
+        <Stagger as="ul" className="space-y-2.5" aria-label="Áreas">
           {areas.map((area) => (
             <AreaCard
               key={area.id}
@@ -146,7 +151,7 @@ export default function AreasPage() {
               onToggle={() => (area.active ? setToDeactivate(area) : handleToggle(area))}
             />
           ))}
-        </ul>
+        </Stagger>
       )}
 
       <AreaWizard open={wizardOpen} onClose={() => setWizardOpen(false)} />
@@ -163,6 +168,6 @@ export default function AreasPage() {
           if (area) void handleToggle(area);
         }}
       />
-    </div>
+    </FadeIn>
   );
 }

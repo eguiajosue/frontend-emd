@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { ColumnDef } from "@tanstack/react-table";
+import { FadeIn } from "@/components/motion";
 import Title from "@/components/Title";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -47,7 +48,7 @@ function employeeName(e: EmployeePerformance): string {
 
 const RendimientoPage = () => {
   const { isAdmin, isSessionLoading } = usePermissions();
-  const { data, isPending, isError, refetch } = usePerformanceSummary({
+  const { data, isPending, isError, error, refetch } = usePerformanceSummary({
     enabled: isAdmin,
   });
   // Se usa sólo para el desglose de drill-down (pedidos de un área agrupados
@@ -130,11 +131,11 @@ const RendimientoPage = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <FadeIn className="space-y-8">
       <Title title="Rendimiento" />
 
       {isError ? (
-        <ErrorState onRetry={() => refetch()} />
+        <ErrorState error={error} onRetry={() => refetch()} />
       ) : isPending || isSessionLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-64 w-full rounded-2xl" />
@@ -145,7 +146,7 @@ const RendimientoPage = () => {
         <>
           <section className="space-y-4" aria-labelledby="rend-empleados">
             <h2 id="rend-empleados" className="flex items-center gap-2 text-section-title">
-              <Users className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-magenta-soft text-magenta-ink" aria-hidden><Users className="h-3.5 w-3.5" /></span>
               Empleados
             </h2>
             {data.employees.length === 0 ? (
@@ -159,7 +160,7 @@ const RendimientoPage = () => {
 
           <section className="space-y-4" aria-labelledby="rend-areas">
             <h2 id="rend-areas" className="flex items-center gap-2 text-section-title">
-              <Layers className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-lime-soft text-lime-ink" aria-hidden><Layers className="h-3.5 w-3.5" /></span>
               Áreas
             </h2>
             {data.areas.length === 0 ? (
@@ -174,8 +175,8 @@ const RendimientoPage = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2.5">
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-muted" aria-hidden>
-                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-cyan-soft text-cyan-ink" aria-hidden>
+                  <Gauge className="h-4 w-4" />
                 </span>
                 Comparación de score por área
               </CardTitle>
@@ -218,7 +219,7 @@ const RendimientoPage = () => {
                               statusId={group.statusId}
                               statusName={group.orders[0]?.status?.name}
                             />
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold tabular-nums text-secondary-foreground">
                               {group.orders.length}
                             </span>
                           </div>
@@ -243,7 +244,7 @@ const RendimientoPage = () => {
           </Card>
         </>
       )}
-    </div>
+    </FadeIn>
   );
 };
 

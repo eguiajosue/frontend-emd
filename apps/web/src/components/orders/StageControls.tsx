@@ -27,8 +27,8 @@ export function stageChip(stage: AreaStage) {
     label: stage.name,
     classes:
       stage.kind === "review"
-        ? "bg-sky-500/10 text-sky-700 dark:text-sky-300"
-        : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+        ? "bg-info-soft text-info"
+        : "bg-magenta-soft text-magenta-ink",
   };
 }
 
@@ -166,11 +166,11 @@ export function StageControls({ orderId, task, canAct }: StageControlsProps) {
                   className={cn(
                     "rounded-full px-2 py-0.5 font-medium",
                     test.result === "aprobada" &&
-                      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                      "bg-success-soft text-success",
                     test.result === "rechazada" &&
-                      "bg-red-500/10 text-red-700 dark:text-red-300",
+                      "bg-destructive/10 text-destructive",
                     !test.result &&
-                      "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                      "bg-info-soft text-info",
                   )}
                 >
                   {test.result === "aprobada"
