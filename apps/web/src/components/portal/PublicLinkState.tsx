@@ -40,7 +40,14 @@ export function PublicLinkState({
   const retry = onRetry ? retryAction(onRetry) : { label: "Reintentar", icon: RefreshCw, onClick: () => window.location.reload() };
   const screen =
     state === "invalid" || state === "expired" || state === "revoked" ? (
-      <ErrorScreen layout="inline" variant={state} primary={null} secondary={null} digest={digest} />
+      <ErrorScreen
+        layout="inline"
+        variant={state}
+        title={state === "invalid" ? "No encontramos este pedido" : undefined}
+        primary={null}
+        secondary={null}
+        digest={digest}
+      />
     ) : state === "offline" ? (
       <ErrorScreen layout="inline" variant="offline" primary={retry} digest={digest} />
     ) : (
