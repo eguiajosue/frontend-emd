@@ -27,6 +27,7 @@ function withCsp(request: NextRequest): NextResponse {
     nonce,
     isDev: process.env.NODE_ENV === "development",
     backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL,
+    storageUrl: process.env.NEXT_PUBLIC_STORAGE_URL,
   });
 
   const requestHeaders = new Headers(request.headers);
