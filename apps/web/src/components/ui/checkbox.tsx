@@ -15,7 +15,7 @@ const Checkbox = React.forwardRef<
     className={cn(
       // Radio fijo (no `rounded-sm`): ese token deriva del --radius grande de
       // tarjetas/diálogos (14px) y en una caja de 16px se ve como un círculo.
-      "peer h-4 w-4 shrink-0 rounded-[4px] border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      "peer relative h-4 w-4 shrink-0 rounded-[4px] border border-primary shadow after:absolute after:left-1/2 after:top-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] [@media(pointer:fine)]:after:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
       className
     )}
     {...props}
@@ -23,7 +23,7 @@ const Checkbox = React.forwardRef<
     <CheckboxPrimitive.Indicator
       className={cn("flex items-center justify-center text-current")}
     >
-      <Check className="h-4 w-4" />
+      <Check className="h-4 w-4" aria-hidden />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

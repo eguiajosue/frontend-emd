@@ -14,7 +14,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-11 items-center justify-center rounded-xl bg-muted p-1 text-muted-foreground sm:h-10",
+      "inline-flex h-11 items-center justify-center rounded-xl bg-muted p-1 text-muted-foreground sm:h-10 [@media(pointer:coarse)]:h-12",
       // Con etiquetas largas la fila de pestañas supera el ancho del teléfono.
       // Que scrollee dentro de su propia caja, sin barra visible, en vez de
       // empujar el scroll horizontal de toda la página.
@@ -33,7 +33,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-lg px-3 py-1 text-sm font-medium sm:min-h-0 ring-offset-background transition-[color,background-color,box-shadow] duration-150 ease-out-expo hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-soft",
+      "inline-flex min-h-9 items-center justify-center whitespace-nowrap rounded-lg px-3 py-1 text-sm font-medium sm:min-h-0 [@media(pointer:coarse)]:min-h-11 ring-offset-background transition-[color,background-color,box-shadow] duration-150 ease-out-expo hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-card data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-soft",
       className
     )}
     {...props}

@@ -131,8 +131,8 @@ const DialogContent = React.forwardRef<
           {body}
         </div>
         {footer}
-        <DialogPrimitive.Close className="absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top))] z-30 flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:pointer-events-none sm:right-4 sm:top-4">
-          <X className="h-4 w-4" />
+        <DialogPrimitive.Close className="absolute right-3 top-[calc(0.5rem+env(safe-area-inset-top))] z-30 flex h-9 w-9 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 items-center justify-center rounded-full border border-border/70 bg-card text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 disabled:pointer-events-none sm:right-4 sm:top-4">
+          <X className="h-4 w-4" aria-hidden />
           <span className="sr-only">Cerrar</span>
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>

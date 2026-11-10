@@ -21,9 +21,9 @@ const toggleVariants = cva(
           "rounded-lg px-3.5 text-muted-foreground hover:bg-primary/10 hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-primary data-[state=on]:font-semibold data-[state=on]:shadow-soft-xs data-[state=on]:ring-1 data-[state=on]:ring-border data-[state=on]:hover:bg-card",
       },
       size: {
-        default: "h-9 px-2 min-w-9",
-        sm: "h-8 px-1.5 min-w-8",
-        lg: "h-10 px-2.5 min-w-10",
+        default: "h-9 px-2 min-w-9 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
+        sm: "h-8 px-1.5 min-w-8 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
+        lg: "h-10 px-2.5 min-w-10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
       },
     },
     defaultVariants: {

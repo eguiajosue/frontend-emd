@@ -22,7 +22,7 @@ interface AnimatedNumberProps {
  * Contador animado para KPIs: cuenta desde el valor anterior (o 0 la primera
  * vez, al entrar en pantalla) hasta `value`. Con "reducir movimiento" muestra
  * el valor final de inmediato. Cifras tabulares para que no "bailen".
- * El texto accesible siempre es el valor final (aria-label).
+ * El texto accesible siempre es el valor final (texto `sr-only`).
  */
 export function AnimatedNumber({
   value,
@@ -69,8 +69,11 @@ export function AnimatedNumber({
 
   const finalText = `${prefix}${fmt(value)}${suffix}`;
   return (
-    <span ref={ref} aria-label={finalText} className={className} style={{ fontVariantNumeric: "tabular-nums" }}>
+    <span ref={ref} className={className} style={{ fontVariantNumeric: "tabular-nums" }}>
       <span aria-hidden>{`${prefix}${fmt(display)}${suffix}`}</span>
+      {/* `aria-label` sobre un <span> genérico no se anuncia y el número visible está
+          oculto: el valor final va como texto sólo para lectores de pantalla. */}
+      <span className="sr-only">{finalText}</span>
     </span>
   );
 }

@@ -43,6 +43,27 @@ export function FormField({
 }: FormFieldProps) {
   const [focused, setFocused] = React.useState(false);
   const { reduced } = useMotionPreset();
+  const errorId = htmlFor ? `${htmlFor}-error` : undefined;
+  const hintId = htmlFor ? `${htmlFor}-hint` : undefined;
+
+  // Cablea el control con su mensaje: `aria-invalid`, `aria-required` y
+  // `aria-describedby` (error o ayuda) sin que cada pantalla lo repita. Sólo
+  // se inyecta en un único control (input/textarea/select nativo o un
+  // componente como `Input`/`SelectTrigger`) y nunca pisa lo que la pantalla
+  // ya haya puesto; un contenedor (`div`) se deja intacto.
+  const describedBy = error ? errorId : !success && hint ? hintId : undefined;
+  const control = React.Children.count(children) === 1 ? React.Children.toArray(children)[0] : null;
+  const wirable =
+    React.isValidElement<Record<string, unknown>>(control) &&
+    (typeof control.type !== "string" || ["input", "textarea", "select"].includes(control.type));
+  const wired = wirable
+    ? React.cloneElement(control as React.ReactElement<Record<string, unknown>>, {
+        "aria-invalid": (control.props["aria-invalid"] as unknown) ?? (error ? true : undefined),
+        "aria-required": (control.props["aria-required"] as unknown) ?? (required ? true : undefined),
+        "aria-describedby":
+          [control.props["aria-describedby"] as string | undefined, describedBy].filter(Boolean).join(" ") || undefined,
+      })
+    : children;
 
   return (
     <div className={cn("min-w-0 space-y-1.5", className)}>
@@ -53,7 +74,11 @@ export function FormField({
         >
           {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
           {label}
-          {required && <span className="text-destructive">*</span>}
+          {required && (
+            <span aria-hidden className="text-destructive">
+              *
+            </span>
+          )}
         </label>
       )}
       <motion.div
@@ -76,13 +101,13 @@ export function FormField({
           error && "ring-1 ring-destructive/60 rounded-lg"
         )}
       >
-        {children}
+        {wired}
       </motion.div>
       <AnimatePresence mode="wait" initial={false}>
         {error ? (
           <motion.p
             key="error"
-            id={htmlFor ? `${htmlFor}-error` : undefined}
+            id={errorId}
             role="alert"
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -90,7 +115,7 @@ export function FormField({
             transition={{ duration: 0.15 }}
             className="flex items-center gap-1 text-xs font-medium text-destructive"
           >
-            <AlertCircle className="h-3 w-3 shrink-0" />
+            <AlertCircle className="h-3 w-3 shrink-0" aria-hidden />
             {error}
           </motion.p>
         ) : success ? (
@@ -100,13 +125,13 @@ export function FormField({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+            className="flex items-center gap-1 text-xs font-medium text-success"
           >
-            <Check className="h-3 w-3 shrink-0" />
+            <Check className="h-3 w-3 shrink-0" aria-hidden />
             Correcto
           </motion.p>
         ) : hint ? (
-          <p key="hint" className="text-xs text-muted-foreground">
+          <p key="hint" id={hintId} className="text-xs text-muted-foreground">
             {hint}
           </p>
         ) : null}

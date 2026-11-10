@@ -33,7 +33,7 @@ const buttonVariants = cva(
       },
       size: {
         default: "h-10 px-4 py-2 [@media(pointer:coarse)]:min-h-11",
-        sm: "h-9 px-3 text-[0.8125rem] [@media(pointer:coarse)]:min-h-10",
+        sm: "h-9 px-3 text-[0.8125rem] [@media(pointer:coarse)]:min-h-11",
         lg: "h-12 px-6 text-[0.9375rem]",
         icon: "h-10 w-10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11",
         bare: "",
