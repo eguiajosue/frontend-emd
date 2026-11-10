@@ -273,6 +273,10 @@ function DigestChip({ digest }: { digest: string }) {
       >
         {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
       </button>
+      {/* Anuncia el resultado: cambiar el aria-label de un botón con foco no se lee. */}
+      <span role="status" className="sr-only">
+        {copied ? "Referencia copiada" : ""}
+      </span>
     </p>
   );
 }
