@@ -66,17 +66,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ChatSocketContext.Provider value={socketRef}>
       <SidebarProvider open={expanded} onOpenChange={setExpanded}>
+        {/* Salto al contenido: primer elemento enfocable; sólo se ve con foco de teclado. */}
+        <a
+          href="#contenido"
+          className="fixed left-4 top-4 z-[110] -translate-y-24 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft-lg transition-transform duration-150 focus:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+        >
+          Saltar al contenido
+        </a>
         <AppSidebar />
         <MobileTabBar />
         {/* Riel marino anclado a la izquierda (`AppSidebar`, sólo escritorio):
             el contenido deja su ancho (4.5rem, o 16rem expandido) como
             `--rail-offset`. */}
-        <main
-          data-rail={expanded ? "expanded" : "collapsed"}
+        <div
           style={{ "--rail-offset": expanded ? RAIL_OFFSET_EXPANDED : RAIL_OFFSET_COLLAPSED } as React.CSSProperties}
           className="relative w-full min-w-0 overflow-x-clip transition-[padding] duration-200 ease-out-expo motion-reduce:transition-none md:pl-[var(--rail-offset)]"
         >
+          {/* La barra superior (`<header>` = banner) queda FUERA de <main>: dentro de
+              un landmark `main` no cuenta como banner. */}
           <AppTopBar title={pageTitle} />
+          <main id="contenido" tabIndex={-1} data-rail={expanded ? "expanded" : "collapsed"} className="outline-none">
           <PageTransition
             // La barra flotante (`MobileTabBar`, `md:hidden`) ocupa ~4.5rem
             // de alto (píldora + su margen inferior) más un respiro de
@@ -94,7 +103,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               children
             )}
           </PageTransition>
-        </main>
+          </main>
+        </div>
         <ConnectionStatus />
         <PullToRefresh />
         <CommandPalette />
