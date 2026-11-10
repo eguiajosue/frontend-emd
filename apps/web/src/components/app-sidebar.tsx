@@ -172,6 +172,7 @@ function RailCount({
   return (
     <span
       title={label}
+      aria-hidden={!inline ? true : undefined}
       className={cn(
         "pointer-events-none z-10 inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none",
         inline
@@ -246,12 +247,20 @@ function RailItem({
   const [menuOpen, setMenuOpen] = useState(false);
   const linkRef = useRef<HTMLAnchorElement>(null);
   const favoriteLabel = favorite ? "Quitar de favoritos" : "Agregar a favoritos";
+  // Riel angosto: el nombre accesible lleva también los contadores (el badge es visual).
+  const railLabel = [
+    item.title,
+    item.url === ORDERS_URL && overdue > 0 ? `${overdue} vencido${overdue === 1 ? "" : "s"}` : null,
+    unread > 0 ? `${unread} sin leer` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const link = (
     <Link
       ref={linkRef}
       href={item.url}
-      aria-label={expanded ? undefined : item.title}
+      aria-label={expanded ? undefined : railLabel}
       aria-current={active ? "page" : undefined}
       data-tour={item.title === "Ayuda" ? "help-link" : undefined}
       className={cn(
@@ -438,7 +447,7 @@ function RailSection({
         aria-expanded={open}
         aria-controls={listId}
         onClick={onToggleFold}
-        className="group/section flex h-8 w-full items-center gap-2 rounded-full pl-3 pr-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/60 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80"
+        className="group/section flex h-8 w-full items-center gap-2 rounded-full pl-3 pr-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/70 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80"
       >
         {Icon && <Icon className="h-3 w-3 shrink-0 fill-current text-amber-500" />}
         <span className="truncate">{label}</span>

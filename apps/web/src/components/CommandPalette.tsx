@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { AnimatePresence, motion } from "framer-motion";
@@ -93,15 +93,28 @@ export function CommandPalette() {
   const { data: orders } = useOrders({ enabled: open });
   const { data: clients } = useEntityList<Client>("clients", { enabled: open && canSeeClients });
 
+  // Foco: al abrir se recuerda quién lo tenía (ANTES de que el campo se
+  // autoenfoque); al cerrar vuelve ahí. Si la paleta navegó a otra pantalla,
+  // ese elemento ya no existe y no pasa nada.
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  const rememberFocus = () => {
+    if (!returnFocusTo.current && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      returnFocusTo.current = document.activeElement;
+    }
+  };
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        rememberFocus();
         setOpen((prev) => !prev);
       }
       if (e.key === "Escape") setOpen(false);
     };
-    const openFromButton = () => setOpen(true);
+    const openFromButton = () => {
+      rememberFocus();
+      setOpen(true);
+    };
     window.addEventListener("keydown", handler);
     window.addEventListener(OPEN_COMMAND_PALETTE_EVENT, openFromButton);
     return () => {
@@ -111,8 +124,14 @@ export function CommandPalette() {
   }, []);
 
   useEffect(() => {
-    if (open) setRecents(readRecents());
-    else setSearch("");
+    if (open) {
+      setRecents(readRecents());
+    } else {
+      setSearch("");
+      const el = returnFocusTo.current;
+      returnFocusTo.current = null;
+      if (el && el.isConnected) el.focus({ preventScroll: true });
+    }
   }, [open]);
 
   const go = (url: string, recent?: Omit<PaletteRecent, "url">) => {
@@ -269,6 +288,14 @@ export function CommandPalette() {
           onClick={() => setOpen(false)}
         >
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Buscar pantalla, pedido o cliente"
+            // Todo el diálogo se maneja desde el campo de búsqueda (las opciones
+            // se recorren con flechas): Tab no debe escapar hacia la página de atrás.
+            onKeyDown={(e) => {
+              if (e.key === "Tab") e.preventDefault();
+            }}
             className="elevation-2 mx-4 w-full max-w-xl overflow-hidden rounded-[1.5rem] border border-border/60 bg-popover shadow-soft-lg"
             initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -8 }}
             animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
@@ -292,6 +319,7 @@ export function CommandPalette() {
             >
               <CommandInput
                 autoFocus
+                aria-label="Buscar pantalla, pedido o cliente"
                 placeholder="Buscar pantalla, pedido o cliente…"
                 value={search}
                 onValueChange={setSearch}

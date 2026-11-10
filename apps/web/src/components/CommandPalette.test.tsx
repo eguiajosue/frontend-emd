@@ -102,6 +102,32 @@ describe("CommandPalette", () => {
     expect(screen.getByRole("option", { name: /Nuevo pedido/ })).toBeInTheDocument();
   });
 
+  it("es un diálogo modal con nombre, el campo tiene nombre, Tab no escapa y el foco vuelve al cerrar", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button>Disparador</button>
+        <CommandPalette />
+      </>
+    );
+    const trigger = screen.getByRole("button", { name: "Disparador" });
+    trigger.focus();
+    act(() => openCommandPalette());
+
+    const dialog = await screen.findByRole("dialog", { name: "Buscar pantalla, pedido o cliente" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    const input = within(dialog).getByPlaceholderText("Buscar pantalla, pedido o cliente…");
+    expect(input.getAttribute("aria-label")).toBe("Buscar pantalla, pedido o cliente");
+    expect(document.activeElement).toBe(input);
+
+    await user.tab();
+    expect(document.activeElement).toBe(input);
+
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it("al escribir filtra pantallas y busca pedidos", async () => {
     render(<CommandPalette />);
     act(() => openCommandPalette());

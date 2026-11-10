@@ -158,12 +158,13 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
                           : "bg-muted text-muted-foreground"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="flex-1">{item.title}</span>
                     {item.unreadCount > 0 && (
                       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-magenta-strong px-1.5 text-xs font-semibold text-white">
                         {item.unreadCount > 99 ? "99+" : item.unreadCount}
+                        <span className="sr-only"> sin leer</span>
                       </span>
                     )}
                   </Link>
@@ -189,7 +190,7 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
             className="mt-1 w-full justify-start gap-3 px-4 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
             onClick={() => void logout()}
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4" aria-hidden />
             Cerrar sesión
           </Button>
         </div>

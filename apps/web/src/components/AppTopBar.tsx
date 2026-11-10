@@ -36,7 +36,7 @@ function BrandPill() {
     <Link
       href="/dashboard"
       aria-label="EMD marketing & design, inicio"
-      className="flex h-10 shrink-0 items-center rounded-xl px-1 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 md:hidden"
+      className="flex h-10 shrink-0 items-center rounded-xl px-1 [@media(pointer:coarse)]:min-h-11 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 md:hidden"
     >
       <BrandLogo className="h-6" />
     </Link>

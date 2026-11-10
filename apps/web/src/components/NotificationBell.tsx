@@ -86,6 +86,7 @@ export function NotificationBell() {
             count > 0 && "text-foreground"
           )}
           aria-label={count > 0 ? `Notificaciones (${count} sin leer)` : "Notificaciones"}
+          aria-haspopup="dialog"
         >
           {/* Halo que late al llegar una notificación nueva. */}
           <AnimatePresence>
@@ -110,7 +111,7 @@ export function NotificationBell() {
             transition={{ duration: 0.6, ease: "easeInOut" }}
             className="flex"
           >
-            <Bell className="h-4 w-4" />
+            <Bell className="h-4 w-4" aria-hidden />
           </motion.span>
           <AnimatePresence>
             {count > 0 && (
@@ -138,7 +139,7 @@ export function NotificationBell() {
           </AnimatePresence>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="end" className="w-80 p-0" aria-label="Notificaciones">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <p className="text-sm font-medium">Notificaciones</p>
           {count > 0 && (
@@ -149,7 +150,7 @@ export function NotificationBell() {
               disabled={isMarkingAll}
               onClick={() => markAllAsRead()}
             >
-              <CheckCheck className="h-3.5 w-3.5" />
+              <CheckCheck className="h-3.5 w-3.5" aria-hidden />
               Marcar todas
             </Button>
           )}
@@ -183,6 +184,7 @@ export function NotificationBell() {
                             notification.read ? "bg-transparent" : "bg-primary"
                           )}
                         />
+                        {!notification.read && <span className="sr-only">Sin leer: </span>}
                         <span className="min-w-0 flex-1">
                           <span className="mb-1 flex">
                             <NotificationTypeBadge type={notification.type} />

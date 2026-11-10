@@ -68,7 +68,7 @@ export function MobileTabBar() {
               key={item.url}
               href={item.url}
               aria-current={active ? "page" : undefined}
-              aria-label={item.title}
+              aria-label={item.unreadCount > 0 ? `${item.title}, ${item.unreadCount} sin leer` : item.title}
               onClick={() => !active && haptic("light")}
               className={cn(
                 "relative flex h-12 items-center justify-center gap-2 rounded-2xl transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/80",
@@ -88,7 +88,7 @@ export function MobileTabBar() {
               <span className="relative">
                 <item.icon className={cn("h-5 w-5 transition-colors duration-150", active && "text-cyan")} />
                 {item.unreadCount > 0 && (
-                  <span className="pointer-events-none absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-magenta-strong px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar">
+                  <span aria-hidden className="pointer-events-none absolute -right-2 -top-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-magenta-strong px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-sidebar">
                     {item.unreadCount > 99 ? "99+" : item.unreadCount}
                   </span>
                 )}
@@ -105,6 +105,7 @@ export function MobileTabBar() {
           variant="ghost"
           onClick={() => setMoreOpen(true)}
           aria-label="Más opciones"
+          aria-haspopup="dialog"
           aria-expanded={moreOpen}
           className={cn(
             "h-12 w-12 rounded-2xl p-0 text-sidebar-foreground/75 hover:bg-white/10 hover:text-white focus-visible:ring-sidebar-ring/80 focus-visible:ring-offset-0 [&_svg]:size-5",

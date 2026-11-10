@@ -43,7 +43,7 @@ export function ThemeToggle() {
       className="shrink-0"
     >
       {mounted ? (
-        isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
+        isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />
       ) : (
         <Moon className="h-4 w-4 opacity-0" />
       )}
@@ -79,9 +79,10 @@ export function ThemeRailSwitch({
 
   return (
     <div
-      role="radiogroup"
+      // Dos botones de alternancia (aria-pressed): el `radiogroup` prometía
+      // flechas de teclado que no existían; así cada opción es un Tab.
+      role="group"
       aria-label="Tema"
-      aria-orientation={orientation}
       className={cn("flex items-center gap-1", orientation === "vertical" && "flex-col")}
     >
       {(
@@ -96,8 +97,7 @@ export function ThemeRailSwitch({
             <Button
               variant="ghost"
               size="icon"
-              role="radio"
-              aria-checked={active}
+              aria-pressed={active}
               aria-label={label}
               onClick={(e) => choose(value, e)}
               className={cn(
@@ -108,7 +108,7 @@ export function ThemeRailSwitch({
                 tone === "sidebar" && active && "bg-sidebar-primary text-cyan ring-1 ring-white/10"
               )}
             >
-              <Icon className="!size-[1.15rem]" />
+              <Icon className="!size-[1.15rem]" aria-hidden />
             </Button>
           </SimpleTooltip>
         );
