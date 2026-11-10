@@ -1,4 +1,5 @@
 import { signOut } from "next-auth/react";
+import { clearPendingMutations } from "@/lib/offlineQueue";
 
 /**
  * Cierra la sesión y vuelve al login.
@@ -33,6 +34,7 @@ export async function logout(message?: string): Promise<void> {
     await signOut({ redirect: false });
   } finally {
     await clearPrivateCaches().catch(() => undefined);
+    await clearPendingMutations().catch(() => undefined);
     if (typeof window !== "undefined") {
       const query = message ? `?message=${encodeURIComponent(message)}` : "";
       window.location.href = `/login${query}`;

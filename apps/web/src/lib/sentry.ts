@@ -48,12 +48,38 @@ const SENSITIVE_HEADERS = new Set([
 ]);
 
 /**
+ * El enlace del portal del cliente (`/p/<token>`) es la llave de acceso al
+ * pedido: la URL no debe llegar a Sentry ni en el evento, ni en la transacción,
+ * ni en las migas de pan (navegaciones y fetch).
+ */
+const PORTAL_TOKEN_PATH = /(\/p\/)[^/?#\s]+/g;
+
+export function redactPortalToken(value: string): string {
+  return value.replace(PORTAL_TOKEN_PATH, "$1[token]");
+}
+
+function scrubPortalTokens(event: Event): void {
+  if (event.request?.url) event.request.url = redactPortalToken(event.request.url);
+  if (typeof event.transaction === "string") {
+    event.transaction = redactPortalToken(event.transaction);
+  }
+  for (const crumb of event.breadcrumbs ?? []) {
+    const data = crumb.data as Record<string, unknown> | undefined;
+    if (!data) continue;
+    for (const key of ["url", "from", "to"]) {
+      if (typeof data[key] === "string") data[key] = redactPortalToken(data[key] as string);
+    }
+  }
+}
+
+/**
  * `beforeSend` / `beforeSendTransaction`: quita del evento cookies, cabeceras
  * de autenticación y el cuerpo de la request. `sendDefaultPii: false` ya evita
  * la mayoría, pero algunas integraciones (p. ej. el `onRequestError` del
  * servidor) adjuntan las cabeceras tal cual; esto es la red de seguridad.
  */
 export function scrubEvent<T extends Event>(event: T): T {
+  scrubPortalTokens(event);
   const request = event.request;
   if (!request) return event;
 

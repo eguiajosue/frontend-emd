@@ -11,6 +11,7 @@ import { motion } from 'framer-motion'
 import { useMotionPreset } from '@/lib/motion'
 import Image from 'next/image'
 import { BrandLogo } from '@/components/BrandLogo'
+import { knownLoginMessage } from '@/lib/loginMessage'
 
 /** Los tres cuadros de color del logo EMD, usados como motivo decorativo. */
 const BrandSquares = ({ className = '' }: { className?: string }) => (
@@ -32,7 +33,7 @@ const LoginForm = () => {
 
   const router = useRouter()
   const searchParams = useSearchParams()
-  const sessionMessage = searchParams.get('message')
+  const sessionMessage = knownLoginMessage(searchParams.get('message'))
 
   const usernameError = touched.username && username.trim().length === 0 ? 'Ingresar el nombre de usuario' : undefined
   const passwordError = touched.password && password.length === 0 ? 'Ingresar la contraseña' : undefined

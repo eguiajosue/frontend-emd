@@ -81,3 +81,14 @@ export async function removePendingMutation(id: string): Promise<void> {
   const db = await getDb();
   await db.delete(STORE_NAME, id);
 }
+
+/**
+ * Vacía la cola. Se llama al cerrar sesión: las mutaciones pendientes son de
+ * quien las hizo y se reenvían con el token de la sesión ACTIVA, así que en
+ * un equipo compartido el siguiente usuario las ejecutaría con SUS permisos
+ * (y a nombre suyo en el historial).
+ */
+export async function clearPendingMutations(): Promise<void> {
+  const db = await getDb();
+  await db.clear(STORE_NAME);
+}

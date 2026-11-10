@@ -7,7 +7,7 @@
  * conecta su propia forma de cerrar sesión al arrancar.
  */
 
-const SESSION_EXPIRED_MESSAGE = "La sesión expiró, iniciar sesión de nuevo";
+export const SESSION_EXPIRED_MESSAGE = "La sesión expiró, iniciar sesión de nuevo";
 
 let onUnauthorized: (message: string) => void | Promise<void> = () => {};
 let handlingExpiredSession = false;

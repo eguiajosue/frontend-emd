@@ -109,3 +109,27 @@ describe("getSentryDsn / buildSentryOptions", () => {
     expect(options).toMatchObject({ environment: "preview", tracesSampleRate: 0.25 });
   });
 });
+
+describe("scrubEvent: token del enlace del portal", () => {
+  it("lo oculta en la URL, la transacción y las migas de pan", () => {
+    const event = {
+      request: { url: "https://emd.mx/p/AbC_123-xyz?x=1" },
+      transaction: "GET /p/AbC_123-xyz",
+      breadcrumbs: [
+        { category: "navigation", data: { from: "/login", to: "/p/AbC_123-xyz" } },
+        { category: "fetch", data: { url: "https://api.emd.mx/portal/tok" } },
+      ],
+    } as unknown as ErrorEvent;
+
+    const scrubbed = scrubEvent(event);
+
+    expect(scrubbed.request?.url).toBe("https://emd.mx/p/[token]?x=1");
+    expect(scrubbed.transaction).toBe("GET /p/[token]");
+    expect(scrubbed.breadcrumbs?.[0].data).toEqual({ from: "/login", to: "/p/[token]" });
+    expect(scrubbed.breadcrumbs?.[1].data).toEqual({ url: "https://api.emd.mx/portal/tok" });
+  });
+
+  it("no rompe un evento sin request ni migas", () => {
+    expect(scrubEvent({ message: "x" } as unknown as ErrorEvent)).toEqual({ message: "x" });
+  });
+});

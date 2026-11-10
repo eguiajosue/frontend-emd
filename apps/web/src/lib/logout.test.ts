@@ -28,3 +28,18 @@ describe("logout purga las cachés privadas del service worker", () => {
     await expect(clearPrivateCaches()).resolves.toBeUndefined();
   });
 });
+
+describe("logout vacía la cola offline", () => {
+  it("las mutaciones pendientes no pasan al siguiente usuario del equipo", async () => {
+    vi.resetModules();
+    const clear = vi.fn(async () => undefined);
+    vi.doMock("@/lib/offlineQueue", () => ({ clearPendingMutations: clear }));
+    vi.doMock("next-auth/react", () => ({ signOut: vi.fn(async () => undefined) }));
+    vi.stubGlobal("caches", undefined);
+    const { logout: freshLogout } = await import("./logout");
+    await freshLogout();
+    expect(clear).toHaveBeenCalledTimes(1);
+    vi.doUnmock("@/lib/offlineQueue");
+    vi.doUnmock("next-auth/react");
+  });
+});
