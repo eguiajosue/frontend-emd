@@ -602,6 +602,18 @@ export function CreateOrderDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Recargar o cerrar la pestaña con un pedido a medias lo perdía en silencio
+  // (el diálogo sólo protegía Escape/X/Cancelar): el navegador pregunta antes.
+  useEffect(() => {
+    if (!open || !dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [open, dirty]);
+
   /** Cierra el diálogo — pide confirmar primero si el usuario cargó algo. */
   const handleClose = () => {
     if (submittingRef.current) return;

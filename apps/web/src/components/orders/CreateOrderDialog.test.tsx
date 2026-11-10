@@ -532,6 +532,18 @@ describe("CreateOrderDialog (una sola vista)", () => {
     expect(screen.getByTestId("order-client-name")).toHaveTextContent("Juan Pérez");
   });
 
+  it("avisa al recargar o cerrar la pestaña sólo cuando hay datos cargados", async () => {
+    renderDialog();
+    const limpio = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(limpio);
+    expect(limpio.defaultPrevented).toBe(false);
+
+    await pickClientByFreeText("Juan Pérez");
+    const sucio = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(sucio);
+    expect(sucio.defaultPrevented).toBe(true);
+  });
+
   it("cierra directo si no hay nada cargado, aunque se haya preseleccionado la cuenta compartida", async () => {
     mockData.users = [DESIGN_SHARED];
     const onClose = vi.fn();

@@ -4,6 +4,16 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Title from "@/components/Title";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { MobileFab } from "@/components/MobileFab";
 import {
@@ -224,6 +234,8 @@ const OrdersPage = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkTargetStatus, setBulkTargetStatus] = useState<string>("");
   const [isBulkChanging, setIsBulkChanging] = useState(false);
+  // Cambiar el estado de varios pedidos de un golpe es difícil de deshacer: se confirma.
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [circuit, setCircuit] = useState<Circuit>("produccion");
   const [tone, setTone] = useState<DeadlineTone | null>(null);
   const [tvOpen, setTvOpen] = useState(false);
@@ -865,7 +877,7 @@ const OrdersPage = () => {
               <Button
                 size="sm"
                 disabled={!bulkTargetStatus || isBulkChanging}
-                onClick={handleBulkStatusChange}
+                onClick={() => setBulkConfirmOpen(true)}
               >
                 {isBulkChanging ? "Aplicando..." : "Aplicar"}
               </Button>
@@ -903,6 +915,27 @@ const OrdersPage = () => {
           canMoveOrder={canMoveOrder}
         />
       )}
+
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              ¿Cambiar {selectedCount} pedido{selectedCount === 1 ? "" : "s"} a «
+              {statusMap[Number(bulkTargetStatus)] ?? "este estado"}»?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Se actualiza el estado de todos los pedidos seleccionados. Para revertirlo hay que
+              cambiarlos uno por uno.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Revisar selección</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleBulkStatusChange()}>
+              Sí, cambiar estado
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Suspense fallback={null}>
         <OrdersUrlWatcher onChange={handleUrlParams} />

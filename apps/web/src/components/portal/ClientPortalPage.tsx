@@ -220,11 +220,11 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Button size="lg" variant="brand" className="h-12 gap-2 text-base" onClick={() => setMode("aprobar")}>
+        <Button size="lg" variant="brand" className="h-12 gap-2 text-base" onClick={() => { mutation.reset(); setMode("aprobar"); }}>
           <ThumbsUp className="h-5 w-5" aria-hidden />
           Aprobar diseño
         </Button>
-        <Button size="lg" variant="outline" className="h-12 gap-2 text-base" onClick={() => setMode("cambios")}>
+        <Button size="lg" variant="outline" className="h-12 gap-2 text-base" onClick={() => { mutation.reset(); setMode("cambios"); }}>
           <MessageSquareText className="h-5 w-5" aria-hidden />
           Pedir cambios
         </Button>
@@ -248,7 +248,9 @@ function ResponseBox({ token, view }: { token: string; view: PortalView }) {
             placeholder={mode === "aprobar" ? "Comentario (opcional)" : "Ej.: el logo un poco más grande y en azul marino"}
           />
           {mutation.isError && (
-            <p className="text-sm text-destructive">{getErrorMessage(mutation.error, "No se pudo enviar tu respuesta.")}</p>
+            <p role="alert" className="text-sm text-destructive">
+              {getErrorMessage(mutation.error, "No se pudo enviar tu respuesta.")} Tu comentario sigue aquí: toca de nuevo el botón para reenviarlo.
+            </p>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setMode(null)} disabled={mutation.isPending}>
