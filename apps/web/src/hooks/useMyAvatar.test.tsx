@@ -20,9 +20,11 @@ function setup() {
 
 beforeEach(() => {
   requestMock.mockReset();
-  requestMock.mockImplementation((endpoint: string) =>
-    Promise.resolve(endpoint === "auth/profile" ? { avatarSeed: "old" } : { avatarSeed: "abc123" })
-  );
+  // Solo responde la ruta propia: `auth/profile` es de admin y falla (403) para el resto.
+  requestMock.mockImplementation((endpoint: string, options?: { method?: string }) => {
+    if (endpoint !== "users/me/avatar") return Promise.reject(new Error("403"));
+    return Promise.resolve({ avatarSeed: options?.method === "PATCH" ? "abc123" : "old" });
+  });
 });
 
 describe("useMyAvatar", () => {
@@ -48,7 +50,7 @@ describe("useMyAvatar", () => {
       result.current.reroll();
     });
     await waitFor(() => expect(result.current.user.avatarSeed).toBe("abc123"));
-    const patches = requestMock.mock.calls.filter(([endpoint]) => endpoint === "users/me/avatar");
+    const patches = requestMock.mock.calls.filter(([, options]) => options?.method === "PATCH");
     expect(patches).toHaveLength(1);
   });
 });

@@ -6,11 +6,12 @@ import { useSession } from "next-auth/react";
 import { request } from "@/lib/api";
 import { useAuthToken } from "@/hooks/useEntity";
 
+const AVATAR_ENDPOINT = "users/me/avatar";
 const PROFILE_AVATAR_KEY = ["profile", "avatar"] as const;
 
 /**
- * Avatar del usuario en sesión. La semilla viene de `GET /auth/profile` (el
- * token de sesión no la lleva) y `reroll` sortea una nueva en el servidor
+ * Avatar del usuario en sesión. La semilla viene de `GET /users/me/avatar` (el
+ * token de sesión no la lleva; `auth/profile` es solo de admin) y `reroll` sortea una nueva en el servidor
  * (`PATCH /users/me/avatar`) y la deja en la caché al instante.
  */
 export function useMyAvatar() {
@@ -22,13 +23,13 @@ export function useMyAvatar() {
   const query = useQuery({
     queryKey: PROFILE_AVATAR_KEY,
     enabled: !!session && !!token,
-    queryFn: () => request<{ avatarSeed: string | null }>("auth/profile", { token }),
+    queryFn: () => request<{ avatarSeed: string | null }>(AVATAR_ENDPOINT, { token }),
     staleTime: 5 * 60_000,
     select: (profile) => profile.avatarSeed,
   });
 
   const mutation = useMutation({
-    mutationFn: () => request<{ avatarSeed: string }>("users/me/avatar", { method: "PATCH", token }),
+    mutationFn: () => request<{ avatarSeed: string }>(AVATAR_ENDPOINT, { method: "PATCH", token }),
     onSuccess: (data) => queryClient.setQueryData(PROFILE_AVATAR_KEY, data),
     onSettled: () => {
       busy.current = false;
