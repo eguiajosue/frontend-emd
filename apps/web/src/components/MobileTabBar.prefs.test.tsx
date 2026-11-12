@@ -30,6 +30,8 @@ vi.mock("next-auth/react", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useMyAvatar", () => ({ useMyAvatar: () => ({ user: { id: "1", avatarSeed: null }, reroll: () => {}, isRerolling: false }) }));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.pathname,
 }));
