@@ -27,6 +27,8 @@ export interface AuditLogLine {
   actorName: string;
   /** Inicial(es) para el avatar. */
   actorInitials: string;
+  /** Quién hizo el cambio, para generar su avatar (id / avatarSeed). */
+  actor?: AssignedUser | null;
   /** Qué hizo, sin el sujeto: "cambió el estado de 'x' a 'y'". */
   action: string;
   /** Oración completa, sin la marca de tiempo. */
@@ -293,6 +295,7 @@ export function buildAuditLines(
     key: `${entry.id}-${index}`,
     actorName: name,
     actorInitials: initials,
+    actor: entry.user,
     action,
     sentence: `${name} ${action}`,
     relativeTime: relative,

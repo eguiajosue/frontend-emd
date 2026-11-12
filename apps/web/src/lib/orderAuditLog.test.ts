@@ -195,6 +195,19 @@ describe("buildAuditLines", () => {
     expect(new Set(lines.map((l) => l.key)).size).toBe(2);
   });
 
+  it("conserva al actor (id y avatarSeed) para pintar su avatar", () => {
+    const lines = buildAuditLines(
+      {
+        ...base,
+        user: { ...base.user, avatarSeed: "abc123" },
+        action: "updated",
+        changes: { description: { before: null, after: "x" } },
+      },
+      NOW
+    );
+    expect(lines[0].actor).toMatchObject({ id: 7, avatarSeed: "abc123" });
+  });
+
   it("descarta una entrada cuyo diff no tiene valores", () => {
     const lines = buildAuditLines(
       { ...base, action: "updated", changes: { statusId: { before: null, after: null } } },

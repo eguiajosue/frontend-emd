@@ -10,14 +10,15 @@ interface UserAvatarProps {
   /** Iniciales que se ven mientras carga la imagen, si falla o si no hay semilla. */
   initials: string
   className?: string
+  title?: string
   fallbackClassName?: string
 }
 
 /** Avatar generado del usuario; las iniciales quedan de respaldo. */
-export function UserAvatar({ user, initials, className, fallbackClassName }: UserAvatarProps) {
+export function UserAvatar({ user, initials, className, fallbackClassName, title }: UserAvatarProps) {
   const seed = avatarSeedFor(user)
   return (
-    <Avatar className={className}>
+    <Avatar className={className} title={title}>
       {seed ? <AvatarImage src={avatarDataUri(seed)} alt="" /> : null}
       <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
     </Avatar>
