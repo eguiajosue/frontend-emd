@@ -259,6 +259,8 @@ export interface AssignedUser extends BaseEntity {
   lastName?: string | null;
   username: string;
   isSharedAccount?: boolean;
+  /** Semilla del avatar generado; null/ausente = se usa el id. */
+  avatarSeed?: string | null;
 }
 
 export interface OrderProduct {
@@ -807,6 +809,8 @@ export interface ChatUserSummary {
   username: string;
   firstName: string;
   lastName?: string | null;
+  /** Semilla del avatar generado; null/ausente = se usa el id. */
+  avatarSeed?: string | null;
 }
 
 /** Usuario elegible para abrir un mensaje directo (GET /chat/users). */

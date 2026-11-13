@@ -1,7 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConversationList } from "./ConversationList";
 import { markUserTyping } from "@/hooks/useChatTyping";
+import { avatarDataUri } from "@/lib/avatar";
+import { stubImage } from "@/test-utils/stubImage";
 import type { ChatConversation, ChatMessage } from "@/types";
 
 function makeConversation(overrides: Partial<ChatConversation>): ChatConversation {
@@ -175,5 +177,29 @@ describe("ConversationList - buscador", () => {
       target: { value: "zzz" },
     });
     expect(screen.getAllByText("Sin resultados.")).toHaveLength(2);
+  });
+});
+
+describe("ConversationList - avatar generado", () => {
+  let restore = () => {};
+  afterEach(() => restore());
+
+  it("un DM muestra el avatar de la semilla del otro usuario; un canal de área no", async () => {
+    restore = stubImage("load");
+    const base = makeConversation({}).otherUser!;
+    const { container } = render(
+      <ConversationList
+        conversations={[
+          makeConversation({ id: 1, otherUser: { ...base, avatarSeed: "abc123" } }),
+          makeConversation({ id: 2, type: "area", area: "taller", title: "Taller", otherUser: null }),
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={() => {}}
+        onNewDirect={() => {}}
+      />
+    );
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(1));
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(avatarDataUri("abc123"));
   });
 });

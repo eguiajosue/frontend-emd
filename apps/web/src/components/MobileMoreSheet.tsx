@@ -6,7 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { UserAvatar } from "./UserAvatar";
+import { useMyAvatar } from "@/hooks/useMyAvatar";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { ThemeToggle } from "./ThemeToggle";
@@ -59,6 +60,7 @@ function IosInstallHint() {
 
 export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
   const { data: session } = useSession();
+  const { user: avatarUser } = useMyAvatar();
   const pathname = usePathname();
   const userAccess = { roles: session?.user?.roles, areas: session?.user?.areas };
   const visibleItems = useVisibleNavItems();
@@ -110,11 +112,12 @@ export function MobileMoreSheet({ open, onOpenChange }: MobileMoreSheetProps) {
               existía antes. */}
           <div className="flex items-center gap-3 rounded-2xl bg-muted/70 p-3">
             <div className="relative shrink-0">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-sm font-semibold text-primary-foreground">
-                  {session?.user?.username?.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                user={avatarUser}
+                initials={session?.user?.username?.slice(0, 2).toUpperCase() ?? ""}
+                className="h-10 w-10"
+                fallbackClassName="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-sm font-semibold text-primary-foreground"
+              />
               <span
                 aria-hidden
                 className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-muted"

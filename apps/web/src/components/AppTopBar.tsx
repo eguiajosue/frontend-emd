@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Bug, ChevronDown, Download, LogOut, Settings } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Bug, ChevronDown, Download, LogOut, Settings, Shuffle } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
+import { useMyAvatar } from "@/hooks/useMyAvatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -97,6 +98,7 @@ function UserMenu() {
   const { canInstall, promptInstall } = useInstallPrompt();
   const [bugOpen, setBugOpen] = useState(false);
   const user = session?.user;
+  const { user: avatarUser, reroll, isRerolling } = useMyAvatar();
   const initials = (user?.first_name?.[0] ?? user?.username?.[0] ?? "?") + (user?.last_name?.[0] ?? user?.username?.[1] ?? "");
 
   return (
@@ -109,11 +111,12 @@ function UserMenu() {
             className="flex h-11 items-center gap-1.5 rounded-full border border-border/60 bg-card p-1 pr-2.5 shadow-soft dark:border-border"
           >
             <span className="relative">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-xs font-semibold uppercase text-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                user={avatarUser}
+                initials={initials}
+                className="h-9 w-9"
+                fallbackClassName="bg-gradient-to-br from-primary to-[hsl(345_88%_60%)] text-xs font-semibold uppercase text-primary-foreground"
+              />
               <span
                 aria-hidden
                 className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card"
@@ -136,6 +139,16 @@ function UserMenu() {
             <Link href="/dashboard/configuracion">
               <Settings /> Configuración
             </Link>
+          </DropdownMenuItem>
+          {/* preventDefault: el menú sigue abierto para ver el avatar nuevo y sortear otro. */}
+          <DropdownMenuItem
+            disabled={isRerolling}
+            onSelect={(event) => {
+              event.preventDefault();
+              reroll();
+            }}
+          >
+            <Shuffle /> Otro avatar
           </DropdownMenuItem>
           {canInstall && (
             <DropdownMenuItem onSelect={() => void promptInstall()}>
